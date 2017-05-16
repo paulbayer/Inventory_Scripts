@@ -5,6 +5,6 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
 This script displays all instances in the specified account (by specifying the profile to run against). 
 
 ### all_my_instances.sh 
-This script displays all instances in all availabl accounts (by reading the credentials file and parsing the profiles to run against). 
+This script displays all instances in all available accounts (by reading the credentials file and parsing the profiles to run against). 
 
 
