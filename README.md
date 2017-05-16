@@ -7,4 +7,5 @@ This script displays all instances in the specified account (by specifying the p
 ### all_my_instances.sh 
 This script displays all instances in all available accounts (by reading the credentials file and parsing the profiles to run against). 
 
-
+### all_my_buckets.sh
+This script displays all buckets in all available accounts (by reading the credentials file and parsing the profiles to run against). 
