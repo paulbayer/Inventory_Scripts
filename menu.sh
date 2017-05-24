@@ -17,15 +17,24 @@ pause(){
 }
 
 one(){
-		echo "one() called"
+		echo 
 		./all_my_instances.sh
+		echo
 		pause
 }
 
 # do something in two()
 two(){
-		echo "two() called"
+		echo 
 		./all_my_buckets.sh
+		echo
+		pause
+}
+
+three(){
+		echo 
+		egrep '\[.*\]' ~/.aws/credentials | tr -d '[]\r'
+		echo
 		pause
 }
 
@@ -37,19 +46,21 @@ show_menus() {
 		echo "~~~~~~~~~~~~~~~~~~~~~"
 		echo "1. Display all EC2 Instances in all of your accounts"
 		echo "2. Display all S3 buckets in all of your accounts"
-		echo "3. Exit"
+		echo "3. Display all profiles available in your credentials file"
+		echo "4. Exit"
 }
 # read input from the keyboard and take an action
 # invoke the one() when the user select 1 from the menu option.
 # invoke the two() when the user select 2 from the menu option.
-# Exit when user the user select 3 form the menu option.
+# Exit when user the user selects 4 form the menu option.
 read_options(){
 		local choice
-		read -p "Enter choice [ 1 - 3] " choice
+		read -p "Enter choice [ 1 - 4] " choice
 		case $choice in
 				1) one ;;
 				2) two ;;
-				3) exit 0;;
+				3) three ;;
+				4) exit 0;;
 				*) echo -e "${RED}Error...${STD}" && sleep 2
 		esac
 }
