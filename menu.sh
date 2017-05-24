@@ -31,7 +31,7 @@ two(){
 
 # function to display menus
 show_menus() {
-		clear
+#		clear
 		echo "~~~~~~~~~~~~~~~~~~~~~"	
 		echo " M A I N - M E N U"
 		echo "~~~~~~~~~~~~~~~~~~~~~"
