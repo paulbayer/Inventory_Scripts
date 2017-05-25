@@ -14,6 +14,7 @@ printf "%-20s %-50s \n" "Profile" "Bucket Name"
 printf "%-20s %-50s \n" "-------" "-----------"
 for profile in ${AllProfiles[@]}; do
 	aws s3api list-buckets --output text --query 'Buckets[*].Name' --profile $profile | awk -F $"\t" -v var=${profile} '{for (i=1;i<=NF;i++) printf "%-20s %-50s \n",var,$i}' 
+	echo "----------------"
 done
 
 echo

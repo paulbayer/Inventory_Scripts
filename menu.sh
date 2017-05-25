@@ -16,7 +16,7 @@ pause(){
 		read -p "Press [Enter] key to continue..." fackEnterKey
 }
 
-one(){
+listec2(){
 		echo 
 		./all_my_instances.sh
 		echo
@@ -24,21 +24,21 @@ one(){
 }
 
 # do something in two()
-two(){
+lists3(){
 		echo 
 		./all_my_buckets.sh
 		echo
 		pause
 }
 
-three(){
+list3_with_size(){
 		echo 
 		./all_my_buckets_with_sizes.sh
 		echo
 		pause
 }
 
-eight(){
+profiles(){
 		echo 
 		egrep '\[.*\]' ~/.aws/credentials | tr -d '[]\r'
 		echo
@@ -64,12 +64,12 @@ show_menus() {
 # Exit when user the user selects 4 from the menu option.
 read_options(){
 		local choice
-		read -p "Enter choice [ 1 - 4] " choice
+		read -p "Enter choice [ 1 - 9] " choice
 		case $choice in
-				1) one ;;
-				2) two ;;
-				3) three ;;
-				8) eight ;;
+				1) listec2 ;;
+				2) lists3 ;;
+				3) lists3_with_size ;;
+				8) profiles ;;
 				9) exit 0;;
 				*) echo -e "${RED}Error...${STD}" && sleep 2
 		esac
