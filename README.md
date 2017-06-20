@@ -10,5 +10,11 @@ This script displays all instances in all available accounts (by reading the cre
 ### all_my_buckets.sh
 This script displays all buckets in all available accounts (by reading the credentials file and parsing the profiles to run against). 
 
+### all_my_topics.sh
+This script displays all SNS topics in all available accounts (by reading the credentials file and parsing the profiles to run against). 
+
+### all_my_streams.sh
+This script displays all Kinesis Streams in all available accounts (by reading the credentials file and parsing the profiles to run against). 
+
 ### menu.sh
 This script presents a clean, simple menu to access the other scripts. The other scripts can be used by themselves, or they can be called by this menu. Your choice.

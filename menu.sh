@@ -16,7 +16,7 @@ pause(){
 		read -p "Press [Enter] key to continue..." fackEnterKey
 }
 
-listec2(){
+list_ec2(){
 		echo 
 		./all_my_instances.sh
 		echo
@@ -24,14 +24,28 @@ listec2(){
 }
 
 # do something in two()
-lists3(){
+list_s3(){
 		echo 
 		./all_my_buckets.sh
 		echo
 		pause
 }
 
-list3_with_size(){
+list_topics(){
+		echo 
+		./all_my_topics.sh
+		echo
+		pause
+}
+
+list_streams(){
+		echo 
+		./all_my_streams.sh
+		echo
+		pause
+}
+
+list_s3_with_size(){
 		echo 
 		./all_my_buckets_with_sizes.sh
 		echo
@@ -54,6 +68,8 @@ show_menus() {
 		echo "1. Display all EC2 Instances in all of your accounts"
 		echo "2. Display all S3 buckets in all of your accounts"
 		echo "3. Display all S3 buckets in all of your accounts with a total size at the bottom"
+		echo "4. Display all SNS topics in all of your accounts"
+		echo "5. Display all Kinesis streams in all of your accounts"
 		echo "8. Display all profiles available in your credentials file"
 		echo "9. Exit"
 }
@@ -66,9 +82,11 @@ read_options(){
 		local choice
 		read -p "Enter choice [ 1 - 9] " choice
 		case $choice in
-				1) listec2 ;;
-				2) lists3 ;;
-				3) lists3_with_size ;;
+				1) list_ec2 ;;
+				2) list_s3 ;;
+				3) list_s3_with_size ;;
+				4) list_topics ;;
+				5) list_streams ;;
 				8) profiles ;;
 				9) exit 0;;
 				*) echo -e "${RED}Error...${STD}" && sleep 2
