@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# A menu driven shell script sample template 
+# A menu driven shell script sample template
 ## ----------------------------------
 # Step #1: Define variables
 # ----------------------------------
@@ -17,7 +17,7 @@ pause(){
 }
 
 list_ec2(){
-		echo 
+		echo
 		./all_my_instances.sh
 		echo
 		pause
@@ -25,35 +25,35 @@ list_ec2(){
 
 # do something in two()
 list_s3(){
-		echo 
+		echo
 		./all_my_buckets.sh
 		echo
 		pause
 }
 
 list_topics(){
-		echo 
+		echo
 		./all_my_topics.sh
 		echo
 		pause
 }
 
 list_streams(){
-		echo 
+		echo
 		./all_my_streams.sh
 		echo
 		pause
 }
 
 list_s3_with_size(){
-		echo 
+		echo
 		./all_my_buckets_with_sizes.sh
 		echo
 		pause
 }
 
 profiles(){
-		echo 
+		echo
 		egrep '\[.*\]' ~/.aws/credentials | tr -d '[]\r'
 		echo
 		pause
@@ -62,7 +62,7 @@ profiles(){
 # function to display menus
 show_menus() {
 #		clear
-		echo "~~~~~~~~~~~~~~~~~~~~~"	
+		echo "~~~~~~~~~~~~~~~~~~~~~"
 		echo " M A I N - M E N U"
 		echo "~~~~~~~~~~~~~~~~~~~~~"
 		echo "1. Display all EC2 Instances in all of your accounts"
@@ -71,7 +71,7 @@ show_menus() {
 		echo "4. Display all SNS topics in all of your accounts"
 		echo "5. Display all Kinesis streams in all of your accounts"
 		echo "8. Display all profiles available in your credentials file"
-		echo "9. Exit"
+		echo "0. Exit"
 }
 # read input from the keyboard and take an action
 # invoke the one() when the user select 1 from the menu option.
@@ -80,7 +80,7 @@ show_menus() {
 # Exit when user the user selects 4 from the menu option.
 read_options(){
 		local choice
-		read -p "Enter choice [ 1 - 9] " choice
+		read -p "Enter choice [ 0 - 9] " choice
 		case $choice in
 				1) list_ec2 ;;
 				2) list_s3 ;;
@@ -88,7 +88,7 @@ read_options(){
 				4) list_topics ;;
 				5) list_streams ;;
 				8) profiles ;;
-				9) exit 0;;
+				0) exit 0;;
 				*) echo -e "${RED}Error...${STD}" && sleep 2
 		esac
 }
@@ -107,4 +107,3 @@ do
 		show_menus
 		read_options
 done
-
