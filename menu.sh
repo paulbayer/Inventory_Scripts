@@ -86,7 +86,7 @@ show_menus() {
 		echo "5. Display all Kinesis streams in all of your accounts"
 		echo "6. Display all Lambda functions in all of your accounts"
 		echo "7. Display all DynamoDB Tables in all of your accounts"
-		echo "9. Display all profiles available in your credentials file"
+		echo "P. Display all profiles available in your credentials file"
 		echo "0. Exit"
 }
 # read input from the keyboard and take an action
@@ -105,7 +105,7 @@ read_options(){
 				5) list_streams ;;
 				6) list_functions ;;
 				7) list_DDB_tables ;;
-				9) profiles ;;
+				[Pp]) profiles ;;
 				[0qQ]) exit 0;;
 				*) echo -e "${RED}Error...${STD}" && sleep 2
 		esac
