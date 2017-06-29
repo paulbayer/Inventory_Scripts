@@ -70,7 +70,7 @@ show_menus() {
 		echo "3. Display all S3 buckets in all of your accounts with a total size at the bottom"
 		echo "4. Display all SNS topics in all of your accounts"
 		echo "5. Display all Kinesis streams in all of your accounts"
-		echo "8. Display all profiles available in your credentials file"
+		echo "9. Display all profiles available in your credentials file"
 		echo "0. Exit"
 }
 # read input from the keyboard and take an action
@@ -87,8 +87,8 @@ read_options(){
 				3) list_s3_with_size ;;
 				4) list_topics ;;
 				5) list_streams ;;
-				8) profiles ;;
-				0) exit 0;;
+				9) profiles ;;
+				[0qQ]) exit 0;;
 				*) echo -e "${RED}Error...${STD}" && sleep 2
 		esac
 }
