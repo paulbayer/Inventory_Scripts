@@ -1,0 +1,4 @@
+# Exclude *.pyc files
+*.pyc
+*~
+.DS_Store
