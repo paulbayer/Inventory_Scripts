@@ -2,13 +2,15 @@
 Inventory_Scripts is a git repository to aggregate a number of scripts I've written, with the intent to make it easier to keep track of what's created and/ or running in any one of your (possibly) many AWS accounts... The scripts in this repo will be discussed below
 
 ## EC2 Scripts
-### my_instances.sh
-This script displays all instances in the specified account (by specifying the profile to run against).
+---
+- my_instances.sh
+    - This script displays all instances in the specified account (by specifying the profile to run against).
 
-### all_my_instances.sh
-This script displays all instances in all available accounts (by reading the credentials file and parsing the profiles to run against).
+- all_my_instances.sh
+    - This script displays all instances in all available accounts (by reading the credentials file and parsing the profiles to run against).
 
 ## S3 Scripts
+---
 ### all_my_buckets.sh
 This script displays all buckets in all available accounts (by reading the credentials file and parsing the profiles to run against).
 
@@ -50,7 +52,7 @@ This script displays all of the IAM Groups you have in all of your accounts.
 This script displays all of the IAM Groups and associated policies you have in all of your accounts.
 
 ### users_with_policies.sh
-This script displays all of the IAM Users and associated policies you have in your specified account. 
+This script displays all of the IAM Users and associated policies you have in your specified account.
 ### all_my_users.sh
 This script displays all of the IAM Users you have in all of your accounts.
 ### all_my_users_with_policies.sh
