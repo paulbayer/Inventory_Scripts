@@ -16,6 +16,36 @@ pause(){
 		read -p "Press [Enter] key to continue..." fackEnterKey
 }
 
+# IAM Function Section
+list_users(){
+		echo
+		echo "This function doesn't work yet, but thank you for playing."
+#		./all_my_users.sh
+		echo
+		pause
+}
+list_roles(){
+		echo
+		echo "This function doesn't work yet, but thank you for playing."
+#		./all_my_users.sh
+		echo
+		pause
+}
+list_policies(){
+		echo
+		echo "This function doesn't work yet, but thank you for playing."
+#		./all_my_users.sh
+		echo
+		pause
+}
+list_groups(){
+		echo
+		./all_my_groups.sh
+		echo
+		pause
+}
+
+#DynamoDB Function Section
 list_DDB_tables(){
 		echo
 		./all_my_DDB_tables.sh
@@ -37,10 +67,16 @@ list_ec2(){
 		pause
 }
 
-# do something in two()
+#S3 Stuff
 list_s3(){
 		echo
 		./all_my_buckets.sh
+		echo
+		pause
+}
+list_s3_with_size(){
+		echo
+		./all_my_buckets_with_sizes.sh
 		echo
 		pause
 }
@@ -55,13 +91,6 @@ list_topics(){
 list_streams(){
 		echo
 		./all_my_streams.sh
-		echo
-		pause
-}
-
-list_s3_with_size(){
-		echo
-		./all_my_buckets_with_sizes.sh
 		echo
 		pause
 }
@@ -93,7 +122,11 @@ show_menus() {
 		echo "5. Display all Kinesis streams in all of your accounts"
 		echo "6. Display all Lambda functions in all of your accounts"
 		echo "7. Display all DynamoDB Tables in all of your accounts"
-		echo "8. Display all DynamoDB Tables in all of your accounts"
+		echo "8. Display all CloudFormation Stacks in all of your accounts"
+		echo "21. Display all IAM Users in all of your accounts"
+		echo "22. Display all IAM Groups in all of your accounts"
+		echo "23. Display all IAM Roles in all of your accounts"
+		echo "24. Display all IAM Customer-Managed Policies in all of your accounts"
 		echo "P. Display all profiles available in your credentials file"
 		echo "0. Exit"
 }
@@ -104,7 +137,7 @@ show_menus() {
 # Exit when user the user selects 4 from the menu option.
 read_options(){
 		local choice
-		read -p "Enter choice [ 0 - 9] " choice
+		read -p "Enter choice [ 0 - 100] " choice
 		case $choice in
 				1) list_ec2 ;;
 				2) list_s3 ;;
@@ -114,6 +147,10 @@ read_options(){
 				6) list_functions ;;
 				7) list_DDB_tables ;;
 				8) list_cloudformation_stacks ;;
+				21) list_users ;;
+				22) list_groups ;;
+				23) list_roles ;;
+				24) list_policies ;;
 				[Pp]) profiles ;;
 				[0qQ]) exit 0;;
 				*) echo -e "${RED}Error...${STD}" && sleep 2
