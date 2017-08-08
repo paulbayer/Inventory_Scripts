@@ -4,14 +4,12 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
 ## EC2 Scripts
 - **my_instances.sh**
     - This script displays all instances in the specified account (by specifying the profile to run against).
-
 - **all_my_instances.sh**
     - This script displays all instances in all available accounts (by reading the credentials file and parsing the profiles to run against).
 ---
 ## S3 Scripts
 - **all_my_buckets.sh**
     - This script displays all buckets in all available accounts (by reading the credentials file and parsing the profiles to run against).
-
 - **all_my_buckets_with_sizes.sh**
     - This script displays all buckets, # of files, and the total size of each bucket in all available accounts (by reading the credentials file and parsing the profiles to run against).
 ---
@@ -22,7 +20,8 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
 ## SQS Scripts
 - **all_my_topics.sh**
     - This script displays all SNS topics in all available accounts (by reading the credentials file and parsing the profiles to run against).
-
+---
+## Kinesis
 - **all_my_streams.sh**
     - This script displays all Kinesis Streams in all available accounts (by reading the credentials file and parsing the profiles to run against).
 ---
@@ -32,7 +31,7 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
 ---
 ## Lambda Scripts
 - **all_my_functions.sh**
-	- This script displays all Dynamo DB Tables in all available accounts (by reading the credentials file and parsing the profiles to run against).
+	- This script displays all Lambda Functions in all available accounts (by reading the credentials file and parsing the profiles to run against).
 ---
 ## IAM Scripts
 - **roles_with_policies.sh**
@@ -41,14 +40,12 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
 	- This script displays (in a table format) all of the IAM Roles (Role Name and Role ARN) you have in all of your accounts.
 - **all_my_roles_with_policies.sh**
 	- This script displays all of the IAM Roles and associated policies you have in all of your accounts.
-
 - **groups_with_policies.sh**
 	- This script displays all of the IAM Groups and associated policies you have in your specified account.
 - **all_my_groups.sh**
 	- This script displays all of the IAM Groups you have in all of your accounts.
 - **all_my_groups_with_policies.sh**
 	- This script displays all of the IAM Groups and associated policies you have in all of your accounts.
-
 - **users_with_policies.sh**
 	- This script displays all of the IAM Users and associated policies you have in your specified account.
 - **all_my_users.sh**
