@@ -37,8 +37,7 @@ list_roles_with_policies(){
 }
 list_policies(){
 		echo
-		echo "This function doesn't work yet, but thank you for playing."
-#		./all_my_policies.sh
+		./all_my_policies.sh
 		echo
 		pause
 }
@@ -121,6 +120,14 @@ list_filesystems(){
 		pause
 }
 
+#Config Rules
+list_all_config_rules(){
+		echo
+		./all_my_config_rules.sh
+		echo
+		pause
+}
+
 profiles(){
 		echo
 		declare -a AllProfiles
@@ -154,6 +161,7 @@ show_menus() {
 		echo "22. Display all IAM Groups (with attached policies) in all of your accounts (takes a while)"
 		echo "23. Display all IAM Roles (with attached policies) in all of your accounts (takes a while)"
 		echo "24. Display all IAM Customer-Managed Policies in all of your accounts"
+		echo "31. Display all Config Rules in all of your accounts"
 		echo "P. Display all profiles available in your credentials file"
 		echo "0. Exit"
 }
@@ -180,6 +188,7 @@ read_options(){
 				22) list_groups_with_policies ;;
 				23) list_roles_with_policies ;;
 				24) list_policies ;;
+				31) list_all_config_rules ;;
 				[Pp]) profiles ;;
 				[0qQ]) exit 0;;
 				*) echo -e "${RED}Error...${STD}" && sleep 2

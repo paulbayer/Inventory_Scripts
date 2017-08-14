@@ -16,8 +16,19 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
 ## CloudFormation Scripts
 - **all_my_stacks.sh**
     - This script displays all CFT Stacks in all available accounts (by reading the credentials file and parsing the profiles to run against).
----
-## SQS Scripts
+
+## Config Rule Scripts
+- **all_my_config_rules.sh**
+    - This script displays all Config Rules and their state in all available accounts (by reading the credentials file and parsing the profiles to run against).
+
+## CloudTrail Scripts
+- **all_my_trails.sh**
+    - This script displays all CloudTrail trails in all available accounts (by reading the credentials file and parsing the profiles to run against).
+- **CreateIAMPolicy-CloudTrailLogs.sh**
+    - This script actually creates the necessary policies and IAM roles within your specified account and creates the CloudTrail trails - pointing to your specified (within the script) S3 bucket. This is to enable centralization of your CloudTrail logs to one single bucket.
+    - Prequisite - the bucket has to exist, and be writable for the Cloudtrail service.
+----
+## SNS Scripts
 - **all_my_topics.sh**
     - This script displays all SNS topics in all available accounts (by reading the credentials file and parsing the profiles to run against).
 ---
@@ -34,6 +45,8 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
 	- This script displays all Lambda Functions in all available accounts (by reading the credentials file and parsing the profiles to run against).
 ---
 ## IAM Scripts
+- **all_my_policies.sh**
+    	- This script displays all of the IAM policies you have in all of your accounts.
 - **roles_with_policies.sh**
 	- This script displays all of the IAM Roles and associated policies you have in your specified account.
 - **all_my_IAM_roles.sh**
