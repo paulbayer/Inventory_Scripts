@@ -51,6 +51,7 @@ list_DDB_tables(){
 		pause
 }
 
+#Lambda Functions
 list_functions(){
 		echo
 		./all_my_functions.sh
@@ -58,6 +59,7 @@ list_functions(){
 		pause
 }
 
+#EC2 Instance functions
 list_ec2(){
 		echo
 		./all_my_instances.sh
@@ -79,6 +81,7 @@ list_s3_with_size(){
 		pause
 }
 
+#SNS Topics
 list_topics(){
 		echo
 		./all_my_topics.sh
@@ -86,6 +89,7 @@ list_topics(){
 		pause
 }
 
+#Kinesis streams
 list_streams(){
 		echo
 		./all_my_streams.sh
@@ -93,6 +97,7 @@ list_streams(){
 		pause
 }
 
+#CFT Stacks
 list_cloudformation_stacks(){
 		echo
 		./all_my_stacks.sh
@@ -100,10 +105,32 @@ list_cloudformation_stacks(){
 		pause
 }
 
+#CloudTrails
+list_cloudtrail_trails(){
+		echo
+		./all_my_trails.sh
+		echo
+		pause
+}
+
+#EFS Filesystems
+list_filesystems(){
+		echo
+		./all_my_filesystems.sh
+		echo
+		pause
+}
+
 profiles(){
 		echo
-		egrep '\[.*\]' ~/.aws/credentials | tr -d '[]\r'
-		echo
+		declare -a AllProfiles
+		AllProfiles=$(egrep '\[.*\]' ~/.aws/credentials | tr -d '[]\r')
+		printf "%-15s %-20s \n" "Profile Name" "Account Number"
+		printf "%-15s %-20s \n" "------------" "--------------"
+		for profile in ${AllProfiles[@]}; do
+			AccountNumber=$(aws sts get-caller-identity --output text --query 'Account' --profile $profile)
+			printf "%-15s %-20s \n" $profile $AccountNumber
+		done
 		pause
 }
 
@@ -121,9 +148,11 @@ show_menus() {
 		echo "6. Display all Lambda functions in all of your accounts"
 		echo "7. Display all DynamoDB Tables in all of your accounts"
 		echo "8. Display all CloudFormation Stacks in all of your accounts"
-		echo "21. Display all IAM Users (with attached policies) in all of your accounts"
-		echo "22. Display all IAM Groups (with attached policies) in all of your accounts"
-		echo "23. Display all IAM Roles (with attached policies) in all of your accounts"
+		echo "9. Display all CloudTrail trails in all of your accounts"
+		echo "10. Display all EFS Filesystems in all of your accounts"
+		echo "21. Display all IAM Users (with attached policies) in all of your accounts (takes a while)"
+		echo "22. Display all IAM Groups (with attached policies) in all of your accounts (takes a while)"
+		echo "23. Display all IAM Roles (with attached policies) in all of your accounts (takes a while)"
 		echo "24. Display all IAM Customer-Managed Policies in all of your accounts"
 		echo "P. Display all profiles available in your credentials file"
 		echo "0. Exit"
@@ -145,6 +174,8 @@ read_options(){
 				6) list_functions ;;
 				7) list_DDB_tables ;;
 				8) list_cloudformation_stacks ;;
+				9) list_cloudtrail_trails ;;
+				10) list_filesystems ;;
 				21) list_users_with_policies ;;
 				22) list_groups_with_policies ;;
 				23) list_roles_with_policies ;;
