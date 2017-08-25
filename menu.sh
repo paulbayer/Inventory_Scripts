@@ -41,6 +41,31 @@ list_policies(){
 		echo
 		pause
 }
+list_users_with_policies_default_profile(){
+		echo
+		./users_with_policies.sh default
+		echo
+		pause
+}
+list_groups_with_policies_default_profile(){
+		echo
+		./groups_with_policies.sh default
+		echo
+		pause
+}
+list_roles_with_policies_default_profile(){
+		echo
+		./roles_with_policies.sh default
+		echo
+		pause
+}
+list_policies_default_profile(){
+		echo
+		echo "This doesn't quite work yet..."
+		#		./policies.sh
+		echo
+		pause
+}
 
 #DynamoDB Function Section
 list_DDB_tables(){
@@ -162,6 +187,10 @@ show_menus() {
 		echo "23. Display all IAM Roles (with attached policies) in all of your accounts (takes a while)"
 		echo "24. Display all IAM Customer-Managed Policies in all of your accounts"
 		echo "31. Display all Config Rules in all of your accounts"
+		echo "51. Display all IAM Users (with attached policies) in only your default account"
+		echo "52. Display all IAM Groups (with attached policies) in only your default account"
+		echo "53. Display all IAM Roles (with attached policies) in only your default account"
+		echo "54. Display all IAM Customer-Managed Policies in only your default account"
 		echo "P. Display all profiles available in your credentials file"
 		echo "0. Exit"
 }
@@ -189,6 +218,10 @@ read_options(){
 				23) list_roles_with_policies ;;
 				24) list_policies ;;
 				31) list_all_config_rules ;;
+				51) list_users_with_policies_default_profile ;;
+				52) list_groups_with_policies_default_profile ;;
+				53) list_roles_with_policies_default_profile ;;
+				54) list_policies_default_profile ;;
 				[Pp]) profiles ;;
 				[0qQ]) exit 0;;
 				*) echo -e "${RED}Error...${STD}" && sleep 2
@@ -204,6 +237,7 @@ trap '' SIGINT SIGQUIT SIGTSTP
 # Step #4: Main logic - infinite loop
 # ------------------------------------
 
+cd ~/GitRepos/Inventory_Scripts
 while true
 do
 		show_menus
