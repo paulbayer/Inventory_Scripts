@@ -145,6 +145,14 @@ list_filesystems(){
 		pause
 }
 
+# VPC Stuff
+list_vpcs(){
+		echo
+		./all_my_vpcs.sh
+		echo
+		pause
+}
+
 #Config Rules
 list_all_config_rules(){
 		echo
@@ -155,14 +163,8 @@ list_all_config_rules(){
 
 profiles(){
 		echo
-		declare -a AllProfiles
-		AllProfiles=$(egrep '\[.*\]' ~/.aws/credentials | tr -d '[]\r')
-		printf "%-15s %-20s \n" "Profile Name" "Account Number"
-		printf "%-15s %-20s \n" "------------" "--------------"
-		for profile in ${AllProfiles[@]}; do
-			AccountNumber=$(aws sts get-caller-identity --output text --query 'Account' --profile $profile)
-			printf "%-15s %-20s \n" $profile $AccountNumber
-		done
+		./profiles.sh
+		echo
 		pause
 }
 
@@ -182,6 +184,7 @@ show_menus() {
 		echo "8. Display all CloudFormation Stacks in all of your accounts"
 		echo "9. Display all CloudTrail trails in all of your accounts"
 		echo "10. Display all EFS Filesystems in all of your accounts"
+		echo "11. Display all VPCs in all of your accounts, with state and CIDR block"
 		echo "21. Display all IAM Users (with attached policies) in all of your accounts (takes a while)"
 		echo "22. Display all IAM Groups (with attached policies) in all of your accounts (takes a while)"
 		echo "23. Display all IAM Roles (with attached policies) in all of your accounts (takes a while)"
@@ -213,6 +216,7 @@ read_options(){
 				8) list_cloudformation_stacks ;;
 				9) list_cloudtrail_trails ;;
 				10) list_filesystems ;;
+				11) list_vpcs ;;
 				21) list_users_with_policies ;;
 				22) list_groups_with_policies ;;
 				23) list_roles_with_policies ;;
