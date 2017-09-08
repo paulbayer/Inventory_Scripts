@@ -6,8 +6,9 @@
 # ----------------------------------
 EDITOR=vim
 PASSWD=/etc/passwd
-RED='\033[0;41;30m'
-STD='\033[0;0;39m'
+RED=$(tput setaf 9) #'\033[0;41;30m'
+RedError=$(tput setaf 9; tput setab 249; tput blink)
+STD=$(tput setaf 0; tput setab 0) #'\033[0;0;39m'
 
 # ----------------------------------
 # Step #2: User defined function
@@ -74,7 +75,13 @@ list_DDB_tables(){
 		echo
 		pause
 }
-
+#RDS Function Section
+list_RDS_clusters(){
+		echo
+		./all_my_rds.sh
+		echo
+		pause
+}
 #Lambda Functions
 list_functions(){
 		echo
@@ -174,26 +181,34 @@ show_menus() {
 		echo "~~~~~~~~~~~~~~~~~~~~~"
 		echo " M A I N - M E N U"
 		echo "~~~~~~~~~~~~~~~~~~~~~"
+		echo "*** EC2 Stuff ***"
 		echo "1. Display all EC2 Instances in all of your accounts"
+		echo "*** S3 Stuff ***"
 		echo "2. Display all S3 buckets in all of your accounts"
 		echo "3. Display all S3 buckets in all of your accounts with a total size at the bottom"
 		echo "4. Display all SNS topics in all of your accounts"
 		echo "5. Display all Kinesis streams in all of your accounts"
 		echo "6. Display all Lambda functions in all of your accounts"
-		echo "7. Display all DynamoDB Tables in all of your accounts"
+		echo "7. Reserved for the next thing... "
 		echo "8. Display all CloudFormation Stacks in all of your accounts"
 		echo "9. Display all CloudTrail trails in all of your accounts"
 		echo "10. Display all EFS Filesystems in all of your accounts"
+		echo $RED"*** Networking Stuff ***"$STD
 		echo "11. Display all VPCs in all of your accounts, with state and CIDR block"
+		echo "*** IAM Stuff for all of your accounts ***"
 		echo "21. Display all IAM Users (with attached policies) in all of your accounts (takes a while)"
 		echo "22. Display all IAM Groups (with attached policies) in all of your accounts (takes a while)"
 		echo "23. Display all IAM Roles (with attached policies) in all of your accounts (takes a while)"
 		echo "24. Display all IAM Customer-Managed Policies in all of your accounts"
 		echo "31. Display all Config Rules in all of your accounts"
+		echo "*** IAM Stuff for your default account ***"
 		echo "51. Display all IAM Users (with attached policies) in only your default account"
 		echo "52. Display all IAM Groups (with attached policies) in only your default account"
 		echo "53. Display all IAM Roles (with attached policies) in only your default account"
 		echo "54. Display all IAM Customer-Managed Policies in only your default account"
+		echo "*** Database Stuff ***"
+		echo "71. Display all DynamoDB Tables in all of your accounts"
+		echo "72. Display all RDS Clusters in all of your accounts"
 		echo "P. Display all profiles available in your credentials file"
 		echo "0. Exit"
 }
@@ -226,9 +241,11 @@ read_options(){
 				52) list_groups_with_policies_default_profile ;;
 				53) list_roles_with_policies_default_profile ;;
 				54) list_policies_default_profile ;;
+				71) list_DDB_tables ;;
+				72) list_RDS_clusters ;;
 				[Pp]) profiles ;;
 				[0qQ]) exit 0;;
-				*) echo -e "${RED}Error...${STD}" && sleep 2
+				*) echo -e "${RedError} *** Error *** ${STD}" && sleep 2
 		esac
 }
 
