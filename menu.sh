@@ -8,7 +8,7 @@ EDITOR=vim
 PASSWD=/etc/passwd
 RED=$(tput setaf 9) #'\033[0;41;30m'
 RedError=$(tput setaf 9; tput setab 249; tput blink)
-STD=$(tput setaf 0; tput setab 0) #'\033[0;0;39m'
+STD=$(tput init) #'\033[0;0;39m'
 
 # ----------------------------------
 # Step #2: User defined function
@@ -181,9 +181,9 @@ show_menus() {
 		echo "~~~~~~~~~~~~~~~~~~~~~"
 		echo " M A I N - M E N U"
 		echo "~~~~~~~~~~~~~~~~~~~~~"
-		echo "*** EC2 Stuff ***"
+		echo $RED"*** EC2 Stuff ***"$STD
 		echo "1. Display all EC2 Instances in all of your accounts"
-		echo "*** S3 Stuff ***"
+		echo $RED"*** S3 Stuff ***"$STD
 		echo "2. Display all S3 buckets in all of your accounts"
 		echo "3. Display all S3 buckets in all of your accounts with a total size at the bottom"
 		echo "4. Display all SNS topics in all of your accounts"
@@ -195,21 +195,21 @@ show_menus() {
 		echo "10. Display all EFS Filesystems in all of your accounts"
 		echo $RED"*** Networking Stuff ***"$STD
 		echo "11. Display all VPCs in all of your accounts, with state and CIDR block"
-		echo "*** IAM Stuff for all of your accounts ***"
+		echo $RED"*** IAM Stuff for all of your accounts ***"$STD
 		echo "21. Display all IAM Users (with attached policies) in all of your accounts (takes a while)"
 		echo "22. Display all IAM Groups (with attached policies) in all of your accounts (takes a while)"
 		echo "23. Display all IAM Roles (with attached policies) in all of your accounts (takes a while)"
 		echo "24. Display all IAM Customer-Managed Policies in all of your accounts"
 		echo "31. Display all Config Rules in all of your accounts"
-		echo "*** IAM Stuff for your default account ***"
+		echo $RED"*** IAM Stuff for your default account ***"$STD
 		echo "51. Display all IAM Users (with attached policies) in only your default account"
 		echo "52. Display all IAM Groups (with attached policies) in only your default account"
 		echo "53. Display all IAM Roles (with attached policies) in only your default account"
 		echo "54. Display all IAM Customer-Managed Policies in only your default account"
-		echo "*** Database Stuff ***"
+		echo $RED"*** Database Stuff ***"$STD
 		echo "71. Display all DynamoDB Tables in all of your accounts"
 		echo "72. Display all RDS Clusters in all of your accounts"
-		echo "P. Display all profiles available in your credentials file"
+		echo $RED"P. Display all profiles available in your credentials file"$STD
 		echo "0. Exit"
 }
 # read input from the keyboard and take an action
