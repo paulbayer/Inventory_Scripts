@@ -146,26 +146,33 @@ list_cloudtrail_trails(){
 
 #EFS Filesystems
 list_filesystems(){
-		echo
-		./all_my_filesystems.sh
-		echo
-		pause
+	echo
+	./all_my_filesystems.sh
+	echo
+	pause
 }
 
 # VPC Stuff
 list_vpcs(){
-		echo
-		./all_my_vpcs.sh
-		echo
-		pause
+	echo
+	./all_my_vpcs.sh
+	echo
+	pause
+}
+
+list_subnets(){
+	echo
+	./all_my_subnets.sh
+	echo
+	pause
 }
 
 #Config Rules
 list_all_config_rules(){
-		echo
-		./all_my_config_rules.sh
-		echo
-		pause
+	echo
+	./all_my_config_rules.sh
+	echo
+	pause
 }
 
 profiles(){
@@ -195,6 +202,7 @@ show_menus() {
 		echo "10. Display all EFS Filesystems in all of your accounts"
 		echo $RED"*** Networking Stuff ***"$STD
 		echo "11. Display all VPCs in all of your accounts, with state and CIDR block"
+		echo "12. Display all subnets from all of your accounts, with VPC assignments"
 		echo $RED"*** IAM Stuff for all of your accounts ***"$STD
 		echo "21. Display all IAM Users (with attached policies) in all of your accounts (takes a while)"
 		echo "22. Display all IAM Groups (with attached policies) in all of your accounts (takes a while)"
@@ -232,6 +240,7 @@ read_options(){
 				9) list_cloudtrail_trails ;;
 				10) list_filesystems ;;
 				11) list_vpcs ;;
+				12) list_subnets ;;
 				21) list_users_with_policies ;;
 				22) list_groups_with_policies ;;
 				23) list_roles_with_policies ;;
