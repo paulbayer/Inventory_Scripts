@@ -177,7 +177,7 @@ list_all_config_rules(){
 
 profiles(){
 		echo
-		./profiles.sh
+		./Allprofiles.sh
 		echo
 		pause
 }
