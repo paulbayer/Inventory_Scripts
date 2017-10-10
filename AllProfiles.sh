@@ -1,5 +1,7 @@
 #!/bin/bash
 
+automated=$1
+
 declare -a CredProfiles
 declare -a CredProfiles2
 declare -a ConfProfiles2
@@ -13,29 +15,36 @@ CredProfiles=($(sort -u <<< "${CredProfiles2[@]}"))
 ConfProfiles=($(sort -u <<< "${ConfProfiles2[@]}"))
 
 fmt='%-20s %-20s %-20s \n'
-
-NumofProfiles=${#CredProfiles[@]}
-echo "Found ${NumofProfiles} profiles in credentials file"
-echo "Outputting all profiles from all profiles"
-echo
-printf "$fmt" "Profile Name" "Account Number" "File"
-printf "$fmt" "------------" "--------------" "----"
+if [[ ! $automated ]]
+	then
+		NumofProfiles=${#CredProfiles[@]}
+		echo "Found ${NumofProfiles} profiles in credentials file"
+		echo "Outputting all profiles from all profiles"
+		echo
+		printf "$fmt" "Profile Name" "Account Number" "File"
+		printf "$fmt" "------------" "--------------" "----"
+fi
 for profile in ${CredProfiles[@]}; do
 	if [[ ! " ${SkipProfiles[@]} " =~ " ${profile} " ]]
 		then
 			AccountNumber=$(aws sts get-caller-identity --output text --query 'Account' --profile $profile)
 			printf "$fmt" $profile $AccountNumber "credentials file"
+# Debugging tools below
 #		else
 #			echo "SkipProfiles: "${SkipProfiles[@]}
 #			echo "Profile: "${profile}
 	fi
 done
-echo "-----"
+if [[ ! $automated ]] 
+	then
+		echo "-----"
+fi
 for profile in ${ConfProfiles[@]}; do
 	if [[ ! " ${SkipProfiles[@]} " =~ " ${profile} " ]]
 		then
 			AccountNumber=$(aws sts get-caller-identity --output text --query 'Account' --profile $profile)
 			printf "$fmt" $profile $AccountNumber "config file"
+# Debugging tools below
 #		else
 #			echo "SkipProfiles: "${SkipProfiles[@]}
 #			echo "Profile: "${profile}
