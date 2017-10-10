@@ -12,8 +12,6 @@ if [ -z $profile ] ;
 		exit 1
 fi
 
-# AllProfiles=( $(~/GitRepos/Inventory_Scripts/Allprofiles.sh | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
-
 # NumofProfiles=${#AllProfiles[@]}
 # echo "Found ${NumofProfiles} profiles in credentials file"
 echo "Outputting Roles from only the $profile profile"
