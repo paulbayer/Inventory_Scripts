@@ -4,7 +4,7 @@ declare -a AllProfiles
 
 #AllProfiles=(default Primary Secondary Nasdaq-Prod Nasdaq-Dev Nasdaq-DR)
 #AllProfiles=( $(egrep '\[.*\]' ~/.aws/credentials | tr -d '[]\r') )
-AllProfiles=( $(~/GitRepos/Inventory_Scripts/Allprofiles.sh | awk 'NR>2 {print $1}') )
+AllProfiles=( $(~/GitRepos/Inventory_Scripts/Allprofiles.sh | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
 
 NumofProfiles=${#AllProfiles[@]}
 echo "Found ${NumofProfiles} profiles in credentials file"
