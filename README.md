@@ -1,6 +1,16 @@
 #Project Overview
-Inventory_Scripts is a git repository to aggregate a number of scripts I've written, with the intent to make it easier to keep track of what's created and/ or running in any one of your (possibly) many AWS accounts... The scripts in this repo will be discussed below
+Inventory_Scripts is a git repository to aggregate a number of scripts I've written, with the intent to make it easier to keep track of what's created and/ or running in any one of your (possibly) many AWS accounts... The scripts in this repo will be discussed below.
 
+**_Critical Note_**:  *If your profiles include the "region" within the profile section, these scripts will be limited to looking for resources ONLY WITHIN THAT REGION. There's no quick answer to this problem right now, since all cli commands are inherently regionally focused. Just something to bear in mind when running these scripts.*
+
+## Profile Scripts
+- **AllProfiles.sh**
+    - This script displays all of your configured profiles, including in both your "credentials" file, as well as the "config" file.
+---
+## Config-like Discovery Scripts
+- **Config-Discovered-Resources.sh**
+    - This script displays all resources that have been discovered using the "Config" service within AWS. If you haven't enabled and configured the "Config" service, this won't give you any information.
+---
 ## EC2 Scripts
 - **my_instances.sh**
     - This script displays all instances in the specified account (by specifying the profile to run against).
@@ -24,9 +34,10 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
 ## CloudTrail Scripts
 - **all_my_trails.sh**
     - This script displays all CloudTrail trails in all available accounts (by reading the credentials file and parsing the profiles to run against).
-- **CreateIAMPolicy-CloudTrailLogs.sh**
-    - This script actually creates the necessary policies and IAM roles within your specified account and creates the CloudTrail trails - pointing to your specified (within the script) S3 bucket. This is to enable centralization of your CloudTrail logs to one single bucket.
-    - Prequisite - the bucket has to exist, and be writable for the Cloudtrail service.
+----
+## EFS Scripts
+- **all_my_filesystems.sh**
+    - This script displays all EFS filesystems within an account.
 ----
 ## SNS Scripts
 - **all_my_topics.sh**
@@ -39,6 +50,10 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
 ## Dynamo DB Scripts
 - **all_my_DDB_tables.sh**
 	- This script displays all Dynamo DB Tables in all available accounts (by reading the credentials file and parsing the profiles to run against).
+---
+## RDS DB Scripts
+- **all_my_rds.sh**
+	- This script displays all RDS databases in all available accounts (by reading the credentials file and parsing the profiles to run against).
 ---
 ## Lambda Scripts
 - **all_my_functions.sh**
@@ -65,6 +80,14 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
 	- This script displays all of the IAM Users you have in all of your accounts.
 - **all_my_users_with_policies.sh**
 	- This script displays all of the IAM Users and associated policies you have in all of your accounts.
+---
+## Network Scripts
+- **all_my_vpcs.sh**
+ 	- This script displays all of the vpcs you have in all of your accounts. (See important note at the top of this README).
+- **all_my_subnets.sh**
+ 	- This script displays all of the subnets you have in all of your accounts.
+- **my_vpcs.sh**
+ 	- This script displays all of the vpcs you have in the account you specify. (See important note at the top of this README).
 ---
 ## Other Scripts
 - **menu.sh**
