@@ -11,8 +11,8 @@ declare -a SkipProfiles
 SkipProfiles=("default" "Nope" "Personal")
 CredProfiles2=$(egrep '\[.*\]' ~/.aws/credentials | tr -d '[]\r')
 ConfProfiles2=$(egrep '\[.*\]' ~/.aws/config | tr -d '[]\r' | sed -e 's/profile //g')
-CredProfiles=($(sort -u <<< "${CredProfiles2[@]}"))
-ConfProfiles=($(sort -u <<< "${ConfProfiles2[@]}"))
+CredProfiles=($(sort <<< "${CredProfiles2[@]}"))
+ConfProfiles=($(sort <<< "${ConfProfiles2[@]}"))
 
 fmt='%-20s %-20s %-20s \n'
 if [[ ! $automated ]]

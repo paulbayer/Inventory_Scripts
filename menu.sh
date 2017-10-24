@@ -196,7 +196,7 @@ show_menus() {
 		echo "4. Display all SNS topics in all of your accounts"
 		echo "5. Display all Kinesis streams in all of your accounts"
 		echo "6. Display all Lambda functions in all of your accounts"
-		echo "7. Reserved for the next thing... "
+		echo "7. Display all CloudWatch Logs in all of your accounts"
 		echo "8. Display all CloudFormation Stacks in all of your accounts"
 		echo "9. Display all CloudTrail trails in all of your accounts"
 		echo "10. Display all EFS Filesystems in all of your accounts"
@@ -235,7 +235,7 @@ read_options(){
 				4) list_topics ;;
 				5) list_streams ;;
 				6) list_functions ;;
-				7) list_DDB_tables ;;
+				7) echo "Not ready yet" ;;
 				8) list_cloudformation_stacks ;;
 				9) list_cloudtrail_trails ;;
 				10) list_filesystems ;;
