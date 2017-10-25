@@ -3,10 +3,10 @@
 declare -a AllProfiles
 
 #AllProfiles=(default Primary Secondary Nasdaq-Prod Nasdaq-Dev Nasdaq-DR)
-#AllProfiles=( $(~/GitRepos/Inventory_Scripts/Allprofiles.sh | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
-#AllProfiles=( $(~/GitRepos/Inventory_Scripts/Allprofiles.sh | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
+#AllProfiles=( $(./Allprofiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
+#AllProfiles=( $(./Allprofiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
 echo "Capturing your profiles..."
-AllProfiles=( $(~/GitRepos/Inventory_Scripts/Allprofiles.sh automated | awk '{print $1}') )
+AllProfiles=( $(./Allprofiles.sh programmatic automated | awk '{print $1}') )
 
 NumofProfiles=${#AllProfiles[@]}
 echo "Found ${NumofProfiles} profiles in credentials file"

@@ -3,7 +3,7 @@
 declare -a AllProfiles
 declare -a AcctRoles
 
-AllProfiles=( $(~/GitRepos/Inventory_Scripts/Allprofiles.sh | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
+AllProfiles=( $(./Allprofiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
 
 NumofProfiles=${#AllProfiles[@]}
 echo "Found ${NumofProfiles} profiles in credentials file"
