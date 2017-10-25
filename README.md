@@ -18,10 +18,15 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
     - This script displays all instances in all available accounts (by reading the credentials file and parsing the profiles to run against).
 ---
 ## S3 Scripts
+    _These scripts are global, and not limited to the inherited region of the profile, like many other scripts._
 - **all_my_buckets.sh**
     - This script displays all buckets in all available accounts (by reading the credentials file and parsing the profiles to run against).
 - **all_my_buckets_with_sizes.sh**
     - This script displays all buckets, # of files, and the total size of each bucket in all available accounts (by reading the credentials file and parsing the profiles to run against).
+- **my_buckets.sh**
+    - This script displays all buckets in the specific profile.
+- **my_buckets_with_sizes.sh**
+    - This script displays all buckets, # of files, and the total size of each bucket in the specified profile.
 ---
 ## CloudFormation Scripts
 - **all_my_stacks.sh**
