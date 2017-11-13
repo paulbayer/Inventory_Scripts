@@ -1,6 +1,7 @@
 #!/bin/bash
 
 profile=$1
+region=$2
 
 if [[ -z $profile ]]
 	then
@@ -9,10 +10,13 @@ if [[ -z $profile ]]
 		echo "Therefore, the script should be run like this:"
 		echo "	$0 <profile name>"
 		echo
+		echo "Optionally - you can also include the region, but just the name, like this:"
+		echo
+		echo "	$0 <profile name> us-east-1"
 		exit 1
 fi
 
-echo "Outputting all VPCs, only from $profile"
+echo "Outputting all VPCs, only from $profile, and only from your default region"
 format='%-20s %-15s %-15s %-15s \n'
 
 printf "$format" "Profile" "VPC ID" "State" "Cidr Block"

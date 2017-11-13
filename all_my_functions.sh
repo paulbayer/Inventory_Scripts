@@ -2,7 +2,7 @@
 
 declare -a AllProfiles
 
-AllProfiles=( $(./Allprofiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
+AllProfiles=( $(egrep '\[.*\]' ~/.aws/credentials | tr -d '[]\r') )
 
 NumofProfiles=${#AllProfiles[@]}
 echo "Found ${NumofProfiles} profiles in credentials file"
