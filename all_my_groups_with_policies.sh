@@ -1,4 +1,4 @@
-#!/usr/local/Cellar/bash/4.4.12/bin/bash
+#!/bin/bash
 
 declare -a AllProfiles
 declare -a AcctGroups

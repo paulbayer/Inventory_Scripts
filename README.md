@@ -15,14 +15,14 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
 - **my_instances.sh**
     - This script displays all instances in the specified account (by specifying the profile to run against).
 - **all_my_instances.sh**
-    - This script displays all instances in all available accounts (by reading the credentials file and parsing the profiles to run against).
+    - This script displays all instances in all available accounts (by running the "AllProfiles" script and parsing the profiles to run against).
 ---
 ## S3 Scripts
     _These scripts are global, and not limited to the inherited region of the profile, like many other scripts._
 - **all_my_buckets.sh**
-    - This script displays all buckets in all available accounts (by reading the credentials file and parsing the profiles to run against).
+    - This script displays all buckets in all available accounts (by running the "AllProfiles" script and parsing the profiles to run against).
 - **all_my_buckets_with_sizes.sh**
-    - This script displays all buckets, # of files, and the total size of each bucket in all available accounts (by reading the credentials file and parsing the profiles to run against).
+    - This script displays all buckets, # of files, and the total size of each bucket in all available accounts (by running the "AllProfiles" script and parsing the profiles to run against).
 - **my_buckets.sh**
     - This script displays all buckets in the specific profile.
 - **my_buckets_with_sizes.sh**
@@ -30,15 +30,15 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
 ---
 ## CloudFormation Scripts
 - **all_my_stacks.sh**
-    - This script displays all CFT Stacks in all available accounts (by reading the credentials file and parsing the profiles to run against).
+    - This script displays all CFT Stacks in all available accounts (by running the "AllProfiles" script and parsing the profiles to run against).
 
 ## Config Rule Scripts
 - **all_my_config_rules.sh**
-    - This script displays all Config Rules and their state in all available accounts (by reading the credentials file and parsing the profiles to run against).
+    - This script displays all Config Rules and their state in all available accounts (by running the "AllProfiles" script and parsing the profiles to run against).
 
 ## CloudTrail Scripts
 - **all_my_trails.sh**
-    - This script displays all CloudTrail trails in all available accounts (by reading the credentials file and parsing the profiles to run against).
+    - This script displays all CloudTrail trails in all available accounts (by running the "AllProfiles" script and parsing the profiles to run against).
 ----
 ## EFS Scripts
 - **all_my_filesystems.sh**
@@ -46,23 +46,23 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
 ----
 ## SNS Scripts
 - **all_my_topics.sh**
-    - This script displays all SNS topics in all available accounts (by reading the credentials file and parsing the profiles to run against).
+    - This script displays all SNS topics in all available accounts (by running the "AllProfiles" script and parsing the profiles to run against).
 ---
 ## Kinesis
 - **all_my_streams.sh**
-    - This script displays all Kinesis Streams in all available accounts (by reading the credentials file and parsing the profiles to run against).
+    - This script displays all Kinesis Streams in all available accounts (by running the "AllProfiles" script and parsing the profiles to run against).
 ---
 ## Dynamo DB Scripts
 - **all_my_DDB_tables.sh**
-	- This script displays all Dynamo DB Tables in all available accounts (by reading the credentials file and parsing the profiles to run against).
+	- This script displays all Dynamo DB Tables in all available accounts (by running the "AllProfiles" script and parsing the profiles to run against).
 ---
 ## RDS DB Scripts
 - **all_my_rds.sh**
-	- This script displays all RDS databases in all available accounts (by reading the credentials file and parsing the profiles to run against).
+	- This script displays all RDS databases in all available accounts (by running the "AllProfiles" script and parsing the profiles to run against).
 ---
 ## Lambda Scripts
 - **all_my_functions.sh**
-	- This script displays all Lambda Functions in all available accounts (by reading the credentials file and parsing the profiles to run against).
+	- This script displays all Lambda Functions in all available accounts (by running the "AllProfiles" script and parsing the profiles to run against).
 ---
 ## IAM Scripts
 - **all_my_policies.sh**
