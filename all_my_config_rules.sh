@@ -2,6 +2,8 @@
 
 declare -a AllProfiles
 
+echo "Gathering profiles..."
+
 AllProfiles=( $(./Allprofiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
 
 NumofProfiles=${#AllProfiles[@]}
