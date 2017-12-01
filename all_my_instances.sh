@@ -3,8 +3,7 @@
 declare -a AllProfiles
 
 echo "Gathering profiles..."
-#AllProfiles=(default Primary Secondary Nasdaq-Prod Nasdaq-Dev Nasdaq-DR)
-AllProfiles=( $(./Allprofiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
+AllProfiles=( $(./AllProfiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
 
 format='%-20s %-25s %-50s %-10s %-15s \n'
 

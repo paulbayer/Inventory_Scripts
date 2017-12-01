@@ -2,10 +2,10 @@
 
 declare -a AllProfiles
 
-AllProfiles=( $(./Allprofiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
+AllProfiles=( $(./AllProfiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
 
-NumofProfiles=${#AllProfiles[@]}
-echo "Found ${NumofProfiles} profiles in credentials file"
+ProfileCount=${#AllProfiles[@]}
+echo "Found ${ProfileCount} profiles in credentials file"
 echo "Outputting all Users from all profiles"
 
 printf "%-15s %-35s \n" "Profile" "User Name"

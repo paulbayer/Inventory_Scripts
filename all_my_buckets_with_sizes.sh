@@ -5,10 +5,10 @@ declare -a ProfileBuckets
 now=$(date +%s)
 
 echo "Gathering your profiles..."
-AllProfiles=( $(./Allprofiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
+AllProfiles=( $(./AllProfiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
 
-NumofProfiles=${#AllProfiles[@]}
-echo "Found ${NumofProfiles} profiles in credentials file"
+ProfileCount=${#AllProfiles[@]}
+echo "Found ${ProfileCount} profiles in credentials file"
 echo "Outputting all S3 buckets from all profiles"
 
 format='%-20s %-60s %15s %18s \n'

@@ -17,8 +17,8 @@ ConfProfiles=($(sort <<< "${ConfProfiles2[@]}"))
 fmt='%-20s %-20s %-20s \n'
 if [[ ! $automated ]]
 	then
-		NumofProfiles=${#CredProfiles[@]}
-		echo "Found ${NumofProfiles} profiles in credentials file"
+		ProfileCount=${#CredProfiles[@]}
+		echo "Found ${ProfileCount} profiles in credentials file"
 		echo "Outputting all profiles from all profiles"
 		echo
 		printf "$fmt" "Profile Name" "Account Number" "File"

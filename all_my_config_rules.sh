@@ -4,10 +4,10 @@ declare -a AllProfiles
 
 echo "Gathering profiles..."
 
-AllProfiles=( $(./Allprofiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
+AllProfiles=( $(./AllProfiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
 
-NumofProfiles=${#AllProfiles[@]}
-echo "Found ${NumofProfiles} profiles in credentials file"
+ProfileCount=${#AllProfiles[@]}
+echo "Found ${ProfileCount} profiles in credentials file"
 echo "Outputting all Config Rules from all profiles"
 
 printf "%-15s %-35s %-20s \n" "Profile" "Config Rule Name" "Config Rule State"

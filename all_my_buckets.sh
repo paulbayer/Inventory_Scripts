@@ -3,13 +3,12 @@
 declare -a AllProfiles
 
 echo "Gathering your profiles..."
-#AllProfiles=(default Primary Secondary Nasdaq-Prod Nasdaq-Dev Nasdaq-DR)
-AllProfiles=( $(./Allprofiles.sh programmatic | awk '{print $1}') )
+AllProfiles=( $(./AllProfiles.sh programmatic | awk '{print $1}') )
 
 format='%-20s %-50s \n'
 
-NumofProfiles=${#AllProfiles[@]}
-echo "Found ${NumofProfiles} profiles in credentials file"
+ProfileCount=${#AllProfiles[@]}
+echo "Found ${ProfileCount} profiles in credentials file"
 echo "Outputting all S3 buckets from all profiles"
 
 printf "$format" "Profile" "Bucket Name"

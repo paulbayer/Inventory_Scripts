@@ -4,8 +4,8 @@ declare -a AllProfiles
 
 AllProfiles=$(egrep '\[.*\]' ~/.aws/credentials | tr -d '[]\r')
 
-NumofProfiles=${#AllProfiles[@]}
-echo "Found ${NumofProfiles} profiles in credentials file"
+ProfileCount=${#AllProfiles[@]}
+echo "Found ${ProfileCount} profiles in credentials file"
 echo "Outputting all profiles from all profiles"
 echo
 printf "%-15s %-20s \n" "Profile Name" "Account Number"

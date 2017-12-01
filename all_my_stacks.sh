@@ -4,8 +4,8 @@ declare -a AllProfiles
 
 AllProfiles=( $(egrep '\[.*\]' ~/.aws/credentials | tr -d '[]\r') )
 
-NumofProfiles=${#AllProfiles[@]}
-echo "Found ${NumofProfiles} profiles in credentials file"
+ProfileCount=${#AllProfiles[@]}
+echo "Found ${ProfileCount} profiles in credentials file"
 echo "Outputting all CloudFormation Stacks from all profiles"
 
 printf "%-15s %-35s %-20s %-50s \n" "Profile" "Stack Name" "Stack Status"

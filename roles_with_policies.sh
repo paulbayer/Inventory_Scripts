@@ -12,8 +12,8 @@ if [ -z $profile ] ;
 		exit 1
 fi
 
-# NumofProfiles=${#AllProfiles[@]}
-# echo "Found ${NumofProfiles} profiles in credentials file"
+# ProfileCount=${#AllProfiles[@]}
+# echo "Found ${ProfileCount} profiles in credentials file"
 echo "Outputting Roles from only the $profile profile"
 
 printf "%-15s %-35s %-18s %-60s \n" "Profile" "Role Name" "Policy Type" "AttachedPolicies"

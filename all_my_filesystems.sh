@@ -2,11 +2,10 @@
 
 declare -a AllProfiles
 
-#AllProfiles=(default Primary Secondary Nasdaq-Prod Nasdaq-Dev Nasdaq-DR)
-AllProfiles=( $(./Allprofiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
+AllProfiles=( $(./AllProfiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
 
-NumofProfiles=${#AllProfiles[@]}
-echo "Found ${NumofProfiles} profiles in credentials file"
+ProfileCount=${#AllProfiles[@]}
+echo "Found ${ProfileCount} profiles in credentials file"
 echo "Outputting all EFS File systems from all profiles"
 
 printf "%-20s %-12s %-20s %-10s %-12s %-15s \n" "Profile" "FS Name" "Performance Mode" "State" "# of Mounts" "Size (Bytes)"
