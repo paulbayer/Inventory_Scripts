@@ -3,6 +3,10 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
 
 **_Critical Note_**:  *If your profiles include the "region" within the profile section, these scripts will be limited to looking for resources ONLY WITHIN THAT REGION. There's no quick answer to this problem right now, since all cli commands are inherently regionally focused. Just something to bear in mind when running these scripts.*
 
+## Profile Scripts
+- **AllProfiles.sh**
+    - This script displays all of your configured profiles, including in both your "credentials" file, as well as the "config" file.
+
 ## S3 Scripts
     _These scripts are global, and not limited to the inherited region of the profile, like many other scripts._
 - **all_my_buckets.sh**
