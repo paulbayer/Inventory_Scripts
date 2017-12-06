@@ -8,7 +8,7 @@ declare -a ConfProfiles2
 declare -a ConfProfiles
 declare -a SkipProfiles
 
-SkipProfiles=("default" "Nope" "Personal")
+SkipProfiles=("Nope" "Personal")
 CredProfiles2=$(egrep '\[.*\]' ~/.aws/credentials | tr -d '[]\r')
 ConfProfiles2=$(egrep '\[.*\]' ~/.aws/config | tr -d '[]\r' | sed -e 's/profile //g')
 CredProfiles=($(sort <<< "${CredProfiles2[@]}"))
@@ -35,7 +35,7 @@ for profile in ${CredProfiles[@]}; do
 #			echo "Profile: "${profile}
 	fi
 done
-if [[ ! $automated ]] 
+if [[ ! $automated ]]
 	then
 		echo "-----"
 fi
