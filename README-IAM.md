@@ -14,6 +14,8 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
 	- This script displays all of the IAM Roles and associated policies you have in your specified account.
 - **users_with_policies.sh**
 	- This script displays all of the IAM Users and associated policies you have in your specified account.
+- **my_sec_groups.sh**
+    - This script displays all of the IAM Security Groups and their associated VPCs, along with the SecGroup ID (sg-xxx) and Description of the Security Group.
 
 - **all_my_policies.sh**
  	- This script displays all of the IAM policies you have in all of your accounts.
