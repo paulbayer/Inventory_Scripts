@@ -89,11 +89,17 @@ list_functions(){
 		echo
 		pause
 }
-
 #EC2 Instance functions
 list_ec2(){
 		echo
 		./all_my_instances.sh
+		echo
+		pause
+}
+# EC2 Security Group Listing for only the default profile
+list_secgrps_default_profile(){
+		echo
+		./my_sec_groups.sh
 		echo
 		pause
 }
@@ -214,6 +220,8 @@ show_menus() {
 		echo "52. Display all IAM Groups (with attached policies) in only your default account"
 		echo "53. Display all IAM Roles (with attached policies) in only your default account"
 		echo "54. Display all IAM Customer-Managed Policies in only your default account"
+		echo $RED"*** EC2 Stuff ***"$STD
+		echo "61. Display all EC Security Groups in only your default account"
 		echo $RED"*** Database Stuff ***"$STD
 		echo "71. Display all DynamoDB Tables in all of your accounts"
 		echo "72. Display all RDS Clusters in all of your accounts"
@@ -250,6 +258,7 @@ read_options(){
 				52) list_groups_with_policies_default_profile ;;
 				53) list_roles_with_policies_default_profile ;;
 				54) list_policies_default_profile ;;
+				61) list_secgrps_default_profile ;;
 				71) list_DDB_tables ;;
 				72) list_RDS_clusters ;;
 				[Pp]) profiles ;;
