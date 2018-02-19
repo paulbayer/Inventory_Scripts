@@ -99,7 +99,7 @@ list_ec2(){
 # EC2 Security Group Listing for only the default profile
 list_secgrps_default_profile(){
 		echo
-		./my_sec_groups.sh
+		./my_sec_groups.sh default
 		echo
 		pause
 }
@@ -188,6 +188,13 @@ profiles(){
 		pause
 }
 
+accountnumber(){
+		echo
+		./my_account_number.sh default
+		echo
+		pause
+}
+
 # function to display menus
 show_menus() {
 #		clear
@@ -214,6 +221,7 @@ show_menus() {
 		echo "22. Display all IAM Groups (with attached policies) in all of your accounts (takes a while)"
 		echo "23. Display all IAM Roles (with attached policies) in all of your accounts (takes a while)"
 		echo "24. Display all IAM Customer-Managed Policies in all of your accounts"
+		echo $RED"*** Config Rules for all of your accounts ***"$STD
 		echo "31. Display all Config Rules in all of your accounts"
 		echo $RED"*** IAM Stuff for your default account ***"$STD
 		echo "51. Display all IAM Users (with attached policies) in only your default account"
@@ -221,7 +229,7 @@ show_menus() {
 		echo "53. Display all IAM Roles (with attached policies) in only your default account"
 		echo "54. Display all IAM Customer-Managed Policies in only your default account"
 		echo $RED"*** EC2 Stuff ***"$STD
-		echo "61. Display all EC Security Groups in only your default account"
+		echo "61. Display all EC2 Security Groups in only your default account"
 		echo $RED"*** Database Stuff ***"$STD
 		echo "71. Display all DynamoDB Tables in all of your accounts"
 		echo "72. Display all RDS Clusters in all of your accounts"
