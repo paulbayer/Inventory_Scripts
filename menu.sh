@@ -206,13 +206,6 @@ show_menus() {
 		echo $RED"*** S3 Stuff ***"$STD
 		echo "2. Display all S3 buckets in all of your accounts"
 		echo "3. Display all S3 buckets in all of your accounts with a total size at the bottom"
-		echo "4. Display all SNS topics in all of your accounts"
-		echo "5. Display all Kinesis streams in all of your accounts"
-		echo "6. Display all Lambda functions in all of your accounts"
-		echo "7. Display all CloudWatch Logs in all of your accounts"
-		echo "8. Display all CloudFormation Stacks in all of your accounts"
-		echo "9. Display all CloudTrail trails in all of your accounts"
-		echo "10. Display all EFS Filesystems in all of your accounts"
 		echo $RED"*** Networking Stuff ***"$STD
 		echo "11. Display all VPCs in all of your accounts, with state and CIDR block"
 		echo "12. Display all subnets from all of your accounts, with VPC assignments"
@@ -233,6 +226,15 @@ show_menus() {
 		echo $RED"*** Database Stuff ***"$STD
 		echo "71. Display all DynamoDB Tables in all of your accounts"
 		echo "72. Display all RDS Clusters in all of your accounts"
+		echo $RED"*** Other stuff ***"$STD
+		echo "90. Display all EFS Filesystems in all of your accounts"
+#		echo "91. Display all Athena queries in all of your accounts"
+		echo "94. Display all SNS topics in all of your accounts"
+		echo "95. Display all Kinesis streams in all of your accounts"
+		echo "96. Display all Lambda functions in all of your accounts"
+		echo "97. Display all CloudWatch Logs in all of your accounts"
+		echo "98. Display all CloudFormation Stacks in all of your accounts"
+		echo "99. Display all CloudTrail trails in all of your accounts"
 		echo $RED"P. Display all profiles available in your credentials file"$STD
 		echo "0. Exit"
 }
