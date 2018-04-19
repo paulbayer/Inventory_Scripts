@@ -12,7 +12,7 @@ if [[ -z $profile ]]
 		exit 1
 fi
 
-mydir=$(mktemp -d "${TMPDIR:-/tmp/}$(basename $0).XXXXXXXXXXXX")
+# mydir=$(mktemp -d "${TMPDIR:-/tmp/}$(basename $0).XXXXXXXXXXXX")
 
 declare -a QueryIDs
 #declare -a
