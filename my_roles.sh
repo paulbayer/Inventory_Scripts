@@ -15,12 +15,12 @@ fi
 # ProfileCount=${#AllProfiles[@]}
 # echo "Found ${ProfileCount} profiles in credentials file"
 echo "Outputting Roles from only the $profile profile"
-format='%-15s %-35s \n'
+format='%-15s %-50s %-50s \n'
 
-printf "$format" "Profile" "Role Name"
-printf "$format" "-------" "---------"
+printf "$format" "Profile" "Role Name" "Arn"
+printf "$format" "-------" "---------" "---"
 # Cycles through each role within the profile
-aws iam list-roles --output text --query 'Roles[].RoleName' --profile $profile | tr '\t' '\n' |awk -F $"\t" -v var=${profile} -v fmt="${format}" '{printf fmt,var,$1}'
+aws iam list-roles --output text --query 'Roles[].[RoleName,Arn]' --profile $profile | awk -F $"\t" -v var=${profile} -v fmt="${format}" '{printf fmt,var,$1,$2}'
 echo "----------------"
 
 echo
