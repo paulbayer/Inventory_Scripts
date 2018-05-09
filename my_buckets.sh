@@ -18,6 +18,6 @@ format='%-20s %-50s \n'
 
 printf "$format" "Profile" "Bucket Name"
 printf "$format" "-------" "-----------"
-	aws s3api list-buckets --output text --query 'Buckets[*].Name' --profile $profile | awk -F $"\t" -v var=${profile} -v fmt=${format} '{for (i=1;i<=NF;i++) printf fmt,var,$i}'
+	aws s3api list-buckets --output text --query 'Buckets[*].Name' --profile $profile | awk -F $"\t" -v var=${profile} -v fmt="${format}" '{for (i=1;i<=NF;i++) printf fmt,var,$i}'
 echo
 exit 0

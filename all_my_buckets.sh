@@ -3,7 +3,7 @@
 declare -a AllProfiles
 
 echo "Gathering your profiles..."
-AllProfiles=( $(./AllProfiles.sh programmatic | awk '{print $1}') )
+AllProfiles=( $(AllProfiles.sh programmatic | awk '{print $1}') )
 
 format='%-20s %-50s \n'
 
