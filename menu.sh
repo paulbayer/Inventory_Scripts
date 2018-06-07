@@ -98,8 +98,8 @@ list_ec2(){
 }
 # EC2 Security Group Listing for only the default profile
 list_secgrps_default_profile(){
-		echo
-		./my_sec_groups.sh default
+		read -t 10 -p "Enter the profile name you're interested in (default): " profile_name
+		./my_sec_groups.sh ${profile_name:=default}
 		echo
 		pause
 }
