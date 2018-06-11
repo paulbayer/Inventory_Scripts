@@ -1,6 +1,7 @@
 #!/bin/bash
 
 automated=$1
+## If the "automated" parameter is equal to the string "ProfileNameOnly", then this script won't call the "sts get-caller-identity" function
 
 declare -a CredProfiles
 declare -a CredProfiles2
@@ -16,6 +17,7 @@ CredProfiles=($(sort <<< "${CredProfiles2[@]}"))
 ConfProfiles=($(sort <<< "${ConfProfiles2[@]}"))
 
 fmt='%-20s %-20s %-20s \n'
+
 if [[ ! $automated ]]
 	then
 		ProfileCount=${#CredProfiles[@]}
@@ -28,8 +30,13 @@ fi
 for profile in ${CredProfiles[@]}; do
 	if [[ ! " ${SkipProfiles[@]} " =~ " ${profile} " ]]
 		then
-			AccountNumber=$(aws sts get-caller-identity --output text --query 'Account' --profile $profile)
-			printf "$fmt" $profile $AccountNumber "credentials file"
+			if [[ " ${automated} " =~ " ProfileNameOnly " ]]
+				then
+					printf "$fmt" $profile "credentials file"
+				else
+					AccountNumber=$(aws sts get-caller-identity --output text --query 'Account' --profile $profile)
+					printf "$fmt" $profile $AccountNumber "credentials file"
+			fi
 # Debugging tools below
 #		else
 #			echo "SkipProfiles: "${SkipProfiles[@]}
@@ -43,8 +50,13 @@ fi
 for profile in ${ConfProfiles[@]}; do
 	if [[ ! " ${SkipProfiles[@]} " =~ " ${profile} " ]]
 		then
-			AccountNumber=$(aws sts get-caller-identity --output text --query 'Account' --profile $profile)
-			printf "$fmt" $profile $AccountNumber "config file"
+			if [[ " ${automated} " =~ " ProfileNameOnly " ]]
+				then
+					printf "$fmt" $profile "config file"
+				else
+					AccountNumber=$(aws sts get-caller-identity --output text --query 'Account' --profile $profile)
+					printf "$fmt" $profile $AccountNumber "config file"
+			fi
 # Debugging tools below
 #		else
 #			echo "SkipProfiles: "${SkipProfiles[@]}

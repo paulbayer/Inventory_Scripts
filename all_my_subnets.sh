@@ -3,7 +3,7 @@
 declare -a AllProfiles
 
 echo "Capturing your profiles..."
-AllProfiles=( $(./AllProfiles.sh programmatic | awk '{print $1}') )
+AllProfiles=( $(./AllProfiles.sh ProfileNameOnly | awk '{print $1}') )
 
 ProfileCount=${#AllProfiles[@]}
 echo "Found ${ProfileCount} profiles in credentials file"

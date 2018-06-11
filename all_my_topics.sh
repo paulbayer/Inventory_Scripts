@@ -3,8 +3,9 @@
 declare -a AllProfiles
 declare -a ProfileBuckets
 
-AllProfiles=( $(AllProfiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
+AllProfiles=( $(./AllProfiles.sh ProfileNameOnly | awk '{print $1}') )
 echo "Gathering Profiles..."
+
 format='%-20s %-50s \n'
 
 ProfileCount=${#AllProfiles[@]}

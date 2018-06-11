@@ -4,7 +4,7 @@ declare -a AllProfiles
 declare -a AcctRoles
 
 echo "Gathering your profiles..."
-AllProfiles=( $(./AllProfiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
+AllProfiles=( $(./AllProfiles.sh ProfileNameOnly | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
 
 ProfileCount=${#AllProfiles[@]}
 echo "Found ${ProfileCount} profiles in credentials file"

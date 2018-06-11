@@ -2,7 +2,7 @@
 
 declare -a AllProfiles
 
-AllProfiles=( $(./AllProfiles.sh programmatic | awk '(NR>5 && $1 !~ /^-/) {print $1}') )
+AllProfiles=( $(./AllProfiles.sh ProfileNameOnly | awk '{print $1}') )
 
 format='%-20s %-50s \n'
 

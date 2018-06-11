@@ -203,7 +203,7 @@ show_menus() {
 	echo "|Single |All"
 	echo "|Accnts |Accounts"
 	echo $RED"*** EC2 Stuff ***"$STD
-	echo "|1. 	|101.	| Display EC2 Instances in ${ATTN}specified / all${STD} profile"
+	echo "|1s. 	|1a.	| Display EC2 Instances in ${ATTN}specified / all${STD} profile"
 	echo "|6. 	|${GREY}106.${STD}	| Display EC2 Security Groups in your ${ATTN}specified${STD} profile"
 	echo $RED"*** S3 Stuff ***"$STD
 	echo "|${GREY}2.${STD}	|102.	| Display all S3 buckets in ${ATTN}specified / all${STD} of your profiles"

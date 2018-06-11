@@ -3,11 +3,12 @@
 declare -a AllProfiles
 
 echo "Capturing your profiles..."
-AllProfiles=( $(./AllProfiles.sh programmatic | awk '{print $1}') )
+AllProfiles=( $(./AllProfiles.sh ProfileNameOnly | awk '{print $1}') )
 
 ProfileCount=${#AllProfiles[@]}
 echo "Found ${ProfileCount} profiles in credentials file"
 echo "Outputting all VPCs from all profiles"
+
 format='%-20s %-40s %-24s %-15s %-15s \n'
 
 printf "$format" "Profile" "VPC Name" "VPC ID" "State" "Cidr Block"
