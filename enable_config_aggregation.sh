@@ -13,8 +13,8 @@ echo "Enabling Config Aggregation across all profiles"
 
 
 for profile in ${AllProfiles[@]}; do
-	for region in ${RegionList[@]}; do
-		aws configservice put-aggregation-authorization --authorized-account-id 311204252865 --authorized-aws-region ${region} --profile ${profile}
+	for region in ${RegionList[*]}; do
+		echo "aws configservice put-aggregation-authorization --authorized-account-id 311204252865 --authorized-aws-region ${region} --profile ${profile}"
 	done
 	echo "*** Finished Profile ${profile} ***"
 done
