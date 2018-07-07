@@ -16,12 +16,12 @@ if [[ -z $profile ]]
 		exit 1
 fi
 
-echo "Outputting all VPCs, only from $profile, and only from your default region"
-format='%-20s %-24s %-15s %-15s %-14s \n'
+echo "Outputting all VPCs, only from ${profile:="default"}, and only from ${region:="us-east-1"}"
+format='%-20s %-20s %-24s %-15s %-15s %-14s \n'
 
-printf "$format" "Profile" "VPC ID" "State" "Cidr Block" "Default VPC"
-printf "$format" "-------" "------" "-----" "----------" "-----------"
-aws ec2 describe-vpcs --query 'Vpcs[].[VpcId,State,CidrBlock,IsDefault]' --output text --profile $profile | awk -F $"\t" -v var=${profile} -v fmt="${format}" '{printf fmt,var,$1,$2,$3,$4}'
+printf "$format" "Profile" "Region" "VPC ID" "State" "Cidr Block" "Default VPC"
+printf "$format" "-------" "------" "------" "-----" "----------" "-----------"
+aws ec2 describe-vpcs --query 'Vpcs[].[VpcId,State,CidrBlock,IsDefault]' --output text --profile $profile --region $region | awk -F $"\t" -v reg=${region} -v var=${profile} -v fmt="${format}" '{printf fmt,var,reg,$1,$2,$3,$4}'
 
 echo
 exit 0
