@@ -1,7 +1,7 @@
 #!/bin/bash
 
 profile=$1
-region=${2="us-east-1"}
+region=${2-"us-east-1"}
 
 if [[ -z $profile ]]
 	then
