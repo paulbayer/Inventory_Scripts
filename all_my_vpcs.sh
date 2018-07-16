@@ -2,11 +2,18 @@
 
 declare -a AllProfiles
 
+BLUE=$(tput setaf 12)
+MAGENTA=$(tput setaf 13)
+RedError=$(tput setaf 9; tput setab 249; tput blink)
+STD=$(tput init)
+
+
 if [[ $1 ]]
 	then
-		ProfileRegion=$1
+		region=$1
 	else
-		ProfileRegion=`aws ec2 describe-availability-zones --query 'AvailabilityZones[].RegionName' --output text|tr '\t' '\n' |sort -u`
+		region=$(aws ec2 describe-availability-zones --query 'AvailabilityZones[].RegionName' --output text --profile ${profile} |tr '\t' '\n' |sort -u)
+		# region=`aws ec2 describe-availability-zones --query 'AvailabilityZones[].RegionName' --output text --profile ${profile}|tr '\t' '\n' |sort -u`
 fi
 
 echo "Capturing your profiles..."
@@ -18,20 +25,21 @@ echo "Outputting all VPCs from all profiles"
 
 format='%-20s %-12s %-30s %-24s %-10s %-15s %-8s\n'
 
-
-
 printf "$format" "Profile" "Region" "VPC Name" "VPC ID" "State" "Cidr Block" "Default?"
 printf "$format" "-------" "------" "--------" "------" "-----" "----------" "--------"
+i=0
 for profile in ${AllProfiles[@]}; do
-	if [[ $1 ]]
+	if (( $i % 2 ))
 		then
-			region=$1
+			echo -n $BLUE
 		else
-			region=`aws ec2 describe-availability-zones --query 'AvailabilityZones[].RegionName' --output text --profile ${profile}|tr '\t' '\n' |sort -u`
+			echo -n $MAGENTA
 	fi
 	aws ec2 describe-vpcs --query 'Vpcs[].[Tags[?Key==`Name`]|[0].Value,VpcId,State,CidrBlock,IsDefault]' --output text --profile $profile --region $region | awk -F $"\t" -v var=${profile} -v rgn=${region} -v fmt="${format}" '{printf fmt,var,rgn,$1,$2,$3,$4,$5}'
-	echo "------------"
+	# echo "------------"
+	(( i++ ))
 done
 
-echo "------------"
+echo $STD
+# echo "------------"
 exit 0
