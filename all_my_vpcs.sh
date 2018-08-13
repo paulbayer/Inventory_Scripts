@@ -20,9 +20,14 @@ for profile in ${AllProfiles[@]}; do
 		else
 			region=`aws ec2 describe-availability-zones --query 'AvailabilityZones[].RegionName' --output text --profile ${profile}|tr '\t' '\n' |sort -u`
 	fi
-	aws ec2 describe-vpcs --query 'Vpcs[].[Tags[?Key==`Name`]|[0].Value,VpcId,State,CidrBlock,IsDefault]' --output text --profile $profile --region $region | awk -F $"\t" -v var=${profile} -v rgn=${region} -v fmt="${format}" '{printf fmt,var,rgn,$1,$2,$3,$4,$5}'
-	echo "------------"
+	tput el
+	echo -ne "Checking Profile: $profile in region: $region\\r"
+	out=$(aws ec2 describe-vpcs --query 'Vpcs[].[Tags[?Key==`Name`]|[0].Value,VpcId,State,CidrBlock,IsDefault]' --output text --profile $profile --region $region | awk -F $"\t" -v var=${profile} -v rgn=${region} -v fmt="${format}" '{printf fmt,var,rgn,$1,$2,$3,$4,$5}'|tee /dev/tty)
+	# echo "----- Output: "$out"-------"
+	if [[ $out ]]
+		then
+			echo "------------"
+	fi
 done
 
-echo "------------"
 exit 0

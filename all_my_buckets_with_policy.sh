@@ -1,18 +1,19 @@
 #!/bin/bash
 
 declare -a AllProfiles
+declare -a AllBuckets
 
 echo "Gathering your profiles..."
 AllProfiles=( $(AllProfiles.sh ProfileNameOnly | awk '{print $1}') )
 
-format='%-20s %-12s %-50s \n'
+format='%-20s %-12s %-50s %-50s \n'
 
 ProfileCount=${#AllProfiles[@]}
 echo "Found ${ProfileCount} profiles in credentials file"
 echo "Outputting all S3 buckets from all profiles"
 
-printf "$format" "Profile" "Region" "Bucket Name"
-printf "$format" "-------" "------" "-----------"
+printf "$format" "Profile" "Region" "Bucket Name" "Policy"
+printf "$format" "-------" "------" "-----------" "------"
 for profile in ${AllProfiles[@]}; do
 	if [[ $1 ]]
 		then
@@ -22,7 +23,10 @@ for profile in ${AllProfiles[@]}; do
 	fi
 	tput el
 	echo -ne "Checking Profile: $profile in region: $region\\r"
-	out=$(aws s3api list-buckets --output text --query 'Buckets[*].Name' --profile $profile --region $region| awk -F $"\t" -v var=${profile} -v rgn=${region} -v fmt="${format}" '{for (i=1;i<=NF;i++) printf fmt,var,rgn,$i}'|tee /dev/tty)
+	AllBuckets=( $(my_buckets.sh $profile | tail +5 | awk '{print $2}') )
+	for bucket in ${AllBuckets[@]}; do
+		out=$(aws s3api get-bucket-policy --bucket $bucket --output text --profile $profile --region $region | awk -F $"\t" -v var=${profile} -v rgn=${region} -v fmt="${format}" -v bckt=${bucket} '{printf fmt,var,rgn,bckt,$1}'|tee /dev/tty)
+	done
 	# echo "----- Output: "$out"-------"
 	if [[ $out ]]
 		then
