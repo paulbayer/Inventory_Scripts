@@ -14,7 +14,7 @@ format='%-20s %-12s %-30s %-24s %-10s %-15s %-8s\n'
 printf "$format" "Profile" "Region" "VPC Name" "VPC ID" "State" "Cidr Block" "Default?"
 printf "$format" "-------" "------" "--------" "------" "-----" "----------" "--------"
 for profile in ${AllProfiles[@]}; do
-	if [[ $1 ]]
+	if [[ ${1} ]]
 		then
 			region=$1
 		else

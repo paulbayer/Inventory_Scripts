@@ -3,7 +3,7 @@
 declare -a AcctRoles
 
 profile=$1
-region=${2="us-east-1"}
+region=${2:="us-east-1"}
 
 if [ -z $profile ] ;
 	then
@@ -24,7 +24,7 @@ format='%-15s %-50s %-50s \n'
 printf "$format" "Profile" "Role Name" "Arn"
 printf "$format" "-------" "---------" "---"
 # Cycles through each role within the profile
-aws iam list-roles --output text --query 'Roles[].[RoleName,Arn]' --profile $profile --region $region | awk -F $"\t" -v var=${profile} -v fmt="${format}" '{printf fmt,var,$1,$2}'
+aws iam list-roles --output text --query 'Roles[].[RoleName,Arn]' --profile $profile | awk -F $"\t" -v var=${profile} -v fmt="${format}" '{printf fmt,var,$1,$2}'
 echo "----------------"
 
 echo
