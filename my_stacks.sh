@@ -21,7 +21,7 @@ format='%-15s %-35s %-20s %-50s \n'
 
 printf "$format" "Profile" "Stack Name" "Stack Status" "Creation Time"
 printf "$format" "-------" "----------" "------------" "-------------"
-aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE --output text --query 'StackSummaries[].[StackName,StackStatus,CreationTime]' --profile $profile | awk -F $"\t" -v var=${profile} -v fmt=${format} '{printf fmt,var,$1,$2,$3}' | sort -k 74
+aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE --output text --query 'StackSummaries[].[StackName,StackStatus,CreationTime]' --profile $profile | awk -F $"\t" -v var=${profile} -v fmt="${format}" '{printf fmt,var,$1,$2,$3}' | sort -k 74
 
 echo
 exit 0
