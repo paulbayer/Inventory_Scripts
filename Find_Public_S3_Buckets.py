@@ -1,4 +1,6 @@
-import boto3, json
+#! /usr/local/bin/python3
+
+import boto3, json, pprint
 import argparse, sys
 
 UsageMsg="You need to run this and provide the profile."
@@ -32,9 +34,9 @@ pProfile=args.pProfile
 
 
 session = boto3.session.Session(profile_name=pProfile)
-s3_client_connection = session.resource(
-	's3'
-)
+s3_client_connection = session.resource('s3')
+
+grant_permission="N/A"
 
 for bucket in s3_client_connection.buckets.all():
 	print(bucket.name)
@@ -59,11 +61,20 @@ for bucket in s3_client_connection.buckets.all():
 			elif grant_permission == 'full_control':
 				print('	Public Access: Full Control')
 
-		elif grant['Grantee']['Type'].lower() == 'group':	
+		elif grant['Grantee']['Type'].lower() == 'group':
 # Get the Bucket Policy
-	bucket_policy = s3_client_connection.BucketPolicy(bucket.name)
+			print("		--- Found a bucket policy in",bucket.name)
+			bucket_policy = s3_client_connection.BucketPolicy(bucket.name)
+			print("Grant:")
+			pprint.pprint(grant)
+			print("Bucket Policy:")
+			pprint.pprint(bucket_policy)
+		else:
+			# print("		--- Didn't find a bucket policy in",bucket.name)
+			pprint.pprint(grant)
+
 	try:
-		# did not find a better way to check if a bucket has a policy using the resource object
+		# Did not find a better way to check if a bucket has a policy using the resource object
 		policy_obj = bucket_policy.policy
 		print ("	Found bucket policy")
 		policy = json.loads(policy_obj)

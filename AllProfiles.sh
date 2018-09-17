@@ -10,13 +10,18 @@ declare -a ConfProfiles
 declare -a SkipProfiles
 
 SkipProfiles=()
-SkipProfiles=("Nope" "Personal" "SS-default" "SS-seciaas" "SS-Sand" "default" "TouchPoint" "Shared-Fid" "TIAA-Mngmnt-Prod-e1" "TIAA-Mngmnt-Prod-w2" "ChildAccount-e1" "ChildAccount-w2" "ChildAccount2-e1" "ChildAccount2-w2")
+SkipProfiles=("Org-Test1" "Org-Test2" "Nope" "Personal" "#Nope" "#Personal" "SS-default" "SS-seciaas" "SS-Sand" "default" "TouchPoint" "Shared-Fid" "TIAA-Mngmnt-Prod-e1" "TIAA-Mngmnt-Prod-w2" "ChildAccount-e1" "ChildAccount-w2" "ChildAccount2-e1" "ChildAccount2-w2")
 CredProfiles2=$(egrep '\[.*\]' ~/.aws/credentials | tr -d '[]\r')
 ConfProfiles2=$(egrep '\[.*\]' ~/.aws/config | tr -d '[]\r' | sed -e 's/profile //g')
 CredProfiles=($(sort <<< "${CredProfiles2[@]}"))
 ConfProfiles=($(sort <<< "${ConfProfiles2[@]}"))
 
 fmt='%-20s %-20s %-20s %-30s \n'
+
+if [[ " ${automated} " =~ " AllProfiles " ]] # If user wants to see ALL profiles
+	then
+		SkipProfiles=() # Then we clear out the "SkipProfile" list
+fi
 
 if [[ ! $automated ]]
 	then
@@ -30,7 +35,7 @@ fi
 for profile in ${CredProfiles[@]}; do
 	if [[ ! " ${SkipProfiles[@]} " =~ " ${profile} " ]]
 		then
-			if [[ " ${automated} " =~ " ProfileNameOnly " ]]
+			if [[ (" ${automated} " =~ " ProfileNameOnly ") || (" ${automated} " =~ " AllProfiles ") ]]
 				then
 					printf "$fmt" $profile "credentials file"
 				else
@@ -46,7 +51,7 @@ fi
 for profile in ${ConfProfiles[@]}; do
 	if [[ ! " ${SkipProfiles[@]} " =~ " ${profile} " ]]
 		then
-			if [[ " ${automated} " =~ " ProfileNameOnly " ]]
+			if [[ (" ${automated} " =~ " ProfileNameOnly ") || (" ${automated} " =~ " AllProfiles ") ]]
 				then
 					printf "$fmt" $profile "config file"
 				else

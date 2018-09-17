@@ -1,6 +1,6 @@
 #!/usr/local/bin/python3
 
-#import os, sys
+import os, sys, pprint
 import argparse
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
@@ -28,11 +28,11 @@ def find_org_root(fProfile):
 	root_org=response['Organization']['MasterAccountId']
 	return (root_org)
 
-def find_acct_email(fProfile,fAccount):
+def find_acct_email(fOrgRootProfile,fAccountId):
 
-	session_org = boto3.Session(profile_name=fProfile)
+	session_org = boto3.Session(profile_name=fOrgRootProfile)
 	client_org = session_org.client('organizations')
-	response=client_org.describe_account(AccountId=fAccount)
+	response=client_org.describe_account(AccountId=fAccountId)
 	email_addr=response['Account']['Email']
 	return (email_addr)
 
@@ -109,6 +109,7 @@ print ("------------------------------------")
 print (fmt % ("Profile Name","Account Number","Master Org Acct","Email","Root Acct?"))
 print (fmt % ("------------","--------------","---------------","-----","----------"))
 
+dictionary = dict()
 RootAccts=[]	# List of the Organization Root's Account Number
 RootProfiles=[]	# List of the Organization Root's profiles
 for profile in get_profiles(plevel):
@@ -119,7 +120,7 @@ for profile in get_profiles(plevel):
 	try:
 		AcctNum = find_account_number(profile)
 		MasterAcct = find_org_root(profile)
-		Email = find_acct_email(profile,AcctNum)
+		# Email = find_acct_email(profile,AcctNum)
 	except ClientError as my_Error:
 		ErrorFlag = True
 		if str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
@@ -139,8 +140,14 @@ for profile in get_profiles(plevel):
 		RootAcct=True
 		RootAccts.append(MasterAcct)
 		RootProfiles.append(profile)
+		Email = find_acct_email(profile,AcctNum)
 	else:
 		RootAcct=False
+		# Email = find_acct_email(profile,AcctNum) ## Need to find a way to get Org Root Profile, when I only know the Org Root Account Number
+		# I know it's probably in the List "RootProfiles", but how do I tell which one?
+
+	# If I create a dictionary from the Root Accts and Root Profiles Lists - I can use that to determine which profile belongs to the root user of my (child) account. But this dictionary is only guaranteed to be valid after ALL profiles have been checked, so... it doesn't solve our issue - unless we don't write anything to the screen until *everything* is done, and we keep all output in another dictionary - where we can populate the missing data at the end... but that takes a long time, since nothing would be sent to the screen in the meantime.
+	# dictionary.update(dict(zip(RootAccts, RootProfiles)))
 
 # Print results for this profile
 	if RootAcct:
@@ -148,10 +155,9 @@ for profile in get_profiles(plevel):
 	else:
 		print (fmt % (profile,AcctNum,MasterAcct,Email,RootAcct))
 
+# print ("-------------------")
+# pprint.pprint(dictionary)
 print ("-------------------")
-
-# print("Root Accounts found:",set(RootAccts))
-# print("Root Profiles found:",set(RootProfiles))
 
 fmt='%-25s'+ Style.BRIGHT +'%-15s'+ Style.RESET_ALL +'%-40s'
 print()
