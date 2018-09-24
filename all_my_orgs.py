@@ -20,6 +20,8 @@ args=parser.parse_args()
 	# 3: credentials and config files
 plevel=args.plevel
 
+SkipProfiles=["default","Shared-Fid"]
+
 def find_org_root(fProfile):
 
 	session_org = boto3.Session(profile_name=fProfile)
@@ -28,6 +30,26 @@ def find_org_root(fProfile):
 	root_org=response['Organization']['MasterAccountId']
 	return (root_org)
 
+def find_if_lz(fProfile):
+
+	session_org = boto3.Session(profile_name=fProfile)
+	client_org = session_org.client('ec2')
+	response=client_org.describe_vpcs(
+		Filters=[
+        {
+            'Name': 'tag:AWS_Solutions',
+            'Values': [
+                'LandingZoneStackSet',
+            ]
+        }
+    	]
+	)
+	for vpc in response['Vpcs']:
+		for tag in vpc['Tags']:
+			if tag['Key']=="AWS_Solutions":
+				return(True)
+	return(False)
+
 def find_acct_email(fOrgRootProfile,fAccountId):
 
 	session_org = boto3.Session(profile_name=fOrgRootProfile)
@@ -35,6 +57,16 @@ def find_acct_email(fOrgRootProfile,fAccountId):
 	response=client_org.describe_account(AccountId=fAccountId)
 	email_addr=response['Account']['Email']
 	return (email_addr)
+
+def find_acct_attr(fProfile):
+
+	session_org = boto3.Session(profile_name=fProfile)
+	client_org = session_org.client('organizations')
+	response=client_org.describe_organization()
+	root_org=response['Organization']['MasterAccountId']
+	org_id=response['Organization']['Id']
+	# return {'root_org':root_org,'org_id':org_id}
+	return (root_org,org_id)
 
 def find_child_accounts(fProfile):
 
@@ -53,7 +85,7 @@ def find_account_number(fProfile):
 	acct_num=response['Account']
 	return (acct_num)
 
-def get_profiles(flevel):
+def get_profiles(flevel,fSkipProfiles):
 	# If flevel
 	# 1: credentials file only
 	# 2: config file only
@@ -102,24 +134,36 @@ def get_profiles(flevel):
 				# print (profile)
 				profiles.append(profile)
 
+	for ProfileToSkip in fSkipProfiles:
+		try:
+			profiles.remove(ProfileToSkip)
+		except:
+			pass
+
 	return(profiles)
 
-fmt='%-20s %-20s %-30s %-35s %-10s'
+# landing_zone=find_if_lz("LZRoot")
+# pprint.pprint(landing_zone)
+# sys.exit(99)
+
+fmt='%-23s %-20s %-30s %-15s %-35s %-10s'
 print ("------------------------------------")
-print (fmt % ("Profile Name","Account Number","Master Org Acct","Email","Root Acct?"))
-print (fmt % ("------------","--------------","---------------","-----","----------"))
+print (fmt % ("Profile Name","Account Number","Master Org Acct","Org ID","Email","Root Acct?"))
+print (fmt % ("------------","--------------","---------------","------","-----","----------"))
 
 dictionary = dict()
 RootAccts=[]	# List of the Organization Root's Account Number
 RootProfiles=[]	# List of the Organization Root's profiles
-for profile in get_profiles(plevel):
+for profile in get_profiles(plevel,SkipProfiles):
 	AcctNum = "Blank Acct"
 	MasterAcct = "Blank Root"
+	OrgId = "o-xxxxxxxxxx"
 	Email = "Email not available"
 	ErrorFlag = False
 	try:
 		AcctNum = find_account_number(profile)
-		MasterAcct = find_org_root(profile)
+		# MasterAcct = find_org_root(profile)
+		MasterAcct,OrgId = find_acct_attr(profile)
 		# Email = find_acct_email(profile,AcctNum)
 	except ClientError as my_Error:
 		ErrorFlag = True
@@ -151,20 +195,25 @@ for profile in get_profiles(plevel):
 
 # Print results for this profile
 	if RootAcct:
-		print (Fore.RED + fmt % (profile,AcctNum,MasterAcct,Email,RootAcct)+Style.RESET_ALL)
+		print (Fore.RED + fmt % (profile,AcctNum,MasterAcct,OrgId,Email,RootAcct)+Style.RESET_ALL)
 	else:
-		print (fmt % (profile,AcctNum,MasterAcct,Email,RootAcct))
+		print (fmt % (profile,AcctNum,MasterAcct,OrgId,Email,RootAcct))
 
 # print ("-------------------")
 # pprint.pprint(dictionary)
 print ("-------------------")
 
-fmt='%-25s'+ Style.BRIGHT +'%-15s'+ Style.RESET_ALL +'%-40s'
+fmt='%-23s %-15s %-12s %-40s'
 print()
-print(fmt % ("Organization's Profile","Root Account","Set of Organization Accounts"))
-print(fmt % ("----------------------","------------","----------------------------"))
+print(fmt % ("Organization's Profile","Root Account","Landing Zone","Set of Organization Accounts"))
+print(fmt % ("----------------------","------------","------------","----------------------------"))
 for profile in RootProfiles:
 	child_accounts=[]
 	MasterAcct=find_org_root(profile)
 	child_accounts=find_child_accounts(profile)
-	print(fmt % (profile,MasterAcct,child_accounts))
+	landing_zone=find_if_lz(profile)
+	if landing_zone:
+		fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+Fore.RED+'%-12s '+Fore.RESET+'%-40s'
+	else:
+		fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+'%-12s %-40s'
+	print(fmt % (profile,MasterAcct,landing_zone,child_accounts))
