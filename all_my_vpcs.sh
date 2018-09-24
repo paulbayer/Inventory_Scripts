@@ -9,10 +9,10 @@ ProfileCount=${#AllProfiles[@]}
 echo "Found ${ProfileCount} profiles in credentials file"
 echo "Outputting all VPCs from all profiles"
 
-format='%-20s %-12s %-30s %-24s %-10s %-15s %-8s\n'
+format='%-20s %-12s %-30s %-24s %-10s %-15s %-8s %-8s \n'
 
-printf "$format" "Profile" "Region" "VPC Name" "VPC ID" "State" "Cidr Block" "Default?"
-printf "$format" "-------" "------" "--------" "------" "-----" "----------" "--------"
+printf "$format" "Profile" "Region" "VPC Name" "VPC ID" "State" "Cidr Block" "Default?" "LZ?"
+printf "$format" "-------" "------" "--------" "------" "-----" "----------" "--------" "---"
 for profile in ${AllProfiles[@]}; do
 	if [[ ${1} ]]
 		then
@@ -22,7 +22,7 @@ for profile in ${AllProfiles[@]}; do
 	fi
 	tput el
 	echo -ne "Checking Profile: $profile in region: $region\\r"
-	out=$(aws ec2 describe-vpcs --query 'Vpcs[].[Tags[?Key==`Name`]|[0].Value,VpcId,State,CidrBlock,IsDefault]' --output text --profile $profile --region $region | awk -F $"\t" -v var=${profile} -v rgn=${region} -v fmt="${format}" '{printf fmt,var,rgn,$1,$2,$3,$4,$5}'|tee /dev/tty)
+	out=$(aws ec2 describe-vpcs --query 'Vpcs[].[Tags[?Key==`Name`]|[0].Value,VpcId,State,CidrBlock,IsDefault,Tags[?Key==`AWS_Solutions`]|[0].Value]' --output text --profile $profile --region $region | awk -F $"\t" -v var=${profile} -v rgn=${region} -v fmt="${format}" '{printf fmt,var,rgn,$1,$2,$3,$4,$5,$6}'|tee /dev/tty)
 	# echo "----- Output: "$out"-------"
 	if [[ $out ]]
 		then
@@ -30,4 +30,5 @@ for profile in ${AllProfiles[@]}; do
 	fi
 done
 
+echo ""
 exit 0
