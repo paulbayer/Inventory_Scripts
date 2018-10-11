@@ -23,6 +23,7 @@ plevel=args.plevel
 SkipProfiles=["default","Shared-Fid"]
 
 def find_org_root(fProfile):
+	import boto3
 
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
@@ -31,6 +32,7 @@ def find_org_root(fProfile):
 	return (root_org)
 
 def find_if_lz(fProfile):
+	import boto3
 
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('ec2')
@@ -51,6 +53,7 @@ def find_if_lz(fProfile):
 	return(False)
 
 def find_acct_email(fOrgRootProfile,fAccountId):
+	import boto3
 
 	session_org = boto3.Session(profile_name=fOrgRootProfile)
 	client_org = session_org.client('organizations')
@@ -58,7 +61,8 @@ def find_acct_email(fOrgRootProfile,fAccountId):
 	email_addr=response['Account']['Email']
 	return (email_addr)
 
-def find_acct_attr(fProfile):
+def find_org_attr(fProfile):
+	import boto3
 
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
@@ -146,7 +150,7 @@ def get_profiles(flevel,fSkipProfiles):
 # pprint.pprint(landing_zone)
 # sys.exit(99)
 
-fmt='%-23s %-20s %-30s %-15s %-35s %-10s'
+fmt='%-23s %-15s %-27s %-12s %-30s %-10s'
 print ("------------------------------------")
 print (fmt % ("Profile Name","Account Number","Master Org Acct","Org ID","Email","Root Acct?"))
 print (fmt % ("------------","--------------","---------------","------","-----","----------"))
@@ -159,12 +163,11 @@ for profile in get_profiles(plevel,SkipProfiles):
 	MasterAcct = "Blank Root"
 	OrgId = "o-xxxxxxxxxx"
 	Email = "Email not available"
+	RootId = "r-xxxx"
 	ErrorFlag = False
 	try:
 		AcctNum = find_account_number(profile)
-		# MasterAcct = find_org_root(profile)
-		MasterAcct,OrgId = find_acct_attr(profile)
-		# Email = find_acct_email(profile,AcctNum)
+		MasterAcct,OrgId = find_org_attr(profile)
 	except ClientError as my_Error:
 		ErrorFlag = True
 		if str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
