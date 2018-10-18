@@ -1,6 +1,6 @@
 #!/usr/local/bin/python3
 
-import os, sys, pprint
+import os, sys, pprint, logging
 import argparse
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
@@ -9,9 +9,28 @@ from colorama import init,Fore,Back,Style
 init()
 
 UsageMsg="You can provide a level to determine whether this script considers only the 'credentials' file, the 'config' file, or both."
-parser = argparse.ArgumentParser(description="We\'re going to find all accounts within any of the organizations we have access to.",prefix_chars='-+/')
-parser.add_argument("-c","--creds", dest="plevel", metavar="Creds", default="1", help="Which credentials file to use for investigation.")
-
+parser = argparse.ArgumentParser(
+	description="We\'re going to find all accounts within any of the organizations we have access to.",
+	prefix_chars='-+/')
+parser.add_argument(
+	"-c","--creds",
+	dest="plevel",
+	metavar="Creds",
+	default="1",
+	help="Which credentials file to use for investigation.")
+parser.add_argument(
+    '-d', '--debug',
+    help="Print lots of debugging statements",
+    action="store_const",
+	dest="loglevel",
+	const=logging.DEBUG,
+    default=logging.CRITICAL)
+parser.add_argument(
+    '-v', '--verbose',
+    help="Be verbose",
+    action="store_const",
+	dest="loglevel",
+	const=logging.INFO)
 args=parser.parse_args()
 
 # If plevel
@@ -19,6 +38,8 @@ args=parser.parse_args()
 	# 2: config file only
 	# 3: credentials and config files
 plevel=args.plevel
+verbose=args.loglevel
+logging.basicConfig(level=args.loglevel)
 
 SkipProfiles=["default","Shared-Fid"]
 
@@ -71,6 +92,17 @@ def find_org_attr(fProfile):
 	org_id=response['Organization']['Id']
 	# return {'root_org':root_org,'org_id':org_id}
 	return (root_org,org_id)
+
+def find_org_attr2(fProfile):
+	import boto3
+
+	session_org = boto3.Session(profile_name=fProfile)
+	client_org = session_org.client('organizations')
+	response=client_org.describe_organization()['Organization']
+	# root_org=response['Organization']['MasterAccountId']
+	# org_id=response['Organization']['Id']
+	# return {'root_org':root_org,'org_id':org_id}
+	return (response)
 
 def find_child_accounts(fProfile):
 
@@ -146,9 +178,10 @@ def get_profiles(flevel,fSkipProfiles):
 
 	return(profiles)
 
-# landing_zone=find_if_lz("LZRoot")
-# pprint.pprint(landing_zone)
-# sys.exit(99)
+# for profile in get_profiles(plevel,SkipProfiles):
+# 	pprint.pprint(find_org_attr2(profile))
+#
+# sys.exit(2)
 
 fmt='%-23s %-15s %-27s %-12s %-30s %-10s'
 print ("------------------------------------")
@@ -167,7 +200,9 @@ for profile in get_profiles(plevel,SkipProfiles):
 	ErrorFlag = False
 	try:
 		AcctNum = find_account_number(profile)
-		MasterAcct,OrgId = find_org_attr(profile)
+		AcctAttr = find_org_attr2(profile)
+		MasterAcct = AcctAttr['MasterAccountId']
+		OrgId = AcctAttr['Id']
 	except ClientError as my_Error:
 		ErrorFlag = True
 		if str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
@@ -187,10 +222,13 @@ for profile in get_profiles(plevel,SkipProfiles):
 		RootAcct=True
 		RootAccts.append(MasterAcct)
 		RootProfiles.append(profile)
-		Email = find_acct_email(profile,AcctNum)
+		Email = AcctAttr['MasterAccountEmail']
+		logging.info('Email: %s',Email)
+
 	else:
 		RootAcct=False
-		# Email = find_acct_email(profile,AcctNum) ## Need to find a way to get Org Root Profile, when I only know the Org Root Account Number
+		# Email = find_acct_email(profile,AcctNum)
+		## Need to find a way to get Org Root Profile, when I only know the Org Root Account Number
 		# I know it's probably in the List "RootProfiles", but how do I tell which one?
 
 	# If I create a dictionary from the Root Accts and Root Profiles Lists - I can use that to determine which profile belongs to the root user of my (child) account. But this dictionary is only guaranteed to be valid after ALL profiles have been checked, so... it doesn't solve our issue - unless we don't write anything to the screen until *everything* is done, and we keep all output in another dictionary - where we can populate the missing data at the end... but that takes a long time, since nothing would be sent to the screen in the meantime.

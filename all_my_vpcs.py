@@ -83,14 +83,15 @@ for pregion in RegionList:
 		try:
 			Vpcs=Inventory_Modules.find_profile_vpcs(profile,pregion)
 			VpcNum=len(Vpcs['Vpcs'])
-			if verbose < 49:
-				print(ERASE_LINE,"Profile: ",profile,"Region: ",pregion,"Found",VpcNum,"Vpcs",end='\r')
 			logging.info(ERASE_LINE,"Profile: ",profile,"Region: ",pregion,"Found",VpcNum,"Vpcs")
 			print(ERASE_LINE,"Profile: ",profile,"Region: ",pregion,"Found",VpcNum,"Vpcs",end='\r')
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(ERASE_LINE+profile+": Authorization Failure")
-		if len(Vpcs['Vpcs']) > 0:
+		except TypeError as my_Error:
+			# print(my_Error)
+			pass
+		if 'Vpcs' in Vpcs and len(Vpcs['Vpcs']) > 0:
 			for y in range(len(Vpcs['Vpcs'])):
 				VpcId=Vpcs['Vpcs'][y]['VpcId']
 				IsDefault=Vpcs['Vpcs'][y]['IsDefault']

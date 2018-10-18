@@ -33,13 +33,26 @@ def find_profile_instances(fProfile,fRegion):
 	instances=instance_info.describe_instances()
 	return(instances)
 
+def find_stacks(fProfile,fRegion,fStackFragment):
+
+	import boto3
+	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	stack_info=session_cfn.client('cloudformation')
+	stacks=stack_info.list_stacks()
+	stacksets=stack_info.list_stack_sets
+	return(instances)
+
 def find_profile_vpcs(fProfile,fRegion):
 
 	import boto3
 	session_ec2=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	vpc_info=session_ec2.client('ec2')
 	vpcs=vpc_info.describe_vpcs()
-	return(vpcs)
+	if len(vpcs['Vpcs']) == 1 and vpcs['Vpcs'][0]['IsDefault'] == True and not ('Tags' in vpcs['Vpcs'][0]):
+		return()
+	else:
+		return(vpcs)
+	# return(vpcs)
 
 def find_profile_functions(fProfile,fRegion):
 
@@ -102,7 +115,7 @@ def find_org_attr(fProfile):
 
 def find_child_accounts(fProfile):
 
-	import boto3, pprint, logging
+	import boto3
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
 	response=client_org.list_accounts()
@@ -112,7 +125,7 @@ def find_child_accounts(fProfile):
 
 def find_account_number(fProfile):
 
-	import boto3, pprint, logging
+	import boto3
 	session_sts = boto3.Session(profile_name=fProfile)
 	client_sts = session_sts.client('sts')
 	response=client_sts.get_caller_identity()
@@ -121,8 +134,9 @@ def find_account_number(fProfile):
 
 def get_profiles(fprofiles,flevel,fSkipProfiles):
 
-	import boto3, pprint, logging
+	import boto3, logging
 	from botocore.exceptions import ClientError
+
 
 	my_Session=boto3.Session()
 	my_profiles=my_Session._session.available_profiles
