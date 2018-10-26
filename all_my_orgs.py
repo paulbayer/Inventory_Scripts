@@ -5,6 +5,7 @@ import argparse
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 from colorama import init,Fore,Back,Style
+import Inventory_Modules
 
 init()
 
@@ -43,35 +44,15 @@ logging.basicConfig(level=args.loglevel)
 
 SkipProfiles=["default","Shared-Fid"]
 
-def find_org_root(fProfile):
-	import boto3
-
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
-	response=client_org.describe_organization()
-	root_org=response['Organization']['MasterAccountId']
-	return (root_org)
-
-def find_if_lz(fProfile):
-	import boto3
-
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('ec2')
-	response=client_org.describe_vpcs(
-		Filters=[
-        {
-            'Name': 'tag:AWS_Solutions',
-            'Values': [
-                'LandingZoneStackSet',
-            ]
-        }
-    	]
-	)
-	for vpc in response['Vpcs']:
-		for tag in vpc['Tags']:
-			if tag['Key']=="AWS_Solutions":
-				return(True)
-	return(False)
+# def find_org_root(fProfile):
+# 	import boto3
+#
+# 	session_org = boto3.Session(profile_name=fProfile)
+# 	client_org = session_org.client('organizations')
+# 	response=client_org.describe_organization()
+# 	root_org=response['Organization']['MasterAccountId']
+# 	return (root_org)
+#
 
 def find_acct_email(fOrgRootProfile,fAccountId):
 	import boto3
@@ -82,44 +63,16 @@ def find_acct_email(fOrgRootProfile,fAccountId):
 	email_addr=response['Account']['Email']
 	return (email_addr)
 
-def find_org_attr(fProfile):
-	import boto3
-
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
-	response=client_org.describe_organization()
-	root_org=response['Organization']['MasterAccountId']
-	org_id=response['Organization']['Id']
-	# return {'root_org':root_org,'org_id':org_id}
-	return (root_org,org_id)
-
-def find_org_attr2(fProfile):
-	import boto3
-
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
-	response=client_org.describe_organization()['Organization']
-	# root_org=response['Organization']['MasterAccountId']
-	# org_id=response['Organization']['Id']
-	# return {'root_org':root_org,'org_id':org_id}
-	return (response)
-
-def find_child_accounts(fProfile):
-
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
-	response=client_org.list_accounts()
-	for account in response['Accounts']:
-		child_accounts.append(account['Id'])
-	return (child_accounts)
-
-def find_account_number(fProfile):
-
-	session_sts = boto3.Session(profile_name=fProfile)
-	client_sts = session_sts.client('sts')
-	response=client_sts.get_caller_identity()
-	acct_num=response['Account']
-	return (acct_num)
+# def find_org_attr(fProfile):
+# 	import boto3
+#
+# 	session_org = boto3.Session(profile_name=fProfile)
+# 	client_org = session_org.client('organizations')
+# 	response=client_org.describe_organization()
+# 	root_org=response['Organization']['MasterAccountId']
+# 	org_id=response['Organization']['Id']
+# 	# return {'root_org':root_org,'org_id':org_id}
+# 	return (root_org,org_id)
 
 def get_profiles(flevel,fSkipProfiles):
 	# If flevel
@@ -199,8 +152,8 @@ for profile in get_profiles(plevel,SkipProfiles):
 	RootId = "r-xxxx"
 	ErrorFlag = False
 	try:
-		AcctNum = find_account_number(profile)
-		AcctAttr = find_org_attr2(profile)
+		AcctNum = Inventory_Modules.find_account_number(profile)
+		AcctAttr = Inventory_Modules.find_org_attr(profile)
 		MasterAcct = AcctAttr['MasterAccountId']
 		OrgId = AcctAttr['Id']
 	except ClientError as my_Error:
@@ -240,21 +193,24 @@ for profile in get_profiles(plevel,SkipProfiles):
 	else:
 		print (fmt % (profile,AcctNum,MasterAcct,OrgId,Email,RootAcct))
 
-# print ("-------------------")
-# pprint.pprint(dictionary)
 print ("-------------------")
 
-fmt='%-23s %-15s %-12s %-40s'
+fmt='%-23s %-15s %-6s %-40s'
 print()
-print(fmt % ("Organization's Profile","Root Account","Landing Zone","Set of Organization Accounts"))
-print(fmt % ("----------------------","------------","------------","----------------------------"))
+print(fmt % ("Organization's Profile","Root Account","ALZ","Set of Organization Accounts"))
+print(fmt % ("----------------------","------------","---","----------------------------"))
+NumOfAccounts=0
 for profile in RootProfiles:
 	child_accounts=[]
-	MasterAcct=find_org_root(profile)
-	child_accounts=find_child_accounts(profile)
-	landing_zone=find_if_lz(profile)
+	MasterAcct=Inventory_Modules.find_org_root(profile)
+	child_accounts=Inventory_Modules.find_child_accounts(profile)
+	landing_zone=Inventory_Modules.find_if_lz(profile)
+	NumOfAccounts=NumOfAccounts + len(child_accounts)
 	if landing_zone:
-		fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+Fore.RED+'%-12s '+Fore.RESET+'%-40s'
+		fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+Fore.RED+'%-6s '+Fore.RESET+'%-40s'
 	else:
-		fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+'%-12s %-40s'
+		fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+'%-6s %-40s'
 	print(fmt % (profile,MasterAcct,landing_zone,child_accounts))
+print()
+print("Number of Accounts:",NumOfAccounts)
+print("Number of Organizations:",len(RootProfiles))

@@ -33,14 +33,26 @@ def find_profile_instances(fProfile,fRegion):
 	instances=instance_info.describe_instances()
 	return(instances)
 
-def find_stacks(fProfile,fRegion,fStackFragment):
+def find_stacks(fProfile,fRegion,fStackFragment,fstatus):
 
-	import boto3
+	import boto3, logging
+	logging.info("Profile: %s | Region: %s | Fragment: %s",fProfile, fRegion, fStackFragment)
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	stack_info=session_cfn.client('cloudformation')
 	stacks=stack_info.list_stacks()
-	stacksets=stack_info.list_stack_sets
-	return(instances)
+	if (fStackFragment=='all' or fStackFragment=='ALL') and (fstatus=='active' or fstatus=='ACTIVE' or fstatus=='all' or fstatus=='ALL'):
+		return(stacks)
+	elif (fStackFragment=='all' or fStackFragment=='ALL'):
+		for stack in stacks['StackSummaries']:
+			for y in range(len(stacks['StackSummaries'])):
+				if not stacks['StackSummaries'][y]['StackStatus']==fstatus:
+					stacks['StackSummaries'].remove(stacks['StackSummaries'][y])
+	elif (fstatus=='active' or fstatus=='ACTIVE' or fstatus=='all' or fstatus=='ALL'):
+		for stack in stacks['StackSummaries']:
+			for y in range(len(stacks['StackSummaries'])):
+				if not fStackFragment in stacks['StackSummaries'][y]['StackName']:
+					stacks['StackSummaries'].remove(stacks['StackSummaries'][y])
+	return(stacks)
 
 def find_profile_vpcs(fProfile,fRegion):
 
@@ -63,14 +75,12 @@ def find_profile_functions(fProfile,fRegion):
 	return(functions)
 
 def find_org_root(fProfile):
-
 	import boto3
+
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
 	response=client_org.describe_organization()
-	# root_org=response['Organization']['MasterAccountId']
-	# org_id=response['Organization']['Id']
-	return (response['Organization'])
+	return(response['Organization']['MasterAccountId'])
 
 def find_if_lz(fProfile):
 	import boto3
@@ -103,8 +113,19 @@ def find_acct_email(fOrgRootProfile,fAccountId):
 	return (email_addr)
 
 def find_org_attr(fProfile):
-
 	import boto3
+
+	session_org = boto3.Session(profile_name=fProfile)
+	client_org = session_org.client('organizations')
+	response=client_org.describe_organization()['Organization']
+	# root_org=response['Organization']['MasterAccountId']
+	# org_id=response['Organization']['Id']
+	# return {'root_org':root_org,'org_id':org_id}
+	return (response)
+
+def find_org_attr2(fProfile):
+	import boto3
+	## Unused... and renamed
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
 	response=client_org.describe_organization()
@@ -114,8 +135,9 @@ def find_org_attr(fProfile):
 	return (root_org,org_id)
 
 def find_child_accounts(fProfile):
-
 	import boto3
+
+	child_accounts=[]
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
 	response=client_org.list_accounts()
@@ -128,15 +150,13 @@ def find_account_number(fProfile):
 	import boto3
 	session_sts = boto3.Session(profile_name=fProfile)
 	client_sts = session_sts.client('sts')
-	response=client_sts.get_caller_identity()
-	acct_num=response['Account']
-	return (acct_num)
+	response=client_sts.get_caller_identity()['Account']
+	return (response)
 
 def get_profiles(fprofiles,flevel,fSkipProfiles):
 
 	import boto3, logging
 	from botocore.exceptions import ClientError
-
 
 	my_Session=boto3.Session()
 	my_profiles=my_Session._session.available_profiles
