@@ -16,7 +16,7 @@ ConfProfiles2=$(egrep '\[.*\]' ~/.aws/config | tr -d '[]\r' | sed -e 's/profile 
 CredProfiles=($(sort <<< "${CredProfiles2[@]}"))
 ConfProfiles=($(sort <<< "${ConfProfiles2[@]}"))
 
-fmt='%-20s %-20s %-20s %-30s \n'
+fmt='%-20s %-20s %-30s %12s \n'
 
 if [[ " ${automated} " =~ " AllProfiles " ]] # If user wants to see ALL profiles
 	then
@@ -29,8 +29,8 @@ if [[ ! $automated ]]
 		echo "Found ${ProfileCount} profiles in credentials file"
 		echo "Outputting all profiles from all profiles"
 		echo
-		printf "$fmt" "Profile Name" "Account Number" "File" "Root Organization"
-		printf "$fmt" "------------" "--------------" "----" "-----------------"
+		printf "$fmt" "Profile Name" "Account Number" "File" "Root Account ID"
+		printf "$fmt" "------------" "--------------" "----" "---------------"
 fi
 for profile in ${CredProfiles[@]}; do
 	if [[ ! " ${SkipProfiles[@]} " =~ " ${profile} " ]]
@@ -39,8 +39,9 @@ for profile in ${CredProfiles[@]}; do
 				then
 					printf "$fmt" $profile "credentials file"
 				else
+					RootOrg=$(aws organizations describe-organization --output text --query 'Organization.MasterAccountId' --profile $profile)
 					AccountNumber=$(aws sts get-caller-identity --output text --query 'Account' --profile $profile)
-					printf "$fmt" $profile $AccountNumber "credentials file"
+					printf "$fmt" $profile $AccountNumber "credentials file" $RootOrg
 			fi
 	fi
 done
@@ -55,8 +56,9 @@ for profile in ${ConfProfiles[@]}; do
 				then
 					printf "$fmt" $profile "config file"
 				else
+					RootOrg=$(aws organizations describe-organization --output text --query 'Organization.MasterAccountId' --profile $profile)
 					AccountNumber=$(aws sts get-caller-identity --output text --query 'Account' --profile $profile)
-					printf "$fmt" $profile $AccountNumber "config file"
+					printf "$fmt" $profile $AccountNumber "config file" $RootOrg
 			fi
 	fi
 done

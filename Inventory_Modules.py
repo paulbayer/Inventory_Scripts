@@ -12,18 +12,11 @@ def get_ec2_regions(fkey):
 	RegionNames2=[]
 	for x in fkey:
 		for y in RegionNames:
-			logging.info('Have %s| Looking for %s',y,x)
-			# print("Have:",y,"| Looking for:",x)
+			logging.info('Have %s | Looking for %s',y,x)
 			if y.find(x) >=0:
 				logging.info('Found %s',y)
-				# print("Found it")
 				RegionNames2.append(y)
-	# pprint.pprint(RegionNames2)
 	return(RegionNames2)
-		# if x.find(fkey) >= 0:
-		# 	print("Add:",x,"to list")
-		# 	RegionNames2.append(x)
-			# RegionNames.remove(x)
 
 def find_profile_instances(fProfile,fRegion):
 
@@ -33,26 +26,75 @@ def find_profile_instances(fProfile,fRegion):
 	instances=instance_info.describe_instances()
 	return(instances)
 
-def find_stacks(fProfile,fRegion,fStackFragment,fstatus):
+def find_load_balancers(fProfile,fRegion,fStackFragment,fStatus):
 
-	import boto3, logging
-	logging.info("Profile: %s | Region: %s | Fragment: %s",fProfile, fRegion, fStackFragment)
+	import boto3, logging, pprint
+	logging.info("Profile: %s | Region: %s | Fragment: %s | Status: %s",fProfile, fRegion, fStackFragment,fStatus)
+	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	lb_info=session_cfn.client('elbv2')
+	load_balancers=lb_info.describe_load_balancers()
+	load_balancers_Copy=[]
+	if (fStackFragment=='all' or fStackFragment=='ALL') and (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='all' or fStatus=='ALL'):
+		logging.info("Found all the lbs in Profile: %s in Region: %s with Fragment: %s and Status: %s", fProfile, fRegion, fStackFragment, fStatus)
+		return(load_balancers['LoadBalancers'])
+	elif (fStackFragment=='all' or fStackFragment=='ALL'):
+		for load_balancer in load_balancers['LoadBalancers']:
+			if fStatus in load_balancer['State']['Code']:
+				logging.info("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", load_balancer['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
+				load_balancer_Copy.append(load_balancer)
+	elif (fStatus=='active' or fStatus=='ACTIVE'):
+		for load_balancer in load_balancers['LoadBalancers']:
+			if fStackFragment in load_balancer['LoadBalancerName']:
+				logging.info("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", load_balancer['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
+				load_balancer_Copy.append(load_balancer)
+	return(load_balancer_Copy)
+
+
+def find_stacks(fProfile,fRegion,fStackFragment,fStatus):
+
+	import boto3, logging, pprint
+	logging.info("Profile: %s | Region: %s | Fragment: %s | Status: %s",fProfile, fRegion, fStackFragment,fStatus)
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	stack_info=session_cfn.client('cloudformation')
 	stacks=stack_info.list_stacks()
-	if (fStackFragment=='all' or fStackFragment=='ALL') and (fstatus=='active' or fstatus=='ACTIVE' or fstatus=='all' or fstatus=='ALL'):
-		return(stacks)
+	stacksCopy=[]
+	if (fStackFragment=='all' or fStackFragment=='ALL') and (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='all' or fStatus=='ALL'):
+		logging.info("Found all the stacks in Profile: %s in Region: %s with Fragment: %s and Status: %s", fProfile, fRegion, fStackFragment, fStatus)
+		return(stacks['StackSummaries'])
 	elif (fStackFragment=='all' or fStackFragment=='ALL'):
 		for stack in stacks['StackSummaries']:
-			for y in range(len(stacks['StackSummaries'])):
-				if not stacks['StackSummaries'][y]['StackStatus']==fstatus:
-					stacks['StackSummaries'].remove(stacks['StackSummaries'][y])
-	elif (fstatus=='active' or fstatus=='ACTIVE' or fstatus=='all' or fstatus=='ALL'):
+			if fStatus in stack['StackStatus']:
+				logging.info("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
+				stacksCopy.append(stack)
+	elif (fStatus=='active' or fStatus=='ACTIVE'):
 		for stack in stacks['StackSummaries']:
-			for y in range(len(stacks['StackSummaries'])):
-				if not fStackFragment in stacks['StackSummaries'][y]['StackName']:
-					stacks['StackSummaries'].remove(stacks['StackSummaries'][y])
-	return(stacks)
+			if fStackFragment in stack['StackName']:
+				logging.info("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
+				stacksCopy.append(stack)
+	return(stacksCopy)
+
+def find_stacksets(fProfile,fRegion,fStackFragment,fStatus):
+
+	import boto3, logging, pprint
+	logging.info("Profile: %s | Region: %s | Fragment: %s | Status: %s",fProfile, fRegion, fStackFragment,fStatus)
+	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	stack_info=session_cfn.client('cloudformation')
+	stacksets=stack_info.list_stack_sets(Status='ACTIVE')
+	stackssetsCopy=[]
+	if (fStackFragment=='all' or fStackFragment=='ALL') and (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='all' or fStatus=='ALL'):
+		logging.info("Found all the stacksets in Profile: %s in Region: %s with Fragment: %s and Status: %s", fProfile, fRegion, fStackFragment, fStatus)
+		return(stacksets['Summaries'])
+	elif (fStackFragment=='all' or fStackFragment=='ALL'):
+		for stack in stackssets['Summaries']:
+			if fStatus in stack['Status']:
+				logging.info("Found stackset %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackSetName'], fProfile, fRegion, fStackFragment, fStatus)
+				stackssetsCopy.append(stack)
+	elif (fStatus=='active' or fStatus=='ACTIVE'):
+		for stack in stackssets['Summaries']:
+			if fStackFragment in stack['StackName']:
+				logging.info("Found stackset %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackSetName'], fProfile, fRegion, fStackFragment, fStatus)
+				stackssetsCopy.append(stack)
+	return(stacksetsCopy)
 
 def find_profile_vpcs(fProfile,fRegion):
 
@@ -169,14 +211,14 @@ def get_profiles(fprofiles,flevel,fSkipProfiles):
 			if y.find(x) >= 0:
 				logging.info('Found profile %s',y)
 				ProfileList.append(y)
-	try:
-		for profile in fSkipProfiles:
-			ProfileList.remove(profile)
-	except ClientError as my_Error:
-		pass
-	except ValueError as my_Error:
-		logging.error('Error found: %s',my_Error)
-		pass
+	# try:
+	# 	for profile in fSkipProfiles:
+	# 		ProfileList.remove(profile)
+	# except ClientError as my_Error:
+	# 	pass
+	# except ValueError as my_Error:
+	# 	logging.error('Error found: %s',my_Error)
+	# 	pass
 	return(ProfileList)
 
 	# RegionNames=[]
