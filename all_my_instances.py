@@ -96,6 +96,7 @@ for pregion in RegionList:
 					State=Instances['Reservations'][y]['Instances'][z]['State']['Name']
 					# print("Length:",len(Instances['Reservations'][y]['Instances'][z]['Tags']))
 					try:
+						Name="No Name Tag"
 						for x in range(len(Instances['Reservations'][y]['Instances'][z]['Tags'])):
 							if Instances['Reservations'][y]['Instances'][z]['Tags'][x]['Key']=="Name":
 								Name=Instances['Reservations'][y]['Instances'][z]['Tags'][x]['Value']

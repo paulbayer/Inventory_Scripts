@@ -93,6 +93,9 @@ ProfileList=Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles)# pprin
 for pregion in RegionList:
 	NumRegions += 1
 	NumProfilesInvestigated = 0	# I only care about the last run - so I don't get profiles * regions.
+	fmt='%-20s | %-12s | %-15s | %-20s'
+	print(fmt % ("Parent Profile","Acct Number","Region","Parent StackSet Name"))
+	print(fmt %	("--------------","-----------","------","--------------------"))
 	for profile in ProfileList: #Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles):
 		NumProfilesInvestigated += 1
 		try:
@@ -106,21 +109,26 @@ for pregion in RegionList:
 		for Stackset in Stacksets:
 			session_cfn=boto3.Session(profile_name=profile, region_name=pregion)
 			stackset_info=session_cfn.client('cloudformation')
-			stackset_associations=stackset_info.list_stack_set_operations(StackSetName=Stackset['StackSetName'])
-			print(Fore.RED+"Profile:",profile,"Stack:",Stackset['StackSetName'],"has",len(stackset_associations['Summaries']),"child stacks"+Fore.RESET)
+			stackset_associations=stackset_info.list_stack_instances(StackSetName=Stackset['StackSetName'])
+			logging.info(Fore.RED+"Profile:",profile,"Stack:",Stackset['StackSetName'],"has",len(stackset_associations['Summaries']),"child stacks"+Fore.RESET)
 			for operation in stackset_associations['Summaries']:
-				stacksetoperation=stackset_info.list_stack_set_operation_results(StackSetName=Stackset['StackSetName'],OperationId=operation['OperationId'])['Summaries']
-				# print("Profile:",profile,"Stack:",stack['StackSetName'],"has",len(stackset['Summaries']),"child stacks")
-				for y in range(len(stacksetoperation)):
-					print(Fore.RED+"StackSet",Stackset['StackSetName'],"in the parent profile",profile,"is connected to the account",stacksetoperation[y]['Account'],"and Region:",stacksetoperation[y]['Region']+Fore.RESET)
+				# stacksetoperation=stackset_info.list_stack_set_operation_results(StackSetName=Stackset['StackSetName'],OperationId=operation['OperationId'])['Summaries']
+				# # print("Profile:",profile,"Stack:",stack['StackSetName'],"has",len(stackset['Summaries']),"child stacks")
+				# for y in range(len(stacksetoperation)):
+					logging.info(Fore.RED+"StackSet",Stackset['StackSetName'],"in the parent profile",profile,"is connected to the account",operation['Account'],"in the",operation['Region'], "Region"+Fore.RESET)
 					# pprint.pprint(stacksetopertaion[y]['Account'])
 					session_sts=boto3.Session(profile_name=profile)
 					client_sts=session_sts.client('sts')
-					RoleArn="arn:aws:iam::"+stacksetoperation[y]['Account']+":role/AWSCloudFormationStackSetExecutionRole"
-					assumed_role=client_sts.assume_role(
-						RoleArn=RoleArn,
-						RoleSessionName="AssumeRoleSession1"
-					)
+					RoleArn="arn:aws:iam::"+operation['Account']+":role/AWSCloudFormationStackSetExecutionRole"
+					try:
+						assumed_role=client_sts.assume_role(
+							RoleArn=RoleArn,
+							RoleSessionName="AssumeRoleSession1"
+						)
+					except ClientError as my_Error:
+						if str(my_Error).find("AccessDenied") > 0:
+							logging.info(profile+": Access Denied. Probably the role",RoleArn,"doesn't exist, or you aren't allowed to use it.")
+						continue
 					credentials=assumed_role['Credentials']
 					cfn_client=boto3.client(
 						'cloudformation',
@@ -128,20 +136,16 @@ for pregion in RegionList:
 						aws_secret_access_key = credentials['SecretAccessKey'],
 						aws_session_token = credentials['SessionToken']
 					)
-					print(Fore.RED+"Instead of deleting just yet - we'll list it first..."+Fore.RESET)
+					logging.info(Fore.BLUE+"Instead of deleting just yet - we'll list it first..."+Fore.RESET)
 					response=cfn_client.list_stacks(StackStatusFilter=['CREATE_COMPLETE'])['StackSummaries']
-
-					fmt='%-10s %-12s %-20s %-30s %-24s'
-					print(fmt % ("Parent Profile","Child Account Number","Parent StackSet Name","Child Stack Name","Parent Operation ID"))
-					print(Fore.BLUE+fmt % (profile,stacksetoperation[y]['Account'],Stackset['StackSetName'],)
+					# print(Fore.BLUE+fmt+Fore.RESET % (profile,stacksetoperation[y]['Account'],Stackset['StackSetName'],"nothing","nothing"))
+					print(fmt % (profile, operation['Account'],operation['Region'], Stackset['StackSetName']))
 					# pprint.pprint(response)
 # cloudformation.list-stack-set-operations (stack-set-name) gives you the operation-id (possibly sorted by EndTimestamp)
 # cloudformation.list-stack-set-operation-results (stack-set-name, operation-id) gives you the accounts and regions it's been installed into (Look for Status "SUCCEEDED")
 sys.exit(9)
 
 # Go to all of those accounts and delete their stacks
-
-
 
 fmt='%-20s %-10s %-15s %-50s'
 print(fmt % ("Profile","Region","Stack Status","Stack Name"))
