@@ -128,20 +128,10 @@ def find_if_lz(fProfile):
 	import boto3
 
 	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('ec2')
-	response=client_org.describe_vpcs(
-		Filters=[
-        {
-            'Name': 'tag:AWS_Solutions',
-            'Values': [
-                'LandingZoneStackSet',
-            ]
-        }
-    	]
-	)
-	for vpc in response['Vpcs']:
-		for tag in vpc['Tags']:
-			if tag['Key']=="AWS_Solutions":
+	client_org = session_org.client('s3')
+	response=client_org.list_buckets()
+	for bucket in response['Buckets']:
+		if "aws-landing-zone-configuration" in bucket['Name']:
 				return(True)
 	return(False)
 
