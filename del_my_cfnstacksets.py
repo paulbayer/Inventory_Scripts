@@ -59,6 +59,12 @@ parser.add_argument(
     action="store_const",
 	dest="loglevel",
 	const=logging.INFO)
+parser.add_argument(
+    '--dryrun',
+    help="Do a Dry-run; don't delete anything",
+    action="store_const",
+	const=True,
+	dest="DryRun")
 args = parser.parse_args()
 
 # If plevel
@@ -71,6 +77,7 @@ pRegionList=args.pregion
 pstackfrag=args.pstackfrag
 pstatus=args.pstatus
 verbose=args.loglevel
+DryRun=args.DryRun
 logging.basicConfig(level=args.loglevel)
 # RegionList=[]
 
@@ -93,9 +100,9 @@ ProfileList=Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles)# pprin
 for pregion in RegionList:
 	NumRegions += 1
 	NumProfilesInvestigated = 0	# I only care about the last run - so I don't get profiles * regions.
-	fmt='%-20s | %-12s | %-15s | %-20s'
-	print(fmt % ("Parent Profile","Acct Number","Region","Parent StackSet Name"))
-	print(fmt %	("--------------","-----------","------","--------------------"))
+	fmt='%-20s | %-12s | %-15s | %-20s | %-50s'
+	print(fmt % ("Parent Profile","Acct Number","Region","Parent StackSet Name","Child Stack Name"))
+	print(fmt %	("--------------","-----------","------","--------------------","----------------"))
 	for profile in ProfileList: #Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles):
 		NumProfilesInvestigated += 1
 		try:
@@ -106,6 +113,7 @@ for pregion in RegionList:
 				print(profile+": Authorization Failure")
 
 # Find which accounts the stacks belong to and in which regions
+		StacksToDelete=[]
 		for Stackset in Stacksets:
 			session_cfn=boto3.Session(profile_name=profile, region_name=pregion)
 			stackset_info=session_cfn.client('cloudformation')
@@ -115,7 +123,7 @@ for pregion in RegionList:
 				# stacksetoperation=stackset_info.list_stack_set_operation_results(StackSetName=Stackset['StackSetName'],OperationId=operation['OperationId'])['Summaries']
 				# # print("Profile:",profile,"Stack:",stack['StackSetName'],"has",len(stackset['Summaries']),"child stacks")
 				# for y in range(len(stacksetoperation)):
-					logging.info(Fore.RED+"StackSet",Stackset['StackSetName'],"in the parent profile",profile,"is connected to the account",operation['Account'],"in the",operation['Region'], "Region"+Fore.RESET)
+					logging.debug(Fore.RED+"StackSet",Stackset['StackSetName'],"in the parent profile",profile,"is connected to the account",operation['Account'],"in the",operation['Region'], "Region"+Fore.RESET)
 					# pprint.pprint(stacksetopertaion[y]['Account'])
 					session_sts=boto3.Session(profile_name=profile)
 					client_sts=session_sts.client('sts')
@@ -138,14 +146,25 @@ for pregion in RegionList:
 					)
 					logging.info(Fore.BLUE+"Instead of deleting just yet - we'll list it first..."+Fore.RESET)
 					response=cfn_client.list_stacks(StackStatusFilter=['CREATE_COMPLETE'])['StackSummaries']
-					# print(Fore.BLUE+fmt+Fore.RESET % (profile,stacksetoperation[y]['Account'],Stackset['StackSetName'],"nothing","nothing"))
-					print(fmt % (profile, operation['Account'],operation['Region'], Stackset['StackSetName']))
-					# pprint.pprint(response)
+					for i in range(len(response)):
+						if Stackset['StackSetName'] in response[i]['StackName']:
+							ChildStackName=response[i]['StackName']
+							logging.info("Found:",response[i]['StackName'])
+							print(fmt % (profile, operation['Account'],operation['Region'], Stackset['StackSetName'],ChildStackName))
+							StacksToDelete.append([profile,operation['Account'],operation['Region'],Stackset['StackSetName']])
 # cloudformation.list-stack-set-operations (stack-set-name) gives you the operation-id (possibly sorted by EndTimestamp)
 # cloudformation.list-stack-set-operation-results (stack-set-name, operation-id) gives you the accounts and regions it's been installed into (Look for Status "SUCCEEDED")
+# pprint.pprint(StacksToDelete)
 sys.exit(9)
 
 # Go to all of those accounts and delete their stacks
+for i in range(len(StacksToDelete)):
+	# Profile, Account ID, Region, StackSet Name
+	role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(StacksToDelete[i]['Account'])
+	logging.info("Account ID for the logging account: {}".format(account['Id']))
+	account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="ALZAddIsengardUserScript")['Credentials']
+
+
 
 fmt='%-20s %-10s %-15s %-50s'
 print(fmt % ("Profile","Region","Stack Status","Stack Name"))
