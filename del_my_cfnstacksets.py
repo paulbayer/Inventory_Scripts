@@ -64,6 +64,7 @@ parser.add_argument(
     help="Do a Dry-run; don't delete anything",
     action="store_const",
 	const=True,
+	default=True,
 	dest="DryRun")
 args = parser.parse_args()
 
@@ -100,9 +101,9 @@ ProfileList=Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles)# pprin
 for pregion in RegionList:
 	NumRegions += 1
 	NumProfilesInvestigated = 0	# I only care about the last run - so I don't get profiles * regions.
-	fmt='%-20s | %-12s | %-15s | %-20s | %-50s'
-	print(fmt % ("Parent Profile","Acct Number","Region","Parent StackSet Name","Child Stack Name"))
-	print(fmt %	("--------------","-----------","------","--------------------","----------------"))
+	fmt='%-20s | %-12s | %-10s | %-40s | %-25s | %-50s'
+	print(fmt % ("Parent Profile","Acct Number","Region","Parent StackSet Name","Stack Status","Child Stack Name"))
+	print(fmt %	("--------------","-----------","------","--------------------","----------------","----------------"))
 	for profile in ProfileList: #Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles):
 		NumProfilesInvestigated += 1
 		try:
@@ -114,6 +115,7 @@ for pregion in RegionList:
 
 # Find which accounts the stacks belong to and in which regions
 		StacksToDelete=[]
+		a=0
 		for Stackset in Stacksets:
 			session_cfn=boto3.Session(profile_name=profile, region_name=pregion)
 			stackset_info=session_cfn.client('cloudformation')
@@ -145,25 +147,37 @@ for pregion in RegionList:
 						aws_session_token = credentials['SessionToken']
 					)
 					logging.info(Fore.BLUE+"Instead of deleting just yet - we'll list it first..."+Fore.RESET)
-					response=cfn_client.list_stacks(StackStatusFilter=['CREATE_COMPLETE'])['StackSummaries']
+					response=cfn_client.list_stacks(StackStatusFilter=['CREATE_COMPLETE','UPDATE_ROLLBACK_COMPLETE'])['StackSummaries']
 					for i in range(len(response)):
 						if Stackset['StackSetName'] in response[i]['StackName']:
 							ChildStackName=response[i]['StackName']
-							logging.info("Found:",response[i]['StackName'])
-							print(fmt % (profile, operation['Account'],operation['Region'], Stackset['StackSetName'],ChildStackName))
-							StacksToDelete.append([profile,operation['Account'],operation['Region'],Stackset['StackSetName']])
+							StackStatus=response[i]['StackStatus']
+							logging.info("ChildStackName:",ChildStackName)
+					print(fmt % (profile, operation['Account'],operation['Region'], Stackset['StackSetName'],StackStatus,ChildStackName))
+					# logging.info("Found:",response[i]['StackName'])
+					StacksToDelete.append([profile,operation['Account'],operation['Region'],Stackset['StackSetName'],StackStatus,ChildStackName])
 # cloudformation.list-stack-set-operations (stack-set-name) gives you the operation-id (possibly sorted by EndTimestamp)
 # cloudformation.list-stack-set-operation-results (stack-set-name, operation-id) gives you the accounts and regions it's been installed into (Look for Status "SUCCEEDED")
 # pprint.pprint(StacksToDelete)
-sys.exit(9)
 
 # Go to all of those accounts and delete their stacks
 for i in range(len(StacksToDelete)):
-	# Profile, Account ID, Region, StackSet Name
-	role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(StacksToDelete[i]['Account'])
-	logging.info("Account ID for the logging account: {}".format(account['Id']))
-	account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="ALZAddIsengardUserScript")['Credentials']
+	# (0) Profile, (1) Account ID, (2) Region, (3) StackSet Name, (4) ChildStackStatus, (5) ChildStackName
+	role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(StacksToDelete[i][1])
+	# Assume an admin role in the Child Account
+	account_credentials = client_sts.assume_role(RoleArn=role_arn, RoleSessionName="ALZAddIsengardUserScript")['Credentials']
+	cfn_client=boto3.client('cloudformation',
+		region_name=StacksToDelete[i][2],
+		aws_access_key_id=account_credentials['AccessKeyId'],
+		aws_secret_access_key=account_credentials['SecretAccessKey'],
+		aws_session_token=account_credentials['SessionToken'])
+	if not DryRun:
+		response=cfn_client.delete_stack(StackName=StacksToDelete[i][5])
+	else:
+		print("DryRun is enabled, so we didn't delete the stack %s in account %s in region %s using profile %s" % (StacksToDelete[i][5], StacksToDelete[i][1], StacksToDelete[i][2], StacksToDelete[i][0]))
 
+
+sys.exit(9)
 
 
 fmt='%-20s %-10s %-15s %-50s'
