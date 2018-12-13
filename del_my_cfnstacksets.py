@@ -60,10 +60,10 @@ parser.add_argument(
 	dest="loglevel",
 	const=logging.INFO)
 parser.add_argument(
-    '--dryrun',
+    '+forreal','+for-real','-for-real','-forreal','--for-real','--forreal','--forrealsies',
     help="Do a Dry-run; don't delete anything",
     action="store_const",
-	const=True,
+	const=False,
 	default=True,
 	dest="DryRun")
 args = parser.parse_args()
@@ -78,7 +78,7 @@ pRegionList=args.pregion
 pstackfrag=args.pstackfrag
 pstatus=args.pstatus
 verbose=args.loglevel
-DryRun=args.DryRun
+pdryrun=args.DryRun
 logging.basicConfig(level=args.loglevel)
 # RegionList=[]
 
@@ -101,7 +101,7 @@ ProfileList=Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles)# pprin
 for pregion in RegionList:
 	NumRegions += 1
 	NumProfilesInvestigated = 0	# I only care about the last run - so I don't get profiles * regions.
-	fmt='%-20s | %-12s | %-10s | %-40s | %-25s | %-50s'
+	fmt='%-20s | %-12s | %-10s | %-20s | %-25s | %-50s'
 	print(fmt % ("Parent Profile","Acct Number","Region","Parent StackSet Name","Stack Status","Child Stack Name"))
 	print(fmt %	("--------------","-----------","------","--------------------","----------------","----------------"))
 	for profile in ProfileList: #Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles):
@@ -171,7 +171,7 @@ for i in range(len(StacksToDelete)):
 		aws_access_key_id=account_credentials['AccessKeyId'],
 		aws_secret_access_key=account_credentials['SecretAccessKey'],
 		aws_session_token=account_credentials['SessionToken'])
-	if not DryRun:
+	if not pdryrun:
 		response=cfn_client.delete_stack(StackName=StacksToDelete[i][5])
 	else:
 		print("DryRun is enabled, so we didn't delete the stack %s in account %s in region %s using profile %s" % (StacksToDelete[i][5], StacksToDelete[i][1], StacksToDelete[i][2], StacksToDelete[i][0]))
