@@ -136,10 +136,13 @@ def get_profiles(flevel,fSkipProfiles):
 #
 # sys.exit(2)
 
-fmt='%-23s %-15s %-27s %-12s %-30s %-10s'
+# fmt='%-23s %-15s %-27s %-12s %-30s %-10s'
+fmt='%-23s %-15s %-27s %-12s %-10s'
 print ("------------------------------------")
-print (fmt % ("Profile Name","Account Number","Master Org Acct","Org ID","Email","Root Acct?"))
-print (fmt % ("------------","--------------","---------------","------","-----","----------"))
+# print (fmt % ("Profile Name","Account Number","Master Org Acct","Org ID","Email","Root Acct?"))
+# print (fmt % ("------------","--------------","---------------","------","-----","----------"))
+print (fmt % ("Profile Name","Account Number","Master Org Acct","Org ID","Root Acct?"))
+print (fmt % ("------------","--------------","---------------","------","----------"))
 
 dictionary = dict()
 RootAccts=[]	# List of the Organization Root's Account Number
@@ -187,11 +190,13 @@ for profile in get_profiles(plevel,SkipProfiles):
 	# If I create a dictionary from the Root Accts and Root Profiles Lists - I can use that to determine which profile belongs to the root user of my (child) account. But this dictionary is only guaranteed to be valid after ALL profiles have been checked, so... it doesn't solve our issue - unless we don't write anything to the screen until *everything* is done, and we keep all output in another dictionary - where we can populate the missing data at the end... but that takes a long time, since nothing would be sent to the screen in the meantime.
 	# dictionary.update(dict(zip(RootAccts, RootProfiles)))
 
-# Print results for this profile
+#	 Print results for this profile
 	if RootAcct:
-		print (Fore.RED + fmt % (profile,AcctNum,MasterAcct,OrgId,Email,RootAcct)+Style.RESET_ALL)
+		# print (Fore.RED + fmt % (profile,AcctNum,MasterAcct,OrgId,Email,RootAcct)+Style.RESET_ALL)
+		print (Fore.RED + fmt % (profile,AcctNum,MasterAcct,OrgId,RootAcct)+Style.RESET_ALL)
 	else:
-		print (fmt % (profile,AcctNum,MasterAcct,OrgId,Email,RootAcct))
+		# print (fmt % (profile,AcctNum,MasterAcct,OrgId,Email,RootAcct))
+		print (fmt % (profile,AcctNum,MasterAcct,OrgId,RootAcct))
 
 print ("-------------------")
 
@@ -220,6 +225,7 @@ for profile in RootProfiles:
 		fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+'%-6s'
 	# print(fmt % (profile,MasterAcct,landing_zone,child_accounts,child_emails))
 	print(fmt % (profile,MasterAcct,landing_zone))
+	print(child_fmt % ('Child Account Number',"Child Email Address"))
 	for account in range(len(child_accounts)):
 		print(child_fmt % (child_accounts[account],child_emails[account]))
 print()
