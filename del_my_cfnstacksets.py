@@ -147,7 +147,7 @@ for pregion in RegionList:
 						aws_session_token = credentials['SessionToken']
 					)
 					logging.info(Fore.BLUE+"Instead of deleting just yet - we'll list it first..."+Fore.RESET)
-					response=cfn_client.list_stacks(StackStatusFilter=['CREATE_COMPLETE','UPDATE_ROLLBACK_COMPLETE'])['StackSummaries']
+					response=cfn_client.list_stacks(StackStatusFilter=['CREATE_COMPLETE','UPDATE_ROLLBACK_COMPLETE','UPDATE_COMPLETE','CREATE_FAILED'])['StackSummaries']
 					for i in range(len(response)):
 						if Stackset['StackSetName'] in response[i]['StackName']:
 							ChildStackName=response[i]['StackName']
