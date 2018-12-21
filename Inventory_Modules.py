@@ -201,29 +201,4 @@ def get_profiles(fprofiles,flevel,fSkipProfiles):
 			if y.find(x) >= 0:
 				logging.info('Found profile %s',y)
 				ProfileList.append(y)
-	# try:
-	# 	for profile in fSkipProfiles:
-	# 		ProfileList.remove(profile)
-	# except ClientError as my_Error:
-	# 	pass
-	# except ValueError as my_Error:
-	# 	logging.error('Error found: %s',my_Error)
-	# 	pass
 	return(ProfileList)
-
-	# RegionNames=[]
-	# for x in range(len(regions['Regions'])):
-	# 	RegionNames.append(regions['Regions'][x]['RegionName'])
-	# if "all" in fkey or "ALL" in fkey:
-	# 	return(RegionNames)
-	# RegionNames2=[]
-	# for x in fkey:
-	# 	for y in RegionNames:
-	# 		logging.info('Have %s| Looking for %s',y,x)
-	# 		# print("Have:",y,"| Looking for:",x)
-	# 		if y.find(x) >=0:
-	# 			logging.info('Found %s',y)
-	# 			# print("Found it")
-	# 			RegionNames2.append(y)
-	# # pprint.pprint(RegionNames2)
-	# return(RegionNames2)
