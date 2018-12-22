@@ -73,26 +73,26 @@ def find_stacks(fProfile,fRegion,fStackFragment,fStatus):
 				stacksCopy.append(stack)
 	return(stacksCopy)
 
-def find_stacksets(fProfile,fRegion,fStackFragment,fStatus):
+def find_stacksets(fProfile,fRegion,fStackFragment):
 
 	import boto3, logging, pprint
-	logging.info("Profile: %s | Region: %s | Fragment: %s | Status: %s",fProfile, fRegion, fStackFragment,fStatus)
+	logging.info("Profile: %s | Region: %s | Fragment: %s",fProfile, fRegion, fStackFragment)
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	stack_info=session_cfn.client('cloudformation')
 	stacksets=stack_info.list_stack_sets(Status='ACTIVE')
 	stacksetsCopy=[]
-	if (fStackFragment=='all' or fStackFragment=='ALL') and (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='all' or fStatus=='ALL'):
+	if fStackFragment=='all' or fStackFragment=='ALL':
 		logging.info("Found all the stacksets in Profile: %s in Region: %s with Fragment: %s and Status: %s", fProfile, fRegion, fStackFragment, fStatus)
 		return(stacksets['Summaries'])
-	elif (fStackFragment=='all' or fStackFragment=='ALL'):
-		for stack in stacksets['Summaries']:
-			if fStatus in stack['Status']:
-				logging.info("Found stackset %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackSetName'], fProfile, fRegion, fStackFragment, fStatus)
-				stacksetsCopy.append(stack)
-	elif (fStatus=='active' or fStatus=='ACTIVE'):
+	# elif (fStackFragment=='all' or fStackFragment=='ALL'):
+	# 	for stack in stacksets['Summaries']:
+	# 		if fStatus in stack['Status']:
+	# 			logging.info("Found stackset %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackSetName'], fProfile, fRegion, fStackFragment, fStatus)
+	# 			stacksetsCopy.append(stack)
+	else:
 		for stack in stacksets['Summaries']:
 			if fStackFragment in stack['StackSetName']:
-				logging.info("Found stackset %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackSetName'], fProfile, fRegion, fStackFragment, fStatus)
+				logging.info("Found stackset %s in Profile: %s in Region: %s with Fragment: %s", stack['StackSetName'], fProfile, fRegion, fStackFragment)
 				stacksetsCopy.append(stack)
 	return(stacksetsCopy)
 
@@ -166,9 +166,9 @@ def find_org_attr2(fProfile):
 	# return {'root_org':root_org,'org_id':org_id}
 	return (root_org,org_id)
 
-def find_child_accounts(fProfile):
+def find_child_accounts2(fProfile):
 	import boto3
-
+	# Renamed since I'm using the one below instead.
 	child_accounts=[]
 	child_emails=[]
 	session_org = boto3.Session(profile_name=fProfile)
@@ -179,6 +179,17 @@ def find_child_accounts(fProfile):
 		child_emails.append(account['Email'])
 	return (child_accounts,child_emails)
 
+def find_child_accounts(fProfile):
+	import boto3
+
+	child_accounts={}
+	session_org = boto3.Session(profile_name=fProfile)
+	client_org = session_org.client('organizations')
+	response=client_org.list_accounts()
+	for account in response['Accounts']:
+		child_accounts[account['Id']]=account['Email']
+	return (child_accounts)
+
 def find_account_number(fProfile):
 
 	import boto3
@@ -187,7 +198,7 @@ def find_account_number(fProfile):
 	response=client_sts.get_caller_identity()['Account']
 	return (response)
 
-def get_profiles(fprofiles,flevel,fSkipProfiles):
+def get_profiles(fprofiles,fSkipProfiles):
 
 	import boto3, logging
 	from botocore.exceptions import ClientError
