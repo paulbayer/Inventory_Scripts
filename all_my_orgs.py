@@ -202,7 +202,7 @@ print ("-------------------")
 
 # fmt='%-23s %-15s %-6s %-40s %-40s'
 fmt='%-23s %-15s %-6s'
-child_fmt="\t\t'%-12s %-20s'"
+child_fmt="\t\t%-20s %-20s"
 print()
 print(fmt % ("Organization's Profile","Root Account","ALZ"))
 # print(fmt % (("Organization's Profile","Root Account","ALZ","Set of Organization Accounts","Set of Org Emails"))
@@ -211,23 +211,19 @@ print(fmt % ("----------------------","------------","---"))
 NumOfAccounts=0
 
 for profile in RootProfiles:
-	child_accounts=[]
-	child_emails=[]
+	child_accounts={}
 	MasterAcct=Inventory_Modules.find_org_root(profile)
-	child_accounts,child_emails=Inventory_Modules.find_child_accounts(profile)
+	child_accounts=Inventory_Modules.find_child_accounts(profile)
 	landing_zone=Inventory_Modules.find_if_lz(profile)
 	NumOfAccounts=NumOfAccounts + len(child_accounts)
 	if landing_zone:
-		# fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+Fore.RED+'%-6s '+Fore.RESET+'%-40s %-40s'
 		fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+Fore.RED+'%-6s '+Fore.RESET
 	else:
-		# fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+'%-6s %-40s %-40s'
 		fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+'%-6s'
-	# print(fmt % (profile,MasterAcct,landing_zone,child_accounts,child_emails))
 	print(fmt % (profile,MasterAcct,landing_zone))
 	print(child_fmt % ("Child Account Number","Child Email Address"))
-	for account in range(len(child_accounts)):
-		print(child_fmt % (child_accounts[account],child_emails[account]))
+	for account in sorted(child_accounts):
+		print(child_fmt % (account,child_accounts[account]))
 print()
 print("Number of Accounts:",NumOfAccounts)
 print("Number of Organizations:",len(RootProfiles))
