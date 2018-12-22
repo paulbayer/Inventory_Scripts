@@ -170,12 +170,14 @@ def find_child_accounts(fProfile):
 	import boto3
 
 	child_accounts=[]
+	child_emails=[]
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
 	response=client_org.list_accounts()
 	for account in response['Accounts']:
 		child_accounts.append(account['Id'])
-	return (child_accounts)
+		child_emails.append(account['Email'])
+	return (child_accounts,child_emails)
 
 def find_account_number(fProfile):
 
