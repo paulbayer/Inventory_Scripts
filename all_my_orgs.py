@@ -225,7 +225,7 @@ for profile in RootProfiles:
 		fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+'%-6s'
 	# print(fmt % (profile,MasterAcct,landing_zone,child_accounts,child_emails))
 	print(fmt % (profile,MasterAcct,landing_zone))
-	print(child_fmt % ('Child Account Number',"Child Email Address"))
+	print(child_fmt % ("Child Account Number","Child Email Address"))
 	for account in range(len(child_accounts)):
 		print(child_fmt % (child_accounts[account],child_emails[account]))
 print()
