@@ -15,18 +15,12 @@ parser = argparse.ArgumentParser(
 	description="We\'re going to find all resources within any of the profiles we have access to.",
 	prefix_chars='-+/')
 parser.add_argument(
-	"-c","--creds",
-	dest="plevel",
-	metavar="Creds",
-	default="1",
-	help="Which credentials file to use for investigation.")
-parser.add_argument(
 	"-p","--profile",
 	dest="pProfiles",
 	nargs="*",
 	metavar="profile to use",
 	default="all",
-	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
+	help="To specify a specific profile or profiles, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
 parser.add_argument(
 	"-f","--fragment",
 	dest="pstackfrag",
@@ -73,7 +67,6 @@ args = parser.parse_args()
 	# 2: config file only
 	# 3: credentials and config files
 pProfiles=args.pProfiles
-plevel=args.plevel
 pRegionList=args.pregion
 pstackfrag=args.pstackfrag
 pstatus=args.pstatus
@@ -96,7 +89,8 @@ print()
 
 # Find all stacksets in this account
 RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
-ProfileList=Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles)# pprint.pprint(RegionList)
+ProfileList=Inventory_Modules.get_profiles(pProfiles,SkipProfiles)
+# pprint.pprint(RegionList)
 # sys.exit(1)
 for pregion in RegionList:
 	NumRegions += 1

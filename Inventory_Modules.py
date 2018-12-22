@@ -150,9 +150,6 @@ def find_org_attr(fProfile):
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
 	response=client_org.describe_organization()['Organization']
-	# root_org=response['Organization']['MasterAccountId']
-	# org_id=response['Organization']['Id']
-	# return {'root_org':root_org,'org_id':org_id}
 	return (response)
 
 def find_org_attr2(fProfile):
@@ -163,7 +160,6 @@ def find_org_attr2(fProfile):
 	response=client_org.describe_organization()
 	root_org=response['Organization']['MasterAccountId']
 	org_id=response['Organization']['Id']
-	# return {'root_org':root_org,'org_id':org_id}
 	return (root_org,org_id)
 
 def find_child_accounts(fProfile):
@@ -187,7 +183,7 @@ def find_account_number(fProfile):
 	response=client_sts.get_caller_identity()['Account']
 	return (response)
 
-def get_profiles(fprofiles,flevel,fSkipProfiles):
+def get_profiles(fprofiles,fSkipProfiles):
 
 	import boto3, logging
 	from botocore.exceptions import ClientError
