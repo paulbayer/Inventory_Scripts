@@ -81,8 +81,9 @@ def find_stacksets(fProfile,fRegion,fStackFragment):
 	stack_info=session_cfn.client('cloudformation')
 	stacksets=stack_info.list_stack_sets(Status='ACTIVE')
 	stacksetsCopy=[]
-	if fStackFragment=='all' or fStackFragment=='ALL':
-		logging.info("Found all the stacksets in Profile: %s in Region: %s with Fragment: %s and Status: %s", fProfile, fRegion, fStackFragment, fStatus)
+	# if fStackFragment=='all' or fStackFragment=='ALL':
+	if 'all' in fStackFragment or 'ALL' in fStackFragment:
+		logging.info("Found all the stacksets in Profile: %s in Region: %s with Fragment: %s", fProfile, fRegion, fStackFragment)
 		return(stacksets['Summaries'])
 	# elif (fStackFragment=='all' or fStackFragment=='ALL'):
 	# 	for stack in stacksets['Summaries']:
@@ -91,9 +92,10 @@ def find_stacksets(fProfile,fRegion,fStackFragment):
 	# 			stacksetsCopy.append(stack)
 	else:
 		for stack in stacksets['Summaries']:
-			if fStackFragment in stack['StackSetName']:
-				logging.info("Found stackset %s in Profile: %s in Region: %s with Fragment: %s", stack['StackSetName'], fProfile, fRegion, fStackFragment)
-				stacksetsCopy.append(stack)
+			for stackfrag in fStackFragment:
+				if stackfrag in stack['StackSetName']:
+					logging.info("Found stackset %s in Profile: %s in Region: %s with Fragment: %s", stack['StackSetName'], fProfile, fRegion, stackfrag)
+					stacksetsCopy.append(stack)
 	return(stacksetsCopy)
 
 def find_profile_vpcs(fProfile,fRegion):

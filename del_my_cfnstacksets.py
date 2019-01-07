@@ -24,15 +24,16 @@ parser.add_argument(
 parser.add_argument(
 	"-f","--fragment",
 	dest="pstackfrag",
+	nargs="*",
 	metavar="CloudFormation stack fragment",
-	default="all",
+	default=["all"],
 	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
 parser.add_argument(
 	"-r","--region",
 	nargs="*",
 	dest="pregion",
 	metavar="region name string",
-	default="us-east-1",
+	default=["us-east-1"],
 	help="String fragment of the region(s) you want to check for resources.")
 parser.add_argument(
     '-d', '--debug',
@@ -80,9 +81,9 @@ print()
 # Find all stacksets in this account
 RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
 ProfileList=Inventory_Modules.get_profiles(pProfiles,SkipProfiles)
-# pprint.pprint(RegionList)
-# sys.exit(1)
-fmt='%-20s | %-12s | %-10s | %-20s | %-25s | %-50s'
+logging.info("There are %s profiles in your list" % (len(ProfileList)))
+
+fmt='%-20s | %-12s | %-10s | %-50s | %-25s | %-50s'
 print(fmt % ("Parent Profile","Acct Number","Region","Parent StackSet Name","Stack Status","Child Stack Name"))
 print(fmt %	("--------------","-----------","------","--------------------","----------------","----------------"))
 for pregion in RegionList:
@@ -154,5 +155,5 @@ for i in range(len(StacksToDelete)):
 		print("DryRun is enabled, so we didn't delete the stack we found in account %s in region %s" % (StacksToDelete[i][1], StacksToDelete[i][2]))
 
 print()
-print(Fore.RED+"Found {} Stacks across {} regions".format(NumStacksFound,NumRegions)+Fore.RESET)
+print(Fore.RED+"Found {} Stacks across {} regions across {} profiles".format(NumStacksFound,NumRegions,len(ProfileList))+Fore.RESET)
 print()
