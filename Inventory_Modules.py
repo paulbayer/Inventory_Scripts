@@ -26,6 +26,26 @@ def find_profile_instances(fProfile,fRegion):
 	instances=instance_info.describe_instances()
 	return(instances)
 
+def find_profile_vpcs(fProfile,fRegion):
+
+	import boto3
+	session_ec2=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	vpc_info=session_ec2.client('ec2')
+	vpcs=vpc_info.describe_vpcs()
+	if len(vpcs['Vpcs']) == 1 and vpcs['Vpcs'][0]['IsDefault'] == True and not ('Tags' in vpcs['Vpcs'][0]):
+		return()
+	else:
+		return(vpcs)
+	# return(vpcs)
+
+def find_profile_functions(fProfile,fRegion):
+
+	import boto3
+	session_lambda=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	lambda_info=session_lambda.client('lambda')
+	functions=lambda_info.list_functions()
+	return(functions)
+
 def find_load_balancers(fProfile,fRegion,fStackFragment,fStatus):
 
 	import boto3, logging, pprint
@@ -48,7 +68,6 @@ def find_load_balancers(fProfile,fRegion,fStackFragment,fStatus):
 				logging.info("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", load_balancer['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
 				load_balancer_Copy.append(load_balancer)
 	return(load_balancer_Copy)
-
 
 def find_stacks(fProfile,fRegion,fStackFragment,fStatus):
 
@@ -98,33 +117,14 @@ def find_stacksets(fProfile,fRegion,fStackFragment):
 					stacksetsCopy.append(stack)
 	return(stacksetsCopy)
 
-def find_profile_vpcs(fProfile,fRegion):
+def find_if_org_root(fProfile):
 
-	import boto3
-	session_ec2=boto3.Session(profile_name=fProfile, region_name=fRegion)
-	vpc_info=session_ec2.client('ec2')
-	vpcs=vpc_info.describe_vpcs()
-	if len(vpcs['Vpcs']) == 1 and vpcs['Vpcs'][0]['IsDefault'] == True and not ('Tags' in vpcs['Vpcs'][0]):
-		return()
+	org_acct_number=find_org_attr(fProfile)
+	acct_number=find_account_number(fProfile)
+	if org_acct_number['Organization']['MasterAccountId']==acct_number:
+		return(True)
 	else:
-		return(vpcs)
-	# return(vpcs)
-
-def find_profile_functions(fProfile,fRegion):
-
-	import boto3
-	session_lambda=boto3.Session(profile_name=fProfile, region_name=fRegion)
-	lambda_info=session_lambda.client('lambda')
-	functions=lambda_info.list_functions()
-	return(functions)
-
-def find_org_root(fProfile):
-	import boto3
-
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
-	response=client_org.describe_organization()
-	return(response['Organization']['MasterAccountId'])
+		return(False)
 
 def find_if_lz(fProfile):
 	import boto3
@@ -142,9 +142,9 @@ def find_acct_email(fOrgRootProfile,fAccountId):
 
 	session_org = boto3.Session(profile_name=fOrgRootProfile)
 	client_org = session_org.client('organizations')
-	response=client_org.describe_account(AccountId=fAccountId)
-	email_addr=response['Account']['Email']
-	return (email_addr)
+	email_addr=client_org.describe_account(AccountId=fAccountId)
+	# email_addr=response['Account']['Email']
+	return (email_addr['Account']['Email'])
 
 def find_org_attr(fProfile):
 	import boto3
@@ -152,43 +152,43 @@ def find_org_attr(fProfile):
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
 	response=client_org.describe_organization()['Organization']
-	# root_org=response['Organization']['MasterAccountId']
-	# org_id=response['Organization']['Id']
-	# return {'root_org':root_org,'org_id':org_id}
 	return (response)
+'''
+This is an example of the dictionary response from this call:
+	{
+	    "Organization": {
+	        "Id": "o-5zb7j55cba",
+	        "Arn": "arn:aws:organizations::693014690250:organization/o-5zb7j55cba",
+	        "FeatureSet": "ALL",
+	        "MasterAccountArn": "arn:aws:organizations::693014690250:account/o-5zb7j55cba/693014690250",
+	        "MasterAccountId": "693014690250",
+	        "MasterAccountEmail": "paulbaye+50@amazon.com",
+	        "AvailablePolicyTypes": [
+	            {
+	                "Type": "SERVICE_CONTROL_POLICY",
+	                "Status": "ENABLED"
+	            }
+	        ]
+	    }
+	}
+Typically your client call will use the result of "response['Organization']['MasterAccountId']" or something like that, depending on which attribute you're interested in.
+'''
 
-def find_org_attr2(fProfile):
-	import boto3
-	## Unused... and renamed
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
-	response=client_org.describe_organization()
-	root_org=response['Organization']['MasterAccountId']
-	org_id=response['Organization']['Id']
-	# return {'root_org':root_org,'org_id':org_id}
-	return (root_org,org_id)
-
-def find_child_accounts2(fProfile):
-	import boto3
-	# Renamed since I'm using the one below instead.
-	child_accounts=[]
-	child_emails=[]
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
-	response=client_org.list_accounts()
-	for account in response['Accounts']:
-		child_accounts.append(account['Id'])
-		child_emails.append(account['Email'])
-	return (child_accounts,child_emails)
-
-def find_child_accounts(fProfile):
-	import boto3
+def find_child_accounts(fProfile="default"):
+	import boto3, logging
+	from botocore.exceptions import ClientError, NoCredentialsError
 
 	child_accounts={}
 	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
-	response=client_org.list_accounts()
+	try:
+		client_org = session_org.client('organizations')
+		response=client_org.list_accounts()
+	except ClientError as my_Error:
+		logging.info("Profile %s doesn't represent an Org Root account",fProfile)
+		# print("Failed on %s",my_Error)
+		return()
 	for account in response['Accounts']:
+		# Create a key/value pair with the AccountID:AccountEmail
 		child_accounts[account['Id']]=account['Email']
 	return (child_accounts)
 
