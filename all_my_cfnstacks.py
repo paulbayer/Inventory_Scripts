@@ -44,7 +44,7 @@ parser.add_argument(
 	nargs="*",
 	dest="pregion",
 	metavar="region name string",
-	default="us-east-1",
+	default=["us-east-1"],
 	help="String fragment of the region(s) you want to check for resources.")
 parser.add_argument(
     '-d', '--debug',
@@ -89,7 +89,7 @@ fmt='%-20s %-10s %-15s %-50s'
 print(fmt % ("Profile","Region","Stack Status","Stack Name"))
 print(fmt % ("-------","------","------------","----------"))
 RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
-ProfileList=Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles)# pprint.pprint(RegionList)
+ProfileList=Inventory_Modules.get_profiles(pProfiles,SkipProfiles)# pprint.pprint(RegionList)
 # sys.exit(1)
 for pregion in RegionList:
 	NumRegions += 1

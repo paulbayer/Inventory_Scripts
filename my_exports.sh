@@ -1,7 +1,7 @@
 #!/bin/bash
 
 profile=$1
-region=${2="us-east-1"}
+region=${2:-"us-east-1"}
 
 if [[ -z $profile ]]
 	then
@@ -16,7 +16,7 @@ if [[ -z $profile ]]
 		exit 1
 fi
 
-echo "Outputting all stacks, only from $profile, and only from your default region"
+echo "Outputting all stacks, only from $profile, and only from $region"
 format='%-15s %-80s %-20s \n'
 
 printf "$format" "Profile" "Export Name" "Export Value"

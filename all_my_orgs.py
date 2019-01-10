@@ -44,36 +44,6 @@ logging.basicConfig(level=args.loglevel)
 
 SkipProfiles=["default","Shared-Fid"]
 
-# def find_org_root(fProfile):
-# 	import boto3
-#
-# 	session_org = boto3.Session(profile_name=fProfile)
-# 	client_org = session_org.client('organizations')
-# 	response=client_org.describe_organization()
-# 	root_org=response['Organization']['MasterAccountId']
-# 	return (root_org)
-#
-
-# def find_acct_email(fOrgRootProfile,fAccountId):
-# 	import boto3
-#
-# 	session_org = boto3.Session(profile_name=fOrgRootProfile)
-# 	client_org = session_org.client('organizations')
-# 	response=client_org.describe_account(AccountId=fAccountId)
-# 	email_addr=response['Account']['Email']
-# 	return (email_addr)
-
-# def find_org_attr(fProfile):
-# 	import boto3
-#
-# 	session_org = boto3.Session(profile_name=fProfile)
-# 	client_org = session_org.client('organizations')
-# 	response=client_org.describe_organization()
-# 	root_org=response['Organization']['MasterAccountId']
-# 	org_id=response['Organization']['Id']
-# 	# return {'root_org':root_org,'org_id':org_id}
-# 	return (root_org,org_id)
-
 def get_profiles(flevel,fSkipProfiles):
 	# If flevel
 	# 1: credentials file only
@@ -205,14 +175,12 @@ fmt='%-23s %-15s %-6s'
 child_fmt="\t\t%-20s %-20s"
 print()
 print(fmt % ("Organization's Profile","Root Account","ALZ"))
-# print(fmt % (("Organization's Profile","Root Account","ALZ","Set of Organization Accounts","Set of Org Emails"))
 print(fmt % ("----------------------","------------","---"))
-# print(fmt % ("----------------------","------------","---","----------------------------","------------"))
 NumOfAccounts=0
 
 for profile in RootProfiles:
 	child_accounts={}
-	MasterAcct=Inventory_Modules.find_org_root(profile)
+	MasterAcct=Inventory_Modules.find_account_number(profile)
 	child_accounts=Inventory_Modules.find_child_accounts(profile)
 	landing_zone=Inventory_Modules.find_if_lz(profile)
 	NumOfAccounts=NumOfAccounts + len(child_accounts)
@@ -225,5 +193,5 @@ for profile in RootProfiles:
 	for account in sorted(child_accounts):
 		print(child_fmt % (account,child_accounts[account]))
 print()
-print("Number of Accounts:",NumOfAccounts)
 print("Number of Organizations:",len(RootProfiles))
+print("Number of Organization Accounts:",NumOfAccounts)
