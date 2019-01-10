@@ -18,6 +18,24 @@ def get_ec2_regions(fkey):
 				RegionNames2.append(y)
 	return(RegionNames2)
 
+def get_profiles(fprofiles,fSkipProfiles):
+
+	import boto3, logging
+	from botocore.exceptions import ClientError
+
+	my_Session=boto3.Session()
+	my_profiles=my_Session._session.available_profiles
+	if "all" in fprofiles or "ALL" in fprofiles:
+		return(my_profiles)
+	ProfileList=[]
+	for x in fprofiles:
+		for y in my_profiles:
+			logging.info('Have %s| Looking for %s',y,x)
+			if y.find(x) >= 0:
+				logging.info('Found profile %s',y)
+				ProfileList.append(y)
+	return(ProfileList)
+
 def find_profile_instances(fProfile,fRegion):
 
 	import boto3
@@ -69,39 +87,75 @@ def find_load_balancers(fProfile,fRegion,fStackFragment,fStatus):
 				load_balancer_Copy.append(load_balancer)
 	return(load_balancer_Copy)
 
-def find_stacks(fProfile,fRegion,fStackFragment,fStatus):
+'''
+ocredentials is an object with the following structure:
+	- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+	- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+	- ['SessionToken'] holds the AWS_SESSION_TOKEN
+fRegion is a string
+fStackFragment is a list
+'''
+def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 
 	import boto3, logging, pprint
 	logging.info("Profile: %s | Region: %s | Fragment: %s | Status: %s",fProfile, fRegion, fStackFragment,fStatus)
-	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	session_cfn=boto3.Session(region_name=fRegion,
+				aws_access_key_id = credentials['AccessKeyId'],
+				aws_secret_access_key = credentials['SecretAccessKey'],
+				aws_session_token = credentials['SessionToken']
+				)
 	stack_info=session_cfn.client('cloudformation')
-	stacks=stack_info.list_stacks()
 	stacksCopy=[]
-	if (fStackFragment=='all' or fStackFragment=='ALL') and (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='all' or fStatus=='ALL'):
-		logging.info("Found all the stacks in Profile: %s in Region: %s with Fragment: %s and Status: %s", fProfile, fRegion, fStackFragment, fStatus)
-		return(stacks['StackSummaries'])
-	elif (fStackFragment=='all' or fStackFragment=='ALL'):
-		for stack in stacks['StackSummaries']:
-			if fStatus in stack['StackStatus']:
-				logging.info("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
-				stacksCopy.append(stack)
-	elif (fStatus=='active' or fStatus=='ACTIVE'):
+	if (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
+		# Send back stacks that are active, check the fragment further down.
+		stacks=stack_info.list_stacks(StackStatusFilter=["CREATE_COMPLETE","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE"])
 		for stack in stacks['StackSummaries']:
 			if fStackFragment in stack['StackName']:
+				# Check the fragment now - only send back those that match
+				logging.info("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
+				stacksCopy.append(stack)
+	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All'):
+		# Send back all stacks regardless of fragment, check the status further down.
+		stacks=stack_info.list_stacks()
+		for stack in stacks['StackSummaries']:
+			if fStatus in stack['StackStatus']:
+				# Check the status now - only send back those that match a single status
+				# I don't see this happening unless someone wants Stacks in a "Deleted" or "Rollback" type status
+				logging.info("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
+				stacksCopy.append(stack)
+	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='all' or fStatus=='ALL' or fStatus=='All'):
+		# Send back all stacks.
+		stacks=stack_info.list_stacks()
+		logging.info("Found all the stacks in Profile: %s in Region: %s", fProfile, fRegion)
+		return(stacks['StackSummaries'])
+	elif not (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
+		# Send back stacks that match the single status, check the fragment further down.
+		try:
+			stacks=stack_info.list_stacks(StackStatusFilter=[fStatus])
+		except Exception as e:
+			print(e)
+		for stack in stacks['StackSummaries']:
+			if fStackFragment in stack['StackName'] and fStatus in stack['StackStatus']:
+				# Check the fragment now - only send back those that match
 				logging.info("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
 	return(stacksCopy)
 
+'''
+fProfile is a string
+fRegion is a string
+fStackFragment is a list
+'''
 def find_stacksets(fProfile,fRegion,fStackFragment):
-
 	import boto3, logging, pprint
+
 	logging.info("Profile: %s | Region: %s | Fragment: %s",fProfile, fRegion, fStackFragment)
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	stack_info=session_cfn.client('cloudformation')
 	stacksets=stack_info.list_stack_sets(Status='ACTIVE')
 	stacksetsCopy=[]
 	# if fStackFragment=='all' or fStackFragment=='ALL':
-	if 'all' in fStackFragment or 'ALL' in fStackFragment:
+	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
 		logging.info("Found all the stacksets in Profile: %s in Region: %s with Fragment: %s", fProfile, fRegion, fStackFragment)
 		return(stacksets['Summaries'])
 	# elif (fStackFragment=='all' or fStackFragment=='ALL'):
@@ -199,21 +253,3 @@ def find_account_number(fProfile):
 	client_sts = session_sts.client('sts')
 	response=client_sts.get_caller_identity()['Account']
 	return (response)
-
-def get_profiles(fprofiles,fSkipProfiles):
-
-	import boto3, logging
-	from botocore.exceptions import ClientError
-
-	my_Session=boto3.Session()
-	my_profiles=my_Session._session.available_profiles
-	if "all" in fprofiles or "ALL" in fprofiles:
-		return(my_profiles)
-	ProfileList=[]
-	for x in fprofiles:
-		for y in my_profiles:
-			logging.info('Have %s| Looking for %s',y,x)
-			if y.find(x) >= 0:
-				logging.info('Found profile %s',y)
-				ProfileList.append(y)
-	return(ProfileList)

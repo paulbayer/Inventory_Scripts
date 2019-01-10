@@ -74,7 +74,8 @@ SkipProfiles=["default","Shared-Fid"]
 ERASE_LINE = '\x1b[2K'
 
 NumStacksFound = 0
-NumRegions = 0
+NumStackSetsFound=0
+NumMasterRegions = 0
 StacksToDelete=[]
 print()
 
@@ -87,25 +88,26 @@ fmt='%-20s | %-12s | %-10s | %-50s | %-25s | %-50s'
 print(fmt % ("Parent Profile","Acct Number","Region","Parent StackSet Name","Stack Status","Child Stack Name"))
 print(fmt %	("--------------","-----------","------","--------------------","----------------","----------------"))
 for pregion in RegionList:
-	NumRegions += 1
-	for profile in ProfileList: #Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles):
+	NumMasterRegions += 1
+	# This section gets the listing of Stacksets for the profile(s) that were supplied at the command line.
+	for profile in ProfileList:
 		try:
-			# cloudformation.list-stack-sets () gives you the stack-set-names and status of the stack-sets
 			print(ERASE_LINE,Fore.BLUE,"	Looking in profile {profile_name} in region {region_name}".format(profile_name=profile,region_name=pregion),Fore.RESET,end='\r')
 			Stacksets=Inventory_Modules.find_stacksets(profile,pregion,pstackfrag)
+			NumStackSetsFound = NumStackSetsFound + len(Stacksets)
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(profile+": Authorization Failure")
 
-		# Find which accounts the stacks belong to and in which regions
+		# Delve into the stack associations for each StackSet, and find which accounts and regions have the child stacks
 		for Stackset in Stacksets:
 			session_cfn=boto3.Session(profile_name=profile, region_name=pregion)
 			stackset_info=session_cfn.client('cloudformation')
 			stackset_associations=stackset_info.list_stack_instances(StackSetName=Stackset['StackSetName'])
 			logging.info("Profile: %s Stack: %s has %s child stacks" % (profile,Stackset['StackSetName'],len(stackset_associations['Summaries'])))
 			for operation in stackset_associations['Summaries']:
-				logging.debug("StackSet %s in the parent profile %s is connected to the account %s in the %s Region" % (Stackset['StackSetName'],profile,operation['Account'],operation['Region']))
-				# pprint.pprint(stacksetopertaion[y]['Account'])
+				# This is where we begin going into each child account and finding the names of the stacks that belong to the parent stackset
+				logging.info("StackSet %s in the parent profile %s is connected to the account %s in the %s Region" % (Stackset['StackSetName'],profile,operation['Account'],operation['Region']))
 				session_sts=boto3.Session(profile_name=profile)
 				client_sts=session_sts.client('sts')
 				RoleArn="arn:aws:iam::"+operation['Account']+":role/AWSCloudFormationStackSetExecutionRole"
@@ -119,28 +121,37 @@ for pregion in RegionList:
 						logging.info(profile+": Access Denied. Probably the role",RoleArn,"doesn't exist, or you aren't allowed to use it.")
 					continue
 				credentials=assumed_role['Credentials']
-				cfn_client=boto3.client(
-					'cloudformation',
-					aws_access_key_id = credentials['AccessKeyId'],
-					aws_secret_access_key = credentials['SecretAccessKey'],
-					aws_session_token = credentials['SessionToken']
-				)
-				logging.info(Fore.BLUE+"Instead of deleting just yet - we'll list it first..."+Fore.RESET)
-				response=cfn_client.list_stacks(StackStatusFilter=['CREATE_COMPLETE','UPDATE_ROLLBACK_COMPLETE','UPDATE_COMPLETE','CREATE_FAILED'])['StackSummaries']
-				for i in range(len(response)):
-					if Stackset['StackSetName'] in response[i]['StackName']:
-						ChildStackName=response[i]['StackName']
-						StackStatus=response[i]['StackStatus']
-						logging.info("ChildStackName: "+ChildStackName)
-				print(fmt % (profile, operation['Account'],operation['Region'], Stackset['StackSetName'],StackStatus,ChildStackName))
-				# logging.info("Found:",response[i]['StackName'])
-				StacksToDelete.append([profile,operation['Account'],operation['Region'],Stackset['StackSetName'],StackStatus,ChildStackName])
-				NumStacksFound+=1
+				for stackfrag in pstackfrag:
+					initial_response=Inventory_Modules.find_stacks(credentials,operation['Region'],pstackfrag)
+					response.update(initial_response)
+				# response=cfn_client.list_stacks(StackStatusFilter=['CREATE_COMPLETE','UPDATE_ROLLBACK_COMPLETE','UPDATE_COMPLETE','CREATE_FAILED'])['StackSummaries']
+				logging.info(Fore.BLUE+"Instead of deleting the relevant child stack just yet - we'll list it first..."+Fore.RESET)
+				if len(response)==0:
+					# This is needed because the StackSet could list an account / region which doesn't actually have any stacks in the child account.
+					continue
+				else:
+					# This case is where the response includes stacks (and those stacks will contain more than just the stacks that are connected to the original stackset name)
+					for i in range(len(response)):
+						# logging.info("StackSetName"+Stackset['StackSetName']+" | response StackName: "+response[i]['StackName'])
+						# This if statement below is to determine if the child stack is associated with the parent stackset.
+						if Stackset['StackSetName'] in response[i]['StackName']:
+							ChildStackName=response[i]['StackName']
+							StackStatus=response[i]['StackStatus']
+							logging.info("ChildStackName: "+ChildStackName)
+							print(fmt % (profile, operation['Account'],operation['Region'], Stackset['StackSetName'],StackStatus,ChildStackName))
+							# logging.info("Found:",response[i]['StackName'])
+							StacksToDelete.append([profile,operation['Account'],operation['Region'],Stackset['StackSetName'],StackStatus,ChildStackName])
+
+# pprint.pprint(StacksToDelete)
+print("There were {} instances in this StacksToDelete dictionary".format(len(StacksToDelete)))
+# sys.exit(9)
 
 # Go to all of those accounts and delete their stacks
 print(ERASE_LINE,"There are {} stacks to delete".format(len(StacksToDelete)))
+StackRegionSet=set()
 for i in range(len(StacksToDelete)):
-	logging.info("Beginning to delete stack %s of %s now." % (i+1,len(StacksToDelete)))
+	logging.info("Beginning to delete stackname %s - %s of %s now." % (StacksToDelete[i][5], i+1,len(StacksToDelete)))
+	StackRegionSet.add(StacksToDelete[i][2])
 	if not pdryrun:
 		role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(StacksToDelete[i][1])
 		# Assume an admin role in the Child Account
@@ -151,9 +162,19 @@ for i in range(len(StacksToDelete)):
 			aws_secret_access_key=account_credentials['SecretAccessKey'],
 			aws_session_token=account_credentials['SessionToken'])
 		response=cfn_client.delete_stack(StackName=StacksToDelete[i][5])
+		print("Deleted stack {} in account {} in region {}".format(StacksToDelete[i][5],StacksToDelete[i][1],StacksToDelete[i][2]))
 	else:
-		print("DryRun is enabled, so we didn't delete the stack we found in account %s in region %s" % (StacksToDelete[i][1], StacksToDelete[i][2]))
+		# print("DryRun is enabled, so we didn't delete the stack we found in account %s in region %s" % (StacksToDelete[i][1], StacksToDelete[i][2]))
+		print("DryRun is enabled, so we didn't delete the stack we found in account {} in region {} called {}".format (StacksToDelete[i][1],StacksToDelete[i][2],StacksToDelete[i][5]))
+
+# Now to delete the original stackset itself
+if not pdryrun:
+	for Stackset in Stacksets:
+		logging.info("Deleting StackSet %s in Account %s" % (Stackset['StackSetName'],))
+		stacksets_to_delete=stackset_info.delete_stack_set(StackSetName=Stackset['StackSetName'])
+
 
 print()
-print(Fore.RED+"Found {} Stacks across {} regions across {} profiles".format(NumStacksFound,NumRegions,len(ProfileList))+Fore.RESET)
+print(Fore.RED+"Intially found {} StackSets across {} regions within the Master profile".format(NumStackSetsFound,NumMasterRegions)+Fore.RESET)
+print(Fore.RED+"Then we found {} child stacks across {} regions across {} profiles".format(len(StacksToDelete),len(StackRegionSet),len(ProfileList))+Fore.RESET)
 print()
