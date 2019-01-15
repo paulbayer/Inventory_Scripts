@@ -27,7 +27,7 @@ parser.add_argument(
 	nargs="*",
 	metavar="CloudFormation stack fragment",
 	default=["all"],
-	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
+	help="List containing fragment(s) of the cloudformation stack or stackset(s) you want to check for.")
 parser.add_argument(
 	"-r","--region",
 	nargs="*",
@@ -111,6 +111,7 @@ for pregion in RegionList:
 				session_sts=boto3.Session(profile_name=profile)
 				client_sts=session_sts.client('sts')
 				RoleArn="arn:aws:iam::"+operation['Account']+":role/AWSCloudFormationStackSetExecutionRole"
+				response=[]
 				try:
 					assumed_role=client_sts.assume_role(
 						RoleArn=RoleArn,
@@ -122,8 +123,16 @@ for pregion in RegionList:
 					continue
 				credentials=assumed_role['Credentials']
 				for stackfrag in pstackfrag:
-					initial_response=Inventory_Modules.find_stacks(credentials,operation['Region'],pstackfrag)
-					response.update(initial_response)
+					initial_response=Inventory_Modules.find_stacks_in_acct(credentials,operation['Region'],stackfrag)
+					# print()
+					# print("This many stacks: {}".format(len(initial_response)))
+					# pprint.pprint(initial_response)
+					for j in range(len(initial_response)):
+						# pprint.pprint(initial_response[j])
+						response.append(initial_response[j])
+						# pprint.pprint(response)
+						# print("******")
+				# pprint.pprint(response)
 				# response=cfn_client.list_stacks(StackStatusFilter=['CREATE_COMPLETE','UPDATE_ROLLBACK_COMPLETE','UPDATE_COMPLETE','CREATE_FAILED'])['StackSummaries']
 				logging.info(Fore.BLUE+"Instead of deleting the relevant child stack just yet - we'll list it first..."+Fore.RESET)
 				if len(response)==0:
@@ -143,15 +152,17 @@ for pregion in RegionList:
 							StacksToDelete.append([profile,operation['Account'],operation['Region'],Stackset['StackSetName'],StackStatus,ChildStackName])
 
 # pprint.pprint(StacksToDelete)
-print("There were {} instances in this StacksToDelete dictionary".format(len(StacksToDelete)))
+# print("There were {} instances in this StacksToDelete dictionary".format(len(StacksToDelete)))
 # sys.exit(9)
 
 # Go to all of those accounts and delete their stacks
 print(ERASE_LINE,"There are {} stacks to delete".format(len(StacksToDelete)))
 StackRegionSet=set()
+AccountSet=set()
 for i in range(len(StacksToDelete)):
 	logging.info("Beginning to delete stackname %s - %s of %s now." % (StacksToDelete[i][5], i+1,len(StacksToDelete)))
 	StackRegionSet.add(StacksToDelete[i][2])
+	AccountSet.add(StacksToDelete[i][1])
 	if not pdryrun:
 		role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(StacksToDelete[i][1])
 		# Assume an admin role in the Child Account
@@ -176,5 +187,5 @@ if not pdryrun:
 
 print()
 print(Fore.RED+"Intially found {} StackSets across {} regions within the Master profile".format(NumStackSetsFound,NumMasterRegions)+Fore.RESET)
-print(Fore.RED+"Then we found {} child stacks across {} regions across {} profiles".format(len(StacksToDelete),len(StackRegionSet),len(ProfileList))+Fore.RESET)
+print(Fore.RED+"Then we found {} child stacks across {} regions across {} accounts".format(len(StacksToDelete),len(StackRegionSet),len(AccountSet))+Fore.RESET)
 print()

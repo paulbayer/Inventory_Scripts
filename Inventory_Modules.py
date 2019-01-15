@@ -98,11 +98,11 @@ fStackFragment is a list
 def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 
 	import boto3, logging, pprint
-	logging.info("Profile: %s | Region: %s | Fragment: %s | Status: %s",fProfile, fRegion, fStackFragment,fStatus)
+	logging.info("Key ID #: %s | Region: %s | Fragment: %s | Status: %s",str(ocredentials['AccessKeyId']), fRegion, fStackFragment,fStatus)
 	session_cfn=boto3.Session(region_name=fRegion,
-				aws_access_key_id = credentials['AccessKeyId'],
-				aws_secret_access_key = credentials['SecretAccessKey'],
-				aws_session_token = credentials['SessionToken']
+				aws_access_key_id = ocredentials['AccessKeyId'],
+				aws_secret_access_key = ocredentials['SecretAccessKey'],
+				aws_session_token = ocredentials['SessionToken']
 				)
 	stack_info=session_cfn.client('cloudformation')
 	stacksCopy=[]
@@ -112,7 +112,7 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 		for stack in stacks['StackSummaries']:
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match
-				logging.info("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
+				logging.info("Found stack %s in AccessKeyId: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccessKeyId'], fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
 	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All'):
 		# Send back all stacks regardless of fragment, check the status further down.
