@@ -207,7 +207,6 @@ def find_org_attr(fProfile):
 	client_org = session_org.client('organizations')
 	response=client_org.describe_organization()['Organization']
 	return (response)
-<<<<<<< HEAD
 
 def find_org_attr2(fProfile):
 	import boto3
@@ -232,9 +231,6 @@ def find_child_accounts2(fProfile):
 		child_emails.append(account['Email'])
 	return (child_accounts,child_emails)
 
-def find_child_accounts(fProfile):
-	import boto3
-=======
 '''
 This is an example of the dictionary response from this call:
 	{
@@ -259,7 +255,6 @@ Typically your client call will use the result of "response['Organization']['Mas
 def find_child_accounts(fProfile="default"):
 	import boto3, logging
 	from botocore.exceptions import ClientError, NoCredentialsError
->>>>>>> mainline
 
 	child_accounts={}
 	session_org = boto3.Session(profile_name=fProfile)
