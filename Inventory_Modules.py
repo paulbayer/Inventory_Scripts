@@ -87,7 +87,6 @@ def find_load_balancers(fProfile,fRegion,fStackFragment,fStatus):
 				load_balancer_Copy.append(load_balancer)
 	return(load_balancer_Copy)
 
-
 def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 	"""
 	ocredentials is an object with the following structure:
@@ -141,12 +140,12 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 				stacksCopy.append(stack)
 	return(stacksCopy)
 
-'''
-fProfile is a string
-fRegion is a string
-fStackFragment is a list
-'''
 def find_stacksets(fProfile,fRegion,fStackFragment):
+	"""
+	fProfile is a string
+	fRegion is a string
+	fStackFragment is a list
+	"""
 	import boto3, logging, pprint
 
 	logging.info("Profile: %s | Region: %s | Fragment: %s",fProfile, fRegion, fStackFragment)
@@ -231,28 +230,27 @@ def find_child_accounts2(fProfile):
 		child_emails.append(account['Email'])
 	return (child_accounts,child_emails)
 
-'''
-This is an example of the dictionary response from this call:
-	{
-	    "Organization": {
-	        "Id": "o-5zb7j55cba",
-	        "Arn": "arn:aws:organizations::693014690250:organization/o-5zb7j55cba",
-	        "FeatureSet": "ALL",
-	        "MasterAccountArn": "arn:aws:organizations::693014690250:account/o-5zb7j55cba/693014690250",
-	        "MasterAccountId": "693014690250",
-	        "MasterAccountEmail": "paulbaye+50@amazon.com",
-	        "AvailablePolicyTypes": [
-	            {
-	                "Type": "SERVICE_CONTROL_POLICY",
-	                "Status": "ENABLED"
-	            }
-	        ]
-	    }
-	}
-Typically your client call will use the result of "response['Organization']['MasterAccountId']" or something like that, depending on which attribute you're interested in.
-'''
-
 def find_child_accounts(fProfile="default"):
+	"""
+	This is an example of the dictionary response from this call:
+		{
+		    "Organization": {
+		        "Id": "o-5zb7j55cba",
+		        "Arn": "arn:aws:organizations::693014690250:organization/o-5zb7j55cba",
+		        "FeatureSet": "ALL",
+		        "MasterAccountArn": "arn:aws:organizations::693014690250:account/o-5zb7j55cba/693014690250",
+		        "MasterAccountId": "693014690250",
+		        "MasterAccountEmail": "paulbaye+50@amazon.com",
+		        "AvailablePolicyTypes": [
+		            {
+		                "Type": "SERVICE_CONTROL_POLICY",
+		                "Status": "ENABLED"
+		            }
+		        ]
+		    }
+		}
+	Typically your client call will use the result of "response['Organization']['MasterAccountId']" or something like that, depending on which attribute you're interested in.
+	"""
 	import boto3, logging
 	from botocore.exceptions import ClientError, NoCredentialsError
 
