@@ -87,16 +87,16 @@ def find_load_balancers(fProfile,fRegion,fStackFragment,fStatus):
 				load_balancer_Copy.append(load_balancer)
 	return(load_balancer_Copy)
 
-'''
-ocredentials is an object with the following structure:
-	- ['AccessKeyId'] holds the AWS_ACCESS_KEY
-	- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
-	- ['SessionToken'] holds the AWS_SESSION_TOKEN
-fRegion is a string
-fStackFragment is a list
-'''
-def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 
+def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+	fRegion is a string
+	fStackFragment is a list
+	"""
 	import boto3, logging, pprint
 	logging.info("Key ID #: %s | Region: %s | Fragment: %s | Status: %s",str(ocredentials['AccessKeyId']), fRegion, fStackFragment,fStatus)
 	session_cfn=boto3.Session(region_name=fRegion,

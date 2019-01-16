@@ -1,13 +1,19 @@
 #!/usr/local/bin/python3
 
-import os, sys, pprint, argparse
+'''
+TODO:
+	- Enable this script to accept a Session Token to allow for Federated users via Isengard
+	- Pythonize the whole thing
+	- Write a requirements file to desribe the requirements (like colorama, pprint, argparse, etc.)
+	- More Commenting throughout script
+'''
+
+import os, sys, pprint, argparse, logging
 # from sty import
 import Inventory_Modules
 import boto3
 from colorama import init,Fore,Back,Style
 from botocore.exceptions import ClientError, NoCredentialsError
-
-import logging
 
 init()
 
@@ -77,6 +83,7 @@ NumStacksFound = 0
 NumStackSetsFound=0
 NumMasterRegions = 0
 StacksToDelete=[]
+StackInstancesToDelete=[]
 print()
 
 # Find all stacksets in this account
@@ -84,6 +91,14 @@ RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
 ProfileList=Inventory_Modules.get_profiles(pProfiles,SkipProfiles)
 logging.info("There are %s profiles in your list" % (len(ProfileList)))
 
+if pdryrun:
+	print("You asked me to find (but not delete) stacksets that match the following:")
+else:
+	print("You asked me to find (and delete) stacksets that match the following:")
+print("		In profiles that contain these string fragments: {}".format(pProfiles))
+print("		In these regions: {}".format(pRegionList))
+print("		For stacksets that contain these fragments: {}".format(pstackfrag))
+print()
 fmt='%-20s | %-12s | %-10s | %-50s | %-25s | %-50s'
 print(fmt % ("Parent Profile","Acct Number","Region","Parent StackSet Name","Stack Status","Child Stack Name"))
 print(fmt %	("--------------","-----------","------","--------------------","----------------","----------------"))
@@ -108,6 +123,7 @@ for pregion in RegionList:
 			for operation in stackset_associations['Summaries']:
 				# This is where we begin going into each child account and finding the names of the stacks that belong to the parent stackset
 				logging.info("StackSet %s in the parent profile %s is connected to the account %s in the %s Region" % (Stackset['StackSetName'],profile,operation['Account'],operation['Region']))
+				StackInstancesToDelete.append(operation)
 				session_sts=boto3.Session(profile_name=profile)
 				client_sts=session_sts.client('sts')
 				RoleArn="arn:aws:iam::"+operation['Account']+":role/AWSCloudFormationStackSetExecutionRole"
@@ -159,6 +175,21 @@ for pregion in RegionList:
 print(ERASE_LINE,"There are {} stacks to delete".format(len(StacksToDelete)))
 StackRegionSet=set()
 AccountSet=set()
+print("There are {} instances to delete".format(len(StackInstancesToDelete)))
+pprint.pprint(StackInstancesToDelete)
+for i in range(len(StackInstancesToDelete)):
+	if not pdryrun:
+		FindComma=str(StackInstancesToDelete[i]['StackSetId']).find(":")
+		StackSetName=str(StackInstancesToDelete[i]['StackSetId'])[0:FindComma]
+		## To Do:
+		# StackSetName=get_stack_name_from_stack_set_id(StackInstancesToDelete[i]['StackSetId'])
+		print("This is the stack name: {}".format(StackSetName))
+		StackInstance_response=stackset_info.delete_stack_instance(
+		    			StackSetName=StackSetName,
+						StackInstanceAccount=StackInstancesToDelete[i]['Account'],
+						StackInstanceRegion=StackInstancesToDelete[i]['Region']
+						)
+
 for i in range(len(StacksToDelete)):
 	logging.info("Beginning to delete stackname %s - %s of %s now." % (StacksToDelete[i][5], i+1,len(StacksToDelete)))
 	StackRegionSet.add(StacksToDelete[i][2])
@@ -181,11 +212,11 @@ for i in range(len(StacksToDelete)):
 # Now to delete the original stackset itself
 if not pdryrun:
 	for Stackset in Stacksets:
-		logging.info("Deleting StackSet %s in Account %s" % (Stackset['StackSetName'],))
+		logging.info("Deleting StackSet %s in Account %s" % (Stackset['StackSetName'],"Account ID here"))
 		stacksets_to_delete=stackset_info.delete_stack_set(StackSetName=Stackset['StackSetName'])
 
 
 print()
-print(Fore.RED+"Intially found {} StackSets across {} regions within the Master profile".format(NumStackSetsFound,NumMasterRegions)+Fore.RESET)
+print(Fore.RED+"Initially found {} StackSets across {} regions within the Master profile".format(NumStackSetsFound,NumMasterRegions)+Fore.RESET)
 print(Fore.RED+"Then we found {} child stacks across {} regions across {} accounts".format(len(StacksToDelete),len(StackRegionSet),len(AccountSet))+Fore.RESET)
 print()
