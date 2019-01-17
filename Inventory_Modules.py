@@ -170,6 +170,20 @@ def find_stacksets(fProfile,fRegion,fStackFragment):
 					stacksetsCopy.append(stack)
 	return(stacksetsCopy)
 
+def find_stack_instances(fProfile,fRegion,fStackSetName):
+	"""
+	fProfile is a string
+	fRegion is a string
+	fStackSetName is a string
+	"""
+	import boto3, logging, pprint
+
+	logging.info("Profile: %s | Region: %s | StackSetName: %s",fProfile, fRegion, fStackSetName)
+	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	stack_info=session_cfn.client('cloudformation')
+	stack_instances=stack_info.list_stack_instances(StackSetName=fStackSetName)
+	return(stack_instances)
+
 def find_if_org_root(fProfile):
 
 	org_acct_number=find_org_attr(fProfile)
