@@ -119,7 +119,7 @@ for pregion in RegionList:
 					)
 				except ClientError as my_Error:
 					if str(my_Error).find("AccessDenied") > 0:
-						logging.info(profile+": Access Denied. Probably the role",RoleArn,"doesn't exist, or you aren't allowed to use it.")
+						logging.info(profile+": Access Denied. Probably the role "+RoleArn+" doesn't exist, or you aren't allowed to use it.")
 					continue
 				credentials=assumed_role['Credentials']
 				for stackfrag in pstackfrag:
@@ -186,7 +186,7 @@ if not pdryrun:
 			AccountSet.add(StacksToDelete[i][1])
 			logging.info("Deleting StackSet %s in Account %s" % (Stackset['StackSetName'],"Account ID Here"))
 			stacks_in_stackset_to_delete=stackset_info.delete_stack_instances(
-				StackSetName=StackSetName[i]['StackSetName'],
+				StackSetName=Stackset['StackSetName'],
 				Accounts=AccountSet,
 			    Regions=StackRegionSet,
 	    		RetainStacks=False
