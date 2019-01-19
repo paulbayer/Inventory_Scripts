@@ -181,8 +181,17 @@ for i in range(len(StacksToDelete)):
 # Now to delete the original stackset itself
 if not pdryrun:
 	for Stackset in Stacksets:
-		logging.info("Deleting StackSet %s in Account %s" % (Stackset['StackSetName'],"Account ID Here"))
-		stacksets_to_delete=stackset_info.delete_stack_set(StackSetName=Stackset['StackSetName'])
+		for i in range(len(StacksToDelete)):
+			StackRegionSet.add(StacksToDelete[i][2])
+			AccountSet.add(StacksToDelete[i][1])
+			logging.info("Deleting StackSet %s in Account %s" % (Stackset['StackSetName'],"Account ID Here"))
+			stacks_in_stackset_to_delete=stackset_info.delete_stack_instances(
+				StackSetName=StackSetName[i]['StackSetName'],
+				Accounts=AccountSet,
+			    Regions=StackRegionSet,
+	    		RetainStacks=False
+			)
+			stacksets_to_delete=stackset_info.delete_stack_set(StackSetName=Stackset['StackSetName'])
 
 
 print()
