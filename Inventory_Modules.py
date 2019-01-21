@@ -12,9 +12,9 @@ def get_ec2_regions(fkey):
 	RegionNames2=[]
 	for x in fkey:
 		for y in RegionNames:
-			logging.info('Have %s | Looking for %s',y,x)
+			logging.debug('Have %s | Looking for %s',y,x)
 			if y.find(x) >=0:
-				logging.info('Found %s',y)
+				logging.debug('Found %s',y)
 				RegionNames2.append(y)
 	return(RegionNames2)
 
@@ -30,9 +30,9 @@ def get_profiles(fprofiles,fSkipProfiles):
 	ProfileList=[]
 	for x in fprofiles:
 		for y in my_profiles:
-			logging.info('Have %s| Looking for %s',y,x)
+			logging.debug('Have %s| Looking for %s',y,x)
 			if y.find(x) >= 0:
-				logging.info('Found profile %s',y)
+				logging.debug('Found profile %s',y)
 				ProfileList.append(y)
 	return(ProfileList)
 
@@ -44,6 +44,116 @@ def find_profile_instances(fProfile,fRegion):
 	instances=instance_info.describe_instances()
 	return(instances)
 
+def find_if_org_root(fProfile):
+
+	org_acct_number=find_org_attr(fProfile)
+	acct_number=find_account_number(fProfile)
+	if org_acct_number['Organization']['MasterAccountId']==acct_number:
+		return(True)
+	else:
+		return(False)
+
+def find_if_lz(fProfile):
+	import boto3
+
+	session_org = boto3.Session(profile_name=fProfile)
+	client_org = session_org.client('s3')
+	response=client_org.list_buckets()
+	for bucket in response['Buckets']:
+		if "aws-landing-zone-configuration" in bucket['Name']:
+				return(True)
+	return(False)
+
+def find_acct_email(fOrgRootProfile,fAccountId):
+	import boto3
+
+	session_org = boto3.Session(profile_name=fOrgRootProfile)
+	client_org = session_org.client('organizations')
+	email_addr=client_org.describe_account(AccountId=fAccountId)
+	# email_addr=response['Account']['Email']
+	return (email_addr['Account']['Email'])
+
+def find_org_attr(fProfile):
+	import boto3
+
+	session_org = boto3.Session(profile_name=fProfile)
+	client_org = session_org.client('organizations')
+	response=client_org.describe_organization()['Organization']
+	return (response)
+
+def find_org_attr2(fProfile):
+	import boto3
+	## Unused... and renamed
+	session_org = boto3.Session(profile_name=fProfile)
+	client_org = session_org.client('organizations')
+	response=client_org.describe_organization()
+	root_org=response['Organization']['MasterAccountId']
+	org_id=response['Organization']['Id']
+	return (root_org,org_id)
+
+def find_child_accounts2(fProfile):
+	import boto3
+	# Renamed since I'm using the one below instead.
+	child_accounts=[]
+	child_emails=[]
+	session_org = boto3.Session(profile_name=fProfile)
+	client_org = session_org.client('organizations')
+	response=client_org.list_accounts()
+	for account in response['Accounts']:
+		child_accounts.append(account['Id'])
+		child_emails.append(account['Email'])
+	return (child_accounts,child_emails)
+
+def find_child_accounts(fProfile="default"):
+	"""
+	This is an example of the dictionary response from this call:
+		{
+		    "Organization": {
+		        "Id": "o-5zb7j55cba",
+		        "Arn": "arn:aws:organizations::693014690250:organization/o-5zb7j55cba",
+		        "FeatureSet": "ALL",
+		        "MasterAccountArn": "arn:aws:organizations::693014690250:account/o-5zb7j55cba/693014690250",
+		        "MasterAccountId": "693014690250",
+		        "MasterAccountEmail": "paulbaye+50@amazon.com",
+		        "AvailablePolicyTypes": [
+		            {
+		                "Type": "SERVICE_CONTROL_POLICY",
+		                "Status": "ENABLED"
+		            }
+		        ]
+		    }
+		}
+	Typically your client call will use the result of "response['Organization']['MasterAccountId']" or something like that, depending on which attribute you're interested in.
+	"""
+	import boto3, logging
+	from botocore.exceptions import ClientError, NoCredentialsError
+
+	child_accounts={}
+	session_org = boto3.Session(profile_name=fProfile)
+	try:
+		client_org = session_org.client('organizations')
+		response=client_org.list_accounts()
+	except ClientError as my_Error:
+		logging.info("Profile %s doesn't represent an Org Root account",fProfile)
+		# print("Failed on %s",my_Error)
+		return()
+	for account in response['Accounts']:
+		# Create a key/value pair with the AccountID:AccountEmail
+		child_accounts[account['Id']]=account['Email']
+	return (child_accounts)
+
+def find_account_number(fProfile):
+
+	import boto3
+	session_sts = boto3.Session(profile_name=fProfile)
+	client_sts = session_sts.client('sts')
+	response=client_sts.get_caller_identity()['Account']
+	return (response)
+
+"""
+Above - Generic functions
+Below - Specific functions to specific features
+"""
 def find_profile_vpcs(fProfile,fRegion):
 
 	import boto3
@@ -55,6 +165,22 @@ def find_profile_vpcs(fProfile,fRegion):
 	else:
 		return(vpcs)
 	# return(vpcs)
+
+def find_gd_detectors(fProfile,fRegion):
+
+	import boto3
+	session=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	object_info=session.client('guardduty')
+	object=object_info.list_detectors()
+	return(object)
+	# return(vpcs)
+
+def del_gd_detectors(fProfile,fRegion,fDetectorId):
+	import boto3
+	session=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	object_info=session.client('guardduty')
+	object=object_info.delete_detector(DetectorId=fDetectorId)
+	return(object)
 
 def find_profile_functions(fProfile,fRegion):
 
@@ -183,109 +309,3 @@ def find_stack_instances(fProfile,fRegion,fStackSetName):
 	stack_info=session_cfn.client('cloudformation')
 	stack_instances=stack_info.list_stack_instances(StackSetName=fStackSetName)
 	return(stack_instances)
-
-def find_if_org_root(fProfile):
-
-	org_acct_number=find_org_attr(fProfile)
-	acct_number=find_account_number(fProfile)
-	if org_acct_number['Organization']['MasterAccountId']==acct_number:
-		return(True)
-	else:
-		return(False)
-
-def find_if_lz(fProfile):
-	import boto3
-
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('s3')
-	response=client_org.list_buckets()
-	for bucket in response['Buckets']:
-		if "aws-landing-zone-configuration" in bucket['Name']:
-				return(True)
-	return(False)
-
-def find_acct_email(fOrgRootProfile,fAccountId):
-	import boto3
-
-	session_org = boto3.Session(profile_name=fOrgRootProfile)
-	client_org = session_org.client('organizations')
-	email_addr=client_org.describe_account(AccountId=fAccountId)
-	# email_addr=response['Account']['Email']
-	return (email_addr['Account']['Email'])
-
-def find_org_attr(fProfile):
-	import boto3
-
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
-	response=client_org.describe_organization()['Organization']
-	return (response)
-
-def find_org_attr2(fProfile):
-	import boto3
-	## Unused... and renamed
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
-	response=client_org.describe_organization()
-	root_org=response['Organization']['MasterAccountId']
-	org_id=response['Organization']['Id']
-	return (root_org,org_id)
-
-def find_child_accounts2(fProfile):
-	import boto3
-	# Renamed since I'm using the one below instead.
-	child_accounts=[]
-	child_emails=[]
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
-	response=client_org.list_accounts()
-	for account in response['Accounts']:
-		child_accounts.append(account['Id'])
-		child_emails.append(account['Email'])
-	return (child_accounts,child_emails)
-
-def find_child_accounts(fProfile="default"):
-	"""
-	This is an example of the dictionary response from this call:
-		{
-		    "Organization": {
-		        "Id": "o-5zb7j55cba",
-		        "Arn": "arn:aws:organizations::693014690250:organization/o-5zb7j55cba",
-		        "FeatureSet": "ALL",
-		        "MasterAccountArn": "arn:aws:organizations::693014690250:account/o-5zb7j55cba/693014690250",
-		        "MasterAccountId": "693014690250",
-		        "MasterAccountEmail": "paulbaye+50@amazon.com",
-		        "AvailablePolicyTypes": [
-		            {
-		                "Type": "SERVICE_CONTROL_POLICY",
-		                "Status": "ENABLED"
-		            }
-		        ]
-		    }
-		}
-	Typically your client call will use the result of "response['Organization']['MasterAccountId']" or something like that, depending on which attribute you're interested in.
-	"""
-	import boto3, logging
-	from botocore.exceptions import ClientError, NoCredentialsError
-
-	child_accounts={}
-	session_org = boto3.Session(profile_name=fProfile)
-	try:
-		client_org = session_org.client('organizations')
-		response=client_org.list_accounts()
-	except ClientError as my_Error:
-		logging.info("Profile %s doesn't represent an Org Root account",fProfile)
-		# print("Failed on %s",my_Error)
-		return()
-	for account in response['Accounts']:
-		# Create a key/value pair with the AccountID:AccountEmail
-		child_accounts[account['Id']]=account['Email']
-	return (child_accounts)
-
-def find_account_number(fProfile):
-
-	import boto3
-	session_sts = boto3.Session(profile_name=fProfile)
-	client_sts = session_sts.client('sts')
-	response=client_sts.get_caller_identity()['Account']
-	return (response)
