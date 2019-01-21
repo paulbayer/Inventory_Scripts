@@ -163,10 +163,11 @@ for i in range(len(StacksToDelete)):
 	logging.info("Beginning to delete stackname %s - %s of %s now." % (StacksToDelete[i][5], i+1,len(StacksToDelete)))
 	StackRegionSet.add(StacksToDelete[i][2])
 	AccountSet.add(StacksToDelete[i][1])
-	if not pdryrun:
-		role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(StacksToDelete[i][1])
+	if False:
+	# if not pdryrun:
+		# role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(StacksToDelete[i][1])
 		# Assume an admin role in the Child Account
-		account_credentials = client_sts.assume_role(RoleArn=role_arn, RoleSessionName="StackSetDeleter")['Credentials']
+		account_credentials = client_sts.assume_role(RoleArn=RoleArn, RoleSessionName="StackSetDeleter")['Credentials']
 		cfn_client=boto3.client('cloudformation',
 			region_name=StacksToDelete[i][2],
 			aws_access_key_id=account_credentials['AccessKeyId'],
