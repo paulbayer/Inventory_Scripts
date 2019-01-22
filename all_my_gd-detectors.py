@@ -91,9 +91,15 @@ for pregion in RegionList:
 			NumObjects=len(Output['DetectorIds'])
 			logging.info("Profile: %s | Region: %s | Found %s Items",profile,pregion,NumObjects)
 			print(ERASE_LINE,Fore.RED+"Profile: {} Region: {} Found {} Items".format(profile,pregion,NumObjects)+Fore.RESET,end='\r')
-			if NumObjects > 0:
+			if NumObjects == 1:
 				DetectorsToDelete.append([profile,pregion,Output['DetectorIds'][0]])
-
+			elif NumObjects == 0:
+				#No Dectors Found
+				logging.warning("Profile %s in region %s found no detectors",profile,pregion)
+				continue
+			else:
+				logging.warning("Profile %s in region %s somehow has more than 1 Detector. Run!!",profile,pregion)
+				break
 			"""
 			Format of DetectorsToDelete List:
 				[0] = Profile name
