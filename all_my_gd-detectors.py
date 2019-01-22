@@ -90,7 +90,7 @@ for pregion in RegionList:
 			Output=Inventory_Modules.find_gd_detectors(profile,pregion)
 			NumObjects=len(Output['DetectorIds'])
 			logging.info("Profile: %s | Region: %s | Found %s Items",profile,pregion,NumObjects)
-			print(ERASE_LINE,"Profile: {} Region: {} Found {} Items".format(profile,pregion,NumObjects),end='\r')
+			print(ERASE_LINE,Fore.RED+"Profile: {} Region: {} Found {} Items".format(profile,pregion,NumObjects)+Fore.RESET,end='\r')
 			if NumObjects > 0:
 				DetectorsToDelete.append([profile,pregion,Output['DetectorIds'][0]])
 
