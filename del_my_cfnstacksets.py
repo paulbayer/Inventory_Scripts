@@ -188,8 +188,8 @@ if not pdryrun:
 			logging.info("Deleting StackSet %s in Account %s" % (Stackset['StackSetName'],"Account ID Here"))
 			stacks_in_stackset_to_delete=stackset_info.delete_stack_instances(
 				StackSetName=Stackset['StackSetName'],
-				Accounts=AccountSet,
-			    Regions=StackRegionSet,
+				Accounts=list(AccountSet),
+			    Regions=list(StackRegionSet),
 	    		RetainStacks=False
 			)
 			stacksets_to_delete=stackset_info.delete_stack_set(StackSetName=Stackset['StackSetName'])
