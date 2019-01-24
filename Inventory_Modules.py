@@ -87,18 +87,85 @@ def find_load_balancers(fProfile,fRegion,fStackFragment,fStatus):
 				load_balancer_Copy.append(load_balancer)
 	return(load_balancer_Copy)
 
-'''
-ocredentials is an object with the following structure:
-	- ['AccessKeyId'] holds the AWS_ACCESS_KEY
-	- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
-	- ['SessionToken'] holds the AWS_SESSION_TOKEN
-fRegion is a string
-fStackFragment is a list
-'''
+def find_stacks(fprofile,fRegion,fStackFragment,fStatus="active"):
+	"""
+	fprofile is an string holding the name of the profile you're connecting to:
+	fRegion is a string
+	fStackFragment is a list
+	fStatus is a string
+	"""
+	import boto3, logging, pprint
+	logging.warning("Profile: %s | Region: %s | Fragment: %s | Status: %s",fprofile, fRegion, fStackFragment,fStatus)
+	session_cfn=boto3.Session(profile_name=fprofile, region_name=fRegion)
+	stack_info=session_cfn.client('cloudformation')
+	stacksCopy=[]
+	if (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active') and not (fStackFragment=='All' or fStackFragment=='ALL'  or fStackFragment=='all'):
+		# Send back stacks that are active, check the fragment further down.
+		stacks=stack_info.list_stacks(StackStatusFilter=["CREATE_COMPLETE","DELETE_FAILED","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE","DELETE_IN_PROGRESS"])
+		logging.warning("1 - Found %s stacks. Looking for fragment %s",len(stacks),fStackFragment)
+		for stack in stacks['StackSummaries']:
+			if fStackFragment in stack['StackName']:
+				# Check the fragment now - only send back those that match
+				logging.warning("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fprofile, fRegion, fStackFragment, fStatus)
+				stacksCopy.append(stack)
+	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
+		# Send back all stacks regardless of fragment, check the status further down.
+		stacks=stack_info.list_stacks(StackStatusFilter=["CREATE_COMPLETE","DELETE_FAILED","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE"])
+		logging.warning("2 - Found %s stacks.",len(stacks))
+		for stack in stacks['StackSummaries']:
+			# if fStatus in stack['StackStatus']:
+			# Check the status now - only send back those that match a single status
+			# I don't see this happening unless someone wants Stacks in a "Deleted" or "Rollback" type status
+			logging.warning("Found stack %s in Profile: %s in Region: %s regardless of fragment and Status: %s", stack['StackName'], fprofile, fRegion, fStatus)
+			stacksCopy.append(stack)
+	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='all' or fStatus=='ALL' or fStatus=='All'):
+		# Send back all stacks.
+		stacks=stack_info.list_stacks()
+		logging.warning("3 - Looking for ALL the stacks in Profile: %s in Region: %s", fProfile, fRegion)
+		return(stacks['StackSummaries'])
+	elif not (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
+		# Send back stacks that match the single status, check the fragment further down.
+		try:
+			stacks=stack_info.list_stacks(StackStatusFilter=[fStatus])
+		except Exception as e:
+			print(e)
+		for stack in stacks['StackSummaries']:
+			if fStackFragment in stack['StackName'] and fStatus in stack['StackStatus']:
+				# Check the fragment now - only send back those that match
+				logging.warning("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
+				stacksCopy.append(stack)
+	return(stacksCopy)
+
+def delete_stack(fprofile,fRegion,fStackName,**kwargs):
+	"""
+	fprofile is an string holding the name of the profile you're connecting to:
+	fRegion is a string
+	fStackName is a string
+	RetainResources should be a boolean
+	ResourcesToRetain should be a list
+	"""
+	import boto3, logging, pprint
+	if "RetainResources" in kwargs:
+		RetainResources = True
+		ResourcesToRetain = kwargs['ResourcesToRetain']
+	else:
+		RetainResources = False
+	session_cfn=boto3.Session(profile_name=fprofile, region_name=fRegion)
+	client_cfn=session_cfn.client('cloudformation')
+	if RetainResources:
+		logging.warning("Profile: %s | Region: %s | StackName: %s",fprofile, fRegion, fStackName)
+		logging.warning("	Retaining Resources: %s",ResourcesToRetain)
+		response=client_cfn.delete_stack(StackName=fStackName,RetainResources=ResourcesToRetain)
+	else:
+		logging.warning("Profile: %s | Region: %s | StackName: %s",fprofile, fRegion, fStackName)
+		response=client_cfn.delete_stack(StackName=fStackName)
+	return(response)
+
 def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 
 	import boto3, logging, pprint
-	logging.info("Key ID #: %s | Region: %s | Fragment: %s | Status: %s",str(ocredentials['AccessKeyId']), fRegion, fStackFragment,fStatus)
+	logging.warning("AccessKeyId:")
+	logging.warning("Key ID #: %s | Region: %s | Fragment: %s | Status: %s",str(ocredentials['AccessKeyId']), fRegion, fStackFragment,fStatus)
 	session_cfn=boto3.Session(region_name=fRegion,
 				aws_access_key_id = ocredentials['AccessKeyId'],
 				aws_secret_access_key = ocredentials['SecretAccessKey'],
@@ -206,27 +273,27 @@ def find_org_attr(fProfile):
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
 	response=client_org.describe_organization()['Organization']
+	"""
+	This is an example of the dictionary response from this call:
+		{
+		    "Organization": {
+		        "Id": "o-5zb7j55cba",
+		        "Arn": "arn:aws:organizations::693014690250:organization/o-5zb7j55cba",
+		        "FeatureSet": "ALL",
+		        "MasterAccountArn": "arn:aws:organizations::693014690250:account/o-5zb7j55cba/693014690250",
+		        "MasterAccountId": "693014690250",
+		        "MasterAccountEmail": "paulbaye+50@amazon.com",
+		        "AvailablePolicyTypes": [
+		            {
+		                "Type": "SERVICE_CONTROL_POLICY",
+		                "Status": "ENABLED"
+		            }
+		        ]
+		    }
+		}
+	Typically your client call will use the result of "response['Organization']['MasterAccountId']" or something like that, depending on which attribute you're interested in.
+	"""
 	return (response)
-'''
-This is an example of the dictionary response from this call:
-	{
-	    "Organization": {
-	        "Id": "o-5zb7j55cba",
-	        "Arn": "arn:aws:organizations::693014690250:organization/o-5zb7j55cba",
-	        "FeatureSet": "ALL",
-	        "MasterAccountArn": "arn:aws:organizations::693014690250:account/o-5zb7j55cba/693014690250",
-	        "MasterAccountId": "693014690250",
-	        "MasterAccountEmail": "paulbaye+50@amazon.com",
-	        "AvailablePolicyTypes": [
-	            {
-	                "Type": "SERVICE_CONTROL_POLICY",
-	                "Status": "ENABLED"
-	            }
-	        ]
-	    }
-	}
-Typically your client call will use the result of "response['Organization']['MasterAccountId']" or something like that, depending on which attribute you're interested in.
-'''
 
 def find_child_accounts(fProfile="default"):
 	import boto3, logging
