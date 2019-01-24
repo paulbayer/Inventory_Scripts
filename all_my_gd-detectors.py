@@ -74,8 +74,8 @@ fmt='%-20s %-15s %-20s'
 print(fmt % ("Profile","Region","Detector ID"))
 print(fmt % ("-------","------","-----------"))
 
-RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
-ProfileList=Inventory_Modules.get_profiles(pProfiles,SkipProfiles)
+RegionList=Inventory_Modules.get_ec2_regions(pRegionList,pProfiles[0])
+ProfileList=Inventory_Modules.get_profiles(pProfiles,SkipProfiles,pProfiles[0])
 # sys.exit(1)
 DetectorsToDelete=[]
 print("Searching {} profiles and {} regions".format(len(ProfileList),len(RegionList)))
@@ -130,4 +130,4 @@ if DeletionRun:
 	for y in range(len(DetectorsToDelete)):
 		logging.info("Deleting detector-id: %s from profile %s in region %s" % (DetectorsToDelete[y][0],DetectorsToDelete[y][1],DetectorsToDelete[y][2]))
 		print("Deleting in profile {} in region {}".format(DetectorsToDelete[y][0],DetectorsToDelete[y][1]))
-		Output=Inventory_Modules.del_gd_detectors(DetectorsToDelete[y][0],DetectorsToDelete[y][1],DetectorsToDelete[y][2])
+		Response=Inventory_Modules.del_gd_detectors(DetectorsToDelete[y][0],DetectorsToDelete[y][1],DetectorsToDelete[y][2])

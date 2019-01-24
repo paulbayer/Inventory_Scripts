@@ -1,7 +1,7 @@
 
-def get_ec2_regions(fkey):
+def get_ec2_regions(fkey,profile="default"):
 	import boto3, pprint, logging
-	session_ec2=boto3.Session()
+	session_ec2=boto3.Session(profile_name=profile)
 	region_info=session_ec2.client('ec2')
 	regions=region_info.describe_regions()
 	RegionNames=[]
@@ -18,12 +18,12 @@ def get_ec2_regions(fkey):
 				RegionNames2.append(y)
 	return(RegionNames2)
 
-def get_profiles(fprofiles,fSkipProfiles):
+def get_profiles(fprofiles,fSkipProfiles,profile="default"):
 
 	import boto3, logging
 	from botocore.exceptions import ClientError
 
-	my_Session=boto3.Session()
+	my_Session=boto3.Session(profile_name=profile)
 	my_profiles=my_Session._session.available_profiles
 	if "all" in fprofiles or "ALL" in fprofiles:
 		return(my_profiles)
@@ -86,6 +86,15 @@ def find_load_balancers(fProfile,fRegion,fStackFragment,fStatus):
 				logging.info("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", load_balancer['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
 				load_balancer_Copy.append(load_balancer)
 	return(load_balancer_Copy)
+
+def find_gd_detectors(fProfile,fRegion):
+
+        import boto3
+        session=boto3.Session(profile_name=fProfile, region_name=fRegion)
+        object_info=session.client('guardduty')
+        object=object_info.list_detectors()
+        return(object)
+        # return(vpcs)
 
 def find_stacks(fprofile,fRegion,fStackFragment,fStatus="active"):
 	"""
