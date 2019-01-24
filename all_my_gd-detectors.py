@@ -4,6 +4,7 @@ import os, sys, pprint
 import Inventory_Modules
 import argparse
 from colorama import init,Fore,Back,Style
+from boto3.session import Session
 from botocore.exceptions import ClientError, NoCredentialsError, EndpointConnectionError
 from urllib3.exceptions import NewConnectionError
 
@@ -25,7 +26,7 @@ parser.add_argument(
 parser.add_argument(
 	"-r","--region",
 	nargs="*",
-	dest="pregion",
+	dest="pregions",
 	metavar="region name string",
 	# default=["us-east-1"],
 	default=["all"],
@@ -57,7 +58,7 @@ args = parser.parse_args()
 	# 2: config file only
 	# 3: credentials and config files
 pProfiles=args.pProfiles
-pRegionList=args.pregion
+pRegionList=args.pregions
 DeletionRun=args.flagDelete
 logging.basicConfig(level=args.loglevel)
 # RegionList=[]
@@ -74,7 +75,9 @@ fmt='%-20s %-15s %-20s'
 print(fmt % ("Profile","Region","Detector ID"))
 print(fmt % ("-------","------","-----------"))
 
-RegionList=Inventory_Modules.get_ec2_regions(pRegionList,pProfiles[0])
+RegionList=Session(profile_name=pProfiles[0]).get_available_regions('guardduty')
+
+# RegionList=Inventory_Modules.get_gd_regions(pRegionList,pProfiles[0])
 ProfileList=Inventory_Modules.get_profiles(pProfiles,SkipProfiles,pProfiles[0])
 # sys.exit(1)
 DetectorsToDelete=[]
