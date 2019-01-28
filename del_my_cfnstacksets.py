@@ -49,7 +49,7 @@ parser.add_argument(
 	dest="loglevel",
 	const=logging.INFO)
 parser.add_argument(
-    '+forreal','+for-real','-for-real','-forreal','--for-real','--forreal','--forrealsies',
+    '+forreal','+for-real','-for-real','-forreal','--for-real','--forreal','--forrealsies', '+delete',
     help="Do a Dry-run; don't delete anything",
     action="store_const",
 	const=False,
@@ -181,19 +181,19 @@ for i in range(len(StacksToDelete)):
 
 # Now to delete the original stackset itself
 if not pdryrun:
-	for Stackset in Stacksets:
+	# for Stackset in Stacksets:
 		for i in range(len(StacksToDelete)):
-			StackRegionSet.add(StacksToDelete[i][2])
-			AccountSet.add(StacksToDelete[i][1])
-			logging.info("Deleting StackSet %s in Account %s" % (Stackset['StackSetName'],"Account ID Here"))
-			stacks_in_stackset_to_delete=stackset_info.delete_stack_instances(
-				StackSetName=Stackset['StackSetName'],
-				Accounts=list(AccountSet),
-			    Regions=list(StackRegionSet),
-	    		RetainStacks=False
-			)
-			stacksets_to_delete=stackset_info.delete_stack_set(StackSetName=Stackset['StackSetName'])
-
+			# StackRegionSet.add(StacksToDelete[i][2])
+			# AccountSet.add(StacksToDelete[i][1])
+			logging.info("Deleting StackSet %s in Account %s" % (StacksToDelete[i][3],StacksToDelete[i][1]))
+			# stacks_in_stackset_to_delete=stackset_info.delete_stack_instances(
+			# 	StackSetName=StacksToDelete[i][3],
+			# 	Accounts=list(AccountSet),
+			#     Regions=list(StackRegionSet),
+	    	# 	RetainStacks=False
+			# )
+			# stacksets_to_delete=stackset_info.delete_stack_set(StackSetName=Stackset['StackSetName'])
+			print("We would have deleted stackset {} in account {} in region {}".format(StacksToDelete[i][3],StacksToDelete[i][1],StacksToDelete[i][2]))
 
 print()
 print(Fore.RED+"Intially found {} StackSets across {} regions within the Master profile".format(NumStackSetsFound,NumMasterRegions)+Fore.RESET)
