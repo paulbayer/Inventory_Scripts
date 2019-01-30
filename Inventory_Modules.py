@@ -113,23 +113,17 @@ def find_child_accounts2(fProfile):
 def find_child_accounts(fProfile="default"):
 	"""
 	This is an example of the dictionary response from this call:
-		{
-		    "Organization": {
-		        "Id": "o-5zb7j55cba",
-		        "Arn": "arn:aws:organizations::693014690250:organization/o-5zb7j55cba",
-		        "FeatureSet": "ALL",
-		        "MasterAccountArn": "arn:aws:organizations::693014690250:account/o-5zb7j55cba/693014690250",
-		        "MasterAccountId": "693014690250",
-		        "MasterAccountEmail": "paulbaye+50@amazon.com",
-		        "AvailablePolicyTypes": [
-		            {
-		                "Type": "SERVICE_CONTROL_POLICY",
-		                "Status": "ENABLED"
-		            }
-		        ]
-		    }
+		{'Accounts': [{
+			'Arn': 'arn:aws:organizations::<Master Account Number>:account/o-ykfx0legmn/<Child Account Number>',
+			'Email': '<Email of the child account>',
+			'Id': '<Child Account Number>',
+			'JoinedMethod': 'CREATED',
+			'JoinedTimestamp': datetime.datetime(2018, 9, 10, 10, 44, 13, 631000, tzinfo=tzlocal()),
+			'Name': 'shared-services',
+			'Status': 'ACTIVE'
 		}
-	Typically your client call will use the result of "response['Organization']['MasterAccountId']" or something like that, depending on which attribute you're interested in.
+
+	Typically your client call will use the result of "response['Accounts']['Id']" or something like that, depending on which attribute you're interested in.
 	"""
 	import boto3, logging
 	from botocore.exceptions import ClientError, NoCredentialsError

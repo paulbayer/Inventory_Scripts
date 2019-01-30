@@ -56,17 +56,15 @@ ERASE_LINE = '\x1b[2K'
 NumObjectsFound = 0
 NumAccountsInvestigated = 0
 
+# try:
 ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
+# except:
+
 session_gd=boto3.Session(profile_name=pProfile)
 gd_regions=session_gd.get_available_regions(service_name='guardduty')
 
 all_gd_detectors=[]
 print("Searching {} profiles and {} regions".format(len(ChildAccounts),len(gd_regions)))
-
-print()
-fmt='%-20s %-15s %-20s'
-print(fmt % ("Account ID","Region","Detector ID"))
-print(fmt % ("----------","------","-----------"))
 
 sts_session = boto3.Session(profile_name=pProfile)
 for region in gd_regions:
@@ -89,7 +87,14 @@ for region in gd_regions:
 			response=client_aws.list_detectors()
 			if len(response['DetectorIds']) > 0:
 				NumObjectsFound=NumObjectsFound + len(response['DetectorIds'])
-				all_gd_detectors.append({'AccountId':account['AccountId'],'Region':region,'DetectorIds':response['DetectorIds']})
+				all_gd_detectors.append({
+					'AccountId':account['AccountId'],
+					'Region':region,
+					'DetectorIds':response['DetectorIds'],
+					'AccessKeyId':account_credentials['AccessKeyId'],
+					'SecretAccessKey':account_credentials['SecretAccessKey'],
+					'SessionToken':account_credentials['SessionToken']
+				})
 				print("Found another detector in account {} in region {} bringing the total found to {}".format(account['AccountId'],region,NumObjectsFound))
 			else:
 				print(ERASE_LINE,"No luck in account: {} in region: {}".format(account['AccountId'],region),end='\r')
@@ -98,52 +103,20 @@ for region in gd_regions:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(profile+": Authorization Failure")
 
-for i in range(len(all_gd_detectors)):
-	print(fmt % (all_gd_detectors[i]['AccountId'],all_gd_detectors[i]['Region'],all_gd_detectors[i]['DetectorIds']))
+if args.loglevel < 50:
+	print()
+	fmt='%-20s %-15s %-20s'
+	print(fmt % ("Account ID","Region","Detector ID"))
+	print(fmt % ("----------","------","-----------"))
+	for i in range(len(all_gd_detectors)):
+		print(fmt % (all_gd_detectors[i]['AccountId'],all_gd_detectors[i]['Region'],all_gd_detectors[i]['DetectorIds']))
 
-'''
-			NumObjects=len(Output['DetectorIds'])
-			logging.info("Profile: %s | Region: %s | Found %s Items",profile,region,NumObjects)
-			print(ERASE_LINE,Fore.RED+"Profile: {} Region: {} Found {} Items".format(profile,region,NumObjects)+Fore.RESET,end='\r')
-			if NumObjects == 1:
-				DetectorsToDelete.append([profile,region,Output['DetectorIds'][0]])
-			elif NumObjects == 0:
-				#No Dectors Found
-				logging.warning("Profile %s in region %s found no detectors",profile,region)
-				continue
-			else:
-				logging.warning("Profile %s in region %s somehow has more than 1 Detector. Run!!",profile,region)
-				break
-			"""
-			Format of DetectorsToDelete List:
-				[0] = Profile name
-				[1] = Region name
-				[2] = Detector id to be deleted
-			"""
-		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
-				print(ERASE_LINE+profile+": Authorization Failure")
-		except TypeError as my_Error:
-			# print(my_Error)
-			pass
-		except EndpointConnectionError as my_Error:
-			# Can't connect to this particular region's endpoint - which may not exist.
-			if str(my_Error).find("Could not connect to the endpoint URL") > 0:
-				print(ERASE_LINE+profile+": Endpoint Connection Failure")
-		except NewConnectionError as my_Error:
-			# Can't connect to this particular region's endpoint - which may not exist.
-			if str(my_Error).find("Failed to establish a new connection") > 0:
-				print(ERASE_LINE+profile+": Endpoint Connection Failure")
-		if len(Output['DetectorIds']) > 0:
-			print(fmt % (profile,region,Output['DetectorIds'][0]))
-			NumObjectsFound += 1
-'''
 print()
 print("Found {} Detectors across {} profiles across {} regions".format(NumObjectsFound,len(ChildAccounts),len(gd_regions)))
 print()
-#
-# if DeletionRun:
-# 	for y in range(len(DetectorsToDelete)):
-# 		logging.info("Deleting detector-id: %s from profile %s in region %s" % (DetectorsToDelete[y][0],DetectorsToDelete[y][1],DetectorsToDelete[y][2]))
-# 		print("Deleting in profile {} in region {}".format(DetectorsToDelete[y][0],DetectorsToDelete[y][1]))
-# 		Output=Inventory_Modules.del_gd_detectors(DetectorsToDelete[y][0],DetectorsToDelete[y][1],DetectorsToDelete[y][2])
+
+if DeletionRun and (input ("Deletion of Guard Duty detectors has been requested. Are you still sure? (y/n): ") == 'y'):
+	for y in range(len(all_gd_detectors)):
+		logging.info("Deleting detector-id: %s from account %s in region %s" % (all_gd_detectors[y]['DetectorsIds'],all_gd_detectors[y][''],all_gd_detectors[y][2]))
+		print("Deleting in profile {} in region {}".format(all_gd_detectors[y][0],all_gd_detectors[y][1]))
+		# Output=
