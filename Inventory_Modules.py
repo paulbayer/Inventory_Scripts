@@ -92,17 +92,23 @@ def find_org_attr2(fProfile):
 	return (root_org,org_id)
 
 def find_child_accounts2(fProfile):
-	import boto3
+	import boto3, logging
 	# Renamed since I'm using the one below instead.
 	child_accounts=[]
-	child_emails=[]
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
 	response=client_org.list_accounts()
-	for account in response['Accounts']:
-		child_accounts.append(account['Id'])
-		child_emails.append(account['Email'])
-	return (child_accounts,child_emails)
+	theresmore=True
+	while theresmore:
+		for account in response['Accounts']:
+			logging.warning("Account ID: %s | Account Email: %s" % (account['Id'],account['Email']))
+			child_accounts.append({'AccountId':account['Id'],'AccountEmail':account['Email']})
+		if 'NextToken' in response:
+			theresmore=True
+			response=client_org.list_accounts(NextToken=response['NextToken'])
+		else:
+			theresmore=False
+	return (child_accounts)
 
 def find_child_accounts(fProfile="default"):
 	"""
