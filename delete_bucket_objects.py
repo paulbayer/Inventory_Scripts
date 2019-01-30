@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import boto3,sys
+import boto3, sys
 
 bucket_name=sys.argv[1]
 pProfile=sys.argv[2]

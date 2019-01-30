@@ -44,6 +44,122 @@ def find_profile_instances(fProfile,fRegion):
 	instances=instance_info.describe_instances()
 	return(instances)
 
+def find_if_org_root(fProfile):
+
+	org_acct_number=find_org_attr(fProfile)
+	acct_number=find_account_number(fProfile)
+	if org_acct_number['Organization']['MasterAccountId']==acct_number:
+		return(True)
+	else:
+		return(False)
+
+def find_if_lz(fProfile):
+	import boto3
+
+	session_org = boto3.Session(profile_name=fProfile)
+	client_org = session_org.client('s3')
+	response=client_org.list_buckets()
+	for bucket in response['Buckets']:
+		if "aws-landing-zone-configuration" in bucket['Name']:
+				return(True)
+	return(False)
+
+def find_acct_email(fOrgRootProfile,fAccountId):
+	import boto3
+
+	session_org = boto3.Session(profile_name=fOrgRootProfile)
+	client_org = session_org.client('organizations')
+	email_addr=client_org.describe_account(AccountId=fAccountId)
+	# email_addr=response['Account']['Email']
+	return (email_addr['Account']['Email'])
+
+def find_org_attr(fProfile):
+	import boto3
+
+	session_org = boto3.Session(profile_name=fProfile)
+	client_org = session_org.client('organizations')
+	response=client_org.describe_organization()['Organization']
+	return (response)
+
+def find_org_attr2(fProfile):
+	import boto3
+	## Unused... and renamed
+	session_org = boto3.Session(profile_name=fProfile)
+	client_org = session_org.client('organizations')
+	response=client_org.describe_organization()
+	root_org=response['Organization']['MasterAccountId']
+	org_id=response['Organization']['Id']
+	return (root_org,org_id)
+
+def find_child_accounts2(fProfile):
+	import boto3, logging
+	# Renamed since I'm using the one below instead.
+	child_accounts=[]
+	session_org = boto3.Session(profile_name=fProfile)
+	client_org = session_org.client('organizations')
+	response=client_org.list_accounts()
+	theresmore=True
+	while theresmore:
+		for account in response['Accounts']:
+			logging.warning("Account ID: %s | Account Email: %s" % (account['Id'],account['Email']))
+			child_accounts.append({'AccountId':account['Id'],'AccountEmail':account['Email']})
+		if 'NextToken' in response:
+			theresmore=True
+			response=client_org.list_accounts(NextToken=response['NextToken'])
+		else:
+			theresmore=False
+	return (child_accounts)
+
+def find_child_accounts(fProfile="default"):
+	"""
+	This is an example of the dictionary response from this call:
+		{
+		    "Organization": {
+		        "Id": "o-5zb7j55cba",
+		        "Arn": "arn:aws:organizations::693014690250:organization/o-5zb7j55cba",
+		        "FeatureSet": "ALL",
+		        "MasterAccountArn": "arn:aws:organizations::693014690250:account/o-5zb7j55cba/693014690250",
+		        "MasterAccountId": "693014690250",
+		        "MasterAccountEmail": "paulbaye+50@amazon.com",
+		        "AvailablePolicyTypes": [
+		            {
+		                "Type": "SERVICE_CONTROL_POLICY",
+		                "Status": "ENABLED"
+		            }
+		        ]
+		    }
+		}
+	Typically your client call will use the result of "response['Organization']['MasterAccountId']" or something like that, depending on which attribute you're interested in.
+	"""
+	import boto3, logging
+	from botocore.exceptions import ClientError, NoCredentialsError
+
+	child_accounts={}
+	session_org = boto3.Session(profile_name=fProfile)
+	try:
+		client_org = session_org.client('organizations')
+		response=client_org.list_accounts()
+	except ClientError as my_Error:
+		logging.warning("Profile %s doesn't represent an Org Root account",fProfile)
+		# print("Failed on %s",my_Error)
+		return()
+	for account in response['Accounts']:
+		# Create a key/value pair with the AccountID:AccountEmail
+		child_accounts[account['Id']]=account['Email']
+	return (child_accounts)
+
+def find_account_number(fProfile):
+
+	import boto3
+	session_sts = boto3.Session(profile_name=fProfile)
+	client_sts = session_sts.client('sts')
+	response=client_sts.get_caller_identity()['Account']
+	return (response)
+
+"""
+Above - Generic functions
+Below - Specific functions to specific features
+"""
 def find_profile_vpcs(fProfile,fRegion):
 
 	import boto3
@@ -56,6 +172,22 @@ def find_profile_vpcs(fProfile,fRegion):
 		return(vpcs)
 	# return(vpcs)
 
+def find_gd_detectors(fProfile,fRegion):
+
+	import boto3
+	session=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	object_info=session.client('guardduty')
+	object=object_info.list_detectors()
+	return(object)
+	# return(vpcs)
+
+def del_gd_detectors(fProfile,fRegion,fDetectorId):
+	import boto3
+	session=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	object_info=session.client('guardduty')
+	object=object_info.delete_detector(DetectorId=fDetectorId)
+	return(object)
+
 def find_profile_functions(fProfile,fRegion):
 
 	import boto3
@@ -67,23 +199,23 @@ def find_profile_functions(fProfile,fRegion):
 def find_load_balancers(fProfile,fRegion,fStackFragment,fStatus):
 
 	import boto3, logging, pprint
-	logging.info("Profile: %s | Region: %s | Fragment: %s | Status: %s",fProfile, fRegion, fStackFragment,fStatus)
+	logging.warning("Profile: %s | Region: %s | Fragment: %s | Status: %s",fProfile, fRegion, fStackFragment,fStatus)
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	lb_info=session_cfn.client('elbv2')
 	load_balancers=lb_info.describe_load_balancers()
 	load_balancers_Copy=[]
 	if (fStackFragment=='all' or fStackFragment=='ALL') and (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='all' or fStatus=='ALL'):
-		logging.info("Found all the lbs in Profile: %s in Region: %s with Fragment: %s and Status: %s", fProfile, fRegion, fStackFragment, fStatus)
+		logging.warning("Found all the lbs in Profile: %s in Region: %s with Fragment: %s and Status: %s", fProfile, fRegion, fStackFragment, fStatus)
 		return(load_balancers['LoadBalancers'])
 	elif (fStackFragment=='all' or fStackFragment=='ALL'):
 		for load_balancer in load_balancers['LoadBalancers']:
 			if fStatus in load_balancer['State']['Code']:
-				logging.info("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", load_balancer['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
+				logging.warning("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", load_balancer['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
 				load_balancer_Copy.append(load_balancer)
 	elif (fStatus=='active' or fStatus=='ACTIVE'):
 		for load_balancer in load_balancers['LoadBalancers']:
 			if fStackFragment in load_balancer['LoadBalancerName']:
-				logging.info("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", load_balancer['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
+				logging.warning("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", load_balancer['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
 				load_balancer_Copy.append(load_balancer)
 	return(load_balancer_Copy)
 
@@ -171,7 +303,14 @@ def delete_stack(fprofile,fRegion,fStackName,**kwargs):
 	return(response)
 
 def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
-
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+	fRegion is a string
+	fStackFragment is a list
+	"""
 	import boto3, logging, pprint
 	logging.warning("AccessKeyId:")
 	logging.warning("Key ID #: %s | Region: %s | Fragment: %s | Status: %s",str(ocredentials['AccessKeyId']), fRegion, fStackFragment,fStatus)
@@ -188,7 +327,7 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 		for stack in stacks['StackSummaries']:
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match
-				logging.info("Found stack %s in AccessKeyId: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccessKeyId'], fRegion, fStackFragment, fStatus)
+				logging.warning("Found stack %s in AccessKeyId: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccessKeyId'], fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
 	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All'):
 		# Send back all stacks regardless of fragment, check the status further down.
@@ -197,12 +336,12 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 			if fStatus in stack['StackStatus']:
 				# Check the status now - only send back those that match a single status
 				# I don't see this happening unless someone wants Stacks in a "Deleted" or "Rollback" type status
-				logging.info("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
+				logging.warning("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
 	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='all' or fStatus=='ALL' or fStatus=='All'):
 		# Send back all stacks.
 		stacks=stack_info.list_stacks()
-		logging.info("Found all the stacks in Profile: %s in Region: %s", fProfile, fRegion)
+		logging.warning("Found all the stacks in Profile: %s in Region: %s", fProfile, fRegion)
 		return(stacks['StackSummaries'])
 	elif not (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
 		# Send back stacks that match the single status, check the fragment further down.
@@ -213,37 +352,37 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 		for stack in stacks['StackSummaries']:
 			if fStackFragment in stack['StackName'] and fStatus in stack['StackStatus']:
 				# Check the fragment now - only send back those that match
-				logging.info("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
+				logging.warning("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
 	return(stacksCopy)
 
-'''
-fProfile is a string
-fRegion is a string
-fStackFragment is a list
-'''
 def find_stacksets(fProfile,fRegion,fStackFragment):
+	"""
+	fProfile is a string
+	fRegion is a string
+	fStackFragment is a list
+	"""
 	import boto3, logging, pprint
 
-	logging.info("Profile: %s | Region: %s | Fragment: %s",fProfile, fRegion, fStackFragment)
+	logging.warning("Profile: %s | Region: %s | Fragment: %s",fProfile, fRegion, fStackFragment)
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	stack_info=session_cfn.client('cloudformation')
 	stacksets=stack_info.list_stack_sets(Status='ACTIVE')
 	stacksetsCopy=[]
 	# if fStackFragment=='all' or fStackFragment=='ALL':
 	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
-		logging.info("Found all the stacksets in Profile: %s in Region: %s with Fragment: %s", fProfile, fRegion, fStackFragment)
+		logging.warning("Found all the stacksets in Profile: %s in Region: %s with Fragment: %s", fProfile, fRegion, fStackFragment)
 		return(stacksets['Summaries'])
 	# elif (fStackFragment=='all' or fStackFragment=='ALL'):
 	# 	for stack in stacksets['Summaries']:
 	# 		if fStatus in stack['Status']:
-	# 			logging.info("Found stackset %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackSetName'], fProfile, fRegion, fStackFragment, fStatus)
+	# 			logging.warning("Found stackset %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackSetName'], fProfile, fRegion, fStackFragment, fStatus)
 	# 			stacksetsCopy.append(stack)
 	else:
 		for stack in stacksets['Summaries']:
 			for stackfrag in fStackFragment:
 				if stackfrag in stack['StackSetName']:
-					logging.info("Found stackset %s in Profile: %s in Region: %s with Fragment: %s", stack['StackSetName'], fProfile, fRegion, stackfrag)
+					logging.warning("Found stackset %s in Profile: %s in Region: %s with Fragment: %s", stack['StackSetName'], fProfile, fRegion, stackfrag)
 					stacksetsCopy.append(stack)
 	return(stacksetsCopy)
 
@@ -324,8 +463,8 @@ def find_child_accounts(fProfile="default"):
 
 def find_account_number(fProfile):
 
-	import boto3
-	session_sts = boto3.Session(profile_name=fProfile)
-	client_sts = session_sts.client('sts')
-	response=client_sts.get_caller_identity()['Account']
-	return (response)
+	logging.warning("Profile: %s | Region: %s | StackSetName: %s",fProfile, fRegion, fStackSetName)
+	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	stack_info=session_cfn.client('cloudformation')
+	stack_instances=stack_info.list_stack_instances(StackSetName=fStackSetName)
+	return(stack_instances)
