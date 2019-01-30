@@ -19,7 +19,7 @@ parser.add_argument(
 	"-p","--profile",
 	dest="pProfile",
 	metavar="profile to use",
-	help="You need to specify the ROOT account with this profile.")
+	help="You need to specify a profile that represents the ROOT account.")
 parser.add_argument(
 	"+delete", "+forreal",
 	dest="flagDelete",
