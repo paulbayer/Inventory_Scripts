@@ -166,6 +166,23 @@ def find_profile_vpcs(fProfile,fRegion):
 		return(vpcs)
 	# return(vpcs)
 
+def get_child_access(fRootProfile,fRegion,fChildAccount,fRole='AWSCloudFormationStackSetExecutionRole'):
+	import boto3, logging
+
+	session_sts=boto3.Session(profile_name=fRootProfile)
+	sts_session = boto3.Session(profile_name=fRootProfile)
+	sts_client = sts_session.client('sts',region_name=fRegion)
+	role_arn = 'arn:aws:iam::'+fChildAccount+':role/'+fRole
+	account_credentials = sts_client.assume_role(
+		RoleArn=role_arn,
+		RoleSessionName="Find-ChildAccount-Things")['Credentials']
+	session_aws=boto3.Session(
+		aws_access_key_id=account_credentials['AccessKeyId'],
+		aws_secret_access_key=account_credentials['SecretAccessKey'],
+		aws_session_token=account_credentials['SessionToken'],
+		region_name=fRegion)
+	return(session_aws)
+
 def find_gd_detectors(fProfile,fRegion):
 
 	import boto3
@@ -349,14 +366,14 @@ def find_stacksets(fProfile,fRegion,fStackFragment):
 	"""
 	import boto3, logging, pprint
 
-	logging.warning("Profile: %s | Region: %s | Fragment: %s",fProfile, fRegion, fStackFragment)
+	logging.info("Profile: %s | Region: %s | Fragment: %s",fProfile, fRegion, fStackFragment)
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	stack_info=session_cfn.client('cloudformation')
 	stacksets=stack_info.list_stack_sets(Status='ACTIVE')
 	stacksetsCopy=[]
 	# if fStackFragment=='all' or fStackFragment=='ALL':
 	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
-		logging.warning("Found all the stacksets in Profile: %s in Region: %s with Fragment: %s", fProfile, fRegion, fStackFragment)
+		logging.info("Found all the stacksets in Profile: %s in Region: %s with Fragment: %s", fProfile, fRegion, fStackFragment)
 		return(stacksets['Summaries'])
 	# elif (fStackFragment=='all' or fStackFragment=='ALL'):
 	# 	for stack in stacksets['Summaries']:
@@ -371,6 +388,19 @@ def find_stacksets(fProfile,fRegion,fStackFragment):
 					stacksetsCopy.append(stack)
 	return(stacksetsCopy)
 
+def delete_stackset(fProfile,fRegion,fStackSetName):
+	"""
+	fProfile is a string holding the name of the profile you're connecting to:
+	fRegion is a string
+	fStackSetName is a string
+	"""
+	import boto3, logging, pprint
+	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	client_cfn=session_cfn.client('cloudformation')
+	logging.warning("Profile: %s | Region: %s | StackSetName: %s",fProfile, fRegion, fStackSetName)
+	response=client_cfn.delete_stack_set(StackSetName=fStackName)
+	return(response)
+
 def find_stack_instances(fProfile,fRegion,fStackSetName):
 	"""
 	fProfile is a string
@@ -384,3 +414,26 @@ def find_stack_instances(fProfile,fRegion,fStackSetName):
 	stack_info=session_cfn.client('cloudformation')
 	stack_instances=stack_info.list_stack_instances(StackSetName=fStackSetName)
 	return(stack_instances)
+
+def delete_stack_instances(fProfile,fRegion,lAccounts,lRegions,fStackSetName,fOperationName="StackDelete"):
+	"""
+	fProfile is the Root Profile that owns the stackset
+	fRegion is the region where the stackset resides
+	lAccounts is a list of accounts
+	lRegion is a list of regions
+	fStackSetName is a string
+	fOperationName is a string (to identify the operation)
+	"""
+	import boto3, logging, pprint
+
+	logging.warning("Deleting %s StackSetName over %s accounts across %s regions" % (fStackSetName,len(lAccounts),len(lRegions)))
+	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	client_cfn=session_cfn.client('cloudformation')
+	response = client_cfn.delete_stack_instances(
+		StackSetName=fStackSetName,
+		Accounts=lAccounts,
+		Regions=lRegions,
+		RetainStacks=False,
+		OperationId=fOperationName
+
+	)

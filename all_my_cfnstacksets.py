@@ -82,8 +82,6 @@ SkipProfiles=["default","Shared-Fid"]
 ##########################
 ERASE_LINE = '\x1b[2K'
 
-NumStacksFound = 0
-NumRegions = 0
 print()
 fmt='%-20s %-15s %-15s %-50s'
 print(fmt % ("Profile","Region","Status","StackSet Name"))
@@ -91,17 +89,11 @@ print(fmt % ("-------","------","------","-------------"))
 RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
 ProfileList=Inventory_Modules.get_profiles(pProfiles,SkipProfiles)# pprint.pprint(RegionList)
 # sys.exit(1)
-for pregion in RegionList:
-	NumRegions += 1
-	NumProfilesInvestigated = 0	# I only care about the last run - so I don't get profiles * regions.
+for region in RegionList:
 	for profile in ProfileList: #Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles):
-		NumProfilesInvestigated += 1
 		try:
-			Stacks=Inventory_Modules.find_stacks(profile,pregion,pstackfrag)
-			# StackSets=Inventory_Modules.find_stacksets(profile,pregion,pstackfrag)
-			# pprint.pprint(Stacks)
-			StackNum=len(Stacks)
-			logging.warning("Profile: %s | Region: %s | Found %s Stacks", profile, pregion, StackNum )
+			StackSets=Inventory_Modules.find_stacksets(profile,region,pstackfrag)
+			logging.warning("Profile: %s | Region: %s | Found %s Stacksets", profile, region, len(StackSets))
 			print(ERASE_LINE,Fore.RED+"Profile: ",profile,"Region: ",pregion,"Found",StackNum,"Stacks"+Fore.RESET,end="\r")
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:

@@ -128,7 +128,7 @@ for pregion in RegionList:
 print(ERASE_LINE)
 print(Fore.RED+"Found",NumStacksFound,"Stacks across",NumProfilesInvestigated,"profiles across",NumRegions,"regions"+Fore.RESET)
 print()
-pprint.pprint(StacksFound)
+# pprint.pprint(StacksFound)
 
 if DeletionRun:
 	logging.warning("Deleting %s stacks",len(StacksFound))
@@ -139,4 +139,5 @@ if DeletionRun:
 			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2],RetainResources=True,ResourcesToRetain=["MasterDetector"])
 		else:
 			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2])
+
 print("Thanks for playing...")
