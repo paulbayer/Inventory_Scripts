@@ -55,35 +55,63 @@ ERASE_LINE = '\x1b[2K'
 
 NumObjectsFound = 0
 NumAccountsInvestigated = 0
-
+ChildAccounts2=[]
 # try:
 ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 # except:
+for i in range(len(ChildAccounts)):
+	if not (ChildAccounts[i]['AccountId']=='614019996801'):
+		ChildAccounts2.append(ChildAccounts[i])
+	else:
+		continue
+ChildAccounts=ChildAccounts2
+
 
 session_gd=boto3.Session(profile_name=pProfile)
 gd_regions=session_gd.get_available_regions(service_name='guardduty')
 # gd_regions=["ap-south-1"]
 all_gd_detectors=[]
+all_gd_invites=[]
 print("Searching {} accounts and {} regions".format(len(ChildAccounts),len(gd_regions)))
 
 sts_session = boto3.Session(profile_name=pProfile)
-for region in gd_regions:
+sts_client = sts_session.client('sts')
+for account in ChildAccounts:
 	NumProfilesInvestigated = 0	# I only care about the last run - so I don't get profiles * regions.
-	for account in ChildAccounts:
+	role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
+	logging.info("Role ARN: %s" % role_arn)
+	try:
+		account_credentials = sts_client.assume_role(
+			RoleArn=role_arn,
+			RoleSessionName="Find-GuardDuty-Detectors")['Credentials']
+	except ClientError as my_Error:
+		if str(my_Error).find("AuthFailure") > 0:
+			print(profile+": Authorization Failure for account {}".format(account['AccountId']))
+	for region in gd_regions:
 		NumAccountsInvestigated += 1
+		session_aws=boto3.Session(
+			aws_access_key_id=account_credentials['AccessKeyId'],
+			aws_secret_access_key=account_credentials['SecretAccessKey'],
+			aws_session_token=account_credentials['SessionToken'],
+			region_name=region)
+		client_aws=session_aws.client('guardduty')
+		## List Invitations
+		try:
+			response=client_aws.list_invitations()
+		except ClientError as my_Error:
+			if str(my_Error).find("AuthFailure") > 0:
+				print(profile+": Authorization Failure for account {}".format(account['AccountId']))
+		for i in range(len(response['Invitations'])):
+			all_gd_invites.append({
+				'AccountId':response['Invitations'][i]['AccountId'],
+				'InvitationId':response['Invitations'][i]['InvitationId'],
+				'Region':region,
+				'AccessKeyId':account_credentials['AccessKeyId'],
+				'SecretAccessKey':account_credentials['SecretAccessKey'],
+				'SessionToken':account_credentials['SessionToken']
+			})
 		try:
 			print(ERASE_LINE,"Trying account {} in region {}".format(account['AccountId'],region),end='\r')
-			sts_client = sts_session.client('sts',region_name=region)
-			role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
-			account_credentials = sts_client.assume_role(
-				RoleArn=role_arn,
-				RoleSessionName="Find-GuardDuty-Detectors")['Credentials']
-			session_aws=boto3.Session(
-				aws_access_key_id=account_credentials['AccessKeyId'],
-				aws_secret_access_key=account_credentials['SecretAccessKey'],
-				aws_session_token=account_credentials['SessionToken'],
-				region_name=region)
-			client_aws=session_aws.client('guardduty')
 			response=client_aws.list_detectors()
 			if len(response['DetectorIds']) > 0:
 				NumObjectsFound=NumObjectsFound + len(response['DetectorIds'])
@@ -95,12 +123,13 @@ for region in gd_regions:
 					'SecretAccessKey':account_credentials['SecretAccessKey'],
 					'SessionToken':account_credentials['SessionToken']
 				})
-				print("Found another detector ({}) in account {} in region {} bringing the total found to {}".format(str(response['DetectorIds'][0]),account['AccountId'],region,NumObjectsFound))
+				logging.info("Found another detector ("+str(response['DetectorIds'][0])+") in account "+account['AccountId']+" in region "+account['AccountId']+" bringing the total found to "+str(NumObjectsFound))
 			else:
-				print(ERASE_LINE,"No luck in account: {} in region: {}".format(account['AccountId'],region),end='\r')
+				print(ERASE_LINE,"No luck in account: {}".format(account['AccountId']),end='\r')
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
-				print(profile+": Authorization Failure")
+				print(profile+": Authorization Failure for account {}".format(account['AccountId']))
+	print()
 
 if args.loglevel < 50:
 	print()
@@ -111,12 +140,36 @@ if args.loglevel < 50:
 		print(fmt % (all_gd_detectors[i]['AccountId'],all_gd_detectors[i]['Region'],all_gd_detectors[i]['DetectorIds']))
 
 print(ERASE_LINE)
+print("Found {} Invites across {} accounts across {} regions".format(len(all_gd_invites),len(ChildAccounts),len(gd_regions)))
 print("Found {} Detectors across {} profiles across {} regions".format(NumObjectsFound,len(ChildAccounts),len(gd_regions)))
 print()
 
 
+
 if DeletionRun and (input ("Deletion of Guard Duty detectors has been requested. Are you still sure? (y/n): ") == 'y'):
 	MemberList=[]
+	logging.info("Deleting all invites")
+	for y in range(len(all_gd_invites)):
+		session_gd_child=boto3.Session(
+				aws_access_key_id=all_gd_invites[y]['AccessKeyId'],
+				aws_secret_access_key=all_gd_invites[y]['SecretAccessKey'],
+				aws_session_token=all_gd_invites[y]['SessionToken'],
+				region_name=all_gd_invites[y]['Region'])
+		client_gd_child=session_gd_child.client('guardduty')
+		## Delete Invitations
+		try:
+			Output=client_gd_child.delete_invitations(
+				AccountIds=[all_gd_invites[y]['AccountId']]
+			)
+			pprint.pprint(Output)
+		except Exception as e:
+			if e.response['Error']['Code'] == 'BadRequestException':
+				logging.warning("Caught exception 'BadRequestException', handling the exception...")
+				pass
+			else:
+				print("Caught unexpected error regarding deleting invites")
+				pprint.pprint(e)
+				sys.exit(9)
 	for y in range(len(all_gd_detectors)):
 		logging.info("Deleting detector-id: %s from account %s in region %s" % (all_gd_detectors[y]['DetectorIds'],all_gd_detectors[y]['AccountId'],all_gd_detectors[y]['Region']))
 		print("Deleting detector in account {} in region {}".format(all_gd_detectors[y]['AccountId'],all_gd_detectors[y]['Region']))
@@ -126,7 +179,6 @@ if DeletionRun and (input ("Deletion of Guard Duty detectors has been requested.
 				aws_session_token=all_gd_detectors[y]['SessionToken'],
 				region_name=all_gd_detectors[y]['Region'])
 		client_gd_child=session_gd_child.client('guardduty')
-		## List Invitations
 		## List Members
 		Member_Dict=client_gd_child.list_members(
 			DetectorId=str(all_gd_detectors[y]['DetectorIds'][0]),

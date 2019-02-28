@@ -102,7 +102,10 @@ def find_child_accounts2(fProfile):
 	while theresmore:
 		for account in response['Accounts']:
 			logging.warning("Account ID: %s | Account Email: %s" % (account['Id'],account['Email']))
-			child_accounts.append({'AccountId':account['Id'],'AccountEmail':account['Email']})
+			child_accounts.append({
+				'AccountId':account['Id'],
+				'AccountEmail':account['Email']
+			})
 		if 'NextToken' in response:
 			theresmore=True
 			response=client_org.list_accounts(NextToken=response['NextToken'])
@@ -398,7 +401,7 @@ def delete_stackset(fProfile,fRegion,fStackSetName):
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	client_cfn=session_cfn.client('cloudformation')
 	logging.warning("Profile: %s | Region: %s | StackSetName: %s",fProfile, fRegion, fStackSetName)
-	response=client_cfn.delete_stack_set(StackSetName=fStackName)
+	response=client_cfn.delete_stack_set(StackSetName=fStackSetName)
 	return(response)
 
 def find_stack_instances(fProfile,fRegion,fStackSetName):
@@ -413,7 +416,11 @@ def find_stack_instances(fProfile,fRegion,fStackSetName):
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	stack_info=session_cfn.client('cloudformation')
 	stack_instances=stack_info.list_stack_instances(StackSetName=fStackSetName)
-	return(stack_instances)
+	stack_instances_list=stack_instances['Summaries']
+	while 'NextToken' in stack_instances.keys(): # Get all instnce names
+		stack_instances=stack_info.list_stack_instances(StackSetName=fStackSetName,NextToken=stack_instances['NextToken'])
+		stack_instances_list.append(stack_instances['Summaries'])
+	return(stack_instances_list)
 
 def delete_stack_instances(fProfile,fRegion,lAccounts,lRegions,fStackSetName,fOperationName="StackDelete"):
 	"""
@@ -435,5 +442,4 @@ def delete_stack_instances(fProfile,fRegion,lAccounts,lRegions,fStackSetName,fOp
 		Regions=lRegions,
 		RetainStacks=False,
 		OperationId=fOperationName
-
 	)
