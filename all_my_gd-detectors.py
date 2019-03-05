@@ -20,20 +20,7 @@ parser.add_argument(
 	"-p","--profile",
 	dest="pProfile",
 	metavar="profile to use",
-<<<<<<< HEAD
-	default=["all"],
-	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
-parser.add_argument(
-	"-r","--region",
-	nargs="*",
-	dest="pregions",
-	metavar="region name string",
-	# default=["us-east-1"],
-	default=["all"],
-	help="String fragment of the region(s) you want to check for resources.")
-=======
 	help="You need to specify a profile that represents the ROOT account.")
->>>>>>> development
 parser.add_argument(
 	"+delete", "+forreal",
 	dest="flagDelete",
@@ -41,6 +28,13 @@ parser.add_argument(
 	action="store_const",
 	const=True,
 	help="Whether to delete the detectors it finds.")
+parser.add_argument(
+    '-f', '--force',
+    help="force deletion without asking first",
+    action="store_const",
+	dest="ForceDelete",
+	const=True,
+    default=False)
 parser.add_argument(
     '-d', '--debug',
     help="Print lots of debugging statements",
@@ -60,42 +54,15 @@ args = parser.parse_args()
 	# 1: credentials file only
 	# 2: config file only
 	# 3: credentials and config files
-<<<<<<< HEAD
-pProfiles=args.pProfiles
-pRegionList=args.pregions
-DeletionRun=args.flagDelete
-logging.basicConfig(level=args.loglevel)
-# RegionList=[]
-
-SkipProfiles=["default","Shared-Fid"]
-=======
 pProfile=args.pProfile
 DeletionRun=args.flagDelete
+ForceDelete=args.ForceDelete
 logging.basicConfig(level=args.loglevel)
->>>>>>> development
 
 ##########################
 ERASE_LINE = '\x1b[2K'
 
 NumObjectsFound = 0
-<<<<<<< HEAD
-NumRegions = 0
-print()
-fmt='%-20s %-15s %-20s'
-print(fmt % ("Profile","Region","Detector ID"))
-print(fmt % ("-------","------","-----------"))
-
-RegionList=Session(profile_name=pProfiles[0]).get_available_regions('guardduty')
-
-# RegionList=Inventory_Modules.get_gd_regions(pRegionList,pProfiles[0])
-ProfileList=Inventory_Modules.get_profiles(pProfiles,SkipProfiles,pProfiles[0])
-# sys.exit(1)
-DetectorsToDelete=[]
-print("Searching {} profiles and {} regions".format(len(ProfileList),len(RegionList)))
-
-for pregion in RegionList:
-	NumRegions += 1
-=======
 NumAccountsInvestigated = 0
 ChildAccounts2=[]
 # try:
@@ -119,7 +86,6 @@ print("Searching {} accounts and {} regions".format(len(ChildAccounts),len(gd_re
 sts_session = boto3.Session(profile_name=pProfile)
 sts_client = sts_session.client('sts')
 for account in ChildAccounts:
->>>>>>> development
 	NumProfilesInvestigated = 0	# I only care about the last run - so I don't get profiles * regions.
 	role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
 	logging.info("Role ARN: %s" % role_arn)
@@ -187,16 +153,11 @@ print("Found {} Invites across {} accounts across {} regions".format(len(all_gd_
 print("Found {} Detectors across {} profiles across {} regions".format(NumObjectsFound,len(ChildAccounts),len(gd_regions)))
 print()
 
-<<<<<<< HEAD
-if DeletionRun:
-	for y in range(len(DetectorsToDelete)):
-		logging.info("Deleting detector-id: %s from profile %s in region %s" % (DetectorsToDelete[y][0],DetectorsToDelete[y][1],DetectorsToDelete[y][2]))
-		print("Deleting in profile {} in region {}".format(DetectorsToDelete[y][0],DetectorsToDelete[y][1]))
-		Response=Inventory_Modules.del_gd_detectors(DetectorsToDelete[y][0],DetectorsToDelete[y][1],DetectorsToDelete[y][2])
 =======
+if not ForceDelete:
+	ReallyDelete=(input ("Deletion of Guard Duty detectors has been requested. Are you still sure? (y/n): ") == 'y')
 
-
-if DeletionRun and (input ("Deletion of Guard Duty detectors has been requested. Are you still sure? (y/n): ") == 'y'):
+if DeletionRun and (ReallyDelete or ForceDelete):
 	MemberList=[]
 	logging.info("Deleting all invites")
 	for y in range(len(all_gd_invites)):
@@ -208,10 +169,11 @@ if DeletionRun and (input ("Deletion of Guard Duty detectors has been requested.
 		client_gd_child=session_gd_child.client('guardduty')
 		## Delete Invitations
 		try:
+			print(ERASE_LINE,"Deleting invite for Account {}".format(all_gd_invites[y]['AccountId']),end="\r")
 			Output=client_gd_child.delete_invitations(
 				AccountIds=[all_gd_invites[y]['AccountId']]
 			)
-			pprint.pprint(Output)
+			# pprint.pprint(Output)
 		except Exception as e:
 			if e.response['Error']['Code'] == 'BadRequestException':
 				logging.warning("Caught exception 'BadRequestException', handling the exception...")
@@ -220,6 +182,7 @@ if DeletionRun and (input ("Deletion of Guard Duty detectors has been requested.
 				print("Caught unexpected error regarding deleting invites")
 				pprint.pprint(e)
 				sys.exit(9)
+	print("Removed {} GuardDuty Invites".format(len(all_gd_invites)))
 	for y in range(len(all_gd_detectors)):
 		logging.info("Deleting detector-id: %s from account %s in region %s" % (all_gd_detectors[y]['DetectorIds'],all_gd_detectors[y]['AccountId'],all_gd_detectors[y]['Region']))
 		print("Deleting detector in account {} in region {}".format(all_gd_detectors[y]['AccountId'],all_gd_detectors[y]['Region']))
@@ -236,7 +199,7 @@ if DeletionRun and (input ("Deletion of Guard Duty detectors has been requested.
 		)['Members']
 		for i in range(len(Member_Dict)):
 			MemberList.append(Member_Dict[i]['AccountId'])
-		MemberList.append('704627748197')
+		# MemberList.append('704627748197')
 		try:
 			Output=client_gd_child.disassociate_from_master_account(
 				DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
@@ -251,11 +214,19 @@ if DeletionRun and (input ("Deletion of Guard Duty detectors has been requested.
 			AccountIds=MemberList,
     		DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
 		)
+		logging.warning("Account %s has been disassociated from master account" % str(all_gd_detectors[y]['AccountId']))
 		Output=client_gd_child.delete_members(
 			AccountIds=[all_gd_detectors[y]['AccountId']],
     		DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
 		)
+		logging.warning("Account %s has been deleted from master account" % str(all_gd_detectors[y]['AccountId']))
 		Output=client_gd_child.delete_detector(
     		DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
 		)
->>>>>>> development
+		logging.warning("Detector %s has been deleted from child account %s" % (str(all_gd_detectors[y]['DetectorIds'][0]),str(all_gd_detectors[y]['AccountId'])))
+'''
+		if StacksFound[y][3] == 'DELETE_FAILED':
+			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2],RetainResources=True,ResourcesToRetain=["MasterDetector"])
+		else:
+			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2])
+'''

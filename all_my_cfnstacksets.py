@@ -78,7 +78,7 @@ logging.basicConfig(level=args.loglevel)
 
 # SkipProfiles=["default"]
 SkipProfiles=["default","Shared-Fid"]
-
+NumStacksFound=0
 ##########################
 ERASE_LINE = '\x1b[2K'
 
@@ -94,14 +94,14 @@ for region in RegionList:
 		try:
 			StackSets=Inventory_Modules.find_stacksets(profile,region,pstackfrag)
 			logging.warning("Profile: %s | Region: %s | Found %s Stacksets", profile, region, len(StackSets))
-			print(ERASE_LINE,Fore.RED+"Profile: ",profile,"Region: ",pregion,"Found",StackNum,"Stacks"+Fore.RESET,end="\r")
+			print(ERASE_LINE,Fore.RED+"Profile: ",profile,"Region: ",region,"Found",len(StackSets),"Stacks"+Fore.RESET,end="\r")
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(profile+": Authorization Failure")
-		if len(Stacks) > 0:
-			for y in range(len(Stacks)):
-				StackName=Stacks[y]['StackName']
-				StackStatus=Stacks[y]['StackStatus']
+		if len(StackSets) > 0:
+			for y in range(len(StackSets)):
+				StackName=StackSets[y]['StackSetName']
+				StackStatus=StackSets[y]['Status']
 		# 		IsDefault=Stacks['StackSummaries'][y]['IsDefault']
 		# 		CIDR=Stacks['Stacks'][y]['CidrBlock']
 		# 		if 'Tags' in Stacks['StackSummaries'][y]:
@@ -110,7 +110,7 @@ for region in RegionList:
 		# 					VpcName=Stacks['StackSummaries'][y]['Tags'][z]['Value']
 		# 		else:
 		# 			VpcName="No name defined"
-				print(fmt % (profile,pregion,StackStatus,StackName))
+				print(fmt % (profile,region,StackStatus,StackName))
 				NumStacksFound += 1
 print(ERASE_LINE)
 print(Fore.RED+"Found",NumStacksFound,"Stacks across",NumProfilesInvestigated,"profiles across",NumRegions,"regions"+Fore.RESET)

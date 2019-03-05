@@ -26,6 +26,29 @@ import boto3
 from colorama import init,Fore,Back,Style
 from botocore.exceptions import ClientError, NoCredentialsError
 
+###################
+
+def RemoveTermProtection(fProfile,fAllInstances):
+	for i in range(len(fAllInstances)):
+		logging.warning("Profile: %s | Region: %s | ChildAccount: %s" % (fProfile,fAllInstances[i]['ChildRegion'],fAllInstances[i]['ChildAccount']))
+		session_cfn=Inventory_Modules.get_child_access(fProfile,fAllInstances[i]['ChildRegion'],fAllInstances[i]['ChildAccount'])
+		client_cfn=session_cfn.client('cloudformation')
+		try:
+			response=client_cfn.update_termination_protection(
+				EnableTerminationProtection=False,
+		    	StackName=fAllInstances[i]['StackName']
+			)
+		except Exception as e:
+			if e.response['Error']['Code'] == 'ValidationError':
+				logging.info("Caught exception 'ValidationError', ignoring the exception...")
+				print()
+				pass
+
+		logging.info("Stack %s had termination protection removed from it in Account %s in Region %s" % (fAllInstances[i]['StackName'],fAllInstances[i]['ChildAccount'],fAllInstances[i]['ChildRegion']))
+	return (True)
+
+###################
+
 init()
 
 parser = argparse.ArgumentParser(
@@ -96,11 +119,8 @@ print("		In the ROOT profile {} and all children".format(pProfile))
 print("		In these regions: {}".format(pRegion))
 print("		For stacksets that contain these fragments: {}".format(pStackfrag))
 print()
-# fmt='%-20s | %-12s | %-10s | %-50s | %-25s | %-50s'
-# print(fmt % ("Parent Profile","Acct Number","Region","Parent StackSet Name","Stack Status","Child Stack Name"))
-# print(fmt %	("--------------","-----------","------","--------------------","----------------","----------------"))
 
-''' Get the StackSet names from the Master Profile '''
+# Get the StackSet names from the Master Profile
 StackSetNames=Inventory_Modules.find_stacksets(pProfile,pRegion,pStackfrag)
 logging.info("Found %s StackSetNames that matched your fragment" % (len(StackSetNames)))
 for i in range(len(StackSetNames)):
@@ -112,15 +132,15 @@ StackSetNames=StackSetNames2
 for i in range(len(StackSetNames)):
 	StackInstances=Inventory_Modules.find_stack_instances(pProfile,pRegion,StackSetNames[i]['StackSetName'])
 	logging.warning("Found %s Stack Instances within the StackSet %s" % (len(StackInstances),StackSetNames[i]['StackSetName']))
-	for j in range(len(StackInstances['Summaries'])):
+	for j in range(len(StackInstances)):
 		AllInstances.append({
-			'ChildAccount':StackInstances['Summaries'][j]['Account'],
-			'ChildRegion':StackInstances['Summaries'][j]['Region'],
+			'ChildAccount':StackInstances[j]['Account'],
+			'ChildRegion':StackInstances[j]['Region'],
 			# This next line finds the value of the Child StackName (which includes a random GUID) and assigns it within our dict
-			'StackName':StackInstances['Summaries'][j]['StackId'][StackInstances['Summaries'][j]['StackId'].find('/')+1:StackInstances['Summaries'][j]['StackId'].find('/',
-			StackInstances['Summaries'][j]['StackId'].find('/')+1)],
-			'StackStatus':StackInstances['Summaries'][j]['Status'],
-			'StackSetName':StackInstances['Summaries'][j]['StackSetId'][:StackInstances['Summaries'][j]['StackSetId'].find(':')]
+			'StackName':StackInstances[j]['StackId'][StackInstances[j]['StackId'].find('/')+1:StackInstances[j]['StackId'].find('/',
+			StackInstances[j]['StackId'].find('/')+1)],
+			'StackStatus':StackInstances[j]['Status'],
+			'StackSetName':StackInstances[j]['StackSetId'][:StackInstances[j]['StackSetId'].find(':')]
 		})
 
 
@@ -138,12 +158,12 @@ if args.loglevel < 31:
 		)
 
 if pdryrun:
+	print("Found {} StackSets that matched, with a total of {} instances".format(len(StackSetNames),len(AllInstances)))
 	print("We're Done")
 	sys.exit(0)
 
-print("Removing {} stack instances from the StackSet".format(len(AllInstances)))
+print("Removing {} stack instances from the {} StackSets found".format(len(AllInstances),len(StackSetNames)))
 
-# ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 AccountList=[]
 for i in range(len(AllInstances)):
 	AccountList.append(AllInstances[i]['ChildAccount'])
@@ -156,84 +176,80 @@ for i in range(len(AllInstances)):
 
 RegionList=list(set(RegionList))
 
+PolicyListOutput=[]
+PolicyList=[]
+session_org=boto3.Session(profile_name=pProfile,region_name=pRegion)
+client_org=session_org.client('organizations')
+PolicyListOutput=client_org.list_policies(Filter='SERVICE_CONTROL_POLICY')
+for j in range(len(PolicyListOutput['Policies'])):
+	if not (PolicyListOutput['Policies'][j]['Id']=='p-FullAWSAccess'):
+		PolicyList.append(PolicyListOutput['Policies'][j]['Id'])
+	else:
+		continue
 
 for account in AccountList:
-	session_org=boto3.Session(profile_name=pProfile,region_name=pRegion)
-	client_org=session_org.client('organizations')
-	try:
-		response=client_org.detach_policy(
-			PolicyId='p-xtoiesld',
-	    	TargetId=account
-		)
-		response=client_org.detach_policy(
-			PolicyId='p-jbzyssxv',
-	    	TargetId=account
-		)
-		response=client_org.detach_policy(
-			PolicyId='p-vw7tcpfx',
-	    	TargetId=account
-		)
-		response=client_org.detach_policy(
-			PolicyId='p-t8f04zf9',
-	    	TargetId=account
-		)
-		logging.info("Successfully detached policies from account %s" % (account))
-	except Exception as e:
-		if e.response['Error']['Code'] == 'OperationInProgressException':
-			logging.info("Caught exception 'OperationInProgressException', handling the exception...")
-			pass
-		elif e.response['Error']['Code'] == 'PolicyNotAttachedException':
-			logging.info("Caught exception 'PolicyNotAttachedException', handling the exception...")
-			pass
-		elif e.response['Error']['Code'] == 'ConcurrentModificationException':
-			logging.info("Caught exception 'ConcurrentModificationException', handling the exception...")
-			pass
-		else:
-			logging.info("Wasn't able to successfully detach policy from account %s. Maybe it's already detached?" % (account))
-			break
+	for policy in PolicyList:
+		try:
+			response=client_org.detach_policy(
+				PolicyId=policy,
+		    	TargetId=account
+			)
+			logging.warning("Successfully detached policies from account %s" % (account))
+		except Exception as e:
+			if e.response['Error']['Code'] == 'OperationInProgressException':
+				logging.info("Caught exception 'OperationInProgressException', handling the exception...")
+				pass
+			elif e.response['Error']['Code'] == 'PolicyNotAttachedException':
+				logging.info("Caught exception 'PolicyNotAttachedException', handling the exception...")
+				pass
+			elif e.response['Error']['Code'] == 'ConcurrentModificationException':
+				logging.info("Caught exception 'ConcurrentModificationException', handling the exception...")
+				pass
+			else:
+				logging.info("Wasn't able to successfully detach policy from account %s. Maybe it's already detached?" % (account))
+				break
 
-for i in range(len(AllInstances)):
-	logging.warning("Profile: %s | Region: %s | ChildAccount: %s" % (pProfile,AllInstances[i]['ChildRegion'],AllInstances[i]['ChildAccount']))
-	session_cfn=Inventory_Modules.get_child_access(pProfile,AllInstances[i]['ChildRegion'],AllInstances[i]['ChildAccount'])
-	client_cfn=session_cfn.client('cloudformation')
-	try:
-		response=client_cfn.update_termination_protection(
-			EnableTerminationProtection=False,
-	    	StackName=AllInstances[i]['StackName']
-		)
-	except Exception as e:
-		if e.response['Error']['Code'] == 'ValidationError':
-			logging.info("Caught exception 'ValidationError', ignoring the exception...")
-			print()
-			pass
+# NotForNothing=RemoveTermProtection(pProfile,AllInstances)
 
-	logging.info("Stack %s had termination protection removed from it in Account %s in Region %s" % (AllInstances[i]['StackName'],AllInstances[i]['ChildAccount'],AllInstances[i]['ChildRegion']))
 
+session_cfn=boto3.Session(profile_name=pProfile,region_name=pRegion)
 for i in range(len(StackSetNames)):
 	logging.warning("Removing all instances from %s StackSet" % (StackSetNames[i]['StackSetName']))
-	OperationName=StackSetNames[i]['StackSetName']+'Deletion'
+	OperationName=StackSetNames[i]['StackSetName']+'--Deletion'
 	try:
-		response=Inventory_Modules.delete_stack_instances(pProfile,pRegion,AccountList,RegionList,StackSetNames[i]['StackSetName'],OperationName)
+		response=Inventory_Modules.delete_stack_instances(pProfile,pRegion,AccountList,RegionList,StackSetNames[i]['StackSetName'])
+		# response=Inventory_Modules.delete_stack_instances(pProfile,pRegion,AccountList,RegionList,StackSetNames[i]['StackSetName'],OperationName)
+		pprint.pprint(response)
 	except Exception as e:
 		if e.response['Error']['Code'] == 'StackSetNotFoundException':
 			logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
-			pprint.pprint(e)
-			print()
-			pass
-
+			print("Error: ",e)
+			break
 	StackInstancesDeleted=False
+	client_cfn=session_cfn.client('cloudformation')
+	timer=0
 	while not StackInstancesDeleted:
+		logging.info("Got into the While Loop")
+		logging.warning(StackSetNames[i]['StackSetName'])
 		try:
 			response1=client_cfn.list_stack_set_operations(StackSetName=StackSetNames[i]['StackSetName'])['Summaries'][0]['Status']
+			logging.info("response1 finished and was %s" % response1)
 			response2=client_cfn.list_stack_instances(StackSetName=StackSetNames[i]['StackSetName'])['Summaries']
+			logging.info("response2 finished and was %s" % response2)
 			StackInstancesDeleted=((response1 == 'SUCCEEDED' or response1 == 'FAILED') and (len(response2)==0))
+			logging.info("StackInstancesDeleted is %s" % StackInstancesDeleted)
 			if not StackInstancesDeleted:
-				print("Still waiting for {} to be fully deleted...")
-				time.sleep(30)
+				print("Waiting {} seconds for {} to be fully deleted. There's still {} instances left.".format(timer,StackSetNames[i]['StackSetName'],len(response2)))
+				time.sleep(10)
+				timer+=10
 		except Exception as e:
-			logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
-			StackInstancesDeleted=True
-			pass
+			# if e.response['Error']['Code'] == 'StackSetNotFoundException':
+			# 	logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
+			# 	StackInstancesDeleted=True
+			# 	pass
+			# else:
+				print("Error: ",e)
+				break
 
 print("Now deleting {} stacksets from Root Profile".format(len(StackSetNames)))
 
@@ -256,5 +272,3 @@ except Exception as e:
 print()
 print("Now we're done")
 print()
-sys.exit(95)
-# AllInstancesSorted=
