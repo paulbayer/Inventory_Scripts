@@ -15,12 +15,6 @@ parser = argparse.ArgumentParser(
 	description="We\'re going to find all resources within any of the profiles we have access to.",
 	prefix_chars='-+/')
 parser.add_argument(
-	"-c","--creds",
-	dest="plevel",
-	metavar="Creds",
-	default="1",
-	help="Which credentials file to use for investigation.")
-parser.add_argument(
 	"-p","--profile",
 	dest="pProfiles",
 	nargs="*",
@@ -54,7 +48,6 @@ args = parser.parse_args()
 	# 2: config file only
 	# 3: credentials and config files
 pProfiles=args.pProfiles
-plevel=args.plevel
 pRegionList=args.pregion
 verbose=args.loglevel
 logging.basicConfig(level=args.loglevel)
@@ -73,7 +66,7 @@ fmt='%-20s %-10s %-21s %-20s %-12s %-10s'
 print(fmt % ("Profile","Region","Vpc ID","CIDR","Is Default?","Vpc Name"))
 print(fmt % ("-------","------","------","----","-----------","--------"))
 RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
-ProfileList=Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles)# pprint.pprint(RegionList)
+ProfileList=Inventory_Modules.get_profiles(pProfiles,SkipProfiles)# pprint.pprint(RegionList)
 # sys.exit(1)
 for pregion in RegionList:
 	NumRegions += 1
