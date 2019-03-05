@@ -102,7 +102,10 @@ def find_child_accounts2(fProfile):
 	while theresmore:
 		for account in response['Accounts']:
 			logging.warning("Account ID: %s | Account Email: %s" % (account['Id'],account['Email']))
-			child_accounts.append({'AccountId':account['Id'],'AccountEmail':account['Email']})
+			child_accounts.append({
+				'AccountId':account['Id'],
+				'AccountEmail':account['Email']
+			})
 		if 'NextToken' in response:
 			theresmore=True
 			response=client_org.list_accounts(NextToken=response['NextToken'])
@@ -113,23 +116,17 @@ def find_child_accounts2(fProfile):
 def find_child_accounts(fProfile="default"):
 	"""
 	This is an example of the dictionary response from this call:
-		{
-		    "Organization": {
-		        "Id": "o-5zb7j55cba",
-		        "Arn": "arn:aws:organizations::693014690250:organization/o-5zb7j55cba",
-		        "FeatureSet": "ALL",
-		        "MasterAccountArn": "arn:aws:organizations::693014690250:account/o-5zb7j55cba/693014690250",
-		        "MasterAccountId": "693014690250",
-		        "MasterAccountEmail": "paulbaye+50@amazon.com",
-		        "AvailablePolicyTypes": [
-		            {
-		                "Type": "SERVICE_CONTROL_POLICY",
-		                "Status": "ENABLED"
-		            }
-		        ]
-		    }
+		{'Accounts': [{
+			'Arn': 'arn:aws:organizations::<Master Account Number>:account/o-ykfx0legmn/<Child Account Number>',
+			'Email': '<Email of the child account>',
+			'Id': '<Child Account Number>',
+			'JoinedMethod': 'CREATED',
+			'JoinedTimestamp': datetime.datetime(2018, 9, 10, 10, 44, 13, 631000, tzinfo=tzlocal()),
+			'Name': 'shared-services',
+			'Status': 'ACTIVE'
 		}
-	Typically your client call will use the result of "response['Organization']['MasterAccountId']" or something like that, depending on which attribute you're interested in.
+
+	Typically your client call will use the result of "response['Accounts']['Id']" or something like that, depending on which attribute you're interested in.
 	"""
 	import boto3, logging
 	from botocore.exceptions import ClientError, NoCredentialsError
@@ -171,6 +168,23 @@ def find_profile_vpcs(fProfile,fRegion):
 	else:
 		return(vpcs)
 	# return(vpcs)
+
+def get_child_access(fRootProfile,fRegion,fChildAccount,fRole='AWSCloudFormationStackSetExecutionRole'):
+	import boto3, logging
+
+	session_sts=boto3.Session(profile_name=fRootProfile)
+	sts_session = boto3.Session(profile_name=fRootProfile)
+	sts_client = sts_session.client('sts',region_name=fRegion)
+	role_arn = 'arn:aws:iam::'+fChildAccount+':role/'+fRole
+	account_credentials = sts_client.assume_role(
+		RoleArn=role_arn,
+		RoleSessionName="Find-ChildAccount-Things")['Credentials']
+	session_aws=boto3.Session(
+		aws_access_key_id=account_credentials['AccessKeyId'],
+		aws_secret_access_key=account_credentials['SecretAccessKey'],
+		aws_session_token=account_credentials['SessionToken'],
+		region_name=fRegion)
+	return(session_aws)
 
 def find_gd_detectors(fProfile,fRegion):
 
@@ -364,14 +378,14 @@ def find_stacksets(fProfile,fRegion,fStackFragment):
 	"""
 	import boto3, logging, pprint
 
-	logging.warning("Profile: %s | Region: %s | Fragment: %s",fProfile, fRegion, fStackFragment)
+	logging.info("Profile: %s | Region: %s | Fragment: %s",fProfile, fRegion, fStackFragment)
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	stack_info=session_cfn.client('cloudformation')
 	stacksets=stack_info.list_stack_sets(Status='ACTIVE')
 	stacksetsCopy=[]
 	# if fStackFragment=='all' or fStackFragment=='ALL':
 	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
-		logging.warning("Found all the stacksets in Profile: %s in Region: %s with Fragment: %s", fProfile, fRegion, fStackFragment)
+		logging.info("Found all the stacksets in Profile: %s in Region: %s with Fragment: %s", fProfile, fRegion, fStackFragment)
 		return(stacksets['Summaries'])
 	# elif (fStackFragment=='all' or fStackFragment=='ALL'):
 	# 	for stack in stacksets['Summaries']:
@@ -386,41 +400,20 @@ def find_stacksets(fProfile,fRegion,fStackFragment):
 					stacksetsCopy.append(stack)
 	return(stacksetsCopy)
 
-def find_if_org_root(fProfile):
+def delete_stackset(fProfile,fRegion,fStackSetName):
+	"""
+	fProfile is a string holding the name of the profile you're connecting to:
+	fRegion is a string
+	fStackSetName is a string
+	"""
+	import boto3, logging, pprint
+	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	client_cfn=session_cfn.client('cloudformation')
+	logging.warning("Profile: %s | Region: %s | StackSetName: %s",fProfile, fRegion, fStackSetName)
+	response=client_cfn.delete_stack_set(StackSetName=fStackSetName)
+	return(response)
 
-	org_acct_number=find_org_attr(fProfile)
-	acct_number=find_account_number(fProfile)
-	if org_acct_number['Organization']['MasterAccountId']==acct_number:
-		return(True)
-	else:
-		return(False)
-
-def find_if_lz(fProfile):
-	import boto3
-
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('s3')
-	response=client_org.list_buckets()
-	for bucket in response['Buckets']:
-		if "aws-landing-zone-configuration" in bucket['Name']:
-				return(True)
-	return(False)
-
-def find_acct_email(fOrgRootProfile,fAccountId):
-	import boto3
-
-	session_org = boto3.Session(profile_name=fOrgRootProfile)
-	client_org = session_org.client('organizations')
-	email_addr=client_org.describe_account(AccountId=fAccountId)
-	# email_addr=response['Account']['Email']
-	return (email_addr['Account']['Email'])
-
-def find_org_attr(fProfile):
-	import boto3
-
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
-	response=client_org.describe_organization()['Organization']
+def find_stack_instances(fProfile,fRegion,fStackSetName):
 	"""
 	This is an example of the dictionary response from this call:
 		{
@@ -467,4 +460,30 @@ def find_account_number(fProfile):
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	stack_info=session_cfn.client('cloudformation')
 	stack_instances=stack_info.list_stack_instances(StackSetName=fStackSetName)
-	return(stack_instances)
+	stack_instances_list=stack_instances['Summaries']
+	while 'NextToken' in stack_instances.keys(): # Get all instnce names
+		stack_instances=stack_info.list_stack_instances(StackSetName=fStackSetName,NextToken=stack_instances['NextToken'])
+		stack_instances_list.append(stack_instances['Summaries'])
+	return(stack_instances_list)
+
+def delete_stack_instances(fProfile,fRegion,lAccounts,lRegions,fStackSetName,fOperationName="StackDelete"):
+	"""
+	fProfile is the Root Profile that owns the stackset
+	fRegion is the region where the stackset resides
+	lAccounts is a list of accounts
+	lRegion is a list of regions
+	fStackSetName is a string
+	fOperationName is a string (to identify the operation)
+	"""
+	import boto3, logging, pprint
+
+	logging.warning("Deleting %s StackSetName over %s accounts across %s regions" % (fStackSetName,len(lAccounts),len(lRegions)))
+	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	client_cfn=session_cfn.client('cloudformation')
+	response = client_cfn.delete_stack_instances(
+		StackSetName=fStackSetName,
+		Accounts=lAccounts,
+		Regions=lRegions,
+		RetainStacks=False,
+		OperationId=fOperationName
+	)
