@@ -96,7 +96,6 @@ for pregion in RegionList:
 		NumProfilesInvestigated += 1
 		try:
 			Stacks=Inventory_Modules.find_stacks(profile,pregion,pstackfrag,pstatus)
-			# StackSets=Inventory_Modules.find_stacksets(profile,pregion,pstackfrag)
 			# pprint.pprint(Stacks)
 			StackNum=len(Stacks)
 			logging.warning("Profile: %s | Region: %s | Found %s Stacks", profile, pregion, StackNum )
@@ -108,14 +107,6 @@ for pregion in RegionList:
 			for y in range(len(Stacks)):
 				StackName=Stacks[y]['StackName']
 				StackStatus=Stacks[y]['StackStatus']
-		# 		IsDefault=Stacks['StackSummaries'][y]['IsDefault']
-		# 		CIDR=Stacks['Stacks'][y]['CidrBlock']
-		# 		if 'Tags' in Stacks['StackSummaries'][y]:
-		# 			for z in range(len(Stacks['StackSummaries'][y]['Tags'])):
-		# 				if Stacks['StackSummaries'][y]['Tags'][z]['Key']=="Name":
-		# 					VpcName=Stacks['StackSummaries'][y]['Tags'][z]['Value']
-		# 		else:
-		# 			VpcName="No name defined"
 				print(fmt % (profile,pregion,StackStatus,StackName))
 				NumStacksFound += 1
 				StacksFound.append([profile,pregion,StackName,Stacks[y]['StackStatus']])
@@ -130,12 +121,12 @@ print(Fore.RED+"Found",NumStacksFound,"Stacks across",NumProfilesInvestigated,"p
 print()
 # pprint.pprint(StacksFound)
 
-if DeletionRun:
+if DeletionRun and ('GuardDuty' in pStackfrag):
 	logging.warning("Deleting %s stacks",len(StacksFound))
 	for y in range(len(StacksFound)):
 		print("Deleting stack {} from profile {} in region {} with status: {}".format(StacksFound[y][2],StacksFound[y][0],StacksFound[y][1],StacksFound[y][3]))
 		""" This next line is BAD because it's hard-coded for GuardDuty, but we'll fix that eventually """
-		if StacksFound[y][3] in ["DELETE_FAILED"]:
+		if StacksFound[y][3] == 'DELETE_FAILED':
 			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2],RetainResources=True,ResourcesToRetain=["MasterDetector"])
 		else:
 			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2])

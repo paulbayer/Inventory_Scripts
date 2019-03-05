@@ -28,6 +28,13 @@ parser.add_argument(
 	const=True,
 	help="Whether to delete the detectors it finds.")
 parser.add_argument(
+    '-f', '--force',
+    help="force deletion without asking first",
+    action="store_const",
+	dest="ForceDelete",
+	const=True,
+    default=False)
+parser.add_argument(
     '-d', '--debug',
     help="Print lots of debugging statements",
     action="store_const",
@@ -48,6 +55,7 @@ args = parser.parse_args()
 	# 3: credentials and config files
 pProfile=args.pProfile
 DeletionRun=args.flagDelete
+ForceDelete=args.ForceDelete
 logging.basicConfig(level=args.loglevel)
 
 ##########################
@@ -144,9 +152,10 @@ print("Found {} Invites across {} accounts across {} regions".format(len(all_gd_
 print("Found {} Detectors across {} profiles across {} regions".format(NumObjectsFound,len(ChildAccounts),len(gd_regions)))
 print()
 
+if not ForceDelete:
+	ReallyDelete=(input ("Deletion of Guard Duty detectors has been requested. Are you still sure? (y/n): ") == 'y')
 
-
-if DeletionRun and (input ("Deletion of Guard Duty detectors has been requested. Are you still sure? (y/n): ") == 'y'):
+if DeletionRun and (ReallyDelete or ForceDelete):
 	MemberList=[]
 	logging.info("Deleting all invites")
 	for y in range(len(all_gd_invites)):
@@ -158,10 +167,11 @@ if DeletionRun and (input ("Deletion of Guard Duty detectors has been requested.
 		client_gd_child=session_gd_child.client('guardduty')
 		## Delete Invitations
 		try:
+			print(ERASE_LINE,"Deleting invite for Account {}".format(all_gd_invites[y]['AccountId']),end="\r")
 			Output=client_gd_child.delete_invitations(
 				AccountIds=[all_gd_invites[y]['AccountId']]
 			)
-			pprint.pprint(Output)
+			# pprint.pprint(Output)
 		except Exception as e:
 			if e.response['Error']['Code'] == 'BadRequestException':
 				logging.warning("Caught exception 'BadRequestException', handling the exception...")
@@ -170,6 +180,7 @@ if DeletionRun and (input ("Deletion of Guard Duty detectors has been requested.
 				print("Caught unexpected error regarding deleting invites")
 				pprint.pprint(e)
 				sys.exit(9)
+	print("Removed {} GuardDuty Invites".format(len(all_gd_invites)))
 	for y in range(len(all_gd_detectors)):
 		logging.info("Deleting detector-id: %s from account %s in region %s" % (all_gd_detectors[y]['DetectorIds'],all_gd_detectors[y]['AccountId'],all_gd_detectors[y]['Region']))
 		print("Deleting detector in account {} in region {}".format(all_gd_detectors[y]['AccountId'],all_gd_detectors[y]['Region']))
@@ -186,7 +197,7 @@ if DeletionRun and (input ("Deletion of Guard Duty detectors has been requested.
 		)['Members']
 		for i in range(len(Member_Dict)):
 			MemberList.append(Member_Dict[i]['AccountId'])
-		MemberList.append('704627748197')
+		# MemberList.append('704627748197')
 		try:
 			Output=client_gd_child.disassociate_from_master_account(
 				DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
@@ -201,10 +212,19 @@ if DeletionRun and (input ("Deletion of Guard Duty detectors has been requested.
 			AccountIds=MemberList,
     		DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
 		)
+		logging.warning("Account %s has been disassociated from master account" % str(all_gd_detectors[y]['AccountId']))
 		Output=client_gd_child.delete_members(
 			AccountIds=[all_gd_detectors[y]['AccountId']],
     		DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
 		)
+		logging.warning("Account %s has been deleted from master account" % str(all_gd_detectors[y]['AccountId']))
 		Output=client_gd_child.delete_detector(
     		DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
 		)
+		logging.warning("Detector %s has been deleted from child account %s" % (str(all_gd_detectors[y]['DetectorIds'][0]),str(all_gd_detectors[y]['AccountId'])))
+'''
+		if StacksFound[y][3] == 'DELETE_FAILED':
+			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2],RetainResources=True,ResourcesToRetain=["MasterDetector"])
+		else:
+			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2])
+'''
