@@ -1,6 +1,6 @@
 #!/usr/local/bin/python3
 
-import os, sys, pprint
+import os, sys, pprint, boto3
 import Inventory_Modules
 import argparse
 from colorama import init,Fore,Back,Style
@@ -22,8 +22,7 @@ parser = argparse.ArgumentParser(
 # 	help="Which credentials file to use for investigation.")
 parser.add_argument(
 	"-p","--profile",
-	dest="pProfiles",
-	nargs="*",
+	dest="pProfile",
 	metavar="profile to use",
 	default="all",
 	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
@@ -44,7 +43,7 @@ parser.add_argument(
 	nargs="*",
 	dest="pregion",
 	metavar="region name string",
-	default="us-east-1",
+	default=["us-east-1"],
 	help="String fragment of the region(s) you want to check for resources.")
 parser.add_argument(
     '-d', '--debug',
@@ -65,7 +64,7 @@ args = parser.parse_args()
 	# 1: credentials file only
 	# 2: config file only
 	# 3: credentials and config files
-pProfiles=args.pProfiles
+pProfile=args.pProfile
 # plevel=args.plevel
 pRegionList=args.pregion
 pstackfrag=args.pstackfrag
@@ -78,27 +77,35 @@ logging.basicConfig(level=args.loglevel)
 
 # SkipProfiles=["default"]
 SkipProfiles=["default","Shared-Fid"]
+ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
+
 NumStacksFound=0
 ##########################
 ERASE_LINE = '\x1b[2K'
 
 print()
 fmt='%-20s %-15s %-15s %-50s'
-print(fmt % ("Profile","Region","Status","StackSet Name"))
+print(fmt % ("Account","Region","Status","StackSet Name"))
 print(fmt % ("-------","------","------","-------------"))
 RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
-ProfileList=Inventory_Modules.get_profiles(pProfiles,SkipProfiles)# pprint.pprint(RegionList)
-# sys.exit(1)
-for region in RegionList:
-	for profile in ProfileList: #Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles):
+
+sts_session = boto3.Session(profile_name=pProfile)
+sts_client = sts_session.client('sts')
+for account in ChildAccounts:
+	role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
+	logging.info("Role ARN: %s" % role_arn)
+	try:
+		account_credentials = sts_client.assume_role(
+			RoleArn=role_arn,
+			RoleSessionName="Find-StackSets")['Credentials']
+	except ClientError as my_Error:
+		if str(my_Error).find("AuthFailure") > 0:
+			print(profile+": Authorization Failure for account {}".format(account['AccountId']))
+	for region in RegionList:
 		try:
-			StackSets=Inventory_Modules.find_stacksets(profile,region,pstackfrag)
-			logging.warning("Profile: %s | Region: %s | Found %s Stacksets", profile, region, len(StackSets))
-			print(ERASE_LINE,Fore.RED+"Profile: ",profile,"Region: ",region,"Found",len(StackSets),"Stacks"+Fore.RESET,end="\r")
-		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
-				print(profile+": Authorization Failure")
-		if len(StackSets) > 0:
+			StackSets=Inventory_Modules.find_stacksets2(account_credentials,region,pstackfrag,account['AccountId'])
+			logging.warning("Account: %s | Region: %s | Found %s Stacksets", account['AccountId'], region, len(StackSets))
+			print(ERASE_LINE,Fore.RED+"Account: ",account['AccountId'],"Region: ",region,"Found",len(StackSets),"Stacksets"+Fore.RESET,end="\r")
 			for y in range(len(StackSets)):
 				StackName=StackSets[y]['StackSetName']
 				StackStatus=StackSets[y]['Status']
@@ -110,8 +117,11 @@ for region in RegionList:
 		# 					VpcName=Stacks['StackSummaries'][y]['Tags'][z]['Value']
 		# 		else:
 		# 			VpcName="No name defined"
-				print(fmt % (profile,region,StackStatus,StackName))
+				print(fmt % (account['AccountId'],region,StackStatus,StackName))
 				NumStacksFound += 1
+		except ClientError as my_Error:
+			if str(my_Error).find("AuthFailure") > 0:
+				print(account['AccountId']+": Authorization Failure")
 print(ERASE_LINE)
-print(Fore.RED+"Found",NumStacksFound,"Stacks across",NumProfilesInvestigated,"profiles across",NumRegions,"regions"+Fore.RESET)
+print(Fore.RED+"Found",NumStacksFound,"Stacks across",len(ChildAccounts),"profiles across",len(RegionList),"regions"+Fore.RESET)
 print()

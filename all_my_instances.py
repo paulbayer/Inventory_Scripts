@@ -26,7 +26,7 @@ parser.add_argument(
 	nargs="*",
 	dest="pregion",
 	metavar="region name string",
-	default="us-east-1",
+	default=["us-east-1"],
 	help="String fragment of the region(s) you want to check for resources.")
 parser.add_argument(
     '-d', '--debug',
@@ -49,7 +49,7 @@ logging.basicConfig(level=args.loglevel)
 # RegionList=[]
 
 # SkipProfiles=["default"]
-SkipProfiles=["default","Shared-Fid"]
+SkipProfiles=["default","Shared-Fid", "BottomLine", "TsysRoot"]
 
 ##########################
 ERASE_LINE = '\x1b[2K'
@@ -69,6 +69,7 @@ for pregion in RegionList:
 		NumProfilesInvestigated += 1
 		try:
 			Instances=Inventory_Modules.find_profile_instances(profile,pregion)
+			logging.warning("Profile %s being looked at now" % profile)
 			InstanceNum=len(Instances['Reservations'])
 			print(ERASE_LINE,"Profile: ",profile,"Region: ",pregion,"Found",InstanceNum,"instances",end='\r')
 		except ClientError as my_Error:

@@ -391,6 +391,42 @@ def find_stacksets(fProfile,fRegion,fStackFragment):
 					stacksetsCopy.append(stack)
 	return(stacksetsCopy)
 
+def find_stacksets2(facct_creds,fRegion,fStackFragment,faccount):
+	"""
+	facct_creds is an object which contains the credentials for the account
+	fRegion is a string
+	fStackFragment is a list
+	"""
+	import boto3, logging, pprint
+
+	logging.info("Account: %s | Region: %s | Fragment: %s",faccount, fRegion, fStackFragment)
+	session_aws=boto3.Session(
+		aws_access_key_id=facct_creds['AccessKeyId'],
+		aws_secret_access_key=facct_creds['SecretAccessKey'],
+		aws_session_token=facct_creds['SessionToken'],
+		region_name=fRegion)
+	client_cfn=session_aws.client('cloudformation')
+
+	stacksets=client_cfn.list_stack_sets(Status='ACTIVE')
+	stacksetsCopy=[]
+	# if fStackFragment=='all' or fStackFragment=='ALL':
+	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
+		logging.info("Found all the stacksets in Profile: %s in Region: %s with Fragment: %s", faccount, fRegion, fStackFragment)
+		return(stacksets['Summaries'])
+	# elif (fStackFragment=='all' or fStackFragment=='ALL'):
+	# 	for stack in stacksets['Summaries']:
+	# 		if fStatus in stack['Status']:
+	# 			logging.warning("Found stackset %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackSetName'], fProfile, fRegion, fStackFragment, fStatus)
+	# 			stacksetsCopy.append(stack)
+	else:
+		for stack in stacksets['Summaries']:
+			for stackfrag in fStackFragment:
+				if stackfrag in stack['StackSetName']:
+					logging.warning("Found stackset %s in Profile: %s in Region: %s with Fragment: %s", stack['StackSetName'], faccount, fRegion, stackfrag)
+					stacksetsCopy.append(stack)
+	return(stacksetsCopy)
+
+
 def delete_stackset(fProfile,fRegion,fStackSetName):
 	"""
 	fProfile is a string holding the name of the profile you're connecting to:
@@ -411,6 +447,8 @@ def find_stack_instances(fProfile,fRegion,fStackSetName):
 	fStackSetName is a string
 	"""
 	import boto3, logging, pprint
+
+	import logging, boto3
 
 	logging.warning("Profile: %s | Region: %s | StackSetName: %s",fProfile, fRegion, fStackSetName)
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)

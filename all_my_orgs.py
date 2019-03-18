@@ -135,14 +135,21 @@ for profile in get_profiles(plevel,SkipProfiles):
 			MasterAcct="Not an Org Account"
 		elif str(my_Error).find("AccessDenied") > 0:
 			MasterAcct="Acct not auth for Org API."
+		elif str(my_Error).find("InvalidClientTokenId") > 0:
+			MasterAcct="Credentials Invalid."
+		elif str(my_Error).find("ExpiredToken") > 0:
+			MasterAcct="Token Expired."
 		else:
+			print("Client Error")
 			print(my_Error)
 	except NoCredentialsError as my_Error:
 		ErrorFlag = True
 		if str(my_Error).find("Unable to locate credentials") > 0:
 			MasterAcct="This profile doesn't have credentials."
 		else:
+			print("Credentials Error")
 			print(my_Error)
+
 
 	if (AcctNum==MasterAcct and not ErrorFlag):
 		RootAcct=True

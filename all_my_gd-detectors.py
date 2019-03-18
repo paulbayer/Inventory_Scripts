@@ -63,17 +63,7 @@ ERASE_LINE = '\x1b[2K'
 
 NumObjectsFound = 0
 NumAccountsInvestigated = 0
-ChildAccounts2=[]
-# try:
 ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
-# except:
-for i in range(len(ChildAccounts)):
-	if not (ChildAccounts[i]['AccountId']=='614019996801'):
-		ChildAccounts2.append(ChildAccounts[i])
-	else:
-		continue
-ChildAccounts=ChildAccounts2
-
 
 session_gd=boto3.Session(profile_name=pProfile)
 gd_regions=session_gd.get_available_regions(service_name='guardduty')
@@ -152,12 +142,14 @@ print("Found {} Invites across {} accounts across {} regions".format(len(all_gd_
 print("Found {} Detectors across {} profiles across {} regions".format(NumObjectsFound,len(ChildAccounts),len(gd_regions)))
 print()
 
-if not ForceDelete:
+if DeletionRun and not ForceDelete:
 	ReallyDelete=(input ("Deletion of Guard Duty detectors has been requested. Are you still sure? (y/n): ") == 'y')
+else:
+	ReallyDelete=False
 
 if DeletionRun and (ReallyDelete or ForceDelete):
 	MemberList=[]
-	logging.info("Deleting all invites")
+	logging.warning("Deleting all invites")
 	for y in range(len(all_gd_invites)):
 		session_gd_child=boto3.Session(
 				aws_access_key_id=all_gd_invites[y]['AccessKeyId'],
@@ -222,9 +214,12 @@ if DeletionRun and (ReallyDelete or ForceDelete):
     		DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
 		)
 		logging.warning("Detector %s has been deleted from child account %s" % (str(all_gd_detectors[y]['DetectorIds'][0]),str(all_gd_detectors[y]['AccountId'])))
-'''
+"""
 		if StacksFound[y][3] == 'DELETE_FAILED':
 			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2],RetainResources=True,ResourcesToRetain=["MasterDetector"])
 		else:
 			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2])
-'''
+"""
+
+print()
+print("Thank you for using this tool")

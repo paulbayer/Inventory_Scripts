@@ -26,21 +26,21 @@ parser.add_argument(
 	nargs="*",
 	dest="pregion",
 	metavar="region name string",
-	default="us-east-1",
+	default=["us-east-1"],
 	help="String fragment of the region(s) you want to check for resources.")
 parser.add_argument(
     '-d', '--debug',
     help="Print lots of debugging statements",
     action="store_const",
 	dest="loglevel",
-	const=logging.DEBUG,
-    default=logging.CRITICAL)
+	const=logging.INFO,
+    default=logging.ERROR)
 parser.add_argument(
     '-v', '--verbose',
     help="Be verbose",
     action="store_const",
 	dest="loglevel",
-	const=logging.INFO)
+	const=logging.WARNING)
 args = parser.parse_args()
 
 # If plevel
@@ -67,22 +67,24 @@ print(fmt % ("Profile","Region","Vpc ID","CIDR","Is Default?","Vpc Name"))
 print(fmt % ("-------","------","------","----","-----------","--------"))
 RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
 ProfileList=Inventory_Modules.get_profiles(pProfiles,SkipProfiles)# pprint.pprint(RegionList)
-# sys.exit(1)
-for pregion in RegionList:
+
+logging.info("# of Regions: %s" % len(RegionList))
+logging.info("# of Profiles: %s" % len(ProfileList))
+
+for region in RegionList:
 	NumRegions += 1
 	NumProfilesInvestigated = 0	# I only care about the last run - so I don't get profiles * regions.
 	for profile in ProfileList: #Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles):
 		NumProfilesInvestigated += 1
 		try:
-			Vpcs=Inventory_Modules.find_profile_vpcs(profile,pregion)
-			VpcNum=len(Vpcs['Vpcs'])
-			logging.info(ERASE_LINE,"Profile: ",profile,"Region: ",pregion,"Found",VpcNum,"Vpcs")
-			print(ERASE_LINE,"Profile: ",profile,"Region: ",pregion,"Found",VpcNum,"Vpcs",end='\r')
+			Vpcs=Inventory_Modules.find_profile_vpcs(profile,region)
+			VpcNum=len(Vpcs['Vpcs']) if Vpcs['Vpcs']==[] else 0
+			print(ERASE_LINE,"Profile: {} | Region: {} | Found {} Vpcs".format(profile,region,VpcNum),end='\r')
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
-				print(ERASE_LINE+profile+": Authorization Failure")
+				print(ERASE_LINE, profile,":Authorization Failure")
 		except TypeError as my_Error:
-			# print(my_Error)
+			print(my_Error)
 			pass
 		if 'Vpcs' in Vpcs and len(Vpcs['Vpcs']) > 0:
 			for y in range(len(Vpcs['Vpcs'])):
@@ -95,8 +97,15 @@ for pregion in RegionList:
 							VpcName=Vpcs['Vpcs'][y]['Tags'][z]['Value']
 				else:
 					VpcName="No name defined"
-				print(fmt % (profile,pregion,VpcId,CIDR,IsDefault,VpcName))
+				print(fmt % (profile,region,VpcId,CIDR,IsDefault,VpcName))
 				NumVpcsFound += 1
+		else:
+			continue
+			# print(ERASE_LINE,"Something")
+			# if Vpcs['Vpcs']==[]:
+			# 	print("That was the trick")
+			# else:
+			# 	pprint.pprint(Vpcs)
 print(ERASE_LINE)
 print("Found",NumVpcsFound,"Vpcs across",NumProfilesInvestigated,"profiles across",NumRegions,"regions")
 print()
