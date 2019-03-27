@@ -391,11 +391,11 @@ def find_stacksets(fProfile,fRegion,fStackFragment):
 					stacksetsCopy.append(stack)
 	return(stacksetsCopy)
 
-def find_stacksets2(facct_creds,fRegion,fStackFragment,faccount):
+def find_stacksets2(facct_creds,fRegion,faccount,fStackFragment=""):
 	"""
 	facct_creds is an object which contains the credentials for the account
 	fRegion is a string
-	fStackFragment is a list
+	fStackFragment is a string
 	"""
 	import boto3, logging, pprint
 
@@ -420,10 +420,9 @@ def find_stacksets2(facct_creds,fRegion,fStackFragment,faccount):
 	# 			stacksetsCopy.append(stack)
 	else:
 		for stack in stacksets['Summaries']:
-			for stackfrag in fStackFragment:
-				if stackfrag in stack['StackSetName']:
-					logging.warning("Found stackset %s in Profile: %s in Region: %s with Fragment: %s", stack['StackSetName'], faccount, fRegion, stackfrag)
-					stacksetsCopy.append(stack)
+			if fStackFragment in stack['StackSetName']:
+				logging.warning("Found stackset %s in Account: %s in Region: %s with Fragment: %s", stack['StackSetName'], faccount, fRegion, fStackFragment)
+				stacksetsCopy.append(stack)
 	return(stacksetsCopy)
 
 

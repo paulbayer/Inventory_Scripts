@@ -109,7 +109,11 @@ for pregion in RegionList:
 				StackStatus=Stacks[y]['StackStatus']
 				print(fmt % (profile,pregion,StackStatus,StackName))
 				NumStacksFound += 1
-				StacksFound.append([profile,pregion,StackName,Stacks[y]['StackStatus']])
+				StacksFound.append({
+					'Profile':profile,
+					'Region':pregion,
+					'StackName':StackName,
+					'StackStatus':Stacks[y]['StackStatus']})
 				"""
 				StacksFound[x][0]=profile
 				StacksFound[x][1]=region
@@ -121,14 +125,21 @@ print(Fore.RED+"Found",NumStacksFound,"Stacks across",NumProfilesInvestigated,"p
 print()
 # pprint.pprint(StacksFound)
 
-if DeletionRun and ('GuardDuty' in pStackfrag):
+if DeletionRun and ('GuardDuty' in pstackfrag):
 	logging.warning("Deleting %s stacks",len(StacksFound))
 	for y in range(len(StacksFound)):
-		print("Deleting stack {} from profile {} in region {} with status: {}".format(StacksFound[y][2],StacksFound[y][0],StacksFound[y][1],StacksFound[y][3]))
+		print("Deleting stack {} from profile {} in region {} with status: {}".format(StacksFound[y]['StackName'],StacksFound[y]['Profile'],StacksFound[y]['Region'],StacksFound[y]['StackStatus']))
 		""" This next line is BAD because it's hard-coded for GuardDuty, but we'll fix that eventually """
-		if StacksFound[y][3] == 'DELETE_FAILED':
-			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2],RetainResources=True,ResourcesToRetain=["MasterDetector"])
+		if StacksFound[y]['StackStatus'] == 'DELETE_FAILED':
+			# This deletion generally fails because the Master Detector doesn't properly delete (and it's usually already deleted due to some other script) - so we just need to delete the stack anyway - and ignore the actual resource.
+			response=Inventory_Modules.delete_stack(StacksFound[y]['Profile'],StacksFound[y]['Region'],StacksFound[y]['StackName'],RetainResources=True,ResourcesToRetain=["MasterDetector"])
 		else:
-			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2])
+			response=Inventory_Modules.delete_stack(StacksFound[y]['Profile'],StacksFound[y]['Region'],StacksFound[y]['StackName'])
+elif DeletionRun:
+	logging.warning("Deleting %s stacks",len(StacksFound))
+	for y in range(len(StacksFound)):
+		print("Deleting stack {} from profile {} in region {} with status: {}".format(StacksFound[y]['StackName'],StacksFound[y]['Profile'],StacksFound[y]['Region'],StacksFound[y]['StackStatus']))
+		response=Inventory_Modules.delete_stack(StacksFound[y]['Profile'],StacksFound[y]['Region'],StacksFound[y]['StackName'])
+
 
 print("Thanks for playing...")

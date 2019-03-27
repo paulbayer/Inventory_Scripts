@@ -24,7 +24,6 @@ parser.add_argument(
 	"-p","--profile",
 	dest="pProfile",
 	metavar="profile to use",
-	default="all",
 	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
 parser.add_argument(
 	"-f","--fragment",
@@ -103,9 +102,12 @@ for account in ChildAccounts:
 			print(profile+": Authorization Failure for account {}".format(account['AccountId']))
 	for region in RegionList:
 		try:
-			StackSets=Inventory_Modules.find_stacksets2(account_credentials,region,pstackfrag,account['AccountId'])
+			StackSets = None
+			print(ERASE_LINE,Fore.RED+"Checking Account: ",account['AccountId'],"Region: ",region+Fore.RESET,end="\r")
+			StackSets=Inventory_Modules.find_stacksets2(account_credentials,region,account['AccountId'],pstackfrag)
 			logging.warning("Account: %s | Region: %s | Found %s Stacksets", account['AccountId'], region, len(StackSets))
-			print(ERASE_LINE,Fore.RED+"Account: ",account['AccountId'],"Region: ",region,"Found",len(StackSets),"Stacksets"+Fore.RESET,end="\r")
+			if not StackSets == []:
+				print(ERASE_LINE,Fore.RED+"Account: ",account['AccountId'],"Region: ",region,"Found",len(StackSets),"Stacksets"+Fore.RESET,end="\r")
 			for y in range(len(StackSets)):
 				StackName=StackSets[y]['StackSetName']
 				StackStatus=StackSets[y]['Status']
@@ -123,5 +125,5 @@ for account in ChildAccounts:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(account['AccountId']+": Authorization Failure")
 print(ERASE_LINE)
-print(Fore.RED+"Found",NumStacksFound,"Stacks across",len(ChildAccounts),"profiles across",len(RegionList),"regions"+Fore.RESET)
+print(Fore.RED+"Found",NumStacksFound,"Stacksets across",len(ChildAccounts),"accounts across",len(RegionList),"regions"+Fore.RESET)
 print()
