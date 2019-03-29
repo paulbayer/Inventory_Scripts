@@ -157,6 +157,25 @@ def find_account_number(fProfile):
 Above - Generic functions
 Below - Specific functions to specific features
 """
+def find_users(ocredentials):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+	"""
+	import boto3, logging, pprint
+	logging.warning("Key ID #: %s ",str(ocredentials['AccessKeyId']))
+	session_iam=boto3.Session(
+				aws_access_key_id = ocredentials['AccessKeyId'],
+				aws_secret_access_key = ocredentials['SecretAccessKey'],
+				aws_session_token = ocredentials['SessionToken']
+				)
+	user_info=session_iam.client('iam')
+	users=user_info.list_users()
+	return(users['Users'])
+
+
 def find_profile_vpcs(fProfile,fRegion):
 
 	import boto3
