@@ -18,7 +18,7 @@ def get_ec2_regions(fkey):
 				RegionNames2.append(y)
 	return(RegionNames2)
 
-def get_profiles(fprofiles,fSkipProfiles):
+def get_profiles(fSkipProfiles,fprofiles="1"):
 
 	import boto3, logging
 	from botocore.exceptions import ClientError
