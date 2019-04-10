@@ -69,9 +69,9 @@ def find_acct_email(fOrgRootProfile,fAccountId):
 
 	session_org = boto3.Session(profile_name=fOrgRootProfile)
 	client_org = session_org.client('organizations')
-	email_addr=client_org.describe_account(AccountId=fAccountId)
+	email_addr=client_org.describe_account(AccountId=fAccountId)['Account']['Email']
 	# email_addr=response['Account']['Email']
-	return (email_addr['Account']['Email'])
+	return (email_addr)
 
 def find_org_attr(fProfile):
 	import boto3
@@ -172,9 +172,29 @@ def find_users(ocredentials):
 				aws_session_token = ocredentials['SessionToken']
 				)
 	user_info=session_iam.client('iam')
-	users=user_info.list_users()
-	return(users['Users'])
+	users=user_info.list_users()['Users']
+	return(users)
 
+def find_if_Isengard_registered(ocredentials):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+	"""
+	import boto3, logging, pprint
+	logging.warning("Key ID #: %s ",str(ocredentials['AccessKeyId']))
+	session_iam=boto3.Session(
+				aws_access_key_id = ocredentials['AccessKeyId'],
+				aws_secret_access_key = ocredentials['SecretAccessKey'],
+				aws_session_token = ocredentials['SessionToken']
+				)
+	iam_info=session_iam.client('iam')
+	roles=iam_info.list_roles()['Roles']
+	for y in range(len(roles)):
+		if roles[y]['RoleName']=='IsengardRole-DO-NOT-DELETE':
+			return(True)
+	return(False)
 
 def find_profile_vpcs(fProfile,fRegion):
 

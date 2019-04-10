@@ -19,7 +19,7 @@ parser.add_argument(
 	dest="pProfiles",
 	nargs="*",
 	metavar="profile to use",
-	default="all",
+	default="[all]",
 	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
 parser.add_argument(
 	"-r","--region",
