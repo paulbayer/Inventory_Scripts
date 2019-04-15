@@ -10,16 +10,9 @@ import logging
 
 init()
 
-# UsageMsg="You can provide a level to determine whether this script considers only the 'credentials' file, the 'config' file, or both."
 parser = argparse.ArgumentParser(
 	description="We\'re going to find all resources within any of the profiles we have access to.",
 	prefix_chars='-+/')
-parser.add_argument(
-	"-c","--creds",
-	dest="plevel",
-	metavar="Creds",
-	default="1",
-	help="Which credentials file to use for investigation.")
 parser.add_argument(
 	"-p","--profile",
 	dest="pProfiles",
@@ -61,22 +54,13 @@ parser.add_argument(
 	const=logging.INFO)
 args = parser.parse_args()
 
-# If plevel
-	# 1: credentials file only
-	# 2: config file only
-	# 3: credentials and config files
 pProfiles=args.pProfiles
-plevel=args.plevel
 pRegionList=args.pregion
 pstackfrag=args.pstackfrag
 pstatus=args.pstatus
 verbose=args.loglevel
 logging.basicConfig(level=args.loglevel)
-# RegionList=[]
 
-# if pRegionList
-
-# SkipProfiles=["default"]
 SkipProfiles=["default","Shared-Fid"]
 
 ##########################
@@ -89,17 +73,15 @@ fmt='%-20s %-10s %-20s %-10s %-50s'
 print(fmt % ("Profile","Region","Load Balancer Name","LB Status","Load Balancer DNS Name"))
 print(fmt % ("-------","------","------------------","---------","----------------------"))
 RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
-ProfileList=Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles)# pprint.pprint(RegionList)
-# sys.exit(1)
+ProfileList=Inventory_Modules.get_profiles(SkipProfiles,pProfiles)
+
 for pregion in RegionList:
 	NumRegions += 1
 	NumProfilesInvestigated = 0	# I only care about the last run - so I don't get profiles * regions.
-	for profile in ProfileList: #Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles):
+	for profile in ProfileList:
 		NumProfilesInvestigated += 1
 		try:
 			LoadBalancers=Inventory_Modules.find_load_balancers(profile,pregion,pstackfrag,pstatus)
-			# StackSets=Inventory_Modules.find_stacksets(profile,pregion,pstackfrag)
-			# pprint.pprint(Stacks)
 			LBNum=len(LoadBalancers)
 			logging.info("Profile: %-15s | Region: %-15s | Found %2d Load Balancers", profile, pregion, LBNum )
 			print(ERASE_LINE,Fore.RED+"Profile: %-15s Region: %-15s Found %2d Load Balancers" % (profile, pregion, LBNum)+Fore.RESET,end='\r')
@@ -111,14 +93,6 @@ for pregion in RegionList:
 				LBName=LoadBalancers[y]['LoadBalancerName']
 				LBStatus=LoadBalancers[y]['State']['Code']
 				LBDNSName=LoadBalancers[y]['DNSName']
-		# 		IsDefault=Stacks['StackSummaries'][y]['IsDefault']
-		# 		CIDR=Stacks['Stacks'][y]['CidrBlock']
-		# 		if 'Tags' in Stacks['StackSummaries'][y]:
-		# 			for z in range(len(Stacks['StackSummaries'][y]['Tags'])):
-		# 				if Stacks['StackSummaries'][y]['Tags'][z]['Key']=="Name":
-		# 					VpcName=Stacks['StackSummaries'][y]['Tags'][z]['Value']
-		# 		else:
-		# 			VpcName="No name defined"
 				print(fmt % (profile,pregion,LBName,LBStatus,LBDNSName))
 				NumLBsFound += 1
 print(ERASE_LINE)

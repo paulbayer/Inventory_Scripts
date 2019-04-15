@@ -10,7 +10,6 @@ import logging
 
 init()
 
-# UsageMsg="You can provide a level to determine whether this script considers only the 'credentials' file, the 'config' file, or both."
 parser = argparse.ArgumentParser(
 	description="We\'re going to find all resources within any of the profiles we have access to.",
 	prefix_chars='-+/')
@@ -43,17 +42,11 @@ parser.add_argument(
 	const=logging.WARNING)
 args = parser.parse_args()
 
-# If plevel
-	# 1: credentials file only
-	# 2: config file only
-	# 3: credentials and config files
 pProfiles=args.pProfiles
 pRegionList=args.pregion
 verbose=args.loglevel
 logging.basicConfig(level=args.loglevel)
-# RegionList=[]
 
-# SkipProfiles=["default"]
 SkipProfiles=["default","Shared-Fid"]
 
 ##########################
@@ -66,7 +59,7 @@ fmt='%-20s %-10s %-21s %-20s %-12s %-10s'
 print(fmt % ("Profile","Region","Vpc ID","CIDR","Is Default?","Vpc Name"))
 print(fmt % ("-------","------","------","----","-----------","--------"))
 RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
-ProfileList=Inventory_Modules.get_profiles(pProfiles,SkipProfiles)# pprint.pprint(RegionList)
+ProfileList=Inventory_Modules.get_profiles(SkipProfiles,pProfiles)
 
 logging.info("# of Regions: %s" % len(RegionList))
 logging.info("# of Profiles: %s" % len(ProfileList))
@@ -74,7 +67,7 @@ logging.info("# of Profiles: %s" % len(ProfileList))
 for region in RegionList:
 	NumRegions += 1
 	NumProfilesInvestigated = 0	# I only care about the last run - so I don't get profiles * regions.
-	for profile in ProfileList: #Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles):
+	for profile in ProfileList:
 		NumProfilesInvestigated += 1
 		try:
 			Vpcs=Inventory_Modules.find_profile_vpcs(profile,region)
@@ -101,11 +94,7 @@ for region in RegionList:
 				NumVpcsFound += 1
 		else:
 			continue
-			# print(ERASE_LINE,"Something")
-			# if Vpcs['Vpcs']==[]:
-			# 	print("That was the trick")
-			# else:
-			# 	pprint.pprint(Vpcs)
+
 print(ERASE_LINE)
 print("Found",NumVpcsFound,"Vpcs across",NumProfilesInvestigated,"profiles across",NumRegions,"regions")
 print()

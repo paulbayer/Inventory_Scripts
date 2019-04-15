@@ -10,7 +10,6 @@ import logging
 
 init()
 
-# UsageMsg="You can provide a level to determine whether this script considers only the 'credentials' file, the 'config' file, or both."
 parser = argparse.ArgumentParser(
 	description="We\'re going to find all resources within any of the profiles we have access to.",
 	prefix_chars='-+/')
@@ -46,9 +45,7 @@ args = parser.parse_args()
 pProfiles=args.pProfiles
 pRegionList=args.pregion
 logging.basicConfig(level=args.loglevel)
-# RegionList=[]
 
-# SkipProfiles=["default"]
 SkipProfiles=["default","Shared-Fid", "BottomLine", "TsysRoot"]
 
 ##########################
@@ -60,12 +57,13 @@ fmt='%-20s %-10s %-15s %-20s %-20s %-42s %-12s'
 print(fmt % ("Profile","Region","InstanceType","Name","Instance ID","Public DNS Name","State"))
 print(fmt % ("-------","------","------------","----","-----------","---------------","-----"))
 RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
-ProfileList=Inventory_Modules.get_profiles(pProfiles,SkipProfiles)# pprint.pprint(RegionList)
-# sys.exit(1)
+ProfileList=Inventory_Modules.get_profiles(SkipProfiles,pProfiles)
+# pprint.pprint(RegionList)
+
 for pregion in RegionList:
 	NumRegions += 1
 	NumProfilesInvestigated = 0	# I only care about the last run - so I don't get profiles * regions.
-	for profile in ProfileList: #Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles):
+	for profile in ProfileList:
 		NumProfilesInvestigated += 1
 		try:
 			Instances=Inventory_Modules.find_profile_instances(profile,pregion)
@@ -79,7 +77,6 @@ for pregion in RegionList:
 		if len(Instances['Reservations']) > 0:
 			for y in range(len(Instances['Reservations'])):
 				for z in range(len(Instances['Reservations'][y]['Instances'])):
-					# fmt='%-20s %-8s %-12s %-15s %-45s %-12s'
 					InstanceType=Instances['Reservations'][y]['Instances'][z]['InstanceType']
 					InstanceId=Instances['Reservations'][y]['Instances'][z]['InstanceId']
 					PublicDnsName=Instances['Reservations'][y]['Instances'][z]['PublicDnsName']

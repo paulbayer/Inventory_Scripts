@@ -10,16 +10,9 @@ import logging
 
 init()
 
-# UsageMsg="You can provide a level to determine whether this script considers only the 'credentials' file, the 'config' file, or both."
 parser = argparse.ArgumentParser(
 	description="We\'re going to find all resources within any of the profiles we have access to.",
 	prefix_chars='-+/')
-parser.add_argument(
-	"-c","--creds",
-	dest="plevel",
-	metavar="Creds",
-	default="1",
-	help="Which credentials file to use for investigation.")
 parser.add_argument(
 	"-p","--profile",
 	dest="pProfiles",
@@ -49,17 +42,10 @@ parser.add_argument(
 	const=logging.INFO)
 args = parser.parse_args()
 
-# If plevel
-	# 1: credentials file only
-	# 2: config file only
-	# 3: credentials and config files
 pProfiles=args.pProfiles
-plevel=args.plevel
 pRegionList=args.pregion
 logging.basicConfig(level=args.loglevel)
-# RegionList=[]
 
-# SkipProfiles=["default"]
 SkipProfiles=["default","Shared-Fid"]
 
 def left(s, amount):
@@ -80,13 +66,12 @@ fmt='%-20s %-10s %-40s %-12s %-35s'
 print(fmt % ("Profile","Region","Function Name","Runtime","Role"))
 print(fmt % ("-------","------","-------------","-------","----"))
 RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
-ProfileList=Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles)
+ProfileList=Inventory_Modules.get_profiles(SkipProfiles,pProfiles)
 # pprint.pprint(RegionList)
-# sys.exit(1)
 for pregion in RegionList:
 	NumRegions += 1
 	NumProfilesInvestigated = 0	# I only care about the last run - so I don't get profiles * regions.
-	for profile in ProfileList: #Inventory_Modules.get_profiles(pProfiles,plevel,SkipProfiles):
+	for profile in ProfileList:
 		NumProfilesInvestigated += 1
 		try:
 			Functions=Inventory_Modules.find_profile_functions(profile,pregion)

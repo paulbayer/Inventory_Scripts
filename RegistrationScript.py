@@ -10,9 +10,8 @@ import logging
 
 init()
 
-# UsageMsg="You can provide a level to determine whether this script considers only the 'credentials' file, the 'config' file, or both."
 parser = argparse.ArgumentParser(
-	description="We\'re going to find all resources within any of the profiles we have access to.",
+	description="We\'re going to find the necessary information to register this account within Isengard.",
 	prefix_chars='-+/')
 parser.add_argument(
 	"-p","--profile",

@@ -3,9 +3,10 @@
 import os, sys, pprint, logging
 import argparse
 import boto3
+import Inventory_Modules
+
 from botocore.exceptions import ClientError, NoCredentialsError
 from colorama import init,Fore,Back,Style
-import Inventory_Modules
 
 init()
 
@@ -33,10 +34,6 @@ parser.add_argument(
 	const=logging.WARNING)
 args=parser.parse_args()
 
-# If plevel
-	# 1: credentials file only
-	# 2: config file only
-	# 3: credentials and config files
 pProfile=args.pProfile
 verbose=args.loglevel
 logging.basicConfig(level=args.loglevel)
@@ -117,15 +114,12 @@ if ShowEverything:
 
 	#	 Print results for this profile
 		if RootAcct:
-			# print (Fore.RED + fmt % (profile,AcctNum,MasterAcct,OrgId,Email,RootAcct)+Style.RESET_ALL)
 			print (Fore.RED + fmt % (profile,AcctNum,MasterAcct,OrgId,RootAcct)+Style.RESET_ALL)
 		else:
-			# print (fmt % (profile,AcctNum,MasterAcct,OrgId,Email,RootAcct))
 			print (fmt % (profile,AcctNum,MasterAcct,OrgId,RootAcct))
 
 	print ("-------------------")
 
-	# fmt='%-23s %-15s %-6s %-40s %-40s'
 	fmt='%-23s %-15s %-6s'
 	child_fmt="\t\t%-20s %-20s"
 	print()
@@ -171,3 +165,5 @@ elif not ShowEverything:
 	print(child_fmt % ("Child Account Number","Child Email Address"))
 	for account in sorted(child_accounts):
 		print(child_fmt % (account,child_accounts[account]))
+	print()
+	print("Number of Organization Accounts:",NumOfAccounts)

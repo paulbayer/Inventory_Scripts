@@ -18,8 +18,11 @@ def get_ec2_regions(fkey):
 				RegionNames2.append(y)
 	return(RegionNames2)
 
-def get_profiles(fSkipProfiles,fprofiles="1"):
-
+def get_profiles(fSkipProfiles,fprofiles="all"):
+	'''
+	We assume that the user of this function wants all profiles.
+	If they provide a list of profile strings (in fprofiles), then we compare those strings to the full list of profiles we have, and return those profiles that contain the strings they sent.
+	'''
 	import boto3, logging
 	from botocore.exceptions import ClientError
 
