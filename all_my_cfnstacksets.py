@@ -1,25 +1,16 @@
 #!/usr/local/bin/python3
 
-import os, sys, pprint, boto3
+import os, sys, pprint, logging
 import Inventory_Modules
-import argparse
+import argparse, boto3
 from colorama import init,Fore,Back,Style
 from botocore.exceptions import ClientError, NoCredentialsError
 
-import logging
-
 init()
 
-# UsageMsg="You can provide a level to determine whether this script considers only the 'credentials' file, the 'config' file, or both."
 parser = argparse.ArgumentParser(
 	description="We\'re going to find all resources within any of the profiles we have access to.",
 	prefix_chars='-+/')
-# parser.add_argument(
-# 	"-c","--creds",
-# 	dest="plevel",
-# 	metavar="Creds",
-# 	default="1",
-# 	help="Which credentials file to use for investigation.")
 parser.add_argument(
 	"-p","--profile",
 	dest="pProfile",
@@ -29,7 +20,7 @@ parser.add_argument(
 	"-f","--fragment",
 	dest="pstackfrag",
 	metavar="CloudFormation stack fragment",
-	default="all",
+	default=["all"],
 	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
 parser.add_argument(
 	"-s","--status",
@@ -59,22 +50,13 @@ parser.add_argument(
 	const=logging.WARNING)
 args = parser.parse_args()
 
-# If plevel
-	# 1: credentials file only
-	# 2: config file only
-	# 3: credentials and config files
 pProfile=args.pProfile
-# plevel=args.plevel
 pRegionList=args.pregion
 pstackfrag=args.pstackfrag
 pstatus=args.pstatus
 verbose=args.loglevel
 logging.basicConfig(level=args.loglevel)
-# RegionList=[]
 
-# if pRegionList
-
-# SkipProfiles=["default"]
 SkipProfiles=["default","Shared-Fid"]
 ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 
@@ -111,14 +93,6 @@ for account in ChildAccounts:
 			for y in range(len(StackSets)):
 				StackName=StackSets[y]['StackSetName']
 				StackStatus=StackSets[y]['Status']
-		# 		IsDefault=Stacks['StackSummaries'][y]['IsDefault']
-		# 		CIDR=Stacks['Stacks'][y]['CidrBlock']
-		# 		if 'Tags' in Stacks['StackSummaries'][y]:
-		# 			for z in range(len(Stacks['StackSummaries'][y]['Tags'])):
-		# 				if Stacks['StackSummaries'][y]['Tags'][z]['Key']=="Name":
-		# 					VpcName=Stacks['StackSummaries'][y]['Tags'][z]['Value']
-		# 		else:
-		# 			VpcName="No name defined"
 				print(fmt % (account['AccountId'],region,StackStatus,StackName))
 				NumStacksFound += 1
 		except ClientError as my_Error:

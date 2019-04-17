@@ -112,7 +112,7 @@ for account in ChildAccounts:
 				print(fmt % (account['AccountId'],region,StackStatus,StackName))
 				NumStacksFound += 1
 				StacksFound.append({
-					'Profile':profile,
+					'Account':account['AccountId'],
 					'Region':region,
 					'StackName':StackName,
 					'StackStatus':Stacks[y]['StackStatus']})

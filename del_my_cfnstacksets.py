@@ -19,10 +19,9 @@ TODO:
 			- Nothing to do here
 '''
 
-import os, sys, pprint, argparse, logging, time
-# from sty import
+import os, sys, pprint, logging, time
 import Inventory_Modules
-import boto3
+import argparse, boto3
 from colorama import init,Fore,Back,Style
 from botocore.exceptions import ClientError, NoCredentialsError
 

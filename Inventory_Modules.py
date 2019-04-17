@@ -199,6 +199,40 @@ def find_if_Isengard_registered(ocredentials):
 			return(True)
 	return(False)
 
+def find_if_LZ_Acct(ocredentials):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['ParentAccountNumber'] holds the AWS Account Number
+	"""
+	import boto3, logging, pprint
+	from botocore.exceptions import ClientError
+
+	logging.warning("Key ID #: %s ",str(ocredentials['AccessKeyId']))
+	session_aws=boto3.Session(
+				aws_access_key_id = ocredentials['AccessKeyId'],
+				aws_secret_access_key = ocredentials['SecretAccessKey'],
+				aws_session_token = ocredentials['SessionToken']
+				)
+	iam_info=session_aws.client('iam')
+	try:
+		roles=iam_info.list_roles()['Roles']
+		AccessSuccess=True
+	except ClientError as my_Error:
+		if str(my_Error).find("AccessDenied") > 0:
+			print("Authorization Failure for account {}".format(ocredentials['ParentAccountNumber']))
+		AccessSuccess=False
+	if AccessSuccess:
+		for y in range(len(roles)):
+			if roles[y]['RoleName']=='AWSCloudFormationStackSetExecutionRole':
+				return(True)
+		return(False)
+	else:
+		return(False)
+
+
 def find_profile_vpcs(fProfile,fRegion):
 
 	import boto3
@@ -368,28 +402,26 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 				)
 	stack_info=session_cfn.client('cloudformation')
 	stacksCopy=[]
-	if (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
+	if (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active') and not (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All'):
 		# Send back stacks that are active, check the fragment further down.
 		stacks=stack_info.list_stacks(StackStatusFilter=["CREATE_COMPLETE","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE"])
 		for stack in stacks['StackSummaries']:
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match
-				logging.warning("Found stack %s in AccessKeyId: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccessKeyId'], fRegion, fStackFragment, fStatus)
-				stacksCopy.append(stack)
-	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All'):
-		# Send back all stacks regardless of fragment, check the status further down.
-		stacks=stack_info.list_stacks()
-		for stack in stacks['StackSummaries']:
-			if fStatus in stack['StackStatus']:
-				# Check the status now - only send back those that match a single status
-				# I don't see this happening unless someone wants Stacks in a "Deleted" or "Rollback" type status
-				logging.warning("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
+				logging.warning("1-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccessKeyId'], fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
 	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='all' or fStatus=='ALL' or fStatus=='All'):
 		# Send back all stacks.
 		stacks=stack_info.list_stacks()
-		logging.warning("Found all the stacks in Profile: %s in Region: %s", fProfile, fRegion)
+		logging.warning("4-Found %s the stacks in Account: %s in Region: %s", len(stacks), ocredentials['AccessKeyId'], fRegion)
 		return(stacks['StackSummaries'])
+	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
+		# Send back all stacks regardless of fragment, check the status further down.
+		stacks=stack_info.list_stacks(StackStatusFilter=["CREATE_COMPLETE","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE"])
+		for stack in stacks['StackSummaries']:
+			logging.warning("2-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccessKeyId'], fRegion, fStackFragment, fStatus)
+			stacksCopy.append(stack)
+			# logging.warning("StackStatus: %s | My status: %s", stack['StackStatus'], fStatus)
 	elif not (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
 		# Send back stacks that match the single status, check the fragment further down.
 		try:
@@ -399,7 +431,7 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 		for stack in stacks['StackSummaries']:
 			if fStackFragment in stack['StackName'] and fStatus in stack['StackStatus']:
 				# Check the fragment now - only send back those that match
-				logging.warning("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
+				logging.warning("5-Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccessKeyId'], fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
 	return(stacksCopy)
 

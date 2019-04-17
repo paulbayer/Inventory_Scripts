@@ -51,17 +51,31 @@ sts_session = boto3.Session(profile_name=pProfile)
 sts_client = sts_session.client('sts')
 AccountsToRegister=[]
 for account in ChildAccounts:
-	role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
+	# role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
+	# role_arn = "arn:aws:iam::{}:role/OrganizationalFullAccess".format(account['AccountId'])
+	role_arn = "arn:aws:iam::{}:role/OrganizationAccountAccessRole".format(account['AccountId'])
+	# role_arn = "arn:aws:iam::{}:role/Owner".format(account['AccountId'])
+	# role_arn = "arn:aws:iam::{}:role/admin-crossAccount".format(account['AccountId'])
 	logging.info("Role ARN: %s" % role_arn)
 	try:
+		AccountErrored=False
 		account_credentials = sts_client.assume_role(
 			RoleArn=role_arn,
 			RoleSessionName="RegistrationScript")['Credentials']
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print(pProfile+": Authorization Failure for account {}".format(account['AccountId']))
-	AccountIsRegistered=Inventory_Modules.find_if_Isengard_registered(account_credentials)
-	if not AccountIsRegistered:
+			print(pProfile+": Authorization Failure to account {} using {}".format(account['AccountId'],role_arn))
+			AccountErrored=True
+			continue
+		elif str(my_Error).find("AccessDenied") > 0:
+			print(pProfile+": Authentication Denied to account {} using {}".format(account['AccountId'],role_arn))
+			AccountErrored=True
+			continue
+		else:
+			print(my_Error)
+			AccountErrored=True
+	AccountIsRegistered=Inventory_Modules.find_if_Isengard_registered(account_credentials) if not AccountErrored else None
+	if not AccountIsRegistered and not AccountErrored:
 		AccountsToRegister.append({
 		'AccountId':account['AccountId'],
 		'AccountEmail':account['AccountEmail'],
@@ -80,6 +94,7 @@ for account in AccountsToRegister:
 	CreateUser=False
 	DeleteUser=False
 	try:
+		# See if user already exists
 		response = iam_client.get_user(
 			UserName='Alice'
 		)
@@ -94,7 +109,6 @@ for account in AccountsToRegister:
 			CreateUser=True
 	if CreateUser:
 		try:
-			# Seeif user already exists
 			# Create User
 			response = iam_client.create_user(
 				UserName='Alice'
@@ -161,6 +175,3 @@ for account in AccountsToRegister:
 					AccessKeyId=AccessKeyId
 				)
 			print(my_Error)
-# print(ERASE_LINE)
-# print(Fore.RED+"Found",NumStacksFound,"Stacksets across",len(ChildAccounts),"accounts across",len(RegionList),"regions"+Fore.RESET)
-# print()
