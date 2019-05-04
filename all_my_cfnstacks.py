@@ -74,9 +74,9 @@ ERASE_LINE = '\x1b[2K'
 
 NumStacksFound = 0
 print()
-fmt='%-20s %-15s %-15s %-50s'
-print(fmt % ("Account","Region","Stack Status","Stack Name"))
-print(fmt % ("-------","------","------------","----------"))
+fmt='%-20s %-15s %-15s %-50s %-50s'
+print(fmt % ("Account","Region","Stack Status","Stack Name","Stack ID"))
+print(fmt % ("-------","------","------------","----------","--------"))
 RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
 ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 # pprint.pprint(RegionList)
@@ -91,13 +91,18 @@ for account in ChildAccounts:
 		account_credentials = sts_client.assume_role(
 			RoleArn=role_arn,
 			RoleSessionName="Find-Stacks")['Credentials']
+		account_credentials['AccountNumber']=account['AccountId']
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print(profile+": Authorization Failure for account {}".format(account['AccountId']))
+			print(pProfile+": Authorization Failure for account {}".format(account['AccountId']))
+		else:
+			print(pProfile+": Other kind of failure for account {}".format(account['AccountId']))
+			print (my_Error)
+		break
 	for region in RegionList:
 		try:
 			StackNum=0
-			Stacks=Inventory_Modules.find_stacks_in_acct(account_credentials,region,pstackfrag)
+			Stacks=Inventory_Modules.find_stacks_in_acct(account_credentials,region,pstackfrag,pstatus)
 			# pprint.pprint(Stacks)
 			StackNum=len(Stacks)
 			logging.warning("Account: %s | Region: %s | Found %s Stacks", account['AccountId'], region, StackNum )
@@ -109,13 +114,15 @@ for account in ChildAccounts:
 			for y in range(len(Stacks)):
 				StackName=Stacks[y]['StackName']
 				StackStatus=Stacks[y]['StackStatus']
-				print(fmt % (account['AccountId'],region,StackStatus,StackName))
+				StackID=Stacks[y]['StackId']
+				print(fmt % (account['AccountId'],region,StackStatus,StackName,StackID))
 				NumStacksFound += 1
 				StacksFound.append({
 					'Account':account['AccountId'],
 					'Region':region,
 					'StackName':StackName,
-					'StackStatus':Stacks[y]['StackStatus']})
+					'StackStatus':StackStatus,
+					'StackArn':StackID})
 print(ERASE_LINE)
 print(Fore.RED+"Found",NumStacksFound,"Stacks across",len(ChildAccounts),"accounts across",len(RegionList),"regions"+Fore.RESET)
 print()

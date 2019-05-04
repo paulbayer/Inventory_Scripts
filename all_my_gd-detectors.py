@@ -21,6 +21,13 @@ parser.add_argument(
 	metavar="profile to use",
 	help="You need to specify a profile that represents the ROOT account.")
 parser.add_argument(
+	"-s","--skip",
+	dest="pSkipAccounts",
+	nargs="*",
+	metavar="Accounts to leave alone",
+	default=[],
+	help="These are the account numbers you don't want to screw with. Likely the core accounts.")
+parser.add_argument(
 	"+delete", "+forreal",
 	dest="flagDelete",
 	default=False,
@@ -49,13 +56,10 @@ parser.add_argument(
 	const=logging.WARNING)
 args = parser.parse_args()
 
-# If plevel
-	# 1: credentials file only
-	# 2: config file only
-	# 3: credentials and config files
 pProfile=args.pProfile
 DeletionRun=args.flagDelete
 ForceDelete=args.ForceDelete
+AccountsToSkip=args.pSkipAccounts
 logging.basicConfig(level=args.loglevel)
 
 ##########################
@@ -65,9 +69,11 @@ NumObjectsFound = 0
 NumAccountsInvestigated = 0
 ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 
+ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
+
 session_gd=boto3.Session(profile_name=pProfile)
 gd_regions=session_gd.get_available_regions(service_name='guardduty')
-# gd_regions=["ap-south-1"]
+gd_regions=['us-east-1','us-west-2']
 all_gd_detectors=[]
 all_gd_invites=[]
 print("Searching {} accounts and {} regions".format(len(ChildAccounts),len(gd_regions)))
@@ -99,15 +105,16 @@ for account in ChildAccounts:
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(profile+": Authorization Failure for account {}".format(account['AccountId']))
-		for i in range(len(response['Invitations'])):
-			all_gd_invites.append({
-				'AccountId':response['Invitations'][i]['AccountId'],
-				'InvitationId':response['Invitations'][i]['InvitationId'],
-				'Region':region,
-				'AccessKeyId':account_credentials['AccessKeyId'],
-				'SecretAccessKey':account_credentials['SecretAccessKey'],
-				'SessionToken':account_credentials['SessionToken']
-			})
+		if len(response['Invitations']) > 0:
+			for i in range(len(response['Invitations'])):
+				all_gd_invites.append({
+					'AccountId':response['Invitations'][i]['AccountId'],
+					'InvitationId':response['Invitations'][i]['InvitationId'],
+					'Region':region,
+					'AccessKeyId':account_credentials['AccessKeyId'],
+					'SecretAccessKey':account_credentials['SecretAccessKey'],
+					'SessionToken':account_credentials['SessionToken']
+				})
 		try:
 			print(ERASE_LINE,"Trying account {} in region {}".format(account['AccountId'],region),end='\r')
 			response=client_aws.list_detectors()
@@ -121,13 +128,13 @@ for account in ChildAccounts:
 					'SecretAccessKey':account_credentials['SecretAccessKey'],
 					'SessionToken':account_credentials['SessionToken']
 				})
-				logging.info("Found another detector ("+str(response['DetectorIds'][0])+") in account "+account['AccountId']+" in region "+account['AccountId']+" bringing the total found to "+str(NumObjectsFound))
+				print("Found another detector {} in account {} in region {} bringing the total found to {} ".format(str(response['DetectorIds'][0]),account['AccountId'],region,str(NumObjectsFound)))
+				# logging.info("Found another detector ("+str(response['DetectorIds'][0])+") in account "+account['AccountId']+" in region "+account['AccountId']+" bringing the total found to "+str(NumObjectsFound))
 			else:
-				print(ERASE_LINE,"No luck in account: {}".format(account['AccountId']),end='\r')
+				print(ERASE_LINE,Fore.RED+"No luck in account: {}".format(account['AccountId'])+Fore.RESET,end='\r')
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(profile+": Authorization Failure for account {}".format(account['AccountId']))
-	print()
 
 if args.loglevel < 50:
 	print()

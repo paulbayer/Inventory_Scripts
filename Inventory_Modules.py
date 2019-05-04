@@ -156,6 +156,26 @@ def find_account_number(fProfile):
 	response=client_sts.get_caller_identity()['Account']
 	return (response)
 
+def RemoveCoreAccounts(MainList,AccountsToRemove):
+	"""
+	MainList is expected to come through looking like this:
+		[{'AccountEmail': 'paulbaye+LZ2@amazon.com', 'AccountId': '911769525492'},
+		{'AccountEmail': 'Paulbaye+LZ2Log@amazon.com', 'AccountId': '785529286764'},
+			< ... >
+		{'AccountEmail': 'paulbaye+LZ2SS@amazon.com', 'AccountId': '728530570730'},
+	 	{'AccountEmail': 'paulbaye+Demo2@amazon.com', 'AccountId': '906348505515'}]
+	AccountsToRemove is simply a list of accounts you don't want to screw with. It might look like this:
+		['911769525492','906348505515']
+	"""
+
+	NewCA=[]
+	for i in range(len(MainList)):
+		if MainList[i]['AccountId'] in AccountsToRemove:
+			continue
+		else:
+			NewCA.append(MainList[i])
+	return(NewCA)
+
 """
 Above - Generic functions
 Below - Specific functions to specific features
@@ -389,12 +409,14 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the AccountId
+
 	fRegion is a string
 	fStackFragment is a list
 	"""
 	import boto3, logging, pprint
 	logging.warning("AccessKeyId:")
-	logging.warning("Key ID #: %s | Region: %s | Fragment: %s | Status: %s",str(ocredentials['AccessKeyId']), fRegion, fStackFragment,fStatus)
+	logging.warning("Acct ID #: %s | Region: %s | Fragment: %s | Status: %s",str(ocredentials['AccountNumber']), fRegion, fStackFragment,fStatus)
 	session_cfn=boto3.Session(region_name=fRegion,
 				aws_access_key_id = ocredentials['AccessKeyId'],
 				aws_secret_access_key = ocredentials['SecretAccessKey'],
@@ -408,7 +430,7 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 		for stack in stacks['StackSummaries']:
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match
-				logging.warning("1-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccessKeyId'], fRegion, fStackFragment, fStatus)
+				logging.warning("1-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccountNumber'], fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
 	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='all' or fStatus=='ALL' or fStatus=='All'):
 		# Send back all stacks.
@@ -419,7 +441,7 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 		# Send back all stacks regardless of fragment, check the status further down.
 		stacks=stack_info.list_stacks(StackStatusFilter=["CREATE_COMPLETE","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE"])
 		for stack in stacks['StackSummaries']:
-			logging.warning("2-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccessKeyId'], fRegion, fStackFragment, fStatus)
+			logging.warning("2-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccountNumber'], fRegion, fStackFragment, fStatus)
 			stacksCopy.append(stack)
 			# logging.warning("StackStatus: %s | My status: %s", stack['StackStatus'], fStatus)
 	elif not (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
@@ -431,7 +453,7 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 		for stack in stacks['StackSummaries']:
 			if fStackFragment in stack['StackName'] and fStatus in stack['StackStatus']:
 				# Check the fragment now - only send back those that match
-				logging.warning("5-Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccessKeyId'], fRegion, fStackFragment, fStatus)
+				logging.warning("5-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccountNumber'], fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
 	return(stacksCopy)
 
