@@ -27,6 +27,13 @@ parser.add_argument(
 	default="all",
 	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
 parser.add_argument(
+	"-k","--skip",
+	dest="pSkipAccounts",
+	nargs="*",
+	metavar="Accounts to leave alone",
+	default=[],
+	help="These are the account numbers you don't want to screw with. Likely the core accounts.")
+parser.add_argument(
 	"-s","--status",
 	dest="pstatus",
 	metavar="CloudFormation status",
@@ -65,6 +72,7 @@ pProfile=args.pProfile
 pRegionList=args.pregion
 pstackfrag=args.pstackfrag
 pstatus=args.pstatus
+AccountsToSkip=args.pSkipAccounts
 verbose=args.loglevel
 DeletionRun=args.DeletionRun
 logging.basicConfig(level=args.loglevel)
@@ -79,11 +87,13 @@ print(fmt % ("Account","Region","Stack Status","Stack Name","Stack ID"))
 print(fmt % ("-------","------","------------","----------","--------"))
 RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
 ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
-# pprint.pprint(RegionList)
+ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
+# pprint.pprint(AccountsToSkip)
+# pprint.pprint(ChildAccounts)
 # sys.exit(1)
 StacksFound=[]
-sts_session = boto3.Session(profile_name=pProfile)
-sts_client = sts_session.client('sts')
+aws_session = boto3.Session(profile_name=pProfile)
+sts_client = aws_session.client('sts')
 for account in ChildAccounts:
 	role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
 	logging.info("Role ARN: %s" % role_arn)
@@ -131,18 +141,24 @@ print()
 if DeletionRun and ('GuardDuty' in pstackfrag):
 	logging.warning("Deleting %s stacks",len(StacksFound))
 	for y in range(len(StacksFound)):
+		role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(StacksFound[y]['Accou nt'])
+		cfn_client=aws_session.client('cloudformation')
+		account_credentials = sts_client.assume_role(
+			RoleArn=role_arn,
+			RoleSessionName="Find-Stacks")['Credentials']
+		account_credentials['AccountNumber']=StacksFound[y]['Account']
 		print("Deleting stack {} from profile {} in region {} with status: {}".format(StacksFound[y]['StackName'],StacksFound[y]['Profile'],StacksFound[y]['Region'],StacksFound[y]['StackStatus']))
 		""" This next line is BAD because it's hard-coded for GuardDuty, but we'll fix that eventually """
 		if StacksFound[y]['StackStatus'] == 'DELETE_FAILED':
 			# This deletion generally fails because the Master Detector doesn't properly delete (and it's usually already deleted due to some other script) - so we just need to delete the stack anyway - and ignore the actual resource.
-			response=Inventory_Modules.delete_stack(StacksFound[y]['Profile'],StacksFound[y]['Region'],StacksFound[y]['StackName'],RetainResources=True,ResourcesToRetain=["MasterDetector"])
+			response=Inventory_Modules.delete_stack2(account_credentials,StacksFound[y]['Region'],StacksFound[y]['StackName'],RetainResources=True,ResourcesToRetain=["MasterDetector"])
 		else:
-			response=Inventory_Modules.delete_stack(StacksFound[y]['Profile'],StacksFound[y]['Region'],StacksFound[y]['StackName'])
+			response=Inventory_Modules.delete_stack2(account_credentials,StacksFound[y]['Region'],StacksFound[y]['StackName'])
 elif DeletionRun:
 	logging.warning("Deleting %s stacks",len(StacksFound))
 	for y in range(len(StacksFound)):
-		print("Deleting stack {} from profile {} in region {} with status: {}".format(StacksFound[y]['StackName'],StacksFound[y]['Profile'],StacksFound[y]['Region'],StacksFound[y]['StackStatus']))
-		response=Inventory_Modules.delete_stack(StacksFound[y]['Profile'],StacksFound[y]['Region'],StacksFound[y]['StackName'])
+		print("Deleting stack {} from account {} in region {} with status: {}".format(StacksFound[y]['StackName'],StacksFound[y]['Account'],StacksFound[y]['Region'],StacksFound[y]['StackStatus']))
+		response=Inventory_Modules.delete_stack2(account_credentials,StacksFound[y]['Region'],StacksFound[y]['StackName'])
 
 
 print("Thanks for using this script...")

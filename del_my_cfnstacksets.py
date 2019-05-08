@@ -66,6 +66,13 @@ parser.add_argument(
 	default=["all"],
 	help="List containing fragment(s) of the cloudformation stack or stackset(s) you want to check for.")
 parser.add_argument(
+	"-k","--skip",
+	dest="pSkipAccounts",
+	nargs="*",
+	metavar="Accounts to leave alone",
+	default=[],
+	help="These are the account numbers you don't want to screw with. Likely the core accounts.")
+parser.add_argument(
 	"-r","--region",
 	dest="pRegion",
 	metavar="region name string",
@@ -96,6 +103,7 @@ args = parser.parse_args()
 pProfile=args.pProfile
 pRegion=args.pRegion
 pStackfrag=args.pStackfrag
+AccountsToSkip=args.pSkipAccounts
 verbose=args.loglevel
 pdryrun=args.DryRun
 logging.basicConfig(level=args.loglevel)
@@ -130,14 +138,14 @@ for i in range(len(StackSetNames)):
 StackSetNames=StackSetNames2
 for i in range(len(StackSetNames)):
 	StackInstances=Inventory_Modules.find_stack_instances(pProfile,pRegion,StackSetNames[i]['StackSetName'])
+	# pprint.pprint(StackInstances)
 	logging.warning("Found %s Stack Instances within the StackSet %s" % (len(StackInstances),StackSetNames[i]['StackSetName']))
 	for j in range(len(StackInstances)):
 		AllInstances.append({
 			'ChildAccount':StackInstances[j]['Account'],
 			'ChildRegion':StackInstances[j]['Region'],
 			# This next line finds the value of the Child StackName (which includes a random GUID) and assigns it within our dict
-			'StackName':StackInstances[j]['StackId'][StackInstances[j]['StackId'].find('/')+1:StackInstances[j]['StackId'].find('/',
-			StackInstances[j]['StackId'].find('/')+1)],
+			'StackName':StackInstances[j]['StackId'][StackInstances[j]['StackId'].find('/')+1:StackInstances[j]['StackId'].find('/',StackInstances[j]['StackId'].find('/')+1)],
 			'StackStatus':StackInstances[j]['Status'],
 			'StackSetName':StackInstances[j]['StackSetId'][:StackInstances[j]['StackSetId'].find(':')]
 		})
@@ -156,18 +164,24 @@ if args.loglevel < 31:
 			AllInstances[i]['StackStatus'])
 		)
 
+AccountList=[]
+StackSetStillInUse=[]
+for i in range(len(AllInstances)):
+	if AllInstances[i]['ChildAccount'] in AccountsToSkip:
+		StackSetStillInUse.append(AllInstances[i]['StackSetName'])
+		continue
+	else:
+		AccountList.append(AllInstances[i]['ChildAccount'])
+AccountList=list(set(AccountList))
+StackSetStillInUse=list(set(StackSetStillInUse))
+
 if pdryrun:
 	print("Found {} StackSets that matched, with a total of {} instances".format(len(StackSetNames),len(AllInstances)))
 	print("We're Done")
+	pprint.pprint(AccountList)
 	sys.exit(0)
 
 print("Removing {} stack instances from the {} StackSets found".format(len(AllInstances),len(StackSetNames)))
-
-AccountList=[]
-for i in range(len(AllInstances)):
-	AccountList.append(AllInstances[i]['ChildAccount'])
-
-AccountList=list(set(AccountList))
 
 RegionList=[]
 for i in range(len(AllInstances)):
@@ -186,7 +200,9 @@ for j in range(len(PolicyListOutput['Policies'])):
 	else:
 		continue
 
+NumofAccounts=len(AccountList)
 for account in AccountList:
+	NumofAccounts-=1
 	for policy in PolicyList:
 		try:
 			response=client_org.detach_policy(
@@ -207,6 +223,8 @@ for account in AccountList:
 			else:
 				logging.info("Wasn't able to successfully detach policy from account %s. Maybe it's already detached?" % (account))
 				break
+		finally:
+			logging.info("Only %s more accounts to go",str(NumofAccounts))
 
 # NotForNothing=RemoveTermProtection(pProfile,AllInstances)
 
@@ -234,8 +252,13 @@ for i in range(len(StackSetNames)):
 			response1=client_cfn.list_stack_set_operations(StackSetName=StackSetNames[i]['StackSetName'])['Summaries'][0]['Status']
 			logging.info("response1 finished and was %s" % response1)
 			response2=client_cfn.list_stack_instances(StackSetName=StackSetNames[i]['StackSetName'])['Summaries']
-			logging.info("response2 finished and was %s" % response2)
-			StackInstancesDeleted=((response1 == 'SUCCEEDED' or response1 == 'FAILED') and (len(response2)==0))
+			if len(response2) > 0:
+				response3=[]
+				for j in range(len(response2)):
+					if not (response2[j]['Account'] in AccountsToSkip):
+						response3.append(response2[j])
+			logging.info("response2 finished and was %s" % len(response3))
+			StackInstancesDeleted=((response1 == 'SUCCEEDED' or response1 == 'FAILED') and (len(response3)==0))
 			logging.info("StackInstancesDeleted is %s" % StackInstancesDeleted)
 			if not StackInstancesDeleted:
 				print("Waiting {} seconds for {} to be fully deleted. There's still {} instances left.".format(timer,StackSetNames[i]['StackSetName'],len(response2)))
@@ -250,23 +273,20 @@ for i in range(len(StackSetNames)):
 				print("Error: ",e)
 				break
 
-print("Now deleting {} stacksets from Root Profile".format(len(StackSetNames)))
+print("Now deleting {} stacksets from Root Profile".format(len(StackSetNames)-len(StackSetStillInUse)))
 
 try:
 	for i in range(len(StackSetNames)):
-		response=Inventory_Modules.delete_stackset(pProfile,pRegion,StackSetNames[i]['StackSetName'])
-		logging.warning("StackSet %s has been deleted from Root account %s in region %s" % (StackSetNames[i]['StackSetName'],pProfile,pRegion))
+		# pprint.pprint(StackSetNames[i])
+		# pprint.pprint(StackSetStillInUse)
+		if StackSetNames[i]['StackSetName'] in StackSetStillInUse:
+			continue
+		else:
+			response=Inventory_Modules.delete_stackset(pProfile,pRegion,StackSetNames[i]['StackSetName'])
+			logging.warning("StackSet %s has been deleted from Root account %s in region %s" % (StackSetNames[i]['StackSetName'],pProfile,pRegion))
 except Exception as e:
-	# if e.response['Error']['Code'] == 'OperationInProgressException':
-	# 	logging.info("Caught exception 'OperationInProgressException', handling the exception...")
-	# 	pass
-	# elif e.response['Error']['Code'] == 'PolicyNotAttachedException':
-	# 	logging.info("Caught exception 'PolicyNotAttachedException', handling the exception...")
-	# 	pass
-	# elif e.response['Error']['Code'] == 'ConcurrentModificationException':
-	# 	logging.info("Caught exception 'ConcurrentModificationException', handling the exception...")
-		pprint.pprint(e)
-		pass
+	pprint.pprint(e)
+	pass
 
 print()
 print("Now we're done")

@@ -157,6 +157,8 @@ def find_account_number(fProfile):
 	return (response)
 
 def RemoveCoreAccounts(MainList,AccountsToRemove):
+
+	import logging, pprint
 	"""
 	MainList is expected to come through looking like this:
 		[{'AccountEmail': 'paulbaye+LZ2@amazon.com', 'AccountId': '911769525492'},
@@ -169,10 +171,13 @@ def RemoveCoreAccounts(MainList,AccountsToRemove):
 	"""
 
 	NewCA=[]
+	# pprint.pprint(AccountsToRemove)
 	for i in range(len(MainList)):
 		if MainList[i]['AccountId'] in AccountsToRemove:
+			logging.info("Comparing %s to above",str(MainList[i]['AccountId']))
 			continue
 		else:
+			logging.info("Account %s was allowed",str(MainList[i]['AccountId']))
 			NewCA.append(MainList[i])
 	return(NewCA)
 
@@ -403,6 +408,39 @@ def delete_stack(fprofile,fRegion,fStackName,**kwargs):
 		response=client_cfn.delete_stack(StackName=fStackName)
 	return(response)
 
+def delete_stack2(ocredentials,fRegion,fStackName,**kwargs):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the AccountId
+	fRegion is a string
+	fStackName is a string
+	RetainResources should be a boolean
+	ResourcesToRetain should be a list
+	"""
+	import boto3, logging, pprint
+	if "RetainResources" in kwargs:
+		RetainResources = True
+		ResourcesToRetain = kwargs['ResourcesToRetain']
+	else:
+		RetainResources = False
+	session_cfn=boto3.Session(region_name=fRegion,
+				aws_access_key_id = ocredentials['AccessKeyId'],
+				aws_secret_access_key = ocredentials['SecretAccessKey'],
+				aws_session_token = ocredentials['SessionToken']
+				)
+	client_cfn=session_cfn.client('cloudformation')
+	if RetainResources:
+		logging.warning("Account: %s | Region: %s | StackName: %s",ocredentials['AccountNumber'], fRegion, fStackName)
+		logging.warning("	Retaining Resources: %s",ResourcesToRetain)
+		response=client_cfn.delete_stack(StackName=fStackName,RetainResources=ResourcesToRetain)
+	else:
+		logging.warning("Account: %s | Region: %s | StackName: %s",ocredentials['AccountNumber'], fRegion, fStackName)
+		response=client_cfn.delete_stack(StackName=fStackName)
+	return(response)
+
 def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 	"""
 	ocredentials is an object with the following structure:
@@ -456,6 +494,27 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 				logging.warning("5-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccountNumber'], fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
 	return(stacksCopy)
+
+def find_saml_components_in_acct(ocredentials,fRegion):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the AccountId
+
+	fRegion is a string
+	"""
+	import boto3, logging, pprint
+	logging.warning("Acct ID #: %s | Region: %s ",str(ocredentials['AccountNumber']), fRegion)
+	session_aws=boto3.Session(region_name=fRegion,
+				aws_access_key_id = ocredentials['AccessKeyId'],
+				aws_secret_access_key = ocredentials['SecretAccessKey'],
+				aws_session_token = ocredentials['SessionToken']
+				)
+	iam_info=session_aws.client('iam')
+	saml_providers=iam_info.list_saml_providers()['SAMLProviderList']
+	return(saml_providers)
 
 def find_stacksets(fProfile,fRegion,fStackFragment):
 	"""
