@@ -40,7 +40,6 @@ logging.basicConfig(level=args.loglevel)
 
 SkipProfiles=["default","Shared-Fid"]
 
-dictionary = dict()
 RootAccts=[]	# List of the Organization Root's Account Number
 RootProfiles=[]	# List of the Organization Root's profiles
 

@@ -95,6 +95,13 @@ def find_org_attr2(fProfile):
 	return (root_org,org_id)
 
 def find_child_accounts2(fProfile):
+	"""
+	This is an example of the list response from this call:
+		[{'AccountEmail': 'EmailAddr1@example.com', 'AccountId': 'xxxxxxxxxxxx'},
+		 {'AccountEmail': 'EmailAddr2@example.com', 'AccountId': 'yyyyyyyyyyyy'},
+		 {'AccountEmail': 'EmailAddr3@example.com', 'AccountId': 'zzzzzzzzzzzz'}]
+	This can be convenient for appending and removing.
+	"""
 	import boto3, logging
 	# Renamed since I'm using the one below instead.
 	child_accounts=[]
@@ -118,34 +125,35 @@ def find_child_accounts2(fProfile):
 
 def find_child_accounts(fProfile="default"):
 	"""
-	This is an example of the dictionary response from this call:
-		{'Accounts': [{
-			'Arn': 'arn:aws:organizations::<Master Account Number>:account/o-ykfx0legmn/<Child Account Number>',
-			'Email': '<Email of the child account>',
-			'Id': '<Child Account Number>',
-			'JoinedMethod': 'CREATED',
-			'JoinedTimestamp': datetime.datetime(2018, 9, 10, 10, 44, 13, 631000, tzinfo=tzlocal()),
-			'Name': 'shared-services',
-			'Status': 'ACTIVE'
-		}
-
-	Typically your client call will use the result of "response['Accounts']['Id']" or something like that, depending on which attribute you're interested in.
+	This call returns a dictionary response, unlike the "find_child_accounts2" function (above) which returns a list.
+	Our dictionary call looks like this:
+		{'xxxxxxxxxxxx': 'EmailAddr1@example.com',
+		 'yyyyyyyyyyyy': 'EmailAddr2@example.com',
+		 'zzzzzzzzzzzz': 'EmailAddr3@example.com'}
+	This is convenient because it is easily sortable.
 	"""
 	import boto3, logging
 	from botocore.exceptions import ClientError, NoCredentialsError
 
 	child_accounts={}
 	session_org = boto3.Session(profile_name=fProfile)
+	theresmore=False
 	try:
 		client_org = session_org.client('organizations')
 		response=client_org.list_accounts()
+		theresmore=True
 	except ClientError as my_Error:
 		logging.warning("Profile %s doesn't represent an Org Root account",fProfile)
-		# print("Failed on %s",my_Error)
 		return()
-	for account in response['Accounts']:
-		# Create a key/value pair with the AccountID:AccountEmail
-		child_accounts[account['Id']]=account['Email']
+	while theresmore:
+		for account in response['Accounts']:
+			# Create a key/value pair with the AccountID:AccountEmail
+			child_accounts[account['Id']]=account['Email']
+		if 'NextToken' in response:
+			theresmore=True
+			response=client_org.list_accounts(NextToken=response['NextToken'])
+		else:
+			theresmore=False
 	return (child_accounts)
 
 def find_account_number(fProfile):
