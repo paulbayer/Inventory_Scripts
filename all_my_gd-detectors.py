@@ -73,7 +73,7 @@ ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
 # sys.exit(1)
 session_gd=boto3.Session(profile_name=pProfile)
 gd_regions=session_gd.get_available_regions(service_name='guardduty')
-gd_regions=['us-east-1','us-west-2']
+# gd_regions=['us-east-1','us-west-2']
 all_gd_detectors=[]
 all_gd_invites=[]
 print("Searching {} accounts and {} regions".format(len(ChildAccounts),len(gd_regions)))
