@@ -5,7 +5,7 @@ import argparse
 import boto3
 import Inventory_Modules
 
-from botocore.exceptions import ClientError, NoCredentialsError
+from botocore.exceptions import ClientError, NoCredentialsError, InvalidConfigError
 from colorama import init,Fore,Back,Style
 
 init()
@@ -92,6 +92,15 @@ if ShowEverything:
 			else:
 				print("Client Error")
 				print(my_Error)
+		except InvalidConfigError as my_Error:
+			ErrorFlag = True
+			if str(my_Error).find("does not exist") > 0:
+				ErrorMessage=str(my_Error)[str(my_Error).find(":"):]
+				print(ErrorMessage)
+			else:
+				print("Credentials Error")
+				print(my_Error)
+
 		except NoCredentialsError as my_Error:
 			ErrorFlag = True
 			if str(my_Error).find("Unable to locate credentials") > 0:

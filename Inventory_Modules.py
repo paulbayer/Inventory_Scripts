@@ -610,14 +610,12 @@ def find_stack_instances(fProfile,fRegion,fStackSetName):
 	"""
 	import boto3, logging, pprint
 
-	import logging, boto3
-
 	logging.warning("Profile: %s | Region: %s | StackSetName: %s",fProfile, fRegion, fStackSetName)
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	stack_info=session_cfn.client('cloudformation')
 	stack_instances=stack_info.list_stack_instances(StackSetName=fStackSetName)
 	stack_instances_list=stack_instances['Summaries']
-	while 'NextToken' in stack_instances.keys(): # Get all instnce names
+	while 'NextToken' in stack_instances.keys(): # Get all instance names
 		stack_instances=stack_info.list_stack_instances(StackSetName=fStackSetName,NextToken=stack_instances['NextToken'])
 		stack_instances_list.append(stack_instances['Summaries'])
 	return(stack_instances_list)

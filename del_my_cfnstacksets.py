@@ -19,13 +19,25 @@ TODO:
 			- Nothing to do here
 '''
 
-import os, sys, pprint, logging, time
+import os, sys, pprint, logging, time, datetime
 import Inventory_Modules
 import argparse, boto3
 from colorama import init,Fore,Back,Style
 from botocore.exceptions import ClientError, NoCredentialsError
 
 ###################
+
+
+def randomString(stringLength=10):
+	import random, string
+	# Generate a random string of fixed length
+	letters = string.ascii_lowercase
+	return ''.join(random.choice(letters) for i in range(stringLength))
+
+# print ("Random String is ", randomString() )
+# print ("Random String is ", randomString(10) )
+# print ("Random String is ", randomString(10) )
+# sys.exit(9)
 
 def RemoveTermProtection(fProfile,fAllInstances):
 	for i in range(len(fAllInstances)):
@@ -129,6 +141,7 @@ print()
 
 # Get the StackSet names from the Master Profile
 StackSetNames=Inventory_Modules.find_stacksets(pProfile,pRegion,pStackfrag)
+ProfileAccountNumber=Inventory_Modules.find_account_number(pProfile)
 logging.info("Found %s StackSetNames that matched your fragment" % (len(StackSetNames)))
 for i in range(len(StackSetNames)):
 	if 'AWSControlTower' in StackSetNames[i]['StackSetName']:
@@ -142,6 +155,7 @@ for i in range(len(StackSetNames)):
 	logging.warning("Found %s Stack Instances within the StackSet %s" % (len(StackInstances),StackSetNames[i]['StackSetName']))
 	for j in range(len(StackInstances)):
 		AllInstances.append({
+			'ParentAccountNumber':ProfileAccountNumber,
 			'ChildAccount':StackInstances[j]['Account'],
 			'ChildRegion':StackInstances[j]['Region'],
 			# This next line finds the value of the Child StackName (which includes a random GUID) and assigns it within our dict
@@ -149,7 +163,6 @@ for i in range(len(StackSetNames)):
 			'StackStatus':StackInstances[j]['Status'],
 			'StackSetName':StackInstances[j]['StackSetId'][:StackInstances[j]['StackSetId'].find(':')]
 		})
-
 
 # for profile in ProfileList:	# Expectation that there is ONLY ONE PROFILE MATCHED.
 logging.warning("There are supposed to be %s stack instances." % (len(AllInstances)))
@@ -200,6 +213,9 @@ for j in range(len(PolicyListOutput['Policies'])):
 	else:
 		continue
 
+'''
+This section removes the SCP policies to ensure that if there's a policy that disallows removing config or other tools, this will take care of that.
+'''
 NumofAccounts=len(AccountList)
 for account in AccountList:
 	NumofAccounts-=1
@@ -226,54 +242,58 @@ for account in AccountList:
 		finally:
 			logging.info("Only %s more accounts to go",str(NumofAccounts))
 
-# NotForNothing=RemoveTermProtection(pProfile,AllInstances)
-
+# print("There are {} items in AllInstances".format(len(AllInstances)))
+# print("There are {} items in StackSetNames".format(len(StackSetNames)))
+# print()
+# pprint.pprint(AllInstances[0])
+# print()
+# pprint.pprint(StackSetNames[0])
+# sys.exit(8)
 
 session_cfn=boto3.Session(profile_name=pProfile,region_name=pRegion)
 for i in range(len(StackSetNames)):
 	logging.warning("Removing all instances from %s StackSet" % (StackSetNames[i]['StackSetName']))
-	OperationName=StackSetNames[i]['StackSetName']+'--Deletion'
 	try:
-		response=Inventory_Modules.delete_stack_instances(pProfile,pRegion,AccountList,RegionList,StackSetNames[i]['StackSetName'])
-		# response=Inventory_Modules.delete_stack_instances(pProfile,pRegion,AccountList,RegionList,StackSetNames[i]['StackSetName'],OperationName)
-		pprint.pprint(response)
+		response=Inventory_Modules.delete_stack_instances(pProfile,pRegion,AccountList,RegionList,StackSetNames[i]['StackSetName'],"Delete-"+randomString(5))
+		# pprint.pprint(response)
 	except Exception as e:
 		if e.response['Error']['Code'] == 'StackSetNotFoundException':
 			logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
+		else:
 			print("Error: ",e)
 			break
-	StackInstancesDeleted=False
+	StackOperationsRunning=True
 	client_cfn=session_cfn.client('cloudformation')
 	timer=0
-	while not StackInstancesDeleted:
+	InstancesToSkip=0
+	while not StackOperationsRunning:
 		logging.info("Got into the While Loop")
 		logging.warning(StackSetNames[i]['StackSetName'])
 		try:
 			response1=client_cfn.list_stack_set_operations(StackSetName=StackSetNames[i]['StackSetName'])['Summaries'][0]['Status']
-			logging.info("response1 finished and was %s" % response1)
+			logging.info("StackSet Operation state is %s" % response1)
 			response2=client_cfn.list_stack_instances(StackSetName=StackSetNames[i]['StackSetName'])['Summaries']
-			if len(response2) > 0:
-				response3=[]
-				for j in range(len(response2)):
-					if not (response2[j]['Account'] in AccountsToSkip):
-						response3.append(response2[j])
-			logging.info("response2 finished and was %s" % len(response3))
-			StackInstancesDeleted=((response1 == 'SUCCEEDED' or response1 == 'FAILED') and (len(response3)==0))
-			logging.info("StackInstancesDeleted is %s" % StackInstancesDeleted)
-			if not StackInstancesDeleted:
-				print("Waiting {} seconds for {} to be fully deleted. There's still {} instances left.".format(timer,StackSetNames[i]['StackSetName'],len(response2)))
+			logging.info("There are still %s instances left" % len(response2))
+			for j in range(len(response2)):
+				if response2[j]['Account'] in AccountsToSkip:
+					InstancesToSkip+=1
+			InstancesLeft=len(response2)-InstancesToSkip
+			StackOperationsRunning=(response1 == 'RUNNING')
+			logging.info("StackOperationsRunning is %s" % StackOperationsRunning)
+			if StackOperationsRunning:
+				print(ERASE_LINE+"Waiting {} seconds for {} to be fully deleted. There's still {} instances left.".format(timer,StackSetNames[i]['StackSetName'],len(response2)),end='\r')
 				time.sleep(10)
 				timer+=10
 		except Exception as e:
 			# if e.response['Error']['Code'] == 'StackSetNotFoundException':
 			# 	logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
-			# 	StackInstancesDeleted=True
+			# 	StackOperationsRunning=True
 			# 	pass
 			# else:
 				print("Error: ",e)
 				break
 
-print("Now deleting {} stacksets from Root Profile".format(len(StackSetNames)-len(StackSetStillInUse)))
+print("Now deleting {} stacksets from {} Profile".format(len(StackSetNames)-len(StackSetStillInUse),pProfile))
 
 try:
 	for i in range(len(StackSetNames)):

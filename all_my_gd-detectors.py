@@ -69,8 +69,7 @@ NumObjectsFound = 0
 NumAccountsInvestigated = 0
 ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
-# pprint.pprint(AccountsToSkip)
-# sys.exit(1)
+
 session_gd=boto3.Session(profile_name=pProfile)
 gd_regions=session_gd.get_available_regions(service_name='guardduty')
 # gd_regions=['us-east-1','us-west-2']

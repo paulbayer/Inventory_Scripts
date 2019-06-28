@@ -61,11 +61,11 @@ Std_Trust_Policy={
 AccountsToConfigure=[]
 
 for account in ChildAccounts:
-	# RoleName="AWSCloudFormationStackSetExecutionRole"
+	RoleName="AWSCloudFormationStackSetExecutionRole"
 	# RoleName="OrganizationalFullAccess"
 	# RoleName="OrganizationAccountAccessRole"
 	# RoleName="Owner"
-	RoleName="admin-crossAccount"
+	# RoleName="admin-crossAccount"
 	role_arn = "arn:aws:iam::{}:role/{}".format(account['AccountId'],RoleName)
 	logging.info("Role ARN: %s" % role_arn)
 	try:
