@@ -243,7 +243,7 @@ def find_if_LZ_Acct(ocredentials):
 	import boto3, logging, pprint
 	from botocore.exceptions import ClientError
 
-	logging.warning("Key ID #: %s ",str(ocredentials['AccessKeyId']))
+	logging.warning("Key ID #: %s ",str(ocredentials['ParentAccountNumber']))
 	session_aws=boto3.Session(
 				aws_access_key_id = ocredentials['AccessKeyId'],
 				aws_secret_access_key = ocredentials['SecretAccessKey'],
