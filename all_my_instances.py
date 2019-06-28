@@ -4,7 +4,7 @@ import os, sys, pprint
 import Inventory_Modules
 import argparse
 from colorama import init,Fore,Back,Style
-from botocore.exceptions import ClientError, NoCredentialsError
+from botocore.exceptions import ClientError, InvalidConfigError, NoCredentialsError
 
 import logging
 
@@ -73,6 +73,10 @@ for pregion in RegionList:
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(ERASE_LINE+profile+": Authorization Failure")
+				pass
+		except InvalidConfigError as my_Error:
+			if str(my_Error).find("does not exist") > 0:
+				print(ERASE_LINE+profile+": config profile references profile in credentials file that doesn't exist")
 				pass
 		if len(Instances['Reservations']) > 0:
 			for y in range(len(Instances['Reservations'])):

@@ -69,8 +69,7 @@ NumObjectsFound = 0
 NumAccountsInvestigated = 0
 ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
-# pprint.pprint(AccountsToSkip)
-# sys.exit(1)
+
 session_gd=boto3.Session(profile_name=pProfile)
 gd_regions=session_gd.get_available_regions(service_name='guardduty')
 # gd_regions=['us-east-1','us-west-2']
@@ -145,6 +144,7 @@ if args.loglevel < 50:
 		print(fmt % (all_gd_detectors[i]['AccountId'],all_gd_detectors[i]['Region'],all_gd_detectors[i]['DetectorIds']))
 
 print(ERASE_LINE)
+print("We scanned {} accounts and {} regions totalling {} possible areas for resources.".format(len(ChildAccounts),len(gd_regions),len(ChildAccounts)*len(gd_regions)))
 print("Found {} Invites across {} accounts across {} regions".format(len(all_gd_invites),len(ChildAccounts),len(gd_regions)))
 print("Found {} Detectors across {} profiles across {} regions".format(NumObjectsFound,len(ChildAccounts),len(gd_regions)))
 print()
@@ -221,12 +221,12 @@ if DeletionRun and (ReallyDelete or ForceDelete):
     		DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
 		)
 		logging.warning("Detector %s has been deleted from child account %s" % (str(all_gd_detectors[y]['DetectorIds'][0]),str(all_gd_detectors[y]['AccountId'])))
-"""
+		"""
 		if StacksFound[y][3] == 'DELETE_FAILED':
 			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2],RetainResources=True,ResourcesToRetain=["MasterDetector"])
 		else:
 			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2])
-"""
+		"""
 
 print()
 print("Thank you for using this tool")
