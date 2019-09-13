@@ -53,7 +53,8 @@ AccountsToRegister=[]
 for account in ChildAccounts:
 	# role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
 	# role_arn = "arn:aws:iam::{}:role/OrganizationalFullAccess".format(account['AccountId'])
-	role_arn = "arn:aws:iam::{}:role/OrganizationAccountAccessRole".format(account['AccountId'])
+	role_arn = "arn:aws:iam::{}:role/AWSControlTowerExecution".format(account['AccountId'])
+	# role_arn = "arn:aws:iam::{}:role/OrganizationAccountAccessRole".format(account['AccountId'])
 	# role_arn = "arn:aws:iam::{}:role/Owner".format(account['AccountId'])
 	# role_arn = "arn:aws:iam::{}:role/admin-crossAccount".format(account['AccountId'])
 	logging.info("Role ARN: %s" % role_arn)

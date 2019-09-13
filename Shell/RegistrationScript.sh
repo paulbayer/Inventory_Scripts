@@ -11,6 +11,7 @@ AccessKey=$b
 SecretAccessKey=$c
 aws iam attach-user-policy --policy-arn $UserPolicy --user-name $Username --profile $Profile
 echo "Account Number: $AccountNumber"
+echo "Email: $Email"
 echo "User: $Username"
 echo "AccessKey: $AccessKey"
 echo "SecretAccessKey: $SecretAccessKey"
