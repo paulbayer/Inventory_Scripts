@@ -126,7 +126,7 @@ SkipProfiles=["default","Shared-Fid"]
 ERASE_LINE = '\x1b[2K'
 
 AllInstances=[]
-StackSetNames2=[]
+# StackSetNames2=[]
 
 print()
 
@@ -143,12 +143,12 @@ print()
 StackSetNames=Inventory_Modules.find_stacksets(pProfile,pRegion,pStackfrag)
 ProfileAccountNumber=Inventory_Modules.find_account_number(pProfile)
 logging.info("Found %s StackSetNames that matched your fragment" % (len(StackSetNames)))
-for i in range(len(StackSetNames)):
-	if 'AWSControlTower' in StackSetNames[i]['StackSetName']:
-		continue
-	else:
-		StackSetNames2.append(StackSetNames[i])
-StackSetNames=StackSetNames2
+# for i in range(len(StackSetNames)):
+# 	if 'AWSControlTower' in StackSetNames[i]['StackSetName']:
+# 		continue
+# 	else:
+# 		StackSetNames2.append(StackSetNames[i])
+# StackSetNames=StackSetNames2
 for i in range(len(StackSetNames)):
 	StackInstances=Inventory_Modules.find_stack_instances(pProfile,pRegion,StackSetNames[i]['StackSetName'])
 	# pprint.pprint(StackInstances)
