@@ -175,11 +175,11 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 			)
 			# pprint.pprint(Output)
 		except Exception as e:
-			if e.response['Error']['Code'] == 'BadRequestException':
-				logging.warning("Caught exception 'BadRequestException', handling the exception...")
-				pass
-			else:
-				print("Caught unexpected error regarding deleting config recorders")
+			# if e.response['Error']['Code'] == 'BadRequestException':
+			# 	logging.warning("Caught exception 'BadRequestException', handling the exception...")
+			# 	pass
+			# else:
+				print("Caught unexpected error regarding deleting config recorders. Exiting...")
 				pprint.pprint(e)
 				sys.exit(9)
 	print("Removed {} config recorders".format(len(all_config_recorders)))
@@ -197,12 +197,6 @@ if DeletionRun and (ReallyDelete or ForceDelete):
     		DeliveryChannelName=all_config_delivery_channels[y]['DeliveryChannel']
 		)
 		logging.warning("Delivery Channel %s has been deleted from child account %s in region %s" % (str(all_config_delivery_channels[y]['DeliveryChannel'][0]),str(all_config_delivery_channels[y]['AccountId']),str(all_config_delivery_channels[y]['Region'])))
-		"""
-		if StacksFound[y][3] == 'DELETE_FAILED':
-			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2],RetainResources=True,ResourcesToRetain=["MasterDetector"])
-		else:
-			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2])
-		"""
 
 print()
 print("Thank you for using this tool")
