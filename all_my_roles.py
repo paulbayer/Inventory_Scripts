@@ -51,7 +51,7 @@ args = parser.parse_args()
 
 pProfile=args.pProfile
 DeletionRun=args.flagDelete
-ForceDelete=args.ForceDelete
+# ForceDelete=args.ForceDelete
 AccountsToSkip=args.pSkipAccounts
 logging.basicConfig(level=args.loglevel)
 
@@ -92,4 +92,3 @@ for account in ChildAccounts:
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
 			print(pProfile+": Authorization Failure for account {}".format(account['AccountId']))
-	

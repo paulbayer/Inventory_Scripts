@@ -105,7 +105,7 @@ parser.add_argument(
 	const=logging.WARNING)
 parser.add_argument(
     '+forreal','+for-real','-for-real','-forreal','--for-real','--forreal','--forrealsies', '+delete',
-    help="Do a Dry-run; don't delete anything",
+    help="[Default] Do a Dry-run; if this parameter is specified, we'll delete stacksets we find, with no additional confirmation.",
     action="store_const",
 	const=False,
 	default=True,
@@ -266,7 +266,7 @@ for i in range(len(StackSetNames)):
 	client_cfn=session_cfn.client('cloudformation')
 	timer=0
 	InstancesToSkip=0
-	while not StackOperationsRunning:
+	while StackOperationsRunning:
 		logging.info("Got into the While Loop")
 		logging.warning(StackSetNames[i]['StackSetName'])
 		try:

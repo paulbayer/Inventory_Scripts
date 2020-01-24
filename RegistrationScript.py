@@ -51,40 +51,46 @@ sts_session = boto3.Session(profile_name=pProfile)
 sts_client = sts_session.client('sts')
 AccountsToRegister=[]
 for account in ChildAccounts:
-	role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
+	rolenames=['AWSCloudFormationStackSetExecutionRole','OrganizationalFullAccess','OrganizationAccountAccessRole','AWSControlTowerExecution','Owner','admin-crossAccount']
+	# role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
 	# role_arn = "arn:aws:iam::{}:role/OrganizationalFullAccess".format(account['AccountId'])
 	# role_arn = "arn:aws:iam::{}:role/AWSControlTowerExecution".format(account['AccountId'])
 	# role_arn = "arn:aws:iam::{}:role/OrganizationAccountAccessRole".format(account['AccountId'])
 	# role_arn = "arn:aws:iam::{}:role/Owner".format(account['AccountId'])
 	# role_arn = "arn:aws:iam::{}:role/admin-crossAccount".format(account['AccountId'])
-	logging.info("Role ARN: %s" % role_arn)
-	try:
-		AccountErrored=False
-		account_credentials = sts_client.assume_role(
-			RoleArn=role_arn,
-			RoleSessionName="RegistrationScript")['Credentials']
-	except ClientError as my_Error:
-		if str(my_Error).find("AuthFailure") > 0:
-			print(pProfile+": Authorization Failure to account {} using {}".format(account['AccountId'],role_arn))
-			AccountErrored=True
-			continue
-		elif str(my_Error).find("AccessDenied") > 0:
-			print(pProfile+": Authentication Denied to account {} using {}".format(account['AccountId'],role_arn))
-			AccountErrored=True
-			continue
-		else:
-			print(my_Error)
-			AccountErrored=True
-	AccountIsRegistered=Inventory_Modules.find_if_Isengard_registered(account_credentials) if not AccountErrored else None
-	if not AccountIsRegistered and not AccountErrored:
-		AccountsToRegister.append({
-		'AccountId':account['AccountId'],
-		'AccountEmail':account['AccountEmail'],
-		'AccountCredentials':account_credentials
-	})
+	for rolename in rolenames:
+		role_arn = "arn:aws:iam::{}:role/{}".format(account['AccountId'],rolename)
+		logging.info("Role ARN: %s" % role_arn)
+		try:
+			AccountErrored=False
+			account_credentials = sts_client.assume_role(
+				RoleArn=role_arn,
+				RoleSessionName="RegistrationScript")['Credentials']
+		except ClientError as my_Error:
+			if str(my_Error).find("AuthFailure") > 0:
+				print(pProfile+": Authorization Failure to account {} using {}".format(account['AccountId'],role_arn))
+				AccountErrored=True
+				continue	# Try the next rolename
+			elif str(my_Error).find("AccessDenied") > 0:
+				print(pProfile+": Authentication Denied to account {} using {}".format(account['AccountId'],role_arn))
+				AccountErrored=True
+				continue	# Try the next rolename
+				print(my_Error)
+				AccountErrored=True
+				continue	# Try the next rolename
+		logging.warning("Accessed Account %s using rolename %s" % (account['AccountId'],rolename))
+		AccountIsRegistered=Inventory_Modules.find_if_Isengard_registered(account_credentials)
+		if not AccountIsRegistered and not AccountErrored:
+			AccountsToRegister.append({
+			'AccountId':account['AccountId'],
+			'AccountEmail':account['AccountEmail'],
+			'AccountCredentials':account_credentials,
+			'RoleName':rolename
+		})
+		break
 logging.info("There are %s accounts to register",len(AccountsToRegister))
 for account in AccountsToRegister:
-	print(ERASE_LINE,Fore.RED+"Setting up Account with credentials for Isengard registration: ",account['AccountId'],"Email: ",account['AccountEmail']+Fore.RESET,end="\r")
+	print(ERASE_LINE,Fore.RED+"Setting up Account with credentials for Isengard registration: ",account['AccountId'],"Email: ",account['AccountEmail'],"using rolename: ",account['RoleName']+Fore.RESET,end="\r")
 	aws_session=boto3.Session(
 		aws_access_key_id = account['AccountCredentials']['AccessKeyId'],
 		aws_secret_access_key = account['AccountCredentials']['SecretAccessKey'],
@@ -176,3 +182,8 @@ for account in AccountsToRegister:
 					AccessKeyId=AccessKeyId
 				)
 			print(my_Error)
+
+print()
+print("Thanks for using the tool.")
+print("We found {} accounts under your organization".format(len(ChildAccounts)))
+print("And we registered {} of them with Isengard".format(len(AccountsToRegister)))

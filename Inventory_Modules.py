@@ -18,6 +18,26 @@ def get_ec2_regions(fkey):
 				RegionNames2.append(y)
 	return(RegionNames2)
 
+def get_service_regions(service,fkey):
+	import boto3, pprint, logging
+	# session=boto3.Session.get_available_regions(service)
+	# region_info=session.client(service)
+	s=boto3.Session()
+	regions=s.get_available_regions(service,partition_name='aws',allow_non_regional=False)
+	RegionNames=[]
+	for x in range(len(regions)):
+		RegionNames.append(regions[x])
+	if "all" in fkey or "ALL" in fkey:
+		return(RegionNames)
+	RegionNames2=[]
+	for x in fkey:
+		for y in RegionNames:
+			logging.info('Have %s | Looking for %s',y,x)
+			if y.find(x) >=0:
+				logging.info('Found %s',y)
+				RegionNames2.append(y)
+	return(RegionNames2)
+
 def get_profiles(fSkipProfiles,fprofiles="all"):
 	'''
 	We assume that the user of this function wants all profiles.
@@ -318,6 +338,14 @@ def find_profile_functions(fProfile,fRegion):
 	lambda_info=session_lambda.client('lambda')
 	functions=lambda_info.list_functions()
 	return(functions)
+
+def find_private_hosted_zones(fProfile,fRegion):
+
+	import boto3
+	session_r53=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	phz_info=session_r53.client('route53')
+	hosted_zones=phz_info.list_hosted_zones()
+	return(hosted_zones)
 
 def find_load_balancers(fProfile,fRegion,fStackFragment,fStatus):
 

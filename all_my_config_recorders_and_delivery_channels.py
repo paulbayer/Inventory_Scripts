@@ -21,6 +21,13 @@ parser.add_argument(
 	metavar="profile to use",
 	help="You need to specify a profile that represents the ROOT account.")
 parser.add_argument(
+	"-r","--region",
+	dest="pRegions",
+	nargs="*",
+	metavar="Regions to look in",
+	default=['us-east-1'],
+	help="These are the regions you want to look through.")
+parser.add_argument(
 	"-k","--skip",
 	dest="pSkipAccounts",
 	nargs="*",
@@ -60,6 +67,7 @@ pProfile=args.pProfile
 DeletionRun=args.flagDelete
 ForceDelete=args.ForceDelete
 AccountsToSkip=args.pSkipAccounts
+pRegions=args.pRegions
 logging.basicConfig(level=args.loglevel)
 
 ##########################
@@ -71,7 +79,8 @@ ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
 
 session_cf=boto3.Session(profile_name=pProfile)
-cf_regions=session_cf.get_available_regions(service_name='config')
+cf_regions=Inventory_Modules.get_service_regions('config',pRegions)
+# cf_regions=session_cf.get_available_regions(service_name='config')
 # cf_regions=['us-east-1','us-west-2']
 all_config_recorders=[]
 all_config_delivery_channels=[]
