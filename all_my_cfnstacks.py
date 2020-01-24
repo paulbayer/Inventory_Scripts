@@ -85,7 +85,8 @@ print()
 fmt='%-20s %-15s %-15s %-50s %-50s'
 print(fmt % ("Account","Region","Stack Status","Stack Name","Stack ID"))
 print(fmt % ("-------","------","------------","----------","--------"))
-RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
+# RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
+RegionList=Inventory_Modules.get_service_regions('cloudformation',pRegionList)
 ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
 # pprint.pprint(AccountsToSkip)
@@ -105,6 +106,8 @@ for account in ChildAccounts:
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
 			print(pProfile+": Authorization Failure for account {}".format(account['AccountId']))
+		elif str(my_Error).find("AccessDenied") > 0:
+			print(pProfile+": Access Denied Failure for account {}".format(account['AccountId']))
 		else:
 			print(pProfile+": Other kind of failure for account {}".format(account['AccountId']))
 			print (my_Error)
@@ -141,13 +144,13 @@ print()
 if DeletionRun and ('GuardDuty' in pstackfrag):
 	logging.warning("Deleting %s stacks",len(StacksFound))
 	for y in range(len(StacksFound)):
-		role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(StacksFound[y]['Accou nt'])
+		role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(StacksFound[y]['Account'])
 		cfn_client=aws_session.client('cloudformation')
 		account_credentials = sts_client.assume_role(
 			RoleArn=role_arn,
 			RoleSessionName="Find-Stacks")['Credentials']
 		account_credentials['AccountNumber']=StacksFound[y]['Account']
-		print("Deleting stack {} from profile {} in region {} with status: {}".format(StacksFound[y]['StackName'],StacksFound[y]['Profile'],StacksFound[y]['Region'],StacksFound[y]['StackStatus']))
+		print("Deleting stack {} from Account {} in region {} with status: {}".format(StacksFound[y]['StackName'],StacksFound[y]['Account'],StacksFound[y]['Region'],StacksFound[y]['StackStatus']))
 		""" This next line is BAD because it's hard-coded for GuardDuty, but we'll fix that eventually """
 		if StacksFound[y]['StackStatus'] == 'DELETE_FAILED':
 			# This deletion generally fails because the Master Detector doesn't properly delete (and it's usually already deleted due to some other script) - so we just need to delete the stack anyway - and ignore the actual resource.

@@ -105,7 +105,7 @@ parser.add_argument(
 	const=logging.WARNING)
 parser.add_argument(
     '+forreal','+for-real','-for-real','-forreal','--for-real','--forreal','--forrealsies', '+delete',
-    help="Do a Dry-run; don't delete anything",
+    help="[Default] Do a Dry-run; if this parameter is specified, we'll delete stacksets we find, with no additional confirmation.",
     action="store_const",
 	const=False,
 	default=True,
@@ -126,7 +126,7 @@ SkipProfiles=["default","Shared-Fid"]
 ERASE_LINE = '\x1b[2K'
 
 AllInstances=[]
-StackSetNames2=[]
+# StackSetNames2=[]
 
 print()
 
@@ -143,12 +143,12 @@ print()
 StackSetNames=Inventory_Modules.find_stacksets(pProfile,pRegion,pStackfrag)
 ProfileAccountNumber=Inventory_Modules.find_account_number(pProfile)
 logging.info("Found %s StackSetNames that matched your fragment" % (len(StackSetNames)))
-for i in range(len(StackSetNames)):
-	if 'AWSControlTower' in StackSetNames[i]['StackSetName']:
-		continue
-	else:
-		StackSetNames2.append(StackSetNames[i])
-StackSetNames=StackSetNames2
+# for i in range(len(StackSetNames)):
+# 	if 'AWSControlTower' in StackSetNames[i]['StackSetName']:
+# 		continue
+# 	else:
+# 		StackSetNames2.append(StackSetNames[i])
+# StackSetNames=StackSetNames2
 for i in range(len(StackSetNames)):
 	StackInstances=Inventory_Modules.find_stack_instances(pProfile,pRegion,StackSetNames[i]['StackSetName'])
 	# pprint.pprint(StackInstances)
@@ -266,7 +266,7 @@ for i in range(len(StackSetNames)):
 	client_cfn=session_cfn.client('cloudformation')
 	timer=0
 	InstancesToSkip=0
-	while not StackOperationsRunning:
+	while StackOperationsRunning:
 		logging.info("Got into the While Loop")
 		logging.warning(StackSetNames[i]['StackSetName'])
 		try:

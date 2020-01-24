@@ -80,6 +80,7 @@ print("Searching {} accounts and {} regions".format(len(ChildAccounts),len(gd_re
 sts_session = boto3.Session(profile_name=pProfile)
 sts_client = sts_session.client('sts')
 for account in ChildAccounts:
+	logging.info("Checking Account: %s" % account)
 	NumProfilesInvestigated = 0	# I only care about the last run - so I don't get profiles * regions.
 	role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
 	logging.info("Role ARN: %s" % role_arn)
@@ -91,6 +92,7 @@ for account in ChildAccounts:
 		if str(my_Error).find("AuthFailure") > 0:
 			print(profile+": Authorization Failure for account {}".format(account['AccountId']))
 	for region in gd_regions:
+		logging.info("Checking Region: %s" % region)
 		NumAccountsInvestigated += 1
 		session_aws=boto3.Session(
 			aws_access_key_id=account_credentials['AccessKeyId'],
@@ -98,12 +100,20 @@ for account in ChildAccounts:
 			aws_session_token=account_credentials['SessionToken'],
 			region_name=region)
 		client_aws=session_aws.client('guardduty')
+		logging.info("Token Info %s" % account_credentials)
 		## List Invitations
 		try:
+			logging.info("About to List invites for account: %s in region %s" % (account,region))
 			response=client_aws.list_invitations()
+			logging.info("Finished listing invites for account: %s in region %s" % (account,region))
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
-				print(profile+": Authorization Failure for account {}".format(account['AccountId']))
+				print(account['AccountId']+": Authorization Failure for account {}".format(account['AccountId']))
+			if str(my_Error).find("security token included in the request is invalid") > 0:
+				print("Account #:"+account['AccountId']+" - It's likely that the region you're trying ({}) isn\'t enabled for your account".format(region))
+				continue
+			else:
+				print(my_Error)
 		if len(response['Invitations']) > 0:
 			for i in range(len(response['Invitations'])):
 				all_gd_invites.append({
@@ -159,10 +169,10 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 	logging.warning("Deleting all invites")
 	for y in range(len(all_gd_invites)):
 		session_gd_child=boto3.Session(
-				aws_access_key_id=all_gd_invites[y]['AccessKeyId'],
-				aws_secret_access_key=all_gd_invites[y]['SecretAccessKey'],
-				aws_session_token=all_gd_invites[y]['SessionToken'],
-				region_name=all_gd_invites[y]['Region'])
+			aws_access_key_id=all_gd_invites[y]['AccessKeyId'],
+			aws_secret_access_key=all_gd_invites[y]['SecretAccessKey'],
+			aws_session_token=all_gd_invites[y]['SessionToken'],
+			region_name=all_gd_invites[y]['Region'])
 		client_gd_child=session_gd_child.client('guardduty')
 		## Delete Invitations
 		try:
@@ -184,10 +194,10 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 		logging.info("Deleting detector-id: %s from account %s in region %s" % (all_gd_detectors[y]['DetectorIds'],all_gd_detectors[y]['AccountId'],all_gd_detectors[y]['Region']))
 		print("Deleting detector in account {} in region {}".format(all_gd_detectors[y]['AccountId'],all_gd_detectors[y]['Region']))
 		session_gd_child=boto3.Session(
-				aws_access_key_id=all_gd_detectors[y]['AccessKeyId'],
-				aws_secret_access_key=all_gd_detectors[y]['SecretAccessKey'],
-				aws_session_token=all_gd_detectors[y]['SessionToken'],
-				region_name=all_gd_detectors[y]['Region'])
+			aws_access_key_id=all_gd_detectors[y]['AccessKeyId'],
+			aws_secret_access_key=all_gd_detectors[y]['SecretAccessKey'],
+			aws_session_token=all_gd_detectors[y]['SessionToken'],
+			region_name=all_gd_detectors[y]['Region'])
 		client_gd_child=session_gd_child.client('guardduty')
 		## List Members
 		Member_Dict=client_gd_child.list_members(
@@ -198,6 +208,7 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 			MemberList.append(Member_Dict[i]['AccountId'])
 		# MemberList.append('704627748197')
 		try:
+			Output=0
 			Output=client_gd_child.disassociate_from_master_account(
 				DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
 			)
@@ -207,16 +218,17 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 				pass
 		## Disassociate Members
 		##
-		Output=client_gd_child.disassociate_members(
-			AccountIds=MemberList,
-    		DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
-		)
-		logging.warning("Account %s has been disassociated from master account" % str(all_gd_detectors[y]['AccountId']))
-		Output=client_gd_child.delete_members(
-			AccountIds=[all_gd_detectors[y]['AccountId']],
-    		DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
-		)
-		logging.warning("Account %s has been deleted from master account" % str(all_gd_detectors[y]['AccountId']))
+		if MemberList:	# This handles the scenario where the detectors aren't associated with the Master
+			Output=client_gd_child.disassociate_members(
+				AccountIds=MemberList,
+	    		DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
+			)
+			logging.warning("Account %s has been disassociated from master account" % str(all_gd_detectors[y]['AccountId']))
+			Output=client_gd_child.delete_members(
+				AccountIds=[all_gd_detectors[y]['AccountId']],
+	    		DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
+			)
+			logging.warning("Account %s has been deleted from master account" % str(all_gd_detectors[y]['AccountId']))
 		Output=client_gd_child.delete_detector(
     		DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
 		)
