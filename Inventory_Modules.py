@@ -659,7 +659,7 @@ def delete_stack_instances(fProfile,fRegion,lAccounts,lRegions,fStackSetName,fOp
 	"""
 	import boto3, logging, pprint
 
-	logging.warning("Deleting %s StackSetName over %s accounts across %s regions" % (fStackSetName,len(lAccounts),len(lRegions)))
+	logging.warning("Deleting %s stackset over %s accounts across %s regions" % (fStackSetName,len(lAccounts),len(lRegions)))
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	client_cfn=session_cfn.client('cloudformation')
 	response = client_cfn.delete_stack_instances(

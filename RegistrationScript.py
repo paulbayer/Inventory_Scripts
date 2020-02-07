@@ -50,6 +50,7 @@ print(fmt % ("-------","------","------","-------------"))
 sts_session = boto3.Session(profile_name=pProfile)
 sts_client = sts_session.client('sts')
 AccountsToRegister=[]
+AccountsRegistered=0
 for account in ChildAccounts:
 	rolenames=['AWSCloudFormationStackSetExecutionRole','OrganizationalFullAccess','OrganizationAccountAccessRole','AWSControlTowerExecution','Owner','admin-crossAccount']
 	# role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
@@ -80,6 +81,8 @@ for account in ChildAccounts:
 				continue	# Try the next rolename
 		logging.warning("Accessed Account %s using rolename %s" % (account['AccountId'],rolename))
 		AccountIsRegistered=Inventory_Modules.find_if_Isengard_registered(account_credentials)
+		if AccountIsRegistered:
+			AccountsRegistered+=1
 		if not AccountIsRegistered and not AccountErrored:
 			AccountsToRegister.append({
 			'AccountId':account['AccountId'],
@@ -186,4 +189,8 @@ for account in AccountsToRegister:
 print()
 print("Thanks for using the tool.")
 print("We found {} accounts under your organization".format(len(ChildAccounts)))
-print("And we registered {} of them with Isengard".format(len(AccountsToRegister)))
+if len(ChildAccounts) == AccountsRegistered:
+	print("All accounts were already registered with Isengard")
+else:
+	print("{} accounts were already registered with Isengard".format(AccountsRegistered))
+	print("And we registered {} more of them with Isengard".format(len(AccountsToRegister)))
