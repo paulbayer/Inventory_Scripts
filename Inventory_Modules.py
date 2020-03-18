@@ -370,16 +370,16 @@ def find_load_balancers(fProfile,fRegion,fStackFragment,fStatus):
 				load_balancer_Copy.append(load_balancer)
 	return(load_balancer_Copy)
 
-def find_stacks(fprofile,fRegion,fStackFragment,fStatus="active"):
+def find_stacks(fProfile,fRegion,fStackFragment="all",fStatus="active"):
 	"""
 	fprofile is an string holding the name of the profile you're connecting to:
 	fRegion is a string
-	fStackFragment is a list
+	fStackFragment is a string
 	fStatus is a string
 	"""
 	import boto3, logging, pprint
-	logging.warning("Profile: %s | Region: %s | Fragment: %s | Status: %s",fprofile, fRegion, fStackFragment,fStatus)
-	session_cfn=boto3.Session(profile_name=fprofile, region_name=fRegion)
+	logging.warning("Profile: %s | Region: %s | Fragment: %s | Status: %s",fProfile, fRegion, fStackFragment,fStatus)
+	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	stack_info=session_cfn.client('cloudformation')
 	stacksCopy=[]
 	if (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active') and not (fStackFragment=='All' or fStackFragment=='ALL'  or fStackFragment=='all'):
@@ -389,7 +389,7 @@ def find_stacks(fprofile,fRegion,fStackFragment,fStatus="active"):
 		for stack in stacks['StackSummaries']:
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match
-				logging.warning("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fprofile, fRegion, fStackFragment, fStatus)
+				logging.warning("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
 	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
 		# Send back all stacks regardless of fragment, check the status further down.
@@ -399,7 +399,7 @@ def find_stacks(fprofile,fRegion,fStackFragment,fStatus="active"):
 			# if fStatus in stack['StackStatus']:
 			# Check the status now - only send back those that match a single status
 			# I don't see this happening unless someone wants Stacks in a "Deleted" or "Rollback" type status
-			logging.warning("Found stack %s in Profile: %s in Region: %s regardless of fragment and Status: %s", stack['StackName'], fprofile, fRegion, fStatus)
+			logging.warning("Found stack %s in Profile: %s in Region: %s regardless of fragment and Status: %s", stack['StackName'], fProfile, fRegion, fStatus)
 			stacksCopy.append(stack)
 	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='all' or fStatus=='ALL' or fStatus=='All'):
 		# Send back all stacks.
@@ -409,13 +409,15 @@ def find_stacks(fprofile,fRegion,fStackFragment,fStatus="active"):
 	elif not (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
 		# Send back stacks that match the single status, check the fragment further down.
 		try:
-			stacks=stack_info.list_stacks(StackStatusFilter=[fStatus])
+			stacks=stack_info.list_stacks()
+			logging.warning("Found %s stacks", len(stacks['StackSummaries']))
 		except Exception as e:
 			print(e)
 		for stack in stacks['StackSummaries']:
-			if fStackFragment in stack['StackName'] and fStatus in stack['StackStatus']:
+			# pprint.pprint(stack)
+			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match
-				logging.warning("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
+				logging.warning("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, stack['StackStatus'])
 				stacksCopy.append(stack)
 	return(stacksCopy)
 
@@ -477,7 +479,7 @@ def delete_stack2(ocredentials,fRegion,fStackName,**kwargs):
 		response=client_cfn.delete_stack(StackName=fStackName)
 	return(response)
 
-def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
+def find_stacks_in_acct(ocredentials,fRegion,fStackFragment="all",fStatus="active"):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -486,11 +488,12 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 		- ['AccountNumber'] holds the AccountId
 
 	fRegion is a string
-	fStackFragment is a list
+	fStackFragment is a string - default to "all"
+	fStatus is a string - default to "active"
 	"""
 	import boto3, logging, pprint
-	logging.warning("AccessKeyId:")
-	logging.warning("Acct ID #: %s | Region: %s | Fragment: %s | Status: %s",str(ocredentials['AccountNumber']), fRegion, fStackFragment,fStatus)
+	logging.error("AccessKeyId:")
+	logging.error("Acct ID #: %s | Region: %s | Fragment: %s | Status: %s",str(ocredentials['AccountNumber']), fRegion, fStackFragment,fStatus)
 	session_cfn=boto3.Session(region_name=fRegion,
 				aws_access_key_id = ocredentials['AccessKeyId'],
 				aws_secret_access_key = ocredentials['SecretAccessKey'],
@@ -504,18 +507,18 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 		for stack in stacks['StackSummaries']:
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match
-				logging.warning("1-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccountNumber'], fRegion, fStackFragment, fStatus)
+				logging.error("1-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccountNumber'], fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
 	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='all' or fStatus=='ALL' or fStatus=='All'):
 		# Send back all stacks.
 		stacks=stack_info.list_stacks()
-		logging.warning("4-Found %s the stacks in Account: %s in Region: %s", len(stacks), ocredentials['AccessKeyId'], fRegion)
+		logging.error("4-Found %s the stacks in Account: %s in Region: %s", len(stacks), ocredentials['AccessKeyId'], fRegion)
 		return(stacks['StackSummaries'])
 	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
 		# Send back all stacks regardless of fragment, check the status further down.
 		stacks=stack_info.list_stacks(StackStatusFilter=["CREATE_COMPLETE","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE"])
 		for stack in stacks['StackSummaries']:
-			logging.warning("2-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccountNumber'], fRegion, fStackFragment, fStatus)
+			logging.error("2-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccountNumber'], fRegion, fStackFragment, fStatus)
 			stacksCopy.append(stack)
 			# logging.warning("StackStatus: %s | My status: %s", stack['StackStatus'], fStatus)
 	elif not (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
@@ -527,7 +530,7 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment,fStatus="active"):
 		for stack in stacks['StackSummaries']:
 			if fStackFragment in stack['StackName'] and fStatus in stack['StackStatus']:
 				# Check the fragment now - only send back those that match
-				logging.warning("5-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccountNumber'], fRegion, fStackFragment, fStatus)
+				logging.error("5-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccountNumber'], fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
 	return(stacksCopy)
 
@@ -542,7 +545,7 @@ def find_saml_components_in_acct(ocredentials,fRegion):
 	fRegion is a string
 	"""
 	import boto3, logging, pprint
-	logging.warning("Acct ID #: %s | Region: %s ",str(ocredentials['AccountNumber']), fRegion)
+	logging.error("Acct ID #: %s | Region: %s ",str(ocredentials['AccountNumber']), fRegion)
 	session_aws=boto3.Session(region_name=fRegion,
 				aws_access_key_id = ocredentials['AccessKeyId'],
 				aws_secret_access_key = ocredentials['SecretAccessKey'],
@@ -669,3 +672,35 @@ def delete_stack_instances(fProfile,fRegion,lAccounts,lRegions,fStackSetName,fOp
 		RetainStacks=False,
 		OperationId=fOperationName
 	)
+
+def find_sc_products(fProfile,fRegion,fStatus="ERROR"):
+	"""
+	fProfile is the Root Profile that owns the Account we're interogating
+	fRegion is the region we're interogating
+	fStatus is the status of SC products we're looking for. Defaults to "ERROR"
+	"""
+	import boto3, logging, pprint
+	from Inventory_Modules import find_account_number
+
+	AccountNumber=find_account_number(fProfile)
+	session_sc=boto3.Session(profile_name=fProfile,region_name=fRegion)
+	client_sc=session_sc.client('servicecatalog')
+	if (fStatus=='All' or fStatus=='ALL' or fStatus=='all'):
+		response = client_sc.search_provisioned_products()
+	else:
+		response = client_sc.search_provisioned_products(
+		    # AccessLevelFilter={
+		    #     'Key': 'Account',
+		    #     'Value': AccountNumber
+		    # },
+		    Filters={
+		        'SearchQuery': ['status:'+fStatus]
+		    }
+			# ,
+		    # SortBy='string',
+		    # SortOrder='ASCENDING'|'DESCENDING',
+				# Almost certainly we'll need to implement a paging operation here
+		    # PageSize=123,
+		    # PageToken='string'
+		)
+	return(response)

@@ -58,14 +58,20 @@ parser.add_argument(
     help="Print lots of debugging statements",
     action="store_const",
 	dest="loglevel",
-	const=logging.INFO,
-    default=logging.CRITICAL)
+	const=logging.INFO,	# args.loglevel = 20
+    default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
     '-v', '--verbose',
     help="Be verbose",
     action="store_const",
 	dest="loglevel",
-	const=logging.WARNING)
+	const=logging.ERROR) # args.loglevel = 40
+parser.add_argument(
+    '-vv',
+    help="Be MORE verbose",
+    action="store_const",
+	dest="loglevel",
+	const=logging.WARNING) # args.loglevel = 30
 args = parser.parse_args()
 
 pProfile=args.pProfile
@@ -75,16 +81,23 @@ pstatus=args.pstatus
 AccountsToSkip=args.pSkipAccounts
 verbose=args.loglevel
 DeletionRun=args.DeletionRun
-logging.basicConfig(level=args.loglevel)
+logging.basicConfig(level=args.loglevel, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %H:%M:%S')
 
 ##########################
 ERASE_LINE = '\x1b[2K'
 
+print(args.loglevel)
+
 NumStacksFound = 0
 print()
-fmt='%-20s %-15s %-15s %-50s %-50s'
-print(fmt % ("Account","Region","Stack Status","Stack Name","Stack ID"))
-print(fmt % ("-------","------","------------","----------","--------"))
+if args.loglevel < 30:
+	fmt='%-20s %-15s %-15s %-50s %-50s'
+	print(fmt % ("Account","Region","Stack Status","Stack Name","Stack ID"))
+	print(fmt % ("-------","------","------------","----------","--------"))
+else:
+	fmt='%-20s %-15s %-15s %-50s'
+	print(fmt % ("Account","Region","Stack Status","Stack Name"))
+	print(fmt % ("-------","------","------------","----------"))
 # RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
 RegionList=Inventory_Modules.get_service_regions('cloudformation',pRegionList)
 ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
@@ -128,7 +141,10 @@ for account in ChildAccounts:
 				StackName=Stacks[y]['StackName']
 				StackStatus=Stacks[y]['StackStatus']
 				StackID=Stacks[y]['StackId']
-				print(fmt % (account['AccountId'],region,StackStatus,StackName,StackID))
+				if args.loglevel < 30:
+					print(fmt % (account['AccountId'],region,StackStatus,StackName,StackID))
+				else:
+					print(fmt % (account['AccountId'],region,StackStatus,StackName))
 				NumStacksFound += 1
 				StacksFound.append({
 					'Account':account['AccountId'],
@@ -136,8 +152,20 @@ for account in ChildAccounts:
 					'StackName':StackName,
 					'StackStatus':StackStatus,
 					'StackArn':StackID})
+lAccounts=[]
+lRegions=[]
+lAccountsAndRegions=[]
+for i in range(len(StacksFound)):
+	lAccounts.append(StacksFound[i]['Account'])
+	lRegions.append(StacksFound[i]['Region'])
+	lAccountsAndRegions.append((StacksFound[i]['Account'],StacksFound[i]['Region']))
 print(ERASE_LINE)
-print(Fore.RED+"Found",NumStacksFound,"Stacks across",len(ChildAccounts),"accounts across",len(RegionList),"regions"+Fore.RESET)
+print(Fore.RED+"Looked through",NumStacksFound,"Stacks across",len(ChildAccounts),"accounts across",len(RegionList),"regions"+Fore.RESET)
+print()
+print(Fore.RED+"Found",NumStacksFound,"Stacks within",len(set(lAccounts)),"accounts across",len(set(lRegions)),"regions"+Fore.RESET)
+if args.loglevel < 50:
+	pprint.pprint("The list of accounts and regions:")
+	pprint.pprint(list(sorted(set(lAccountsAndRegions))))
 print()
 # pprint.pprint(StacksFound)
 
