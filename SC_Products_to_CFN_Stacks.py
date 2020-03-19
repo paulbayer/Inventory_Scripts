@@ -92,7 +92,9 @@ client_cfn=session_cfn.client('cloudformation')
 try:
 	# SCProducts=Inventory_Modules.find_sc_products(pProfile,pRegion,"ERROR")
 	SCresponse=Inventory_Modules.find_sc_products(pProfile,pRegion,"All")
+	logging.warning("A list of the SC Products found:")
 	for i in range(len(SCresponse['ProvisionedProducts'])):
+		logging.warning("SC Product Name %s | SC Product Status %s", SCresponse['ProvisionedProducts'][i]['Name'], SCresponse['ProvisionedProducts'][i]['Status'])
 		SCProducts.append({
 			'SCPName':SCresponse['ProvisionedProducts'][i]['Name'],
 			'SCPId':SCresponse['ProvisionedProducts'][i]['Id'],
@@ -149,10 +151,37 @@ except ClientError as my_Error:
 		print (my_Error)
 
 print()
-print("You probably want to remove the following SC Products:")
-for i in range(len(SCP2Stacks)):
-	if SCP2Stacks[i]['SCStatus']=='ERROR':
-		print("aws servicecatalog terminate-provisioned-product --provisioned-product-id",SCP2Stacks[i]['SCProductId'])
+# print("You probably want to remove the following SC Products:")
+# StacksAndProductsToDelete=[]
+# for i in range(len(SCP2Stacks)):
+
+# for i in range(len(SCP2Stacks)):
+# 	if SCP2Stacks[i]['SCStatus']=='ERROR':
+# 		print("aws servicecatalog terminate-provisioned-product --provisioned-product-id",SCP2Stacks[i]['SCProductId'])
+"""
+if DeletionRun:
+	logging.warning("Deleting %s stacks",len(StacksFound))
+	for y in range(len(StacksFound)):
+		role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(StacksFound[y]['Account'])
+		cfn_client=aws_session.client('cloudformation')
+		account_credentials = sts_client.assume_role(
+			RoleArn=role_arn,
+			RoleSessionName="Find-Stacks")['Credentials']
+		account_credentials['AccountNumber']=StacksFound[y]['Account']
+		print("Deleting stack {} from Account {} in region {} with status: {}".format(StacksFound[y]['StackName'],StacksFound[y]['Account'],StacksFound[y]['Region'],StacksFound[y]['StackStatus']))
+		# This next line is BAD because it's hard-coded for GuardDuty, but we'll fix that eventually
+		if StacksFound[y]['StackStatus'] == 'DELETE_FAILED':
+			# This deletion generally fails because the Master Detector doesn't properly delete (and it's usually already deleted due to some other script) - so we just need to delete the stack anyway - and ignore the actual resource.
+			response=Inventory_Modules.delete_stack2(account_credentials,StacksFound[y]['Region'],StacksFound[y]['StackName'],RetainResources=True,ResourcesToRetain=["MasterDetector"])
+		else:
+			response=Inventory_Modules.delete_stack2(account_credentials,StacksFound[y]['Region'],StacksFound[y]['StackName'])
+elif DeletionRun:
+	logging.warning("Deleting %s stacks",len(StacksFound))
+	for y in range(len(StacksFound)):
+		print("Deleting stack {} from account {} in region {} with status: {}".format(StacksFound[y]['StackName'],StacksFound[y]['Account'],StacksFound[y]['Region'],StacksFound[y]['StackStatus']))
+		response=Inventory_Modules.delete_stack2(account_credentials,StacksFound[y]['Region'],StacksFound[y]['StackName'])
+
+"""
 
 print()
 print("Thanks for using this script...")

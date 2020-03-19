@@ -11,6 +11,10 @@ import logging
 
 init()
 
+"""
+TODO:
+- Enable the deletion of the config recorders / delivery channels from specific accounts (or all?) at the end.
+"""
 # UsageMsg="You can provide a level to determine whether this script considers only the 'credentials' file, the 'config' file, or both."
 parser = argparse.ArgumentParser(
 	description="We\'re going to find all resources within any of the profiles we have access to.",
@@ -111,10 +115,13 @@ for account in ChildAccounts:
 		try: # Looking for Configuration Recorders
 			print(ERASE_LINE,"Trying account {} in region {}".format(account['AccountId'],region),end='\r')
 			response=client_aws.describe_configuration_recorders()
+			logging.error("Successfully described config recorders")
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(profile+": Authorization Failure for account {}".format(account['AccountId']))
-		if len(response['ConfigurationRecorders']) > 0:
+			response={}
+		if 'ConfigurationRecorders' in response.keys():
+		# if len(response['ConfigurationRecorders']) > 0:
 			for i in range(len(response['ConfigurationRecorders'])):
 				NumObjectsFound=NumObjectsFound + len(response['ConfigurationRecorders'])
 				all_config_recorders.append({

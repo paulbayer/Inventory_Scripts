@@ -64,6 +64,11 @@ ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
 cross_account_role="AWSCloudFormationStackSetExecutionRole"
 
+print()
+fmt='%-15s %-42s'
+print(fmt % ("Account Number","Role Name"))
+print(fmt % ("--------------","---------"))
+
 sts_session = boto3.Session(profile_name=pProfile)
 sts_client = sts_session.client('sts')
 for account in ChildAccounts:
@@ -80,7 +85,7 @@ for account in ChildAccounts:
 		aws_access_key_id=account_credentials['AccessKeyId'],
 		aws_secret_access_key=account_credentials['SecretAccessKey'],
 		aws_session_token=account_credentials['SessionToken'],
-		region_name=region)
+		region_name='us-east-1')
 	iam_client=iam_session.client('iam')
 	try:
 		Roles=[]
@@ -92,3 +97,10 @@ for account in ChildAccounts:
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
 			print(pProfile+": Authorization Failure for account {}".format(account['AccountId']))
+
+	print()
+	for i in range(len(Roles)):
+		print(fmt % (account['AccountId'],Roles[i]['RoleName']))
+
+print()
+print("Thanks for using this script...")
