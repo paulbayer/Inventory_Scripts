@@ -59,19 +59,55 @@ def get_profiles(fSkipProfiles,fprofiles="all"):
 				ProfileList.append(y)
 	return(ProfileList)
 
-def find_profile_instances(fProfile,fRegion):
+def get_profiles2(fSkipProfiles=[],fprofiles=["all"]):
+	'''
+	We assume that the user of this function wants all profiles.
+	If they provide a list of profile strings (in fprofiles), then we compare those strings to the full list of profiles we have, and return those profiles that contain the strings they sent.
+	'''
+	import boto3, logging
+	from botocore.exceptions import ClientError
 
-	import boto3
-	session_ec2=boto3.Session(profile_name=fProfile, region_name=fRegion)
-	instance_info=session_ec2.client('ec2')
-	instances=instance_info.describe_instances()
-	return(instances)
+	my_Session=boto3.Session()
+	my_profiles=my_Session._session.available_profiles
+	if "all" in fprofiles or "ALL" in fprofiles:
+		my_profiles=list(set(my_profiles)-set(fSkipProfiles))
+	else:
+		my_profiles=list(set(fprofiles)-set(fSkipProfiles))
+	return(my_profiles)
+
+def get_profiles3(fSkipProfiles=[],fprofiles=["all"]):
+	'''
+	This function should only return profiles from Master Payer Accounts.
+	If they provide a list of profile strings (in fprofiles), then we compare those strings to the full list of profiles we have, and return those profiles that contain the strings AND are Master Payer Accounts.
+	'''
+	import boto3, logging
+	from botocore.exceptions import ClientError
+
+	my_Session=boto3.Session()
+	my_profiles=my_Session._session.available_profiles
+	logging.info("Profile string sent: %s", fprofiles)
+	if "all" in fprofiles or "ALL" in fprofiles:
+		my_profiles=list(set(my_profiles)-set(fSkipProfiles))
+		logging.info("my_profiles %s:",my_profiles)
+	else:
+		my_profiles=list(set(fprofiles)-set(fSkipProfiles))
+	my_profiles2=[]
+	for profile in my_profiles:
+		logging.info("Finding whether %s is a root profile",profile)
+		if find_if_org_root(profile):
+			logging.info("%s is a Root Profile",profile)
+			my_profiles2.append(profile)
+	return(my_profiles2)
 
 def find_if_org_root(fProfile):
 
+	import logging
+
+	logging.info("Finding if %s is an ORG root",fProfile)
 	org_acct_number=find_org_attr(fProfile)
+	logging.info("The Org Account Number %s", org_acct_number['MasterAccountId'])
 	acct_number=find_account_number(fProfile)
-	if org_acct_number['Organization']['MasterAccountId']==acct_number:
+	if org_acct_number['MasterAccountId']==acct_number:
 		return(True)
 	else:
 		return(False)
@@ -98,10 +134,30 @@ def find_acct_email(fOrgRootProfile,fAccountId):
 
 def find_org_attr(fProfile):
 	import boto3
+	from botocore.exceptions import ClientError
+	# from botocore.errorfactory import AWSOrganizationsNotInUseException
 
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
-	response=client_org.describe_organization()['Organization']
+	try:
+		response=client_org.describe_organization()['Organization']
+	# except AWSOrganizationsNotInUseException as my_Error:
+	# 	if str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
+	# 		print(ERASE_LINE+profile+": Account isn't a part of an Organization")
+	# 		response={'MasterAccountId':'000000000000'}
+	# 		pass
+	except ClientError as my_Error:
+		if str(my_Error).find("UnrecognizedClientException") > 0:
+			print(fProfile+": Security Issue")
+		elif str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
+			print(fProfile+": Account isn't a part of an Organization")
+		elif str(my_Error).find("InvalidClientTokenId") > 0:
+			print(fProfile+": Security Token is bad - probably a bad entry in config")
+		else:
+			print(pProfile+": Other kind of failure for account {}".format(AllChildAccounts[i]['AccountId']))
+			print (my_Error)
+		response={'MasterAccountId':'000000000000'}
+		pass
 	return (response)
 
 def find_org_attr2(fProfile):
@@ -133,6 +189,7 @@ def find_child_accounts2(fProfile):
 		for account in response['Accounts']:
 			logging.warning("Account ID: %s | Account Email: %s" % (account['Id'],account['Email']))
 			child_accounts.append({
+				'ParentProfile':fProfile,
 				'AccountId':account['Id'],
 				'AccountEmail':account['Email']
 			})
@@ -213,6 +270,23 @@ def RemoveCoreAccounts(MainList,AccountsToRemove):
 Above - Generic functions
 Below - Specific functions to specific features
 """
+def find_account_instances(ocredentials,fRegion):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+	"""
+	import boto3
+	session_ec2=boto3.Session(
+				aws_access_key_id = ocredentials['AccessKeyId'],
+				aws_secret_access_key = ocredentials['SecretAccessKey'],
+				aws_session_token = ocredentials['SessionToken'],
+				region_name=fRegion)
+	instance_info=session_ec2.client('ec2')
+	instances=instance_info.describe_instances()
+	return(instances)
+
 def find_users(ocredentials):
 	"""
 	ocredentials is an object with the following structure:
