@@ -1,4 +1,24 @@
 
+
+def get_regions(fkey):
+	import boto3, pprint, logging
+	session_ec2=boto3.Session()
+	region_info=session_ec2.client('ec2')
+	regions=region_info.describe_regions()
+	RegionNames=[]
+	for x in range(len(regions['Regions'])):
+		RegionNames.append(regions['Regions'][x]['RegionName'])
+	if "all" in fkey or "ALL" in fkey:
+		return(RegionNames)
+	RegionNames2=[]
+	for x in fkey:
+		for y in RegionNames:
+			logging.info('Have %s | Looking for %s',y,x)
+			if y.find(x) >=0:
+				logging.info('Found %s',y)
+				RegionNames2.append(y)
+	return(RegionNames2)
+
 def get_ec2_regions(fkey):
 	import boto3, pprint, logging
 	session_ec2=boto3.Session()
@@ -75,7 +95,7 @@ def get_profiles2(fSkipProfiles=[],fprofiles=["all"]):
 		my_profiles=list(set(fprofiles)-set(fSkipProfiles))
 	return(my_profiles)
 
-def get_profiles3(fSkipProfiles=[],fprofiles=["all"]):
+def get_parent_profiles(fSkipProfiles=[],fprofiles=["all"]):
 	'''
 	This function should only return profiles from Master Payer Accounts.
 	If they provide a list of profile strings (in fprofiles), then we compare those strings to the full list of profiles we have, and return those profiles that contain the strings AND are Master Payer Accounts.
@@ -93,10 +113,13 @@ def get_profiles3(fSkipProfiles=[],fprofiles=["all"]):
 		my_profiles=list(set(fprofiles)-set(fSkipProfiles))
 	my_profiles2=[]
 	for profile in my_profiles:
-		logging.info("Finding whether %s is a root profile",profile)
-		if find_if_org_root(profile):
-			logging.info("%s is a Root Profile",profile)
+		logging.warning("Finding whether %s is a root profile",profile)
+		AcctResult=find_if_org_root(profile)
+		if AcctResult in ['Root','StandAlone']:
+			logging.warning("%s is a %s Profile",profile,AcctResult)
 			my_profiles2.append(profile)
+		else:
+			logging.warning("%s is a %s Profile",profile,AcctResult)
 	return(my_profiles2)
 
 def find_if_org_root(fProfile):
@@ -105,14 +128,20 @@ def find_if_org_root(fProfile):
 
 	logging.info("Finding if %s is an ORG root",fProfile)
 	org_acct_number=find_org_attr(fProfile)
-	logging.info("The Org Account Number %s", org_acct_number['MasterAccountId'])
+	logging.info("Profile %s's Org Account Number is %s", fProfile,org_acct_number['MasterAccountId'])
 	acct_number=find_account_number(fProfile)
 	if org_acct_number['MasterAccountId']==acct_number:
-		return(True)
+		logging.info("%s is a Root account",fProfile)
+		return('Root')
+	elif org_acct_number['MasterAccountId']=='StandAlone':
+		logging.info("%s is a Standalone account",fProfile)
+		return('StandAlone')
 	else:
-		return(False)
+		logging.info("%s is a Child account",fProfile)
+		return('Child')
 
-def find_if_lz(fProfile):
+
+def find_if_alz(fProfile):
 	import boto3
 
 	session_org = boto3.Session(profile_name=fProfile)
@@ -125,6 +154,9 @@ def find_if_lz(fProfile):
 
 def find_acct_email(fOrgRootProfile,fAccountId):
 	import boto3
+	"""
+	This function *unfortunately* only works with organization accounts.
+	"""
 
 	session_org = boto3.Session(profile_name=fOrgRootProfile)
 	client_org = session_org.client('organizations')
@@ -132,31 +164,52 @@ def find_acct_email(fOrgRootProfile,fAccountId):
 	# email_addr=response['Account']['Email']
 	return (email_addr)
 
-def find_org_attr(fProfile):
+def find_account_number(fProfile):
 	import boto3
-	from botocore.exceptions import ClientError
-	# from botocore.errorfactory import AWSOrganizationsNotInUseException
 
+	session_sts = boto3.Session(profile_name=fProfile)
+	client_sts = session_sts.client('sts')
+	response=client_sts.get_caller_identity()['Account']
+	return (response)
+
+def find_org_attr(fProfile):
+	import boto3, logging
+	from botocore.exceptions import ClientError
+	"""
+	Response is a dict that looks like this:
+	{
+		'Id': 'o-zzzzzzzzzz',
+		'Arn': 'arn:aws:organizations::123456789012:organization/o-zzzzzzzzzz',
+		'FeatureSet': 'ALL',
+		'MasterAccountArn': 'arn:aws:organizations::123456789012:account/o-zzzzzzzzzz/123456789012',
+		'MasterAccountId': '123456789012',
+		'MasterAccountEmail': 'xxxxx@yyyy.com',
+		'AvailablePolicyTypes': [
+			{
+				'Type': 'SERVICE_CONTROL_POLICY',
+				'Status': 'ENABLED'
+			}
+		]
+	}
+
+	"""
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
 	try:
 		response=client_org.describe_organization()['Organization']
-	# except AWSOrganizationsNotInUseException as my_Error:
-	# 	if str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
-	# 		print(ERASE_LINE+profile+": Account isn't a part of an Organization")
-	# 		response={'MasterAccountId':'000000000000'}
-	# 		pass
 	except ClientError as my_Error:
 		if str(my_Error).find("UnrecognizedClientException") > 0:
 			print(fProfile+": Security Issue")
 		elif str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
-			print(fProfile+": Account isn't a part of an Organization")
+			logging.warning("%s: Account isn't a part of an Organization",fProfile)	# Stand-alone account
+			response={'MasterAccountId':'StandAlone','Id':'None'}
+			# Need to figure out how to provide the account's own number here as MasterAccountId
 		elif str(my_Error).find("InvalidClientTokenId") > 0:
 			print(fProfile+": Security Token is bad - probably a bad entry in config")
 		else:
 			print(pProfile+": Other kind of failure for account {}".format(AllChildAccounts[i]['AccountId']))
 			print (my_Error)
-		response={'MasterAccountId':'000000000000'}
+			response={'MasterAccountId':'123456789012','Id':'None'}
 		pass
 	return (response)
 
@@ -173,9 +226,9 @@ def find_org_attr2(fProfile):
 def find_child_accounts2(fProfile):
 	"""
 	This is an example of the list response from this call:
-		[{'AccountEmail': 'EmailAddr1@example.com', 'AccountId': 'xxxxxxxxxxxx'},
-		 {'AccountEmail': 'EmailAddr2@example.com', 'AccountId': 'yyyyyyyyyyyy'},
-		 {'AccountEmail': 'EmailAddr3@example.com', 'AccountId': 'zzzzzzzzzzzz'}]
+		[{'ParentProfile':'LZRoot','AccountId': 'xxxxxxxxxxxx','AccountEmail': 'EmailAddr1@example.com'},
+		 {'ParentProfile':'LZRoot','AccountId': 'yyyyyyyyyyyy','AccountEmail': 'EmailAddr2@example.com'},
+		 {'ParentProfile':'LZRoot','AccountId': 'zzzzzzzzzzzz','AccountEmail': 'EmailAddr3@example.com'}]
 	This can be convenient for appending and removing.
 	"""
 	import boto3, logging
@@ -233,14 +286,6 @@ def find_child_accounts(fProfile="default"):
 			theresmore=False
 	return (child_accounts)
 
-def find_account_number(fProfile):
-
-	import boto3
-	session_sts = boto3.Session(profile_name=fProfile)
-	client_sts = session_sts.client('sts')
-	response=client_sts.get_caller_identity()['Account']
-	return (response)
-
 def RemoveCoreAccounts(MainList,AccountsToRemove):
 
 	import logging, pprint
@@ -276,14 +321,16 @@ def find_account_instances(ocredentials,fRegion):
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
 	"""
-	import boto3
+	import boto3, logging
 	session_ec2=boto3.Session(
 				aws_access_key_id = ocredentials['AccessKeyId'],
 				aws_secret_access_key = ocredentials['SecretAccessKey'],
 				aws_session_token = ocredentials['SessionToken'],
 				region_name=fRegion)
 	instance_info=session_ec2.client('ec2')
+	logging.warning("Looking in account # %s",ocredentials['AccountNumber'])
 	instances=instance_info.describe_instances()
 	return(instances)
 
@@ -327,17 +374,19 @@ def find_if_Isengard_registered(ocredentials):
 	return(False)
 
 def find_if_LZ_Acct(ocredentials):
+	import boto3, logging, pprint
+	from botocore.exceptions import ClientError
 	"""
+	This function isn't used anywhere...
+
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['ParentAccountNumber'] holds the AWS Account Number
 	"""
-	import boto3, logging, pprint
-	from botocore.exceptions import ClientError
 
-	logging.warning("Key ID #: %s ",str(ocredentials['ParentAccountNumber']))
+	logging.warning("Authenticating Account Number: %s ",str(ocredentials['ParentAccountNumber']))
 	session_aws=boto3.Session(
 				aws_access_key_id = ocredentials['AccessKeyId'],
 				aws_secret_access_key = ocredentials['SecretAccessKey'],
@@ -358,7 +407,6 @@ def find_if_LZ_Acct(ocredentials):
 		return(False)
 	else:
 		return(False)
-
 
 def find_profile_vpcs(fProfile,fRegion):
 

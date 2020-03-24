@@ -20,6 +20,20 @@ parser.add_argument(
 	default="all",
 	help="Which single profile do you want to run for?")
 parser.add_argument(
+    '-R', '--root',
+    help="Display only the root accounts found in the profiles",
+    action="store_const",
+	dest="rootonly",
+	const=True,
+    default=False)
+parser.add_argument(
+    '-s', '--short',
+    help="Display only brief listing of the root accounts, and not the Child Accounts under them",
+    action="store_const",
+	dest="shortform",
+	const=True,
+    default=False)
+parser.add_argument(
     '-d', '--debug',
     help="Print lots of debugging statements",
     action="store_const",
@@ -36,9 +50,12 @@ args=parser.parse_args()
 
 pProfile=args.pProfile
 verbose=args.loglevel
+rootonly=args.rootonly
+shortform=args.shortform
 logging.basicConfig(level=args.loglevel)
 
 SkipProfiles=["default","Shared-Fid"]
+ERASE_LINE = '\x1b[2K'
 
 RootAccts=[]	# List of the Organization Root's Account Number
 RootProfiles=[]	# List of the Organization Root's profiles
@@ -61,6 +78,10 @@ else:
 		print(Fore.RED + "If you're going to provide a profile, it's supposed to be a Master Billing Account profile!!" + Fore.RESET)
 		print("Continuing to run the script - but for all profiles.")
 		ShowEverything=True
+"""
+TODO:
+	- If they provide a profile that isn't a root profile, you should find out which org it belongs to, and then show the org for that. This will be difficult, since we don't know which profile that belongs to. Hmmm...
+"""
 
 if ShowEverything:
 	fmt='%-23s %-15s %-27s %-12s %-10s'
@@ -123,35 +144,37 @@ if ShowEverything:
 	#	 Print results for this profile
 		if RootAcct:
 			print (Fore.RED + fmt % (profile,AcctNum,MasterAcct,OrgId,RootAcct)+Style.RESET_ALL)
+		elif rootonly: # If I'm looking for only the root accounts, when I find something that isn't a root account, don't print anything and continue on.
+			print(ERASE_LINE,"{} isn't a root account".format(profile),end="\r")
 		else:
 			print (fmt % (profile,AcctNum,MasterAcct,OrgId,RootAcct))
 
 	print ("-------------------")
 
-	fmt='%-23s %-15s %-6s'
-	child_fmt="\t\t%-20s %-20s"
-	print()
-	print(fmt % ("Organization's Profile","Root Account","ALZ"))
-	print(fmt % ("----------------------","------------","---"))
-	NumOfAccounts=0
-
-	for profile in RootProfiles:
-		child_accounts={}
-		MasterAcct=Inventory_Modules.find_account_number(profile)
-		child_accounts=Inventory_Modules.find_child_accounts(profile)
-		landing_zone=Inventory_Modules.find_if_lz(profile)
-		NumOfAccounts=NumOfAccounts + len(child_accounts)
-		if landing_zone:
-			fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+Fore.RED+'%-6s '+Fore.RESET
-		else:
-			fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+'%-6s'
-		print(fmt % (profile,MasterAcct,landing_zone))
-		print(child_fmt % ("Child Account Number","Child Email Address"))
-		for account in sorted(child_accounts):
-			print(child_fmt % (account,child_accounts[account]))
-	print()
-	print("Number of Organizations:",len(RootProfiles))
-	print("Number of Organization Accounts:",NumOfAccounts)
+	if not shortform:
+		fmt='%-23s %-15s %-6s'
+		child_fmt="\t\t%-20s %-20s"
+		print()
+		print(fmt % ("Organization's Profile","Root Account","ALZ"))
+		print(fmt % ("----------------------","------------","---"))
+		NumOfAccounts=0
+		for profile in RootProfiles:
+			child_accounts={}
+			MasterAcct=Inventory_Modules.find_account_number(profile)
+			child_accounts=Inventory_Modules.find_child_accounts(profile)
+			landing_zone=Inventory_Modules.find_if_alz(profile)
+			NumOfAccounts=NumOfAccounts + len(child_accounts)
+			if landing_zone:
+				fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+Fore.RED+'%-6s '+Fore.RESET
+			else:
+				fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+'%-6s'
+			print(fmt % (profile,MasterAcct,landing_zone))
+			print(child_fmt % ("Child Account Number","Child Email Address"))
+			for account in sorted(child_accounts):
+				print(child_fmt % (account,child_accounts[account]))
+		print()
+		print("Number of Organizations:",len(RootProfiles))
+		print("Number of Organization Accounts:",NumOfAccounts)
 elif not ShowEverything:
 	fmt='%-23s %-15s %-6s'
 	child_fmt="\t\t%-20s %-20s"
@@ -163,7 +186,7 @@ elif not ShowEverything:
 	child_accounts={}
 	MasterAcct=Inventory_Modules.find_account_number(pProfile)
 	child_accounts=Inventory_Modules.find_child_accounts(pProfile)
-	landing_zone=Inventory_Modules.find_if_lz(pProfile)
+	landing_zone=Inventory_Modules.find_if_alz(pProfile)
 	NumOfAccounts=NumOfAccounts + len(child_accounts)
 	if landing_zone:
 		fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+Fore.RED+'%-6s '+Fore.RESET

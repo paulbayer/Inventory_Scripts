@@ -19,21 +19,42 @@ parser.add_argument(
 	metavar="profile to use",
 	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
 parser.add_argument(
+    '-f', '--force',
+	const=True,
+	default=False,
+	dest="pForcedReg",
+	action="store_const",
+    help="Force a registration with Isengard")
+parser.add_argument(
     '-d', '--debug',
+    help="Print debugging statements",
+    action="store_const",
+	dest="loglevel",
+	const=logging.INFO,	# args.loglevel = 20
+    default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+    '-dd',
     help="Print lots of debugging statements",
     action="store_const",
 	dest="loglevel",
-	const=logging.INFO,
-    default=logging.CRITICAL)
+	const=logging.DEBUG,	# args.loglevel = 20
+    default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
     '-v', '--verbose',
     help="Be verbose",
     action="store_const",
 	dest="loglevel",
-	const=logging.WARNING)
+	const=logging.ERROR) # args.loglevel = 40
+parser.add_argument(
+    '-vv',
+    help="Be MORE verbose",
+    action="store_const",
+	dest="loglevel",
+	const=logging.WARNING) # args.loglevel = 30
 args = parser.parse_args()
 
 pProfile=args.pProfile
+pForcedReg=args.pForcedReg
 verbose=args.loglevel
 logging.basicConfig(level=args.loglevel)
 
@@ -81,9 +102,9 @@ for account in ChildAccounts:
 				continue	# Try the next rolename
 		logging.warning("Accessed Account %s using rolename %s" % (account['AccountId'],rolename))
 		AccountIsRegistered=Inventory_Modules.find_if_Isengard_registered(account_credentials)
-		if AccountIsRegistered:
+		if AccountIsRegistered and not pForcedReg:
 			AccountsRegistered+=1
-		if not AccountIsRegistered and not AccountErrored:
+		if (not AccountIsRegistered and not AccountErrored) or (pForcedReg and not AccountErrored):
 			AccountsToRegister.append({
 			'AccountId':account['AccountId'],
 			'AccountEmail':account['AccountEmail'],

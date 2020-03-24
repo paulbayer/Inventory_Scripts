@@ -39,13 +39,12 @@ parser.add_argument(
 	default="us-east-1",
 	help="String fragment of the region(s) you want to check for resources.")
 parser.add_argument(
-	"+d","+delete",
+	"+delete","+forreal",
 	dest="DeletionRun",
-	metavar="Deletion of inactive Service Catalog provisioned products",
 	const=True,
 	default=False,
 	action="store_const",
-	help="This will delete the SC Provisioned Products found to be in error, or without active CloudFormation stacks - without any opportunity to confirm. Be careful!!")
+	help="This will delete the stacks found - without any opportunity to confirm. Be careful!!")
 parser.add_argument(
     '-d', '--debug',
     help="Print lots of debugging statements",
@@ -82,6 +81,9 @@ def sort_by_email(elem):
 ERASE_LINE = '\x1b[2K'
 
 print()
+fmt='%-15s %-50s %-35s %-10s %-18s %-20s'
+print(fmt % ("Account Number","SC Product Name","CFN Stack Name","SC Status","CFN Stack Status","AccountEmail"))
+print(fmt % ("--------------","---------------","--------------","---------","----------------","------------"))
 
 SCP2Stacks=[]
 SCProducts=[]
@@ -100,70 +102,40 @@ try:
 		})
 	for i in range(len(SCProducts)):
 		print(ERASE_LINE,Fore.RED+"Checking",i,"of",len(SCProducts),"products "+Fore.RESET,end='\r')
-		# CFNresponse=Inventory_Modules.find_stacks(pProfile,pRegion,SCProducts[i]['SCPId'],"all")
-		CFNresponse=Inventory_Modules.find_stacks(pProfile,pRegion,SCProducts[i]['SCPId'])
+		CFNresponse=Inventory_Modules.find_stacks(pProfile,pRegion,SCProducts[i]['SCPId'],"all")
 		logging.error("Length of response is %s for SC Name %s", len(CFNresponse),SCProducts[i]['SCPName'])
-		AccountEmail='None'
-		AccountID='None'
-		try:
-			if len(CFNresponse) > 0:
-				stack_info=client_cfn.describe_stacks(
-					 StackName=CFNresponse[0]['StackName']
-				)
-				# The above command fails if the stack found (by the find_stacks function has been deleted)
-				# The following section determines the NEW Account's AccountEmail and AccountID
-				if len(stack_info['Stacks'][0]['Parameters']) > 0:
-					AccountEmail='None'
-					for y in range(len(stack_info['Stacks'][0]['Parameters'])):
-						if stack_info['Stacks'][0]['Parameters'][y]['ParameterKey']=='AccountEmail':
-							AccountEmail=stack_info['Stacks'][0]['Parameters'][y]['ParameterValue']
-				if 'Outputs' in stack_info['Stacks'][0].keys():
-					for y in range(len(stack_info['Stacks'][0]['Outputs'])):
-						logging.error("Output Key %s for stack %s is %s", stack_info['Stacks'][0]['Outputs'][y]['OutputKey'], CFNresponse[0]['StackName'], stack_info['Stacks'][0]['Outputs'][y]['OutputValue'])
-						if stack_info['Stacks'][0]['Outputs'][y]['OutputKey']=='AccountID':
-							AccountID=stack_info['Stacks'][0]['Outputs'][y]['OutputValue']
-						else:
-							logging.info("Outputs key present, but no account ID")
-				else:
-					logging.info("No Outputs key present")
-					AccountID='None'
-					AccountEmail='None'
-				SCProductName=SCProducts[i]['SCPName']
-				SCProductId=SCProducts[i]['SCPId']
-				SCStatus=SCProducts[i]['SCPStatus']
-				CFNStackName=CFNresponse[0]['StackName']
-				CFNStackStatus=CFNresponse[0]['StackStatus']
-			else:	# This takes effect when CFNResponse can't find any stacks with the Service Catalog Product ID
-				SCProductName=SCProducts[i]['SCPName']
-				SCProductId=SCProducts[i]['SCPId']
-				SCStatus=SCProducts[i]['SCPStatus']
-				CFNStackName='None'
-				CFNStackStatus='None'
+		if len(CFNresponse) > 0:
+			stack_info=client_cfn.describe_stacks(
+				 StackName=CFNresponse[0]['StackName']
+			)
+			if len(stack_info['Stacks'][0]['Parameters']) > 0:
+				for y in range(len(stack_info['Stacks'][0]['Parameters'])):
+					if stack_info['Stacks'][0]['Parameters'][y]['ParameterKey']=='AccountEmail':
+						AccountEmail=stack_info['Stacks'][0]['Parameters'][y]['ParameterValue']
+			else:
+				AccountEmail='None'
+			if 'Outputs' in stack_info['Stacks'][0].keys():
+				AccountID='None'
+				for y in range(len(stack_info['Stacks'][0]['Outputs'])):
+					logging.error("Output Key %s for stack %s is %s", stack_info['Stacks'][0]['Outputs'][y]['OutputKey'], CFNresponse[0]['StackName'], stack_info['Stacks'][0]['Outputs'][y]['OutputValue'])
+					if stack_info['Stacks'][0]['Outputs'][y]['OutputKey']=='AccountID':
+						AccountID=stack_info['Stacks'][0]['Outputs'][y]['OutputValue']
+					else:
+						logging.info("Outputs key present, but no account ID")
+			else:
+				logging.info("No Outputs key present")
+				AccountID='None'
 			SCP2Stacks.append({
-				'SCProductName':SCProductName,
-				'SCProductId':SCProductId,
-				'SCStatus':SCStatus,
-				'CFNStackName':CFNStackName,
-				'CFNStackStatus':CFNStackStatus,
+				'SCProductName':SCProducts[i]['SCPName'],
+				'SCProductId':SCProducts[i]['SCPId'],
+				'SCStatus':SCProducts[i]['SCPStatus'],
+				'CFNStackName':CFNresponse[0]['StackName'],
+				'CFNStackStatus':CFNresponse[0]['StackStatus'],
 				'AccountEmail':AccountEmail,
 				'AccountID':AccountID
 			})
-		except ClientError as my_Error:
-			if str(my_Error).find("ValidationError") > 0:
-				print("Validation Failure ")
-				print("Validation Failure in profile {} looking for stack {} with status of {}".format(pProfile,CFNresponse[0]['StackName'],CFNresponse[0]['StackStatus']))
-			elif str(my_Error).find("AccessDenied") > 0:
-				print(pProfile+": Access Denied Failure ")
-			else:
-				print(pProfile+": Other kind of failure ")
-				print (my_Error)
-
 	# sorted_list=sorted(SCP2Stacks, key=sort_by_email)
 	# SCP2Stacks=sorted_list
-	fmt='%-15s %-52s %-35s %-10s %-18s %-20s'
-	print()
-	print(fmt % ("Account Number","SC Product Name","CFN Stack Name","SC Status","CFN Stack Status","AccountEmail"))
-	print(fmt % ("--------------","---------------","--------------","---------","----------------","------------"))
 	for i in range(len(SCP2Stacks)):
 		if SCP2Stacks[i]['SCStatus']=='ERROR':
 			print(Fore.RED + fmt % (SCP2Stacks[i]['AccountID'], SCP2Stacks[i]['SCProductName'], SCP2Stacks[i]['CFNStackName'], SCP2Stacks[i]['SCStatus'], SCP2Stacks[i]['CFNStackStatus'],  SCP2Stacks[i]['AccountEmail'])+Style.RESET_ALL)
@@ -179,30 +151,15 @@ except ClientError as my_Error:
 		print (my_Error)
 
 print()
-print("Thank you for using this script.")
-print()
-
 print("You probably want to remove the following SC Products:")
-session_sc=boto3.Session(profile_name=pProfile,region_name=pRegion)
-client_sc=session_sc.client('servicecatalog')
-for i in range(len(SCP2Stacks)):
-# for i in range(1):
-	if (SCP2Stacks[i]['SCStatus']=='ERROR') or (SCP2Stacks[i]['CFNStackName']=='None') and not DeletionRun:
-		print("aws servicecatalog terminate-provisioned-product --provisioned-product-id {} --profile {} --ignore-errors".format(SCP2Stacks[i]['SCProductId'],pProfile))
-	elif (SCP2Stacks[i]['SCStatus']=='ERROR') or (SCP2Stacks[i]['CFNStackName']=='None') and DeletionRun:
-		print("Deleting Service Catalog Provisioned Product {} from {} profile".format(SCP2Stacks[i]['SCProductName'],pProfile))
-		StackDelete=client_sc.terminate_provisioned_product(
-		    ProvisionedProductId=SCP2Stacks[i]['SCProductId'],
-		    # TerminateToken='string',
-		    IgnoreErrors=True,
-		    # AcceptLanguage='string'
-		)
-		logging.error("Result of Deletion: %s",StackDelete['RecordDetail']['Status'])
-		if len(StackDelete['RecordDetail']['RecordErrors']) > 0:
-			logging.error("Error code: %s",StackDelete['RecordDetail']['RecordErrors'][0]['Code'])
-			logging.error("Error description: %s",StackDelete['RecordDetail']['RecordErrors'][0]['Description'])
+StacksAndProductsToDelete=[]
+# for i in range(len(SCP2Stacks)):
 
+for i in range(len(SCP2Stacks)):
+	if SCP2Stacks[i]['SCStatus']=='ERROR':
+		print("aws servicecatalog terminate-provisioned-product --provisioned-product-id",SCP2Stacks[i]['SCProductId'])
 """
+if DeletionRun:
 	logging.warning("Deleting %s stacks",len(StacksFound))
 	for y in range(len(StacksFound)):
 		role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(StacksFound[y]['Account'])

@@ -36,7 +36,7 @@ parser.add_argument(
 	help="These are the account numbers you don't want to screw with. Likely the core accounts.")
 parser.add_argument(
     '-d', '--debug',
-    help="Print lots of debugging statements",
+    help="Print debugging statements",
     action="store_const",
 	dest="loglevel",
 	const=logging.INFO,	# args.loglevel = 20
@@ -46,7 +46,7 @@ parser.add_argument(
     help="Print lots of debugging statements",
     action="store_const",
 	dest="loglevel",
-	const=logging.DEBUG,	# args.loglevel = 20
+	const=logging.DEBUG,	# args.loglevel = 10
     default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
     '-v', '--verbose',
@@ -66,37 +66,59 @@ pProfiles=args.pProfiles
 pRegionList=args.pRegion
 AccountsToSkip=args.pSkipAccounts
 # logging.basicConfig(level=args.loglevel, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %H:%M:%S')
-logging.basicConfig(level=args.loglevel)
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
-SkipProfiles=["default","Shared-Fid", "BottomLine", "TsysRoot"]
+SkipProfiles=["default","GenSpain"]
 
 ##########################
 ERASE_LINE = '\x1b[2K'
 
 NumInstancesFound = 0
 print()
-fmt='%-12s %-15s %-10s %-15s %-20s %-20s %-42s %-12s'
+fmt='%-12s %-15s %-10s %-15s %-25s %-20s %-42s %-12s'
 print(fmt % ("Org Profile","Account","Region","InstanceType","Name","Instance ID","Public DNS Name","State"))
 print(fmt % ("-----------","-------","------","------------","----","-----------","---------------","-----"))
-RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
+RegionList=Inventory_Modules.get_regions(pRegionList)
 AllChildAccounts=[]
+SoughtAllProfiles=False
 
 if "all" in pProfiles:
-	print(Fore.RED+"Doesn't yet work to specify 'all' profiles, since it takes a long time to go through and find only those profiles that either Org Masters, or stand-alone accounts",Fore.RESET)
+	# print(Fore.RED+"Doesn't yet work to specify 'all' profiles, since it takes a long time to go through and find only those profiles that either Org Masters, or stand-alone accounts",Fore.RESET)
 	# sys.exit(1)
-	logging.info("Profiles sent to get_profiles3: %s",pProfiles)
-	pProfiles=Inventory_Modules.get_profiles3()
-	logging.info("Profiles Returned from get_profiles3: %s",pProfiles)
+	SoughtAllProfiles=True
+	logging.info("Profiles sent to function get_profiles3: %s",pProfiles)
+	print("Since you specified 'all' profiles, we going to look through ALL of your profiles. Then we go through and determine which profiles represent the Master of an Organization and which are stand-alone accounts. This will enable us to go through all accounts you have access to for inventorying.")
+	logging.error("Time: %s",datetime.datetime.now())
+	pProfiles=Inventory_Modules.get_parent_profiles(SkipProfiles)
+	logging.error("Time: %s",datetime.datetime.now())
+	logging.error("Found %s root profiles",len(pProfiles))
+	logging.info("Profiles Returned from function get_profiles3: %s",pProfiles)
 
 for pProfile in pProfiles:
-	logging.info("Parent Profile name: %s",pProfile)
-	ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
-	ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
-	AllChildAccounts=AllChildAccounts+ChildAccounts
+	if not SoughtAllProfiles:
+		logging.info("Checking to see if the profiles passed in (%s) are root profiles",pProfile)
+		ProfileIsRoot=Inventory_Modules.find_if_org_root(pProfile)
+		logging.info("---%s---",ProfileIsRoot)
+	if ProfileIsRoot == 'Root':
+		logging.info("Parent Profile name: %s",pProfile)
+		ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
+		ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
+		AllChildAccounts=AllChildAccounts+ChildAccounts
+	elif ProfileIsRoot == 'StandAlone':
+		logging.info("Parent Profile name: %s",pProfile)
+		MyAcctNumber=Inventory_Modules.find_account_number(pProfile)
+		Accounts=[{'ParentProfile':pProfile,'AccountId':MyAcctNumber,'AccountEmail':'noonecares@doesntmatter.com'}]
+		AllChildAccounts=AllChildAccounts+Accounts
+	elif ProfileIsRoot == 'Child':
+		logging.info("Parent Profile name: %s",pProfile)
+		AllChildAccounts=AllChildAccounts
+
+"""
 logging.info("Passed as parameter %s:",pProfiles)
 logging.info("Passed to function %s:",pProfile)
 logging.info("ChildAccounts %s:",ChildAccounts)
 logging.info("AllChildAccounts %s:",AllChildAccounts)
+"""
 # ProfileList=Inventory_Modules.get_profiles(SkipProfiles,pProfiles)
 # pprint.pprint(RegionList)
 # aws_session = boto3.Session(profile_name=pProfile)
@@ -105,6 +127,9 @@ for i in range(len(AllChildAccounts)):
 	aws_session = boto3.Session(profile_name=AllChildAccounts[i]['ParentProfile'])
 	sts_client = aws_session.client('sts')
 	logging.info("Single account record %s:",AllChildAccounts[i])
+	"""
+	TO DO - figure a way to find out whether this rolename is correct for every account?
+	"""
 	role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(AllChildAccounts[i]['AccountId'])
 	logging.info("Role ARN: %s" % role_arn)
 	try:
@@ -114,11 +139,12 @@ for i in range(len(AllChildAccounts)):
 		account_credentials['AccountNumber']=AllChildAccounts[i]['AccountId']
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print(pProfile+": Authorization Failure for account {}".format(AllChildAccounts[i]['AccountId']))
+			print("{}: Authorization Failure for account {}".format(AllChildAccounts[i]['ParentProfile'], AllChildAccounts[i]['AccountId']))
 		elif str(my_Error).find("AccessDenied") > 0:
-			print(pProfile+": Access Denied Failure for account {}".format(AllChildAccounts[i]['AccountId']))
+			print("{}: Access Denied Failure for account {}".format(AllChildAccounts[i]['ParentProfile'], AllChildAccounts[i]['AccountId']))
+			print(my_Error)
 		else:
-			print(pProfile+": Other kind of failure for account {}".format(AllChildAccounts[i]['AccountId']))
+			print("{}: Other kind of failure for account {}".format(AllChildAccounts[i]['ParentProfile'], AllChildAccounts[i]['AccountId']))
 			print (my_Error)
 		break
 	for pRegion in RegionList:
@@ -126,7 +152,7 @@ for i in range(len(AllChildAccounts)):
 			Instances=Inventory_Modules.find_account_instances(account_credentials,pRegion)
 			logging.warning("Account %s being looked at now" % account_credentials['AccountNumber'])
 			InstanceNum=len(Instances['Reservations'])
-			print(ERASE_LINE+"Account: {} Region: {} Found {} instances".format(account_credentials['AccountNumber'],pRegion,InstanceNum),end='\r')
+			print(ERASE_LINE+"OrgProfile: {} Account: {} Region: {} Found {} instances".format(AllChildAccounts[i]['ParentProfile'],account_credentials['AccountNumber'],pRegion,InstanceNum),end='\r')
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(ERASE_LINE+profile+": Authorization Failure")
@@ -135,7 +161,8 @@ for i in range(len(AllChildAccounts)):
 			if str(my_Error).find("does not exist") > 0:
 				print(ERASE_LINE+profile+": config profile references profile in credentials file that doesn't exist")
 				pass
-		if len(Instances['Reservations']) > 0:
+		# if len(Instances['Reservations']) > 0:
+		if 'Reservations' in Instances.keys():
 			for y in range(len(Instances['Reservations'])):
 				for z in range(len(Instances['Reservations'][y]['Instances'])):
 					InstanceType=Instances['Reservations'][y]['Instances'][z]['InstanceType']
