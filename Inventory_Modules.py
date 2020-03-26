@@ -507,7 +507,7 @@ def find_stacks(fProfile,fRegion,fStackFragment="all",fStatus="active"):
 	if (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active') and not (fStackFragment=='All' or fStackFragment=='ALL'  or fStackFragment=='all'):
 		# Send back stacks that are active, check the fragment further down.
 		stacks=stack_info.list_stacks(StackStatusFilter=["CREATE_COMPLETE","DELETE_FAILED","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE","DELETE_IN_PROGRESS"])
-		logging.warning("1 - Found %s stacks. Looking for fragment %s",len(stacks),fStackFragment)
+		logging.warning("1 - Found %s stacks. Looking for fragment %s",len(stacks['StackSummaries']),fStackFragment)
 		for stack in stacks['StackSummaries']:
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match
