@@ -102,9 +102,9 @@ try:
 		print(ERASE_LINE,Fore.RED+"Checking",i,"of",len(SCProducts),"products "+Fore.RESET,end='\r')
 		# CFNresponse=Inventory_Modules.find_stacks(pProfile,pRegion,SCProducts[i]['SCPId'],"all")
 		CFNresponse=Inventory_Modules.find_stacks(pProfile,pRegion,SCProducts[i]['SCPId'])
-		logging.error("Length of response is %s for SC Name %s", len(CFNresponse),SCProducts[i]['SCPName'])
-		AccountEmail='None'
-		AccountID='None'
+		logging.error("Length of response is %s for SC Provisioned Product Name %s", len(CFNresponse),SCProducts[i]['SCPName'])
+		# AccountEmail='None'
+		# AccountID='None'
 		try:
 			if len(CFNresponse) > 0:
 				stack_info=client_cfn.describe_stacks(
@@ -112,7 +112,7 @@ try:
 				)
 				# The above command fails if the stack found (by the find_stacks function has been deleted)
 				# The following section determines the NEW Account's AccountEmail and AccountID
-				if len(stack_info['Stacks'][0]['Parameters']) > 0:
+				if 'Parameters' in stack_info['Stacks'][0].keys() and len(stack_info['Stacks'][0]['Parameters']) > 0:
 					AccountEmail='None'
 					for y in range(len(stack_info['Stacks'][0]['Parameters'])):
 						if stack_info['Stacks'][0]['Parameters'][y]['ParameterKey']=='AccountEmail':
@@ -122,6 +122,8 @@ try:
 						logging.error("Output Key %s for stack %s is %s", stack_info['Stacks'][0]['Outputs'][y]['OutputKey'], CFNresponse[0]['StackName'], stack_info['Stacks'][0]['Outputs'][y]['OutputValue'])
 						if stack_info['Stacks'][0]['Outputs'][y]['OutputKey']=='AccountID':
 							AccountID=stack_info['Stacks'][0]['Outputs'][y]['OutputValue']
+							logging.error(Fore.RED+"Found the Account ID"+Fore.RESET)
+							break
 						else:
 							logging.info("Outputs key present, but no account ID")
 				else:
@@ -139,6 +141,8 @@ try:
 				SCStatus=SCProducts[i]['SCPStatus']
 				CFNStackName='None'
 				CFNStackStatus='None'
+				AccountID='None'
+				AccountEmail='None'
 			SCP2Stacks.append({
 				'SCProductName':SCProductName,
 				'SCProductId':SCProductId,
