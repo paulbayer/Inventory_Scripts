@@ -498,13 +498,16 @@ def find_stacks(fProfile,fRegion,fStackFragment="all",fStatus="active"):
 	fRegion is a string
 	fStackFragment is a string
 	fStatus is a string
+
+	Returns a dict that looks like this:
+
 	"""
 	import boto3, logging, pprint
 	logging.warning("Profile: %s | Region: %s | Fragment: %s | Status: %s",fProfile, fRegion, fStackFragment,fStatus)
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	stack_info=session_cfn.client('cloudformation')
 	stacksCopy=[]
-	if (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active') and not (fStackFragment=='All' or fStackFragment=='ALL'  or fStackFragment=='all'):
+	if (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active') and not (fStackFragment=='All' or fStackFragment=='ALL' or fStackFragment=='all'):
 		# Send back stacks that are active, check the fragment further down.
 		stacks=stack_info.list_stacks(StackStatusFilter=["CREATE_COMPLETE","DELETE_FAILED","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE","DELETE_IN_PROGRESS"])
 		logging.warning("1 - Found %s stacks. Looking for fragment %s",len(stacks['StackSummaries']),fStackFragment)
@@ -516,7 +519,7 @@ def find_stacks(fProfile,fRegion,fStackFragment="all",fStatus="active"):
 	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
 		# Send back all stacks regardless of fragment, check the status further down.
 		stacks=stack_info.list_stacks(StackStatusFilter=["CREATE_COMPLETE","DELETE_FAILED","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE"])
-		logging.warning("2 - Found %s stacks.",len(stacks))
+		logging.warning("2 - Found ALL %s stacks in 'active' status.",len(stacks['StackSummaries']))
 		for stack in stacks['StackSummaries']:
 			# if fStatus in stack['StackStatus']:
 			# Check the status now - only send back those that match a single status
@@ -526,13 +529,13 @@ def find_stacks(fProfile,fRegion,fStackFragment="all",fStatus="active"):
 	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='all' or fStatus=='ALL' or fStatus=='All'):
 		# Send back all stacks.
 		stacks=stack_info.list_stacks()
-		logging.warning("3 - Looking for ALL the stacks in Profile: %s in Region: %s", fProfile, fRegion)
+		logging.warning("3 - Found ALL %s stacks in ALL statuses", len(stacks['StackSummaries']))
 		return(stacks['StackSummaries'])
 	elif not (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
 		# Send back stacks that match the single status, check the fragment further down.
 		try:
 			stacks=stack_info.list_stacks()
-			logging.warning("Found %s stacks", len(stacks['StackSummaries']))
+			logging.warning("4 - Found %s stacks ", len(stacks['StackSummaries']))
 		except Exception as e:
 			print(e)
 		for stack in stacks['StackSummaries']:
@@ -800,29 +803,104 @@ def find_sc_products(fProfile,fRegion,fStatus="ERROR"):
 	fProfile is the Root Profile that owns the Account we're interogating
 	fRegion is the region we're interogating
 	fStatus is the status of SC products we're looking for. Defaults to "ERROR"
+
+	Returned list looks like this:
+	[
+		{
+			"Arn": "string",
+			"CreatedTime": number,
+			"Id": "string",
+			"IdempotencyToken": "string",
+			"LastRecordId": "string",
+			"Name": "string",
+			"PhysicalId": "string",
+			"ProductId": "string",
+			"ProvisioningArtifactId": "string",
+			"Status": "string",
+			"StatusMessage": "string",
+			"Tags": [
+				{
+					"Key": "string",
+					"Value": "string"
+				}
+			],
+			"Type": "string",
+			"UserArn": "string",
+			"UserArnSession": "string"
+		}
+	]
 	"""
 	import boto3, logging, pprint
 	from Inventory_Modules import find_account_number
 
+	response2=[]
 	AccountNumber=find_account_number(fProfile)
 	session_sc=boto3.Session(profile_name=fProfile,region_name=fRegion)
 	client_sc=session_sc.client('servicecatalog')
 	if (fStatus=='All' or fStatus=='ALL' or fStatus=='all'):
 		response = client_sc.search_provisioned_products()
-	else:
+		while 'NextPageToken' in response.keys():
+			response2.append(response['ProvisionedProducts'])
+			response = client_sc.search_provisioned_products(NextPageToken=response['NextPageToken'])
+	else:	# We filter down to only the statuses asked for
 		response = client_sc.search_provisioned_products(
-		    # AccessLevelFilter={
-		    #     'Key': 'Account',
-		    #     'Value': AccountNumber
-		    # },
-		    Filters={
-		        'SearchQuery': ['status:'+fStatus]
-		    }
-			# ,
-		    # SortBy='string',
-		    # SortOrder='ASCENDING'|'DESCENDING',
-				# Almost certainly we'll need to implement a paging operation here
-		    # PageSize=123,
-		    # PageToken='string'
+			Filters={
+				'SearchQuery': ['status:'+fStatus]
+			}
 		)
-	return(response)
+		while 'NextPageToken' in response.keys():
+			response2.append(response['ProvisionedProducts'])
+			response = client_sc.search_provisioned_products(
+				Filters={
+					'SearchQuery': ['status:'+fStatus]
+				},
+				NextPageToken=response['NextPageToken']
+			)
+	response2.append(response['ProvisionedProducts'])
+	return(response2)
+
+def find_ssm_parameters(fProfile,fRegion):
+	"""
+	fProfile is the Root Profile that owns the stackset
+	fRegion is the region where the stackset resides
+
+	Return Value is a list that looks like this:
+	[
+		{
+			'Description': 'Contains the Local SNS Topic Arn for Landing Zone',
+			'LastModifiedDate': datetime.datetime(2020, 2, 7, 12, 50, 2, 373000, tzinfo=tzlocal()),
+			'LastModifiedUser': 'arn:aws:sts::517713657778:assumed-role/AWSCloudFormationStackSetExecutionRole/16b4abdd-1d1f-4aeb-8930-3e65dcef6bab',
+			'Name': '/org/member/local_sns_arn',
+			'Policies': [],
+			'Tier': 'Standard',
+			'Type': 'String',
+			'Version': 1
+		},
+	]
+	"""
+	import boto3, logging, pprint
+	from botocore.exceptions import ClientError
+	ERASE_LINE = '\x1b[2K'
+
+	logging.warning("Finding ssm parameters for profile %s in Region %s",fProfile,fRegion)
+	session_ssm=boto3.Session(profile_name=fProfile, region_name=fRegion)
+	client_ssm=session_ssm.client('ssm')
+	response={}
+	response2=[]
+	TotalParameters=0
+	try:
+		response=client_ssm.describe_parameters(MaxResults=50)
+	except ClientError as my_Error:
+		print(my_Error)
+	TotalParameters=TotalParameters+len(response['Parameters'])
+	logging.warning("Found another %s parameters, bringing the total up to %s",len(response['Parameters']),TotalParameters)
+	for i in range(len(response['Parameters'])):
+		response2.append(response['Parameters'][i])
+	while 'NextToken' in response.keys():
+		response=client_ssm.describe_parameters(MaxResults=50,NextToken=response['NextToken'])
+		TotalParameters=TotalParameters+len(response['Parameters'])
+		logging.warning("Found another %s parameters, bring the total up to %s",len(response['Parameters']),TotalParameters)
+		for i in range(len(response['Parameters'])):
+			response2.append(response['Parameters'][i])
+	logging.error("Found %s parameters", len(response2))
+	return(response2)
