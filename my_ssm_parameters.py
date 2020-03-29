@@ -45,6 +45,20 @@ parser.add_argument(
 	const=True,
 	default=False)
 parser.add_argument(
+	'-v', '--verbose',
+	help="Be verbose",
+	action="store_const",
+	dest="loglevel",
+	const=logging.ERROR, # args.loglevel = 40
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-vv',
+	help="Be MORE verbose",
+	action="store_const",
+	dest="loglevel",
+	const=logging.WARNING, # args.loglevel = 30
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
 	'-d', '--debug',
 	help="Print debugging statements",
 	action="store_const",
@@ -58,18 +72,6 @@ parser.add_argument(
 	dest="loglevel",
 	const=logging.DEBUG,	# args.loglevel = 10
 	default=logging.CRITICAL) # args.loglevel = 50
-parser.add_argument(
-	'-v', '--verbose',
-	help="Be verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.ERROR) # args.loglevel = 40
-parser.add_argument(
-	'-vv',
-	help="Be MORE verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.WARNING) # args.loglevel = 30
 args = parser.parse_args()
 
 pProfile=args.pProfile
@@ -117,7 +119,7 @@ if ALZParam:
 			if DeletionRun:
 				ParamsToDelete.append(Parameters[y]['Name'])
 if DeletionRun:
-	print("Deleting all Parameters now")
+	print("Deleting {} ALZ-related Parameters now, further back than {} days".format(len(ParamsToDelete),dtDaysBack.days))
 	# for i in range(len(ParamsToDelete)):
 	mark=0
 	i=0
@@ -128,13 +130,12 @@ if DeletionRun:
 				Names=ParamsToDelete[mark:i]
 			)
 			mark=i
-			logging.warning("Deleted another 10 parameters. Only %s left to go",len(ParamsToDelete)-i)
+			print(ERASE_LINE,"{} parameters deleted and {} more to go...".format(i,len(ParamsToDelete)-i),end='\r')
 		elif i == len(ParamsToDelete):
 			response=client_ssm.delete_parameters(
 				Names=ParamsToDelete[mark:i]
 			)
 			logging.warning("Deleted the last %s parameters.",i%10)
-
 print()
 print(ERASE_LINE)
 print("Found {} total parameters".format(len(Parameters)))

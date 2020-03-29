@@ -899,8 +899,12 @@ def find_ssm_parameters(fProfile,fRegion):
 	while 'NextToken' in response.keys():
 		response=client_ssm.describe_parameters(MaxResults=50,NextToken=response['NextToken'])
 		TotalParameters=TotalParameters+len(response['Parameters'])
-		logging.warning("Found another %s parameters, bring the total up to %s",len(response['Parameters']),TotalParameters)
+		logging.warning("Found another %s parameters, bringing the total up to %s",len(response['Parameters']),TotalParameters)
 		for i in range(len(response['Parameters'])):
 			response2.append(response['Parameters'][i])
+		if (len(response2) % 500 == 0) and (logging.getLogger().getEffectiveLevel() > 30):
+			print(ERASE_LINE,"Sorry this is taking a while - we've already found {} parameters!".format(len(response2)),end="\r")
+
+	print()
 	logging.error("Found %s parameters", len(response2))
 	return(response2)
