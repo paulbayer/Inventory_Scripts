@@ -857,7 +857,7 @@ def find_sc_products(fProfile,fRegion,fStatus="ERROR"):
 				NextPageToken=response['NextPageToken']
 			)
 	response2.append(response['ProvisionedProducts'])
-	return(response2)
+	return(response2[0])
 
 def find_ssm_parameters(fProfile,fRegion):
 	"""
