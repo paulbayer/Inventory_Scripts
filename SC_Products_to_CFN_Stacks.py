@@ -81,6 +81,7 @@ print()
 
 SCP2Stacks=[]
 SCProducts=[]
+ErroredSCPExists=False
 session_cfn=boto3.Session(profile_name=pProfile,region_name=pRegion)
 client_cfn=session_cfn.client('cloudformation')
 try:
@@ -94,6 +95,8 @@ try:
 			'SCPId':SCresponse[i]['Id'],
 			'SCPStatus':SCresponse[i]['Status']
 		})
+		if SCresponse[i]['Status'] == 'ERROR' or SCresponse[i]['Status'] == 'TAINTED':
+			ErroredSCPExists=True
 	for i in range(len(SCProducts)):
 		print(ERASE_LINE,Fore.RED+"Checking {} of {} products".format(i+1,len(SCProducts))+Fore.RESET,end='\r')
 		# CFNresponse=Inventory_Modules.find_stacks(pProfile,pRegion,SCProducts[i]['SCPId'],"all")
@@ -175,27 +178,24 @@ except ClientError as my_Error:
 		print(pProfile+": Other kind of failure ")
 		print (my_Error)
 
-print()
-print("Thank you for using this script.")
-print()
-
-print("You probably want to remove the following SC Products:")
-session_sc=boto3.Session(profile_name=pProfile,region_name=pRegion)
-client_sc=session_sc.client('servicecatalog')
-for i in range(len(SCP2Stacks)):
-# for i in range(1):
-	if (SCP2Stacks[i]['SCStatus']=='ERROR') or (SCP2Stacks[i]['CFNStackName']=='None') and not DeletionRun:
-		print("aws servicecatalog terminate-provisioned-product --provisioned-product-id {} --profile {} --ignore-errors".format(SCP2Stacks[i]['SCProductId'],pProfile))
-	elif (SCP2Stacks[i]['SCStatus']=='ERROR') or (SCP2Stacks[i]['CFNStackName']=='None') and DeletionRun:
-		print("Deleting Service Catalog Provisioned Product {} from {} profile".format(SCP2Stacks[i]['SCProductName'],pProfile))
-		StackDelete=client_sc.terminate_provisioned_product(
-			ProvisionedProductId=SCP2Stacks[i]['SCProductId'],
-			IgnoreErrors=True,
-		)
-		logging.error("Result of Deletion: %s",StackDelete['RecordDetail']['Status'])
-		if len(StackDelete['RecordDetail']['RecordErrors']) > 0:
-			logging.error("Error code: %s",StackDelete['RecordDetail']['RecordErrors'][0]['Code'])
-			logging.error("Error description: %s",StackDelete['RecordDetail']['RecordErrors'][0]['Description'])
+if ErroredSCPExists:
+	print("You probably want to remove the following SC Products:")
+	session_sc=boto3.Session(profile_name=pProfile,region_name=pRegion)
+	client_sc=session_sc.client('servicecatalog')
+	for i in range(len(SCP2Stacks)):
+	# for i in range(1):
+		if (SCP2Stacks[i]['SCStatus']=='ERROR') or (SCP2Stacks[i]['CFNStackName']=='None') and not DeletionRun:
+			print("aws servicecatalog terminate-provisioned-product --provisioned-product-id {} --profile {} --ignore-errors".format(SCP2Stacks[i]['SCProductId'],pProfile))
+		elif (SCP2Stacks[i]['SCStatus']=='ERROR') or (SCP2Stacks[i]['CFNStackName']=='None') and DeletionRun:
+			print("Deleting Service Catalog Provisioned Product {} from {} profile".format(SCP2Stacks[i]['SCProductName'],pProfile))
+			StackDelete=client_sc.terminate_provisioned_product(
+				ProvisionedProductId=SCP2Stacks[i]['SCProductId'],
+				IgnoreErrors=True,
+			)
+			logging.error("Result of Deletion: %s",StackDelete['RecordDetail']['Status'])
+			if len(StackDelete['RecordDetail']['RecordErrors']) > 0:
+				logging.error("Error code: %s",StackDelete['RecordDetail']['RecordErrors'][0]['Code'])
+				logging.error("Error description: %s",StackDelete['RecordDetail']['RecordErrors'][0]['Description'])
 
 print()
 print("Thanks for using this script...")
