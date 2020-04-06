@@ -315,6 +315,59 @@ def RemoveCoreAccounts(MainList,AccountsToRemove):
 Above - Generic functions
 Below - Specific functions to specific features
 """
+def find_config_recorders(ocredentials,fRegion):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+
+	Returned object looks like:
+	{
+		"ConfigurationRecorders": [
+			{
+				"name": "AWS-Landing-Zone-BaselineConfigRecorder",
+				"roleARN": "arn:aws:iam::517713657778:role/AWS-Landing-Zone-ConfigRecorderRole",
+				"recordingGroup": {
+					"allSupported": true,
+					"includeGlobalResourceTypes": true,
+					"resourceTypes": []
+				}
+			}
+		]
+	}
+	"""
+	import boto3, logging,pprint
+	session_cfg=boto3.Session(
+				aws_access_key_id = ocredentials['AccessKeyId'],
+				aws_secret_access_key = ocredentials['SecretAccessKey'],
+				aws_session_token = ocredentials['SessionToken'],
+				region_name=fRegion)
+	client_cfg=session_cfg.client('config')
+	pprint.pprint(ocredentials)
+	response=client_cfg.describe_configuration_recorders()
+	return(response)
+
+
+def find_delivery_channels(ocredentials,fRegion):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+	"""
+	import boto3, logging
+	session_cfg=boto3.Session(
+				aws_access_key_id = ocredentials['AccessKeyId'],
+				aws_secret_access_key = ocredentials['SecretAccessKey'],
+				aws_session_token = ocredentials['SessionToken'],
+				region_name=fRegion)
+	client_cfg=session_cfg.client('config')
+	response=client_cfg.describe_delivery_channels()
+	return(response)
+
 def find_account_instances(ocredentials,fRegion):
 	"""
 	ocredentials is an object with the following structure:
