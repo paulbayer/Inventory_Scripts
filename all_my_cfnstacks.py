@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 
 import os, sys, pprint, boto3
-import Inventory_Modules
+import Inventory_Modules, pprint
 import argparse
 from colorama import init,Fore,Back,Style
 from botocore.exceptions import ClientError, NoCredentialsError
@@ -176,7 +176,7 @@ if DeletionRun and ('GuardDuty' in pstackfrag):
 		cfn_client=aws_session.client('cloudformation')
 		account_credentials = sts_client.assume_role(
 			RoleArn=role_arn,
-			RoleSessionName="Find-Stacks")['Credentials']
+			RoleSessionName="Delete-Stacks")['Credentials']
 		account_credentials['AccountNumber']=StacksFound[y]['Account']
 		print("Deleting stack {} from Account {} in region {} with status: {}".format(StacksFound[y]['StackName'],StacksFound[y]['Account'],StacksFound[y]['Region'],StacksFound[y]['StackStatus']))
 		""" This next line is BAD because it's hard-coded for GuardDuty, but we'll fix that eventually """
@@ -188,8 +188,14 @@ if DeletionRun and ('GuardDuty' in pstackfrag):
 elif DeletionRun:
 	logging.warning("Deleting %s stacks",len(StacksFound))
 	for y in range(len(StacksFound)):
+		role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(StacksFound[y]['Account'])
+		cfn_client=aws_session.client('cloudformation')
+		account_credentials = sts_client.assume_role(
+			RoleArn=role_arn,
+			RoleSessionName="Delete-Stacks")['Credentials']
+		account_credentials['AccountNumber']=StacksFound[y]['Account']
 		print("Deleting stack {} from account {} in region {} with status: {}".format(StacksFound[y]['StackName'],StacksFound[y]['Account'],StacksFound[y]['Region'],StacksFound[y]['StackStatus']))
 		response=Inventory_Modules.delete_stack2(account_credentials,StacksFound[y]['Region'],StacksFound[y]['StackName'])
-
+		pprint.pprint(response)
 
 print("Thanks for using this script...")
