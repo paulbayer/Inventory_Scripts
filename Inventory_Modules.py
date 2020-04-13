@@ -58,7 +58,7 @@ def get_service_regions(service,fkey):
 				RegionNames2.append(y)
 	return(RegionNames2)
 
-def get_profiles(fSkipProfiles,fprofiles="all"):
+def get_profiles(fSkipProfiles,fprofiles=["all"]):
 	'''
 	We assume that the user of this function wants all profiles.
 	If they provide a list of profile strings (in fprofiles), then we compare those strings to the full list of profiles we have, and return those profiles that contain the strings they sent.

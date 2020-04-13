@@ -13,12 +13,20 @@ init()
 parser = argparse.ArgumentParser(
 	description="We\'re going to find all accounts within any of the organizations we have access to.",
 	prefix_chars='-+/')
-parser.add_argument(
+ProfileGroup = parser.add_mutually_exclusive_group()
+ProfileGroup.add_argument(
 	"-p","--profile",
 	dest="pProfile",
 	metavar="Profile",
-	default="all",
+	default="all",	# Default to everything
 	help="Which single profile do you want to run for?")
+ProfileGroup.add_argument(
+	"-l","--listprofiles",
+	dest="pProfiles",
+	metavar="Profiles",
+	nargs="*",
+	default=[],	# Default to nothing
+	help="Which list of profiles do you want to run for?")
 parser.add_argument(
     '-R', '--root',
     help="Display only the root accounts found in the profiles",
@@ -34,25 +42,41 @@ parser.add_argument(
 	const=True,
     default=False)
 parser.add_argument(
-    '-d', '--debug',
-    help="Print lots of debugging statements",
-    action="store_const",
+	'-v', '--verbose',
+	help="Be verbose",
+	action="store_const",
 	dest="loglevel",
-	const=logging.INFO,
-    default=logging.CRITICAL)
+	const=logging.ERROR, # args.loglevel = 40
+	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-v', '--verbose',
-    help="Be verbose",
-    action="store_const",
+	'-vv',
+	help="Be MORE verbose",
+	action="store_const",
 	dest="loglevel",
-	const=logging.WARNING)
+	const=logging.WARNING, # args.loglevel = 30
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-d', '--debug',
+	help="Print debugging statements",
+	action="store_const",
+	dest="loglevel",
+	const=logging.INFO,	# args.loglevel = 20
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-dd',
+	help="Print LOTS of debugging statements",
+	action="store_const",
+	dest="loglevel",
+	const=logging.DEBUG,	# args.loglevel = 10
+	default=logging.CRITICAL) # args.loglevel = 50
 args=parser.parse_args()
 
 pProfile=args.pProfile
+pProfiles=args.pProfiles
 verbose=args.loglevel
 rootonly=args.rootonly
 shortform=args.shortform
-logging.basicConfig(level=args.loglevel)
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
 
 SkipProfiles=["default","Shared-Fid"]
 ERASE_LINE = '\x1b[2K'
@@ -60,10 +84,28 @@ ERASE_LINE = '\x1b[2K'
 RootAccts=[]	# List of the Organization Root's Account Number
 RootProfiles=[]	# List of the Organization Root's profiles
 
-if pProfile=="all":
+"""
+Because there's two ways for the user to provide profiles, we have to consider four scenarios:
+	1. They provided no input
+		* We'll use the pProfile default of "all"
+	2. They provided input using the pProfile parameter of a specific profile
+		* That's the case we already handle
+	3. They provided a list of profiles using the pProfiles parameter
+		* This is the new case, that we'll cycle through
+	4. They provided both the pProfile AND pProfiles parameters.
+		* argparse will stop the user from doing that!
+
+"""
+
+logging.info("Profile: %s",pProfile)
+logging.info("Profiles: %s",str(pProfiles))
+
+if pProfile == "all" and pProfiles == []: # Use case #1 from above
+	logging.info("Use Case #1")
 	logging.warning("Profile is set to all")
 	ShowEverything=True
-else:
+elif not pProfile == "all":	# Use case #2 from above
+	logging.info("Use Case #2")
 	logging.warning("Profile is set to %s",pProfile)
 	AcctNum = Inventory_Modules.find_account_number(pProfile)
 	AcctAttr = Inventory_Modules.find_org_attr(pProfile)
@@ -78,6 +120,27 @@ else:
 		print(Fore.RED + "If you're going to provide a profile, it's supposed to be a Master Billing Account profile!!" + Fore.RESET)
 		print("Continuing to run the script - but for all profiles.")
 		ShowEverything=True
+else: # Use case #3 from above
+	logging.info("Use Case #3")
+	logging.warning("Multiple profiles have been provided: %s. Going through one at a time...",str(pProfiles))
+	for profile in pProfiles:
+		AcctNum = Inventory_Modules.find_account_number(profile)
+		AcctAttr = Inventory_Modules.find_org_attr(profile)
+		MasterAcct = AcctAttr['MasterAccountId']
+		OrgId = AcctAttr['Id']
+		if AcctNum==MasterAcct:
+			filename=sys.argv[0]
+			logging.info("Running the script again with %s as your profile",profile)
+			ShowEverything=False
+			os.system("python3 "+filename+" -p "+profile)
+		else:
+			print()
+			print(Fore.RED + "Provided profile: {} isn't a Master Billing Account profile!!".format(profile) + Fore.RESET)
+			print("Skipping...")
+			continue
+			ShowEverything=False
+	sys.exit("Finished %s profiles!" % len(pProfiles))	# Finished the multiple profiles provided.
+
 """
 TODO:
 	- If they provide a profile that isn't a root profile, you should find out which org it belongs to, and then show the org for that. This will be difficult, since we don't know which profile that belongs to. Hmmm...
