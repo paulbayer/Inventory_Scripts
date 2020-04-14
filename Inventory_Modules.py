@@ -345,10 +345,30 @@ def find_config_recorders(ocredentials,fRegion):
 				aws_session_token = ocredentials['SessionToken'],
 				region_name=fRegion)
 	client_cfg=session_cfg.client('config')
-	pprint.pprint(ocredentials)
+	logging.info("Finding Config Recorders in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
 	response=client_cfg.describe_configuration_recorders()
 	return(response)
 
+def del_config_recorder(ocredentials,fRegion, fConfig_recorder_name):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+	fRegion = region
+	fConfig_recorder_name = Config Recorder Name
+	"""
+	import boto3, logging,pprint
+	session_cfg=boto3.Session(
+				aws_access_key_id = ocredentials['AccessKeyId'],
+				aws_secret_access_key = ocredentials['SecretAccessKey'],
+				aws_session_token = ocredentials['SessionToken'],
+				region_name=fRegion)
+	client_cfg=session_cfg.client('config')
+	logging.info("Deleting Config Recorder %s from Region %s in account %s",fConfig_recorder_name,fRegion,ocredentials['AccountNumber'])
+	response=client_cfg.delete_configuration_recorders(ConfigurationRecorderName=fConfig_recorder_name)
+	return(response)
 
 def find_delivery_channels(ocredentials,fRegion):
 	"""
@@ -365,7 +385,79 @@ def find_delivery_channels(ocredentials,fRegion):
 				aws_session_token = ocredentials['SessionToken'],
 				region_name=fRegion)
 	client_cfg=session_cfg.client('config')
+	logging.info("Finding Delivery Channels in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
+
 	response=client_cfg.describe_delivery_channels()
+	return(response)
+
+def del_delivery_channel(ocredentials,fRegion, fDelivery_channel_name):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+	rRegion = region
+	fDelivery_channel_name = delivery channel name
+	"""
+	import boto3, logging
+	session_cfg=boto3.Session(
+				aws_access_key_id = ocredentials['AccessKeyId'],
+				aws_secret_access_key = ocredentials['SecretAccessKey'],
+				aws_session_token = ocredentials['SessionToken'],
+				region_name=fRegion)
+	client_cfg=session_cfg.client('config')
+	logging.info("Deleting Delivery Channel %s from Region %s in account %s",fDelivery_channel_name,fRegion,ocredentials['AccountNumber'])
+	response=client_cfg.delete_delivery_channels(DeliveryChannelName=fDelivery_channel_name)
+	return(response)
+
+def find_cloudtrails(ocredentials,fRegion,*fCloudTrailnames):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+	fRegion = region
+	fCloudTrailnames = CloudTrail names we're looking for (null value returns all cloud trails)
+	"""
+	import boto3, logging
+	from botocore.exceptions import ClientError
+
+	session_ct=boto3.Session(
+				aws_access_key_id = ocredentials['AccessKeyId'],
+				aws_secret_access_key = ocredentials['SecretAccessKey'],
+				aws_session_token = ocredentials['SessionToken'],
+				region_name=fRegion)
+	client_ct=session_ct.client('cloudtrail')
+	logging.info("Finding CloudTrail trails in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
+	try:
+		response=client_ct.describe_trails(trailNameList=[*fCloudTrailnames])['trailList']
+	except ClientError as my_Error:
+		if str(my_Error).find("InvalidTrailNameException") > 0:
+			print("Bad CloudTrail name provided")
+		continue
+	return(response)
+
+def del_cloudtrails(ocredentials,fRegion,fCloudTrail):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+	fRegion = region
+	fCloudTrail = CloudTrail we're deleting
+	"""
+	import boto3, logging
+	session_ct=boto3.Session(
+				aws_access_key_id = ocredentials['AccessKeyId'],
+				aws_secret_access_key = ocredentials['SecretAccessKey'],
+				aws_session_token = ocredentials['SessionToken'],
+				region_name=fRegion)
+	client_ct=session_ct.client('cloudtrail')
+	logging.info("Deleting CloudTrail %s in account %s from Region %s",fCloudTrail,ocredentials['AccountNumber'],fRegion)
+	response=client_ct.delete_trail(Name=fCloudTrail)
 	return(response)
 
 def find_account_instances(ocredentials,fRegion):

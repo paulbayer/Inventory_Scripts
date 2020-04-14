@@ -19,12 +19,14 @@ parser.add_argument(
 	dest="pProfile",
 	metavar="profile of Master Organization",
 	default="default",
+	required=True,
 	help="To specify a specific profile, use this parameter. Default will be your default profile.")
 parser.add_argument(
 	"-a", "--account",
 	dest="pChildAccountId",
 	metavar="New Account to be adopted into LZ",
-	default="723919836827",
+	default="123456789012",
+	required=True,
 	help="This is the account number of the account you're checking, to see if it can be adopted into the ALZ.")
 parser.add_argument(
 	"+delete","+forreal",
@@ -34,18 +36,11 @@ parser.add_argument(
 	action="store_const",
 	help="This will delete the stacks found - without any opportunity to confirm. Be careful!!")
 parser.add_argument(
-    '-v',
-    help="Be verbose",
+    '-dd', '--debug',
+    help="Print LOTS of debugging statements",
     action="store_const",
 	dest="loglevel",
-	const=logging.ERROR, # args.loglevel = 40
-    default=logging.CRITICAL) # args.loglevel = 50
-parser.add_argument(
-    '-vv', '--verbose',
-    help="Be MORE verbose",
-    action="store_const",
-	dest="loglevel",
-	const=logging.WARNING, # args.loglevel = 30
+	const=logging.DEBUG,	# args.loglevel = 10
     default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
     '-d',
@@ -55,11 +50,18 @@ parser.add_argument(
 	const=logging.INFO,	# args.loglevel = 20
     default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-dd', '--debug',
-    help="Print LOTS of debugging statements",
+    '-vv', '--verbose',
+    help="Be MORE verbose",
     action="store_const",
 	dest="loglevel",
-	const=logging.DEBUG,	# args.loglevel = 10
+	const=logging.WARNING, # args.loglevel = 30
+    default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+    '-v',
+    help="Be verbose",
+    action="store_const",
+	dest="loglevel",
+	const=logging.ERROR, # args.loglevel = 40
     default=logging.CRITICAL) # args.loglevel = 50
 args = parser.parse_args()
 
@@ -77,6 +79,8 @@ ERASE_LINE = '\x1b[2K'
 
 """
 Steps of this script ceom from here: https://w.amazon.com/bin/view/AWS/Teams/SA/AWS_Solutions_Builder/Working_Backwards/AWS_Solutions-Foundations-Landing-Zone/Landing_Zone_FAQs/#HWhatifmycustomerdoesn27twanttotakenoforananswer3F
+
+0. The Child account MUST allow the Master account access into the Child IAM role called "AWSCloudFormationStackSetExecutionRole"
 
 1. The account must not contain any resources/config associated with the Default VPCs in ANY region e.g. security groups cannot exist associated with the Default VPC. Default VPCs will be deleted in the account in all regions, if they contain some dependency (usually a Security Group or an EIP) then deleting the VPC fails and the deployment rolls back. You can either manually delete them all or verify there are no dependencies, in some cases manually deleting them all is faster than roll back.
 
@@ -115,12 +119,13 @@ Trust_Policy='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal"
 json_object_TP=json.loads(Trust_Policy)
 json_formatted_str_TP=json.dumps(json_object_TP,indent=2)
 
-session_sts = boto3.Session(profile_name=pProfile)
-client_sts = session_sts.client('sts')
+session_aws = boto3.Session(profile_name=pProfile)
+client_sts = session_aws.client('sts')
 role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(pChildAccountId)
 logging.info("Role ARN: %s" % role_arn)
-# Step 1 -
-	# This will verify the first (and most important) criteria, that we have access to the child account with the properly named role.
+# Step 0 -
+# 0. The Child account MUST allow the Master account access into the Child IAM role called "AWSCloudFormationStackSetExecutionRole"
+
 try:
 	account_credentials = client_sts.assume_role(
 		RoleArn=role_arn,
@@ -174,8 +179,51 @@ except ClientError as my_Error:
 
 for i in range(len(ConfigList)):
 	print("I found a config recorder for account {} in region {}".format(ConfigList[i]['AccountID'],ConfigList[i]['Region']))
+	if DeletionRun:
+		logging.warning("Deleting %s in account %s in region %s",ConfigList[i]['Name'],ConfigList[i]['AccountID'],ConfigList[i]['Region'])
+		DelConfigRecorder=Inventory_Modules.del_config_recorder(account_credentials, region, ConfigList[i]['Name'])
 for i in range(len(DeliveryChanList)):
 	print("I found a delivery channel for account {} in region {}".format(DeliveryChanList[i]['AccountID'],DeliveryChanList[i]['Region']))
+	if DeletionRun:
+		logging.warning("Deleting %s in account %s in region %s",DeliveryChanList[i]['Name'],DeliveryChanList[i]['AccountID'],DeliveryChanList[i]['Region'])
+		DelDeliveryChannel=Inventory_Modules.del_delivery_channel(account_credentials, region, DeliveryChanList[i]['Name'])
+
+# Step 3
+# 3. The account must not have a Cloudtrail Trail name the same name as the LZ Trail ("AWS-Landing-Zone-BaselineCloudTrail")
+try:
+	client_ct=session_aws.client('cloudtrail')
+	RegionList=Inventory_Modules.get_service_regions('cloudtrail','all')
+	CTnames2=[]
+	for region in RegionList:
+		logging.error("Checking region %s for Cloud Trails",region)
+		ctrail='arn:aws:cloudtrail:'+region+':'+pChildAccountId+':trail/AWS-Landing-Zone-BaselineCloudTrail'
+		CTnames=Inventory_Modules.find_cloudtrails(account_credentials,region,ctrail)
+		if len(CTnames) > 0:
+			logging.error("Unfortunately, we've found a CloudTrail log named 'AWS-LandingZone-NaselineCloudTrail' in the %s region, which means we'll have to delete it before this account can be adopted.",region)
+			CTnames2.append(CTnames[0])
+	if DeletionRun:
+		for x in range(len(CTnames2)):
+			delresponse=client_ct.delete_trail(Name=CTnames2[x]['TrailARN'])
+			logging.warning("CloudTrail trail deletion commencing...")
+except ClientError as my_Error:
+	print(my_Error)
+
+# Step 4
+# 4. There must be an AWSCloudFormationStackSetExecution role present in the account so that StackSets can assume it and deploy stack instances. This role must trust the Organizations Master account. In LZ the account is created with that role name so stacksets just works. You can add this role manually via CloudFormation in the existing account.
+
+# Step 5
+# 5. The account must not have a pending guard duty invite. You can check from the Guard Duty Console
+# Step 6
+# 6. STS must be active in all regions. You can check from the Account Settings page in IAM.
+# Step 7
+
+"""
+7. The account must be part of the Organization and the email address being entered into the LZ parameters must match the account. If 	you try to add an email from an account which is not part of the Org, you will get an error that you are not using a unique email address. If it’s part of the Org, LZ just finds the account and uses the CFN roles.
+- If the existing account is to be imported as a Core Account, modify the manifest.yaml file to use it.
+- If the existing account will be a child account in the Organization, use the AVM launch template through Service Catalog and enter the appropriate configuration parameters.
+"""​​​​​​​
+# Step 8
+# 8. The existing account can not be in any of the LZ-managed Organizations OUs. By default, these OUs are Core and Applications, but the customer may have chosen different or additional OUs to manage by LZ.
 
 print()
 print("Thanks for using this script...")
