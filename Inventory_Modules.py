@@ -328,7 +328,7 @@ def find_config_recorders(ocredentials,fRegion):
 		"ConfigurationRecorders": [
 			{
 				"name": "AWS-Landing-Zone-BaselineConfigRecorder",
-				"roleARN": "arn:aws:iam::517713657778:role/AWS-Landing-Zone-ConfigRecorderRole",
+				"roleARN": "arn:aws:iam::123456789012:role/AWS-Landing-Zone-ConfigRecorderRole",
 				"recordingGroup": {
 					"allSupported": true,
 					"includeGlobalResourceTypes": true,
@@ -338,15 +338,16 @@ def find_config_recorders(ocredentials,fRegion):
 		]
 	}
 	"""
-	import boto3, logging,pprint
+	import boto3, logging, pprint
 	session_cfg=boto3.Session(
-				aws_access_key_id = ocredentials['AccessKeyId'],
-				aws_secret_access_key = ocredentials['SecretAccessKey'],
-				aws_session_token = ocredentials['SessionToken'],
-				region_name=fRegion)
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken'],
+		region_name=fRegion)
 	client_cfg=session_cfg.client('config')
-	logging.info("Finding Config Recorders in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
+	logging.warning("Finding Config Recorders in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
 	response=client_cfg.describe_configuration_recorders()
+	# logging.info(response)
 	return(response)
 
 def del_config_recorder(ocredentials,fRegion, fConfig_recorder_name):
@@ -361,12 +362,12 @@ def del_config_recorder(ocredentials,fRegion, fConfig_recorder_name):
 	"""
 	import boto3, logging,pprint
 	session_cfg=boto3.Session(
-				aws_access_key_id = ocredentials['AccessKeyId'],
-				aws_secret_access_key = ocredentials['SecretAccessKey'],
-				aws_session_token = ocredentials['SessionToken'],
-				region_name=fRegion)
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken'],
+		region_name=fRegion)
 	client_cfg=session_cfg.client('config')
-	logging.info("Deleting Config Recorder %s from Region %s in account %s",fConfig_recorder_name,fRegion,ocredentials['AccountNumber'])
+	logging.error("Deleting Config Recorder %s from Region %s in account %s",fConfig_recorder_name,fRegion,ocredentials['AccountNumber'])
 	response=client_cfg.delete_configuration_recorders(ConfigurationRecorderName=fConfig_recorder_name)
 	return(response)
 
@@ -377,15 +378,30 @@ def find_delivery_channels(ocredentials,fRegion):
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the account number
+
+	Returned object looks like:
+	{
+		'DeliveryChannels': [
+		{
+			'name': 'string',
+			's3BucketName': 'string',
+			's3KeyPrefix': 'string',
+			'snsTopicARN': 'string',
+			'configSnapshotDeliveryProperties': {
+				'deliveryFrequency': 'One_Hour'|'Three_Hours'|'Six_Hours'|'Twelve_Hours'|'TwentyFour_Hours'
+			}
+		},
+		]
+	}
 	"""
 	import boto3, logging
 	session_cfg=boto3.Session(
-				aws_access_key_id = ocredentials['AccessKeyId'],
-				aws_secret_access_key = ocredentials['SecretAccessKey'],
-				aws_session_token = ocredentials['SessionToken'],
-				region_name=fRegion)
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken'],
+		region_name=fRegion)
 	client_cfg=session_cfg.client('config')
-	logging.info("Finding Delivery Channels in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
+	logging.warning("Finding Delivery Channels in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
 
 	response=client_cfg.describe_delivery_channels()
 	return(response)
@@ -402,12 +418,12 @@ def del_delivery_channel(ocredentials,fRegion, fDelivery_channel_name):
 	"""
 	import boto3, logging
 	session_cfg=boto3.Session(
-				aws_access_key_id = ocredentials['AccessKeyId'],
-				aws_secret_access_key = ocredentials['SecretAccessKey'],
-				aws_session_token = ocredentials['SessionToken'],
-				region_name=fRegion)
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken'],
+		region_name=fRegion)
 	client_cfg=session_cfg.client('config')
-	logging.info("Deleting Delivery Channel %s from Region %s in account %s",fDelivery_channel_name,fRegion,ocredentials['AccountNumber'])
+	logging.error("Deleting Delivery Channel %s from Region %s in account %s",fDelivery_channel_name,fRegion,ocredentials['AccountNumber'])
 	response=client_cfg.delete_delivery_channels(DeliveryChannelName=fDelivery_channel_name)
 	return(response)
 
@@ -425,10 +441,10 @@ def find_cloudtrails(ocredentials,fRegion,*fCloudTrailnames):
 	from botocore.exceptions import ClientError
 
 	session_ct=boto3.Session(
-				aws_access_key_id = ocredentials['AccessKeyId'],
-				aws_secret_access_key = ocredentials['SecretAccessKey'],
-				aws_session_token = ocredentials['SessionToken'],
-				region_name=fRegion)
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken'],
+		region_name=fRegion)
 	client_ct=session_ct.client('cloudtrail')
 	logging.info("Finding CloudTrail trails in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
 	try:
@@ -436,7 +452,7 @@ def find_cloudtrails(ocredentials,fRegion,*fCloudTrailnames):
 	except ClientError as my_Error:
 		if str(my_Error).find("InvalidTrailNameException") > 0:
 			print("Bad CloudTrail name provided")
-		continue
+	response=''
 	return(response)
 
 def del_cloudtrails(ocredentials,fRegion,fCloudTrail):
@@ -451,10 +467,10 @@ def del_cloudtrails(ocredentials,fRegion,fCloudTrail):
 	"""
 	import boto3, logging
 	session_ct=boto3.Session(
-				aws_access_key_id = ocredentials['AccessKeyId'],
-				aws_secret_access_key = ocredentials['SecretAccessKey'],
-				aws_session_token = ocredentials['SessionToken'],
-				region_name=fRegion)
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken'],
+		region_name=fRegion)
 	client_ct=session_ct.client('cloudtrail')
 	logging.info("Deleting CloudTrail %s in account %s from Region %s",fCloudTrail,ocredentials['AccountNumber'],fRegion)
 	response=client_ct.delete_trail(Name=fCloudTrail)
@@ -470,10 +486,10 @@ def find_account_instances(ocredentials,fRegion):
 	"""
 	import boto3, logging
 	session_ec2=boto3.Session(
-				aws_access_key_id = ocredentials['AccessKeyId'],
-				aws_secret_access_key = ocredentials['SecretAccessKey'],
-				aws_session_token = ocredentials['SessionToken'],
-				region_name=fRegion)
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken'],
+		region_name=fRegion)
 	instance_info=session_ec2.client('ec2')
 	logging.warning("Looking in account # %s",ocredentials['AccountNumber'])
 	instances=instance_info.describe_instances()
@@ -489,10 +505,10 @@ def find_users(ocredentials):
 	import boto3, logging, pprint
 	logging.warning("Key ID #: %s ",str(ocredentials['AccessKeyId']))
 	session_iam=boto3.Session(
-				aws_access_key_id = ocredentials['AccessKeyId'],
-				aws_secret_access_key = ocredentials['SecretAccessKey'],
-				aws_session_token = ocredentials['SessionToken']
-				)
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken']
+	)
 	user_info=session_iam.client('iam')
 	users=user_info.list_users()['Users']
 	return(users)
@@ -507,10 +523,10 @@ def find_if_Isengard_registered(ocredentials):
 	import boto3, logging, pprint
 	logging.warning("Key ID #: %s ",str(ocredentials['AccessKeyId']))
 	session_iam=boto3.Session(
-				aws_access_key_id = ocredentials['AccessKeyId'],
-				aws_secret_access_key = ocredentials['SecretAccessKey'],
-				aws_session_token = ocredentials['SessionToken']
-				)
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken']
+	)
 	iam_info=session_iam.client('iam')
 	roles=iam_info.list_roles()['Roles']
 	for y in range(len(roles)):
@@ -533,10 +549,10 @@ def find_if_LZ_Acct(ocredentials):
 
 	logging.warning("Authenticating Account Number: %s ",str(ocredentials['ParentAccountNumber']))
 	session_aws=boto3.Session(
-				aws_access_key_id = ocredentials['AccessKeyId'],
-				aws_secret_access_key = ocredentials['SecretAccessKey'],
-				aws_session_token = ocredentials['SessionToken']
-				)
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken']
+	)
 	iam_info=session_aws.client('iam')
 	try:
 		roles=iam_info.list_roles()['Roles']
@@ -735,10 +751,10 @@ def delete_stack2(ocredentials,fRegion,fStackName,**kwargs):
 	else:
 		RetainResources = False
 	session_cfn=boto3.Session(region_name=fRegion,
-				aws_access_key_id = ocredentials['AccessKeyId'],
-				aws_secret_access_key = ocredentials['SecretAccessKey'],
-				aws_session_token = ocredentials['SessionToken']
-				)
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken']
+	)
 	client_cfn=session_cfn.client('cloudformation')
 	if RetainResources:
 		logging.warning("Account: %s | Region: %s | StackName: %s",ocredentials['AccountNumber'], fRegion, fStackName)
@@ -765,10 +781,10 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment="all",fStatus="activ
 	logging.error("AccessKeyId:")
 	logging.error("Acct ID #: %s | Region: %s | Fragment: %s | Status: %s",str(ocredentials['AccountNumber']), fRegion, fStackFragment,fStatus)
 	session_cfn=boto3.Session(region_name=fRegion,
-				aws_access_key_id = ocredentials['AccessKeyId'],
-				aws_secret_access_key = ocredentials['SecretAccessKey'],
-				aws_session_token = ocredentials['SessionToken']
-				)
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken']
+	)
 	stack_info=session_cfn.client('cloudformation')
 	stacksCopy=[]
 	if (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active') and not (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All'):
@@ -817,10 +833,10 @@ def find_saml_components_in_acct(ocredentials,fRegion):
 	import boto3, logging, pprint
 	logging.error("Acct ID #: %s | Region: %s ",str(ocredentials['AccountNumber']), fRegion)
 	session_aws=boto3.Session(region_name=fRegion,
-				aws_access_key_id = ocredentials['AccessKeyId'],
-				aws_secret_access_key = ocredentials['SecretAccessKey'],
-				aws_session_token = ocredentials['SessionToken']
-				)
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken']
+	)
 	iam_info=session_aws.client('iam')
 	saml_providers=iam_info.list_saml_providers()['SAMLProviderList']
 	return(saml_providers)
