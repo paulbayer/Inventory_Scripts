@@ -35,13 +35,6 @@ parser.add_argument(
 	default=[],
 	help="These are the account numbers you don't want to screw with. Likely the core accounts.")
 parser.add_argument(
-    '-d', '--debug',
-    help="Print debugging statements",
-    action="store_const",
-	dest="loglevel",
-	const=logging.INFO,	# args.loglevel = 20
-    default=logging.CRITICAL) # args.loglevel = 50
-parser.add_argument(
     '-dd',
     help="Print lots of debugging statements",
     action="store_const",
@@ -49,17 +42,26 @@ parser.add_argument(
 	const=logging.DEBUG,	# args.loglevel = 10
     default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-v', '--verbose',
-    help="Be verbose",
+    '-d', '--debug',
+    help="Print debugging statements",
     action="store_const",
 	dest="loglevel",
-	const=logging.ERROR) # args.loglevel = 40
+	const=logging.INFO,	# args.loglevel = 20
+    default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
     '-vv',
     help="Be MORE verbose",
     action="store_const",
 	dest="loglevel",
-	const=logging.WARNING) # args.loglevel = 30
+	const=logging.WARNING, # args.loglevel = 30
+    default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+    '-v', '--verbose',
+    help="Be verbose",
+    action="store_const",
+	dest="loglevel",
+	const=logging.ERROR, # args.loglevel = 40
+    default=logging.CRITICAL) # args.loglevel = 50
 args = parser.parse_args()
 
 pProfiles=args.pProfiles
@@ -68,7 +70,7 @@ AccountsToSkip=args.pSkipAccounts
 # logging.basicConfig(level=args.loglevel, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %H:%M:%S')
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
-SkipProfiles=["default","GenSpain"]
+SkipProfiles=["default"]
 
 ##########################
 ERASE_LINE = '\x1b[2K'
@@ -92,7 +94,7 @@ if "all" in pProfiles:
 	pProfiles=Inventory_Modules.get_parent_profiles(SkipProfiles)
 	logging.error("Time: %s",datetime.datetime.now())
 	logging.error("Found %s root profiles",len(pProfiles))
-	logging.info("Profiles Returned from function get_profiles3: %s",pProfiles)
+	logging.info("Profiles Returned from function get_parent_profiles: %s",pProfiles)
 
 for pProfile in pProfiles:
 	if not SoughtAllProfiles:

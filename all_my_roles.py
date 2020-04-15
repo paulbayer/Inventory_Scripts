@@ -28,28 +28,36 @@ parser.add_argument(
 	default=[],
 	help="These are the account numbers you don't want to screw with. Likely the core accounts.")
 parser.add_argument(
-    '-d', '--debug',
-    help="Print lots of debugging statements",
+    '-dd', '--debug',
+    help="Print LOTS of debugging statements",
+    action="store_const",
+	dest="loglevel",
+	const=logging.DEBUG,	# args.loglevel = 10
+    default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+    '-d',
+    help="Print debugging statements",
     action="store_const",
 	dest="loglevel",
 	const=logging.INFO,	# args.loglevel = 20
     default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-v', '--verbose',
-    help="Be verbose",
-    action="store_const",
-	dest="loglevel",
-	const=logging.ERROR) # args.loglevel = 40
-parser.add_argument(
-    '-vv',
+    '-vv', '--verbose',
     help="Be MORE verbose",
     action="store_const",
 	dest="loglevel",
-	const=logging.WARNING) # args.loglevel = 30
+	const=logging.WARNING, # args.loglevel = 30
+    default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+    '-v',
+    help="Be verbose",
+    action="store_const",
+	dest="loglevel",
+	const=logging.ERROR, # args.loglevel = 40
+    default=logging.CRITICAL) # args.loglevel = 50
 args = parser.parse_args()
 
 pProfile=args.pProfile
-DeletionRun=args.flagDelete
 AccountsToSkip=args.pSkipAccounts
 logging.basicConfig(level=args.loglevel, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %H:%M:%S')
 
