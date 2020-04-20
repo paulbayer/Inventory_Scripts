@@ -39,6 +39,37 @@ def get_ec2_regions(fkey):
 	return(RegionNames2)
 
 def get_service_regions(service,fkey):
+	"""
+	Parameters:
+		service = the AWS service we're trying to get regions for. This is useful since not all services are supported in all regions.
+		fkey = A string fragment of what region we're looking for. If 'all', then we send back all regions for that service. If they send "us-" (for example), we would send back only those regions which matched that fragment. This is good for focusing a search on only those regions you're searching within.
+	"""
+	import boto3, pprint, logging
+	# session=boto3.Session.get_available_regions(service)
+	# region_info=session.client(service)
+	s=boto3.Session()
+	regions=s.get_available_regions(service,partition_name='aws',allow_non_regional=False)
+	if "all" in fkey or "ALL" in fkey:
+		return(regions)
+	RegionNames=[]
+	for x in fkey:
+		for y in regions:
+			logging.info('Have %s | Looking for %s',y,x)
+			if y.find(x) >=0:
+				logging.info('Found %s',y)
+				RegionNames.append(y)
+	return(RegionNames)
+
+"""	# This function is still a work in progress...
+def get_valid_service_regions(service,fkey,bValidate=False):
+"""
+"""
+	Parameters:
+		service = the AWS service we're trying to get regions for. This is useful since not all services are supported in all regions.
+		fkey = A string fragment of what region we're looking for. If 'all', then we send back all regions for that service. If they send "us-" (for example), we would send back only those regions which matched that fragment. This is good for focusing a search on only those regions you're searching within.
+		bValidate = this is a Boolean that will determine whether we validate the regions before we send them back.
+"""
+"""
 	import boto3, pprint, logging
 	# session=boto3.Session.get_available_regions(service)
 	# region_info=session.client(service)
@@ -46,17 +77,25 @@ def get_service_regions(service,fkey):
 	regions=s.get_available_regions(service,partition_name='aws',allow_non_regional=False)
 	RegionNames=[]
 	for x in range(len(regions)):
-		RegionNames.append(regions[x])
+		try:
+			account_credentials = client_sts.assume_role(
+				RoleArn=role_arn,	# What role_arn can we rely on to be available to us in EVERY account?
+				RoleSessionName="Region_Validating")['Credentials']
+			logging.info("STS works in region {}".format(region))
+			RegionNames.append(regions[x])
+		except Exception as e:
+			if e.response['Error']['Code'] == 'InvalidClientTokenId':
+				logging.error("You probably haven't enabled region %s",regions[x])
 	if "all" in fkey or "ALL" in fkey:
 		return(RegionNames)
-	RegionNames2=[]
 	for x in fkey:
-		for y in RegionNames:
+		for y in regions:
 			logging.info('Have %s | Looking for %s',y,x)
 			if y.find(x) >=0:
 				logging.info('Found %s',y)
-				RegionNames2.append(y)
-	return(RegionNames2)
+				RegionNames.append(y)
+	return(RegionNames)
+"""
 
 def get_profiles(fSkipProfiles,fprofiles=["all"]):
 	'''
@@ -345,7 +384,7 @@ def find_config_recorders(ocredentials,fRegion):
 		aws_session_token = ocredentials['SessionToken'],
 		region_name=fRegion)
 	client_cfg=session_cfg.client('config')
-	logging.warning("Finding Config Recorders in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
+	logging.warning("Looking for Config Recorders in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
 	response=client_cfg.describe_configuration_recorders()
 	# logging.info(response)
 	return(response)
@@ -401,7 +440,7 @@ def find_delivery_channels(ocredentials,fRegion):
 		aws_session_token = ocredentials['SessionToken'],
 		region_name=fRegion)
 	client_cfg=session_cfg.client('config')
-	logging.warning("Finding Delivery Channels in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
+	logging.warning("Looking for Delivery Channels in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
 
 	response=client_cfg.describe_delivery_channels()
 	return(response)
@@ -436,6 +475,30 @@ def find_cloudtrails(ocredentials,fRegion,*fCloudTrailnames):
 		- ['AccountNumber'] holds the account number
 	fRegion = region
 	fCloudTrailnames = CloudTrail names we're looking for (null value returns all cloud trails)
+
+	Returned Object looks like this:
+	{
+	    'trailList': [
+	        {
+	            'Name': 'string',
+	            'S3BucketName': 'string',
+	            'S3KeyPrefix': 'string',
+	            'SnsTopicName': 'string',
+	            'SnsTopicARN': 'string',
+	            'IncludeGlobalServiceEvents': True|False,
+	            'IsMultiRegionTrail': True|False,
+	            'HomeRegion': 'string',
+	            'TrailARN': 'string',
+	            'LogFileValidationEnabled': True|False,
+	            'CloudWatchLogsLogGroupArn': 'string',
+	            'CloudWatchLogsRoleArn': 'string',
+	            'KmsKeyId': 'string',
+	            'HasCustomEventSelectors': True|False,
+	            'HasInsightSelectors': True|False,
+	            'IsOrganizationTrail': True|False
+	        },
+	    ]
+	}
 	"""
 	import boto3, logging
 	from botocore.exceptions import ClientError
@@ -446,13 +509,13 @@ def find_cloudtrails(ocredentials,fRegion,*fCloudTrailnames):
 		aws_session_token = ocredentials['SessionToken'],
 		region_name=fRegion)
 	client_ct=session_ct.client('cloudtrail')
-	logging.info("Finding CloudTrail trails in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
+	logging.info("Looking for CloudTrail trails in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
 	try:
 		response=client_ct.describe_trails(trailNameList=[*fCloudTrailnames])['trailList']
 	except ClientError as my_Error:
 		if str(my_Error).find("InvalidTrailNameException") > 0:
 			print("Bad CloudTrail name provided")
-	response=''
+		response=''
 	return(response)
 
 def del_cloudtrails(ocredentials,fRegion,fCloudTrail):
@@ -475,6 +538,69 @@ def del_cloudtrails(ocredentials,fRegion,fCloudTrail):
 	logging.info("Deleting CloudTrail %s in account %s from Region %s",fCloudTrail,ocredentials['AccountNumber'],fRegion)
 	response=client_ct.delete_trail(Name=fCloudTrail)
 	return(response)
+
+def find_gd_invites(ocredentials,fRegion):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+	fRegion = region
+	"""
+	import boto3, logging
+	from botocore.exceptions import ClientError
+
+	session_gd=boto3.Session(
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken'],
+		region_name=fRegion)
+	client_gd=session_gd.client('guardduty')
+	logging.info("Looking for GuardDuty invitations in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
+	try:
+		response=client_gd.list_invitations()
+	except ClientError as my_Error:
+		if str(my_Error).find("AuthFailure") > 0:
+			print(account['AccountId']+": Authorization Failure for account {}".format(account['AccountId']))
+		if str(my_Error).find("security token included in the request is invalid") > 0:
+			print("Account #:"+account['AccountId']+" - It's likely that the region you're trying ({}) isn\'t enabled for your account".format(region))
+		else:
+			print(my_Error)
+		response={'Invitations':[]}
+	return(response)
+
+def delete_gd_invites(ocredentials,fRegion,fAccountId):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+	fRegion = region
+	"""
+	import boto3, logging
+	from botocore.exceptions import ClientError
+
+	session_gd=boto3.Session(
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken'],
+		region_name=fRegion)
+	client_gd=session_gd.client('guardduty')
+	logging.info("Looking for GuardDuty invitations in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
+	try:
+		response=client_gd.delete_invitations(
+			AccountIds=[fAccountId]
+		)
+	except ClientError as my_Error:
+		if str(my_Error).find("AuthFailure") > 0:
+			print(account['AccountId']+": Authorization Failure for account {}".format(account['AccountId']))
+		if str(my_Error).find("security token included in the request is invalid") > 0:
+			print("Account #:"+account['AccountId']+" - It's likely that the region you're trying ({}) isn\'t enabled for your account".format(region))
+		else:
+			print(my_Error)
+	return(response['Invitations'])
 
 def find_account_instances(ocredentials,fRegion):
 	"""

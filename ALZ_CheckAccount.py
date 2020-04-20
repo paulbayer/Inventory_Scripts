@@ -36,40 +36,42 @@ parser.add_argument(
 	action="store_const",
 	help="This will delete the stacks found - without any opportunity to confirm. Be careful!!")
 parser.add_argument(
-    '-dd', '--debug',
-    help="Print LOTS of debugging statements",
-    action="store_const",
+	'-dd', '--debug',
+	help="Print LOTS of debugging statements",
+	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,	# args.loglevel = 10
-    default=logging.CRITICAL) # args.loglevel = 50
+	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-d',
-    help="Print debugging statements",
-    action="store_const",
+	'-d',
+	help="Print debugging statements",
+	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,	# args.loglevel = 20
-    default=logging.CRITICAL) # args.loglevel = 50
+	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-vv', '--verbose',
-    help="Be MORE verbose",
-    action="store_const",
+	'-vv', '--verbose',
+	help="Be MORE verbose",
+	action="store_const",
 	dest="loglevel",
 	const=logging.WARNING, # args.loglevel = 30
-    default=logging.CRITICAL) # args.loglevel = 50
+	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-v',
-    help="Be verbose",
-    action="store_const",
+	'-v',
+	help="Be verbose",
+	action="store_const",
 	dest="loglevel",
 	const=logging.ERROR, # args.loglevel = 40
-    default=logging.CRITICAL) # args.loglevel = 50
+	default=logging.CRITICAL) # args.loglevel = 50
 args = parser.parse_args()
 
 pProfile=args.pProfile
 pChildAccountId=args.pChildAccountId
 verbose=args.loglevel
 DeletionRun=args.DeletionRun
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)30s() ] %(message)s")
+# This is hard-coded, because this is the listing of regions that are supported by Automated Landing Zone.
+RegionList=['ap-northeast-1', 'ap-northeast-2', 'ap-south-1', 'ap-southeast-1', 'ap-southeast-2', 'ca-central-1', 'eu-central-1', 'eu-north-1', 'eu-west-1', 'eu-west-2', 'eu-west-3', 'sa-east-1', 'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2']
 
 ERASE_LINE = '\x1b[2K'
 
@@ -105,7 +107,7 @@ It's also possible to run a shell script to automate the deletion of all recorde
 8. The existing account can not be in any of the LZ-managed Organizations OUs. By default, these OUs are Core and Applications, but the customer may have chosen different or additional OUs to manage by LZ.
 
 """
-
+print()
 session_aws = boto3.Session(profile_name=pProfile)
 client_sts = session_aws.client('sts')
 role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(pChildAccountId)
@@ -142,23 +144,25 @@ except ClientError as my_Error:
 		sys.exit("Exiting...")
 
 logging.error("Was able to successfully connect using the credentials... ")
+
+print()
 # Step 2
 	# This part will check the Config Recorder and  Delivery Channel. If they have one, we need to delete it, so we can create another. We'll ask whether this is ok before we delete.
 try:
-	RegionList=Inventory_Modules.get_service_regions('config','all')
+	# RegionList=Inventory_Modules.get_service_regions('config','all')
 	ConfigList=[]
 	DeliveryChanList=[]
 	"""
 	TO-DO: Need to find a way to gracefully handle the error processing of opt-in regions.
 	"""
-	RegionList.remove('me-south-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
-	RegionList.remove('ap-east-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
+	# RegionList.remove('me-south-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
+	# RegionList.remove('ap-east-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
 	for region in RegionList:
 		print(ERASE_LINE,"Checking account {} in region {} for Config Recorder".format(account_credentials['AccountNumber'],region),end='\r')
-		logging.info("Finding Config Recorders in account %s from Region %s",account_credentials['AccountNumber'],region)
+		logging.info("Looking for Config Recorders in account %s from Region %s",account_credentials['AccountNumber'],region)
 		# ConfigRecorder=client_cfg.describe_configuration_recorders()
 		ConfigRecorder=Inventory_Modules.find_config_recorders(account_credentials, region)
-		logging.warning("Tried to capture Config Recorder")
+		logging.debug("Tried to capture Config Recorder")
 		if len(ConfigRecorder['ConfigurationRecorders']) > 0:
 			ConfigList.append({
 				'Name':ConfigRecorder['ConfigurationRecorders'][0]['name'],
@@ -168,7 +172,7 @@ try:
 			})
 		print(ERASE_LINE,"Checking account {} in region {} for Delivery Channel".format(account_credentials['AccountNumber'],region),end='\r')
 		DeliveryChannel=Inventory_Modules.find_delivery_channels(account_credentials, region)
-		logging.warning("Tried to capture Delivery Channel")
+		logging.debug("Tried to capture Delivery Channel")
 		if len(DeliveryChannel['DeliveryChannels']) > 0:
 			DeliveryChanList.append({
 				'Name':DeliveryChannel['DeliveryChannels'][0]['name'],
@@ -190,35 +194,79 @@ for i in range(len(DeliveryChanList)):
 		logging.warning("Deleting %s in account %s in region %s",DeliveryChanList[i]['Name'],DeliveryChanList[i]['AccountID'],DeliveryChanList[i]['Region'])
 		DelDeliveryChannel=Inventory_Modules.del_delivery_channel(account_credentials, region, DeliveryChanList[i]['Name'])
 
+print()
 # Step 3
 # 3. The account must not have a Cloudtrail Trail name the same name as the LZ Trail ("AWS-Landing-Zone-BaselineCloudTrail")
 try:
-	client_ct=session_aws.client('cloudtrail')
-	RegionList=Inventory_Modules.get_service_regions('cloudtrail','all')
-	RegionList.remove('me-south-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
-	RegionList.remove('ap-east-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
-	CTnames2=[]
+	# RegionList=Inventory_Modules.get_service_regions('cloudtrail','all')
+	# RegionList.remove('me-south-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
+	# RegionList.remove('ap-east-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
+	CTtrails2=[]
 	for region in RegionList:
-		logging.error("Checking region %s for Cloud Trails",region)
-		ctrail='arn:aws:cloudtrail:'+region+':'+pChildAccountId+':trail/AWS-Landing-Zone-BaselineCloudTrail'
-		CTnames=Inventory_Modules.find_cloudtrails(account_credentials,region,ctrail)
-		if len(CTnames) > 0:
-			logging.error("Unfortunately, we've found a CloudTrail log named 'AWS-LandingZone-BaselineCloudTrail' in the %s region, which means we'll have to delete it before this account can be adopted.",region)
-			CTnames2.append(CTnames[0])
-	if DeletionRun:
-		for x in range(len(CTnames2)):
-			delresponse=client_ct.delete_trail(Name=CTnames2[x]['TrailARN'])
-			logging.warning("CloudTrail trail deletion commencing...")
+		print(ERASE_LINE,"Checking account {} in region {} for CloudTrail named 'AWS-Landing-Zone-BaselineCloudTrail'".format(account_credentials['AccountNumber'],region),end='\r')
+		logging.warning("Checking region %s for Cloud Trails",region)
+		ctrail='arn:aws:cloudtrail:'+region+':'+account_credentials['AccountNumber']+':trail/AWS-Landing-Zone-BaselineCloudTrail'
+		CTtrails=Inventory_Modules.find_cloudtrails(account_credentials,region,ctrail)
+		if len(CTtrails) > 0:
+			logging.error("Unfortunately, we've found a CloudTrail log named 'AWS-LandingZone-BaselineCloudTrail' in account %s in the %s region, which means we'll have to delete it before this account can be adopted.",account_credentials['AccountNumber'],region)
+			CTtrails2.append(CTtrails[0])
 except ClientError as my_Error:
 	print(my_Error)
 
-# Step 4
+# pprint.pprint(CTtrails2)
+# sys.exit(99)
+for i in range(len(CTtrails2)):
+	print("I found a CloudTrail trail for account {} in region {} named 'AWS-LandingZone-BaselineCloudTrail' ".format(account_credentials['AccountNumber'],CTtrails2[i]['HomeRegion']))
+	if DeletionRun:
+		try:
+			delresponse=Inventory_Modules.del_cloudtrails(account_credentials,region,CTtrails2[i]['TrailARN'])
+			logging.error("CloudTrail trail deletion commencing...")
+		except ClientError as my_Error:
+			print(my_Error)
+
+print()
+# Step 4 - handled by Step 0
 # 4. There must be an AWSCloudFormationStackSetExecution role present in the account so that StackSets can assume it and deploy stack instances. This role must trust the Organizations Master account. In LZ the account is created with that role name so stacksets just works. You can add this role manually via CloudFormation in the existing account.
 
+print()
 # Step 5
 # 5. The account must not have a pending guard duty invite. You can check from the Guard Duty Console
+try:
+	# RegionList=Inventory_Modules.get_service_regions('guardduty','all')
+	# RegionList.remove('me-south-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
+	# RegionList.remove('ap-east-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
+	GDinvites2=[]
+	for region in RegionList:
+		print(ERASE_LINE,"Checking account {} in region {} for GuardDuty invitations".format(account_credentials['AccountNumber'],region),end='\r')
+		logging.error("Checking account %s in region %s for GuardDuty invites",account_credentials['AccountNumber'],region)
+		GDinvites=Inventory_Modules.find_gd_invites(account_credentials,region)
+		if len(GDinvites) > 0:
+			for x in range(len(GDinvites['Invitations'])):
+				logging.warning("GD Invite: %s",str(GDinvites['Invitations'][x]))
+				logging.error("Unfortunately, we've found a GuardDuty invitation for account %s in the %s region from account %s, which means we'll have to delete it before this account can be adopted.",account_credentials['AccountNumber'],region,GDinvites['Invitations'][x]['AccountId'])
+				GDinvites2.append({
+					'AccountId':GDinvites['Invitations'][x]['AccountId'],
+					'InvitationId':GDinvites['Invitations'][x]['InvitationId'],
+					'Region':region
+				})
+except ClientError as my_Error:
+	print(my_Error)
+
+for i in range(len(GDinvites2)):
+	print("I found a GuardDuty invitation for account {} in region {} from account {} ".format(account_credentials['AccountNumber'],GDinvites2[i]['Region'],GDinvites2[i]['AccountId']))
+	if DeletionRun:
+		for x in range(len(GDinvites2)):
+			try:
+				logging.warning("GuardDuty invite deletion commencing...")
+				delresponse=Inventory_Modules.delete_gd_invites(account_credentials, region, GDinvites2[x]['AccountId'])
+			except ClientError as my_Error:
+				print(my_Error)
+
 # Step 6
 # 6. STS must be active in all regions. You can check from the Account Settings page in IAM.
+"""
+We would have already verified this - since we've used STS to connect to each region already for the previous steps. 
+"""
 # Step 7
 
 '''
