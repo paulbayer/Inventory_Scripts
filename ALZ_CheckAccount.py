@@ -265,7 +265,7 @@ for i in range(len(GDinvites2)):
 # Step 6
 # 6. STS must be active in all regions. You can check from the Account Settings page in IAM.
 """
-We would have already verified this - since we've used STS to connect to each region already for the previous steps. 
+We would have already verified this - since we've used STS to connect to each region already for the previous steps.
 """
 # Step 7
 
@@ -276,6 +276,9 @@ We would have already verified this - since we've used STS to connect to each re
 '''
 # Step 8
 # 8. The existing account can not be in any of the LZ-managed Organizations OUs. By default, these OUs are Core and Applications, but the customer may have chosen different or additional OUs to manage by LZ.
+"""
+So we'll need to verify that the parent OU of the account is the root of the organization.
+"""
 
 print()
 print("Thanks for using this script...")

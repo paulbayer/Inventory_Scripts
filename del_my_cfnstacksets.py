@@ -4,15 +4,13 @@
 TODO:
 	- Enable this script to accept a Session Token to allow for Federated users via Isengard
 	- Pythonize the whole thing
-	- Write a requirements file to desribe the requirements (like colorama, pprint, argparse, etc.)
 	- More Commenting throughout script
-	- Right now it supports multiple profiles - however, deleting the stackSETs at the end only works if there's only one "main" profile submitted. Deleting the child stacks works regardless
-	- Consider using "f'strings" for the print statements
 	- There are four possible use-cases:
 		- The stack exists as an association within the stackset AND it exists within the child account (typical)
 			- We should remove the stackset-association with "--RetainStacks=False" and that will remove the child stack in the child account.
 		- The stack exists as an association within the stackset, but has been manually deleted within the child account
 			- If we remove the stackset-association with "--RetainStacks=False", it won't error, even when the stack doesn't exist within the child.
+			- There is a special use case here where the child account has been deleted or suspended. This is a difficult use-case to test.
 		- The stack doesn't exist within the stackset association, but DOES exist within the child account (because its association was removed from the stackset)
 			- The only way to remove this is to remove the stack from the child account. This would have to be done after having found the stack within the child account. This will be a ToDo for later...
 		- The stack doesn't exist within the child account, nor within the stack-set
@@ -91,18 +89,33 @@ parser.add_argument(
 	default="us-east-1",
 	help="The Master region you want to check for StackSets.")
 parser.add_argument(
-    '-d', '--debug',
-    help="Print lots of debugging statements",
-    action="store_const",
+	'-dd', '--debug',
+	help="Print LOTS of debugging statements",
+	action="store_const",
 	dest="loglevel",
-	const=logging.INFO,
-    default=logging.CRITICAL)
+	const=logging.DEBUG,	# args.loglevel = 10
+	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-v', '--verbose',
-    help="Be verbose",
-    action="store_const",
+	'-d',
+	help="Print debugging statements",
+	action="store_const",
 	dest="loglevel",
-	const=logging.WARNING)
+	const=logging.INFO,	# args.loglevel = 20
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-vv', '--verbose',
+	help="Be MORE verbose",
+	action="store_const",
+	dest="loglevel",
+	const=logging.WARNING, # args.loglevel = 30
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-v',
+	help="Be verbose",
+	action="store_const",
+	dest="loglevel",
+	const=logging.ERROR, # args.loglevel = 40
+	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
     '+forreal','+for-real','-for-real','-forreal','--for-real','--forreal','--forrealsies', '+delete',
     help="[Default] Do a Dry-run; if this parameter is specified, we'll delete stacksets we find, with no additional confirmation.",
@@ -118,7 +131,7 @@ pStackfrag=args.pStackfrag
 AccountsToSkip=args.pSkipAccounts
 verbose=args.loglevel
 pdryrun=args.DryRun
-logging.basicConfig(level=args.loglevel)
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)10s() ] %(message)s")
 
 SkipProfiles=["default","Shared-Fid"]
 
@@ -165,17 +178,11 @@ for i in range(len(StackSetNames)):
 		})
 
 # for profile in ProfileList:	# Expectation that there is ONLY ONE PROFILE MATCHED.
-logging.warning("There are supposed to be %s stack instances." % (len(AllInstances)))
+logging.error("There are supposed to be %s stack instances." % (len(AllInstances)))
 # pprint.pprint(AllInstances)
 
-if args.loglevel < 31:
-	for i in range(len(AllInstances)):
-		print("Account {} in Region {} has Stack {} in status {}".format(
-			AllInstances[i]['ChildAccount'],
-			AllInstances[i]['ChildRegion'],
-			AllInstances[i]['StackName'],
-			AllInstances[i]['StackStatus'])
-		)
+for i in range(len(AllInstances)):
+	logging.error("Account %s in Region %s has Stack %s in status %s", AllInstances[i]['ChildAccount'], AllInstances[i]['ChildRegion'], AllInstances[i]['StackName'], AllInstances[i]['StackStatus'])
 
 AccountList=[]
 StackSetStillInUse=[]
@@ -190,8 +197,8 @@ StackSetStillInUse=list(set(StackSetStillInUse))
 
 if pdryrun:
 	print("Found {} StackSets that matched, with a total of {} instances".format(len(StackSetNames),len(AllInstances)))
+	# pprint.pprint(AccountList)
 	print("We're Done")
-	pprint.pprint(AccountList)
 	sys.exit(0)
 
 print("Removing {} stack instances from the {} StackSets found".format(len(AllInstances),len(StackSetNames)))
