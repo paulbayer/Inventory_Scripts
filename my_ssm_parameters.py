@@ -17,7 +17,7 @@ parser.add_argument(
 	"-p","--profile",
 	dest="pProfile",
 	metavar="profile to use",
-	default="all",
+	default="default",
 	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
 parser.add_argument(
 	"-r","--region",
@@ -112,7 +112,7 @@ if ALZParam:
 		ParameterDate=Parameters[y]['LastModifiedDate']
 		mydelta=today-ParameterDate	# this is a "timedelta" object
 		p=re.compile(ALZRegex)	# Sets the regex to look for
-		logging.info("Parameter %s: %s",y,Parameters[y]['Name'])
+		logging.info("Parameter %s: %s with date %s",y,Parameters[y]['Name'], Parameters[y]['LastModifiedDate'])
 		if p.match(Parameters[y]['Name']) and mydelta > dtDaysBack:
 			logging.error("Parameter %s with date of %s matched",Parameters[y]['Name'],Parameters[y]['LastModifiedDate'])
 			ALZParams+=1
@@ -140,7 +140,9 @@ print()
 print(ERASE_LINE)
 print("Found {} total parameters".format(len(Parameters)))
 if ALZParam:
-	print("And {} of them were from ALZ runs more than {} days back".format(ALZParams,dtDaysBack.days))
+	print("And {} of them were from buggy ALZ runs more than {} days back".format(ALZParams,dtDaysBack.days))
 if DeletionRun:
 	print("And we deleted {} of them".format(len(ParamsToDelete)))
+print()
+print("Thanks for using this script.")
 print()
