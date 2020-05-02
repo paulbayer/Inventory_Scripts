@@ -54,24 +54,33 @@ parser.add_argument(
 	action="store_const",
 	help="This will delete the stacks found - without any opportunity to confirm. Be careful!!")
 parser.add_argument(
-    '-d', '--debug',
-    help="Print lots of debugging statements",
-    action="store_const",
+	'-dd', '--debug',
+	help="Print LOTS of debugging statements",
+	action="store_const",
+	dest="loglevel",
+	const=logging.DEBUG,	# args.loglevel = 10
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-d',
+	help="Print debugging statements",
+	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,	# args.loglevel = 20
-    default=logging.CRITICAL) # args.loglevel = 50
+	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-v', '--verbose',
-    help="Be verbose",
-    action="store_const",
+	'-vv', '--verbose',
+	help="Be MORE verbose",
+	action="store_const",
 	dest="loglevel",
-	const=logging.ERROR) # args.loglevel = 40
+	const=logging.WARNING, # args.loglevel = 30
+	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-vv',
-    help="Be MORE verbose",
-    action="store_const",
+	'-v',
+	help="Be verbose",
+	action="store_const",
 	dest="loglevel",
-	const=logging.WARNING) # args.loglevel = 30
+	const=logging.ERROR, # args.loglevel = 40
+	default=logging.CRITICAL) # args.loglevel = 50
 args = parser.parse_args()
 
 pProfile=args.pProfile
@@ -81,7 +90,7 @@ pstatus=args.pstatus
 AccountsToSkip=args.pSkipAccounts
 verbose=args.loglevel
 DeletionRun=args.DeletionRun
-logging.basicConfig(level=args.loglevel, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %H:%M:%S')
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)30s() ] %(message)s")
 
 ##########################
 ERASE_LINE = '\x1b[2K'

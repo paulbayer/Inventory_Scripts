@@ -87,7 +87,12 @@ parser.add_argument(
 	dest="pRegion",
 	metavar="region name string",
 	default="us-east-1",
-	help="The Master region you want to check for StackSets.")
+	help="The Master region you want to check for StackSets. Only one region is checked per script run.")
+parser.add_argument(
+	"-R","--Remove",
+	dest="pRemove",
+	metavar="Account to remove from stacksets",
+	help="The Account number you want removed from ALL of the stacksets and ALL of the regions it's been found.")
 parser.add_argument(
 	'-dd', '--debug',
 	help="Print LOTS of debugging statements",
@@ -117,7 +122,7 @@ parser.add_argument(
 	const=logging.ERROR, # args.loglevel = 40
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '+forreal','+for-real','-for-real','-forreal','--for-real','--forreal','--forrealsies', '+delete',
+    '+delete',
     help="[Default] Do a Dry-run; if this parameter is specified, we'll delete stacksets we find, with no additional confirmation.",
     action="store_const",
 	const=False,
@@ -131,9 +136,8 @@ pStackfrag=args.pStackfrag
 AccountsToSkip=args.pSkipAccounts
 verbose=args.loglevel
 pdryrun=args.DryRun
+pRemove=args.pRemove
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)10s() ] %(message)s")
-
-SkipProfiles=["default","Shared-Fid"]
 
 ##########################
 ERASE_LINE = '\x1b[2K'
@@ -150,6 +154,7 @@ else:
 print("		In the ROOT profile {} and all children".format(pProfile))
 print("		In these regions: {}".format(pRegion))
 print("		For stacksets that contain these fragments: {}".format(pStackfrag))
+print("		Specifically to find this account number: {}".format(pRemove))
 print()
 
 # Get the StackSet names from the Master Profile
@@ -163,6 +168,7 @@ logging.info("Found %s StackSetNames that matched your fragment" % (len(StackSet
 # 		StackSetNames2.append(StackSetNames[i])
 # StackSetNames=StackSetNames2
 for i in range(len(StackSetNames)):
+	print(ERASE_LINE,"Looking for stacksets with '{}' string in account {} in region {}".format(StackSetNames[i]['StackSetName'],ProfileAccountNumber,pRegion),end='\r')
 	StackInstances=Inventory_Modules.find_stack_instances(pProfile,pRegion,StackSetNames[i]['StackSetName'])
 	# pprint.pprint(StackInstances)
 	logging.warning("Found %s Stack Instances within the StackSet %s" % (len(StackInstances),StackSetNames[i]['StackSetName']))
@@ -178,7 +184,8 @@ for i in range(len(StackSetNames)):
 		})
 
 # for profile in ProfileList:	# Expectation that there is ONLY ONE PROFILE MATCHED.
-logging.error("There are supposed to be %s stack instances." % (len(AllInstances)))
+print()
+logging.error("Found %s stack instances." % (len(AllInstances)))
 # pprint.pprint(AllInstances)
 
 for i in range(len(AllInstances)):
@@ -199,6 +206,7 @@ if pdryrun:
 	print("Found {} StackSets that matched, with a total of {} instances".format(len(StackSetNames),len(AllInstances)))
 	# pprint.pprint(AccountList)
 	print("We're Done")
+	print()
 	sys.exit(0)
 
 print("Removing {} stack instances from the {} StackSets found".format(len(AllInstances),len(StackSetNames)))
