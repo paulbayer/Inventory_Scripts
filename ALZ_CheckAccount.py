@@ -29,6 +29,14 @@ parser.add_argument(
 	required=True,
 	help="This is the account number of the account you're checking, to see if it can be adopted into the ALZ.")
 parser.add_argument(
+	"-q", "--quick",
+	dest="Quick",
+	metavar="Shortcut the checking to only a single region",
+	const=True,
+	default=False,
+	action="store_const",
+	help="This is the account number of the account you're checking, to see if it can be adopted into the ALZ.")
+parser.add_argument(
 	"+delete","+forreal",
 	dest="DeletionRun",
 	const=True,
@@ -65,13 +73,17 @@ parser.add_argument(
 	default=logging.CRITICAL) # args.loglevel = 50
 args = parser.parse_args()
 
+Quick=args.Quick
 pProfile=args.pProfile
 pChildAccountId=args.pChildAccountId
 verbose=args.loglevel
 DeletionRun=args.DeletionRun
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)30s() ] %(message)s")
 # This is hard-coded, because this is the listing of regions that are supported by Automated Landing Zone.
-RegionList=['ap-northeast-1', 'ap-northeast-2', 'ap-south-1', 'ap-southeast-1', 'ap-southeast-2', 'ca-central-1', 'eu-central-1', 'eu-north-1', 'eu-west-1', 'eu-west-2', 'eu-west-3', 'sa-east-1', 'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2']
+if Quick:
+	RegionList=['us-east-1']
+else:
+	RegionList=['ap-northeast-1', 'ap-northeast-2', 'ap-south-1', 'ap-southeast-1', 'ap-southeast-2', 'ca-central-1', 'eu-central-1', 'eu-north-1', 'eu-west-1', 'eu-west-2', 'eu-west-3', 'sa-east-1', 'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2']
 
 ERASE_LINE = '\x1b[2K'
 
@@ -112,15 +124,23 @@ session_aws = boto3.Session(profile_name=pProfile)
 client_sts = session_aws.client('sts')
 role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(pChildAccountId)
 logging.info("Role ARN: %s" % role_arn)
+ChildIsReady=True
 # Step 0 -
 # 0. The Child account MUST allow the Master account access into the Child IAM role called "AWSCloudFormationStackSetExecutionRole"
 
 print("This script does 5 things... ")
-print("	1. Checks to ensure the 'AWSCloudFormationStackSetExecutionRole' exists in the child account and trusts the Master Org account")
-print("	2. Checks the child account in each of the regions that support ALZ to see if there's already a Config Recorder and Delivery Channel enabled...")
-print("	3. Checks that there isn't a CloudTrail trail called 'AWS-Landing-Zone-BaselineCloudTrail' in the account. ")
-print(" 4. Checks to see if GuardDuty has been enabled for this child account. If it has been, it needs to be deleted before we can adopt this new account into the Org's Automated Landing Zone.")
-print("	5. This child account must exist within the Parent Organization. If it doesn't - then you must move it into this Org (this script can't do that for you).")
+print(Fore.BLUE+"  1."+Fore.RESET+" Checks to ensure the "+Fore.RED+"'AWSCloudFormationStackSetExecutionRole'"+Fore.RESET)
+print("     exists in the child account and trusts the Master Org account.")
+print(Fore.BLUE+"  2."+Fore.RESET+" Checks the child account in each of the regions that support ALZ")
+print("     to see if there's already a "+Fore.RED+"Config Recorder and Delivery Channel "+Fore.RESET+"enabled...")
+print(Fore.BLUE+"  3."+Fore.RESET+" Checks that there isn't a CloudTrail trail called")
+print(Fore.RED+"     'AWS-Landing-Zone-BaselineCloudTrail'"+Fore.RESET+" in the account. ")
+print(Fore.BLUE+"  4."+Fore.RESET+" Checks to see if "+Fore.RED+"GuardDuty"+Fore.RESET+" has been enabled for this child account.")
+print("     If it has been, it needs to be deleted before we can adopt this new account")
+print("     into the Org's Automated Landing Zone.")
+print(Fore.BLUE+"  5."+Fore.RESET+" This child account "+Fore.RED+"must exist"+Fore.RESET+" within the Parent Organization.")
+print("     If it doesn't - then you must move it into this Org")
+print("     (this script can't do that for you).")
 print()
 print("Since this script is fairly new - All comments or suggestions are enthusiastically encouraged")
 print()
@@ -131,7 +151,8 @@ try:
 		DurationSeconds=3600,
 		RoleSessionName="ALZ_CheckAccount")['Credentials']
 	account_credentials['AccountNumber']=pChildAccountId
-	logging.error("Was able to successfully get credentials")
+	print("We were able to successfully confirm the role "+Fore.RED+"'AWSCloudFormationStackSetExecutionRole'"+Fore.RESET+" exists and trusts the Master Account")
+	print("Step 1 is complete.")
 	# pprint.pprint(account_credentials)
 except ClientError as my_Error:
 	if str(my_Error).find("AuthFailure") > 0:
@@ -154,7 +175,6 @@ except ClientError as my_Error:
 		sys.exit("Exiting...")
 
 logging.error("Was able to successfully connect using the credentials... ")
-
 print()
 # Step 2
 	# This part will check the Config Recorder and  Delivery Channel. If they have one, we need to delete it, so we can create another. We'll ask whether this is ok before we delete.
@@ -164,6 +184,7 @@ try:
 	DeliveryChanList=[]
 	"""
 	TO-DO: Need to find a way to gracefully handle the error processing of opt-in regions.
+		Until then - we're using a hard-coded listing of regions, instead of dynamically finding those.
 	"""
 	# RegionList.remove('me-south-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
 	# RegionList.remove('ap-east-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
@@ -189,22 +210,30 @@ try:
 				'AccountID':pChildAccountId,
 				'Region':region
 			})
+	print(ERASE_LINE+"Checked account {} in {} regions. Found {} issues with".format(account_credentials['AccountNumber'],len(RegionList),len(ConfigList)+len(DeliveryChanList))+Fore.RED+" Config Recorders and Delivery Channels"+Fore.RESET,end='\r')
+
 except ClientError as my_Error:
 	logging.critical("Failed to capture Config Recorder and Delivery Channels")
+	ChildIsReady=False
 	print(my_Error)
 
 for i in range(len(ConfigList)):
 	print("I found a config recorder for account {} in region {}".format(ConfigList[i]['AccountID'],ConfigList[i]['Region']))
+	ChildIsReady=False
 	if DeletionRun:
 		logging.warning("Deleting %s in account %s in region %s",ConfigList[i]['Name'],ConfigList[i]['AccountID'],ConfigList[i]['Region'])
 		DelConfigRecorder=Inventory_Modules.del_config_recorder(account_credentials, region, ConfigList[i]['Name'])
 for i in range(len(DeliveryChanList)):
 	print("I found a delivery channel for account {} in region {}".format(DeliveryChanList[i]['AccountID'],DeliveryChanList[i]['Region']))
+	ChildIsReady=False
 	if DeletionRun:
 		logging.warning("Deleting %s in account %s in region %s",DeliveryChanList[i]['Name'],DeliveryChanList[i]['AccountID'],DeliveryChanList[i]['Region'])
 		DelDeliveryChannel=Inventory_Modules.del_delivery_channel(account_credentials, region, DeliveryChanList[i]['Name'])
 
 print()
+print("Step 2 is complete.")
+print()
+
 # Step 3
 # 3. The account must not have a Cloudtrail Trail name the same name as the LZ Trail ("AWS-Landing-Zone-BaselineCloudTrail")
 try:
@@ -213,7 +242,7 @@ try:
 	# RegionList.remove('ap-east-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
 	CTtrails2=[]
 	for region in RegionList:
-		print(ERASE_LINE,"Checking account {} in region {} for CloudTrail named 'AWS-Landing-Zone-BaselineCloudTrail'".format(account_credentials['AccountNumber'],region),end='\r')
+		print(ERASE_LINE+"Checking account {} in region {} for CloudTrail named".format(account_credentials['AccountNumber'],region)+Fore.RED+" 'AWS-Landing-Zone-BaselineCloudTrail'"+Fore.RESET,end='\r')
 		logging.warning("Checking region %s for Cloud Trails",region)
 		ctrail='arn:aws:cloudtrail:'+region+':'+account_credentials['AccountNumber']+':trail/AWS-Landing-Zone-BaselineCloudTrail'
 		CTtrails=Inventory_Modules.find_cloudtrails(account_credentials,region,ctrail)
@@ -235,6 +264,7 @@ for i in range(len(CTtrails2)):
 			print(my_Error)
 
 print()
+print("Step 3 is complete.")
 # Step 4 - handled by Step 0
 # 4. There must be an AWSCloudFormationStackSetExecution role present in the account so that StackSets can assume it and deploy stack instances. This role must trust the Organizations Master account. In LZ the account is created with that role name so stacksets just works. You can add this role manually via CloudFormation in the existing account.
 
@@ -247,7 +277,7 @@ try:
 	# RegionList.remove('ap-east-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
 	GDinvites2=[]
 	for region in RegionList:
-		print(ERASE_LINE,"Checking account {} in region {} for GuardDuty invitations".format(account_credentials['AccountNumber'],region),end='\r')
+		print(ERASE_LINE+"Checking account {} in region {} for".format(account_credentials['AccountNumber'],region)+Fore.RED+" GuardDuty"+Fore.RESET+" invitations",end='\r')
 		logging.error("Checking account %s in region %s for GuardDuty invites",account_credentials['AccountNumber'],region)
 		GDinvites=Inventory_Modules.find_gd_invites(account_credentials,region)
 		if len(GDinvites) > 0:
@@ -271,6 +301,9 @@ for i in range(len(GDinvites2)):
 				delresponse=Inventory_Modules.delete_gd_invites(account_credentials, region, GDinvites2[x]['AccountId'])
 			except ClientError as my_Error:
 				print(my_Error)
+
+print()
+print("Step 4 is complete.")
 
 # Step 6
 # 6. STS must be active in all regions. You can check from the Account Settings page in IAM.
