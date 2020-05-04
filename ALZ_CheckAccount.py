@@ -115,6 +115,16 @@ logging.info("Role ARN: %s" % role_arn)
 # Step 0 -
 # 0. The Child account MUST allow the Master account access into the Child IAM role called "AWSCloudFormationStackSetExecutionRole"
 
+print("This script does 5 things... ")
+print("	1. Checks to ensure the 'AWSCloudFormationStackSetExecutionRole' exists in the child account and trusts the Master Org account")
+print("	2. Checks the child account in each of the regions that support ALZ to see if there's already a Config Recorder and Delivery Channel enabled...")
+print("	3. Checks that there isn't a CloudTrail trail called 'AWS-Landing-Zone-BaselineCloudTrail' in the account. ")
+print(" 4. Checks to see if GuardDuty has been enabled for this child account. If it has been, it needs to be deleted before we can adopt this new account into the Org's Automated Landing Zone.")
+print("	5. This child account must exist within the Parent Organization. If it doesn't - then you must move it into this Org (this script can't do that for you).")
+print()
+print("Since this script is fairly new - All comments or suggestions are enthusiastically encouraged")
+print()
+
 try:
 	account_credentials = client_sts.assume_role(
 		RoleArn=role_arn,
