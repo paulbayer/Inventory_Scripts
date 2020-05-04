@@ -88,7 +88,7 @@ else:
 ERASE_LINE = '\x1b[2K'
 
 """
-Steps of this script ceom from here: https://w.amazon.com/bin/view/AWS/Teams/SA/AWS_Solutions_Builder/Working_Backwards/AWS_Solutions-Foundations-Landing-Zone/Landing_Zone_FAQs/#HWhatifmycustomerdoesn27twanttotakenoforananswer3F
+Steps of this script come from here: https://w.amazon.com/bin/view/AWS/Teams/SA/AWS_Solutions_Builder/Working_Backwards/AWS_Solutions-Foundations-Landing-Zone/Landing_Zone_FAQs/#HWhatifmycustomerdoesn27twanttotakenoforananswer3F
 
 0. The Child account MUST allow the Master account access into the Child IAM role called "AWSCloudFormationStackSetExecutionRole"
 
@@ -128,9 +128,10 @@ ChildIsReady=True
 # Step 0 -
 # 0. The Child account MUST allow the Master account access into the Child IAM role called "AWSCloudFormationStackSetExecutionRole"
 
-print("This script does 5 things... ")
-print(Fore.BLUE+"  1."+Fore.RESET+" Checks to ensure the "+Fore.RED+"'AWSCloudFormationStackSetExecutionRole'"+Fore.RESET)
+print("This script does 6 things... ")
+print(Fore.BLUE+"  0."+Fore.RESET+" Checks to ensure the "+Fore.RED+"'AWSCloudFormationStackSetExecutionRole'"+Fore.RESET)
 print("     exists in the child account and trusts the Master Org account.")
+print(Fore.BLUE+"  1."+Fore.RESET+" Checks to ensure the "+Fore.RED+"Default VPCs"+Fore.RESET+"in each region are deleted")
 print(Fore.BLUE+"  2."+Fore.RESET+" Checks the child account in each of the regions that support ALZ")
 print("     to see if there's already a "+Fore.RED+"Config Recorder and Delivery Channel "+Fore.RESET+"enabled...")
 print(Fore.BLUE+"  3."+Fore.RESET+" Checks that there isn't a CloudTrail trail called")
@@ -152,7 +153,7 @@ try:
 		RoleSessionName="ALZ_CheckAccount")['Credentials']
 	account_credentials['AccountNumber']=pChildAccountId
 	print("We were able to successfully confirm the role "+Fore.RED+"'AWSCloudFormationStackSetExecutionRole'"+Fore.RESET+" exists and trusts the Master Account")
-	print("Step 1 is complete.")
+	print("Step 0 is complete.")
 	# pprint.pprint(account_credentials)
 except ClientError as my_Error:
 	if str(my_Error).find("AuthFailure") > 0:
@@ -176,6 +177,18 @@ except ClientError as my_Error:
 
 logging.error("Was able to successfully connect using the credentials... ")
 print()
+# Step 1
+	# This part will find and delete the Default VPCs in each region for the child account. We only delete if you provided that in the parameters list.
+try:
+	DefaultVPCs=[]
+	for region in RegionList:
+		print(ERASE_LINE,"Checking account {} in region {}".format(account_credentials['AccountNumber'],region)," for "+Fore.RED+"default VPCs"+Fore.RESET,end='\r')
+
+except ClientError as my_Error:
+	logging.critical("Failed to identify the Default VPCs in the region properly")
+	ChildIsReady=False
+	print(my_Error)
+
 # Step 2
 	# This part will check the Config Recorder and  Delivery Channel. If they have one, we need to delete it, so we can create another. We'll ask whether this is ok before we delete.
 try:
