@@ -27,13 +27,13 @@ parser.add_argument(
 	metavar="Accounts to leave alone",
 	default=[],
 	help="These are the account numbers you don't want to screw with. Likely the core accounts. Separate them by a space.")
-# parser.add_argument(
-# 	"-r","--region",
-# 	nargs="*",
-# 	dest="pregion",
-# 	metavar="region name string",
-# 	default=["us-east-1"],
-# 	help="String fragment of the region(s) you want to check for resources.")
+parser.add_argument(
+	"-r","--pRegion",
+	# nargs="*",
+	dest="pRegion",
+	metavar="pRegion name string",
+	default="us-east-1",
+	help="String fragment of the pRegion(s) you want to check for resources.")
 parser.add_argument(
 	"+delete","+forreal",
 	dest="DeletionRun",
@@ -42,35 +42,50 @@ parser.add_argument(
 	action="store_const",
 	help="This will delete the identity providers found - without any opportunity to confirm. Be careful!!")
 parser.add_argument(
-    '-d', '--debug',
-    help="Print lots of debugging statements",
-    action="store_const",
+	'-dd', '--debug',
+	help="Print LOTS of debugging statements",
+	action="store_const",
 	dest="loglevel",
-	const=logging.INFO,
-    default=logging.CRITICAL)
+	const=logging.DEBUG,	# args.loglevel = 10
+	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-v', '--verbose',
-    help="Be verbose",
-    action="store_const",
+	'-d',
+	help="Print debugging statements",
+	action="store_const",
 	dest="loglevel",
-	const=logging.WARNING)
+	const=logging.INFO,	# args.loglevel = 20
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-vv', '--verbose',
+	help="Be MORE verbose",
+	action="store_const",
+	dest="loglevel",
+	const=logging.WARNING, # args.loglevel = 30
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-v',
+	help="Be verbose",
+	action="store_const",
+	dest="loglevel",
+	const=logging.ERROR, # args.loglevel = 40
+	default=logging.CRITICAL) # args.loglevel = 50
 args = parser.parse_args()
 
 pProfile=args.pProfile
-# pRegionList=args.pregion
+pRegion=args.pRegion
 AccountsToSkip=args.pSkipAccounts
 verbose=args.loglevel
 DeletionRun=args.DeletionRun
-logging.basicConfig(level=args.loglevel)
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)30s() ] %(message)s")
 
 ##########################
 ERASE_LINE = '\x1b[2K'
 
 print()
 fmt='%-20s %-15s %-15s'
-print(fmt % ("Account","Region","IDP Name"))
+print(fmt % ("Account","pRegion","IDP Name"))
 print(fmt % ("-------","------","--------"))
-# RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
+# pRegionList=Inventory_Modules.get_ec2_pRegions(ppRegionList)
 ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
 # pprint.pprint(AccountsToSkip)
@@ -95,14 +110,14 @@ for account in ChildAccounts:
 			print(pProfile+": Other kind of failure for account {}".format(account['AccountId']))
 			print (my_Error)
 		break
-	# for region in RegionList:
+	# for pRegion in pRegionList:
 	try:
 		idpNum=0
-		Idps=Inventory_Modules.find_saml_components_in_acct(account_credentials,region)
+		Idps=Inventory_Modules.find_saml_components_in_acct(account_credentials,pRegion)
 		# pprint.pprint(Stacks)
 		idpNum=len(Idps)
-		logging.warning("Account: %s | Region: %s | Found %s Idps", account['AccountId'], region, idpNum )
-		print(ERASE_LINE,Fore.RED+"Account: {} Region: {} Found {} Idps. {} accounts to go".format(account['AccountId'],region,idpNum,NumofAccounts)+Fore.RESET,end='\r')
+		logging.warning("Account: %s | pRegion: %s | Found %s Idps", account['AccountId'], pRegion, idpNum )
+		print(ERASE_LINE,Fore.RED+"Account: {} pRegion: {} Found {} Idps. {} accounts to go".format(account['AccountId'],pRegion,idpNum,NumofAccounts)+Fore.RESET,end='\r')
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
 			print(account['AccountId']+": Authorization Failure")
@@ -110,18 +125,18 @@ for account in ChildAccounts:
 		for y in range(len(Idps)):
 			logging.warning("Arn: %s",Idps[y]['Arn'])
 			NameStart=Idps[y]['Arn'].find('/')+1
-			logging.warning("Name starts at character: %s",NameStart)
+			logging.debug("Name starts at character: %s",NameStart)
 			IdpName=Idps[y]['Arn'][NameStart:]
-			print(fmt % (account['AccountId'],region,IdpName))
+			print(fmt % (account['AccountId'],pRegion,IdpName))
 			IdpsFound.append({
 				'Account':account['AccountId'],
-				'Region':region,
+				'pRegion':pRegion,
 				'IdpName':IdpName,
 				'Arn':Idps[y]['Arn'] })
 	NumofAccounts-=1
 
 print(ERASE_LINE)
-print(Fore.RED+"Found {} Idps across {} accounts across {} regions".format(len(IdpsFound),len(ChildAccounts),len(RegionList))+Fore.RESET)
+print(Fore.RED+"Found {} Idps across {} accounts in region {}".format(len(IdpsFound),len(ChildAccounts),pRegion)+Fore.RESET)
 print()
 # pprint.pprint(IdpsFound)
 
@@ -133,13 +148,13 @@ if DeletionRun:
 		account_credentials = sts_client.assume_role(
 			RoleArn=role_arn,
 			RoleSessionName="Find-Idps")['Credentials']
-		session_aws=boto3.Session(region_name=IdpsFound[y]['Region'],
+		session_aws=boto3.Session(pRegion_name=IdpsFound[y]['pRegion'],
 				aws_access_key_id = account_credentials['AccessKeyId'],
 				aws_secret_access_key = account_credentials['SecretAccessKey'],
 				aws_session_token = account_credentials['SessionToken']
 				)
 		iam_client=session_aws.client('iam')
-		print("Deleting Idp {} from account {} in region {}".format(IdpsFound[y]['IdpName'],IdpsFound[y]['Account'],IdpsFound[y]['Region']))
+		print("Deleting Idp {} from account {} in pRegion {}".format(IdpsFound[y]['IdpName'],IdpsFound[y]['Account'],IdpsFound[y]['pRegion']))
 		response=iam_client.delete_saml_provider(SAMLProviderArn=IdpsFound[y]['Arn'])
 
 print("Thanks for using this script...")
