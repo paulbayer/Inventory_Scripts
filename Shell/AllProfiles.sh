@@ -10,7 +10,7 @@ declare -a ConfProfiles
 declare -a SkipProfiles
 
 SkipProfiles=()
-SkipProfiles=("Org-Test1" "Org-Test2" "Nope" "Personal" "#Nope" "#Personal" "SS-default" "SS-seciaas" "SS-Sand" "default" "TouchPoint" "Shared-Fid" "TIAA-Mngmnt-Prod-e1" "TIAA-Mngmnt-Prod-w2" "ChildAccount-e1" "ChildAccount-w2" "ChildAccount2-e1" "ChildAccount2-w2")
+SkipProfiles=("Org-Test1" "Org-Test2" "Nope" "Personal" "#Nope" "#Personal" "default" "ChildAccount-e1" "ChildAccount-w2" "ChildAccount2-e1" "ChildAccount2-w2")
 CredProfiles2=$(egrep '\[.*\]' ~/.aws/credentials | tr -d '[]\r')
 ConfProfiles2=$(egrep '\[.*\]' ~/.aws/config | tr -d '[]\r' | sed -e 's/profile //g')
 CredProfiles=($(sort <<< "${CredProfiles2[@]}"))
