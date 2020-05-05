@@ -354,6 +354,60 @@ def RemoveCoreAccounts(MainList,AccountsToRemove):
 Above - Generic functions
 Below - Specific functions to specific features
 """
+def find_default_vpc(ocredentials, fRegion):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+"""
+	import boto3, logging, pprint
+	session_vpc=boto3.Session(
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken'],
+		region_name=fRegion)
+	client_vpc=session_vpc.client('ec2')
+	logging.warning("Looking for default VPCs in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
+	response=client_vpc.describe_vpcs(
+		Filters=[
+        {
+            'Name': 'isDefault',
+            'Values': True
+        } ]
+
+	    # DryRun=True|False,
+	    # NextToken='string',
+	    # MaxResults=123
+	)
+	# logging.info(response)
+	return(response)
+
+def del_vpc(ocredentials,fRegion,fVpcId):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+	fRegion = region
+	fVpcId = VPC ID
+	"""
+	import boto3, logging,pprint
+	session_vpc=boto3.Session(
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken'],
+		region_name=fRegion)
+	client_vpc=session_vpc.client('ec2')
+	logging.error("Deleting VPC %s from Region %s in account %s",fVpcId,fRegion,ocredentials['AccountNumber'])
+	response=client_vpc.delete_vpc(
+		VpcId=fVpcId
+	)
+	return(response)
+
+
 def find_config_recorders(ocredentials,fRegion):
 	"""
 	ocredentials is an object with the following structure:

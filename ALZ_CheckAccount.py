@@ -125,6 +125,7 @@ client_sts = session_aws.client('sts')
 role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(pChildAccountId)
 logging.info("Role ARN: %s" % role_arn)
 ChildIsReady=True
+json_formatted_str_TP=""
 # Step 0 -
 # 0. The Child account MUST allow the Master account access into the Child IAM role called "AWSCloudFormationStackSetExecutionRole"
 
@@ -183,12 +184,31 @@ try:
 	DefaultVPCs=[]
 	for region in RegionList:
 		print(ERASE_LINE,"Checking account {} in region {}".format(account_credentials['AccountNumber'],region)," for "+Fore.RED+"default VPCs"+Fore.RESET,end='\r')
-
+		logging.info("Looking for Default VPCs in account %s from Region %s",account_credentials['AccountNumber'],region)
+		DefaultVPC=Inventory_Modules.find_default_vpc(account_credentials, region)
+		if len(DefaultVPC) > 0:
+				DefaultVPCs.append({
+					'VPCId':DefaultVPC['Vpcs'][0]['VpcId'],
+					'AccountID':pChildAccountId,
+					'Region':region
+				})
 except ClientError as my_Error:
 	logging.critical("Failed to identify the Default VPCs in the region properly")
 	ChildIsReady=False
 	print(my_Error)
 
+for i in range(len(DefaultVPCs)):
+	print("I found default VPCs for account {} in region {}".format(DefaultVPCs[i]['AccountID'],DefaultVPCs[i]['Region']))
+	ChildIsReady=False
+	if DeletionRun:
+		logging.warning("Deleting VpcId %s in account %s in region %s",DefaultVPCs[i]['VPCId'],DefaultVPCs[i]['AccountID'],DefaultVPCs[i]['Region'])
+		DelVPC=Inventory_Modules.del_vpc(account_credentials, region, DefaultVPCs[i]['VPCId'])
+
+print()
+print(ERASE_LINE+"Checked account {} in {} regions. Found {} issues with".format(account_credentials['AccountNumber'],len(RegionList),len(DefaultVPCs))+Fore.RED+" Default VPCs"+Fore.RESET,end='\r')
+print()
+print("Step 1 is complete.")
+print()
 # Step 2
 	# This part will check the Config Recorder and  Delivery Channel. If they have one, we need to delete it, so we can create another. We'll ask whether this is ok before we delete.
 try:
