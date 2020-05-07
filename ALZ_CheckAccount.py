@@ -35,7 +35,7 @@ parser.add_argument(
 	const=True,
 	default=False,
 	action="store_const",
-	help="This is the account number of the account you're checking, to see if it can be adopted into the ALZ.")
+	help="This flag only checks 'us-east-1', so makes the whole script run really fast.")
 parser.add_argument(
 	"+delete","+forreal",
 	dest="DeletionRun",
