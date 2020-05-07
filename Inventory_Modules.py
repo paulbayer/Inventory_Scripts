@@ -372,28 +372,66 @@ def RemoveCoreAccounts(MainList,AccountsToRemove):
 			NewCA.append(MainList[i])
 	return(NewCA)
 
-def get_child_access(fRootProfile,fRegion,fChildAccount,fRole='AWSCloudFormationStackSetExecutionRole'):
+def get_child_access (fRootProfile, fRegion, fChildAccount, fRoleList=['AWSCloudFormationStackSetExecutionRole','AWSControlTowerExecution','OrganizationAccountAccessRole']):
+	"""
+	- fRootProfile is a string
+	- rRegion expects a string representing one of the AWS regions ('us-east-1', 'eu-west-1', etc.)
+	- fChildAccount expects an AWS account number (ostensibly of a Child Account)
+	- fRoleList expects a list of roles to try, but defaults to a list of typical roles, in case you don't provide
+
+	The response object is a Session object within boto3
+	"""
 	import boto3, logging
 	from botocore.exceptions import ClientError
 
-	try:
-		sts_session = boto3.Session(profile_name=fRootProfile)
-		sts_client = sts_session.client('sts',region_name=fRegion)
-		role_arn = 'arn:aws:iam::'+fChildAccount+':role/'+fRole
-		account_credentials = sts_client.assume_role(
-			RoleArn=role_arn,
-			RoleSessionName="Find-ChildAccount-Things")['Credentials']
-		session_aws=boto3.Session(
-			aws_access_key_id=account_credentials['AccessKeyId'],
-			aws_secret_access_key=account_credentials['SecretAccessKey'],
-			aws_session_token=account_credentials['SessionToken'],
-			region_name=fRegion)
-		return(session_aws)
-	except ClientError as my_Error:
-		if my_Error.response['Error']['Code'] == 'ClientError':
-			logging.info(my_Error)
-		return_string=fRole+" failed. Try Again"
-		return(return_string)
+	sts_session = boto3.Session(profile_name=fRootProfile)
+	sts_client = sts_session.client('sts',region_name=fRegion)
+	for role in fRoleList:
+		try:
+			role_arn = 'arn:aws:iam::'+fChildAccount+':role/'+role
+			account_credentials = sts_client.assume_role(
+				RoleArn=role_arn,
+				RoleSessionName="Find-ChildAccount-Things")['Credentials']
+			session_aws=boto3.Session(
+				aws_access_key_id=account_credentials['AccessKeyId'],
+				aws_secret_access_key=account_credentials['SecretAccessKey'],
+				aws_session_token=account_credentials['SessionToken'],
+				region_name=fRegion)
+			return(session_aws)
+		except ClientError as my_Error:
+			if my_Error.response['Error']['Code'] == 'ClientError':
+				logging.info(my_Error)
+			return_string="{} failed. Try Again".format(str(fRoleList))
+			continue
+	return(return_string)
+
+def get_child_access2 (fRootProfile, fChildAccount, fRegion='us-east-1',  fRoleList=['AWSCloudFormationStackSetExecutionRole','AWSControlTowerExecution','OrganizationAccountAccessRole']):
+	"""
+	- fRootProfile is a string
+	- rRegion expects a string representing one of the AWS regions ('us-east-1', 'eu-west-1', etc.)
+	- fChildAccount expects an AWS account number (ostensibly of a Child Account)
+	- fRoleList expects a list of roles to try, but defaults to a list of typical roles, in case you don't provide
+
+	The response object is a dict with account_credentials to pass onto other functions
+	"""
+	import boto3, logging
+	from botocore.exceptions import ClientError
+
+	sts_session = boto3.Session(profile_name=fRootProfile)
+	sts_client = sts_session.client('sts',region_name=fRegion)
+	for role in fRoleList:
+		try:
+			role_arn = 'arn:aws:iam::'+fChildAccount+':role/'+role
+			account_credentials = sts_client.assume_role(
+				RoleArn=role_arn,
+				RoleSessionName="Find-ChildAccount-Things")['Credentials']
+			return(account_credentials,role)
+		except ClientError as my_Error:
+			if my_Error.response['Error']['Code'] == 'ClientError':
+				logging.info(my_Error)
+			return_string="{} failed. Try Again".format(str(fRoleList))
+			continue
+	return({},return_string)
 
 def find_if_Isengard_registered(ocredentials):
 	"""
@@ -620,7 +658,7 @@ def del_delivery_channel(ocredentials,fRegion, fDelivery_channel_name):
 	response=client_cfg.delete_delivery_channels(DeliveryChannelName=fDelivery_channel_name)
 	return(response)
 
-def find_cloudtrails(ocredentials,fRegion,*fCloudTrailnames):
+def find_cloudtrails(ocredentials,fRegion,fCloudTrailnames=['AWS-Landing-Zone-BaselineCloudTrail','aws-controltower-BaselineCloudTrail']):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -628,7 +666,7 @@ def find_cloudtrails(ocredentials,fRegion,*fCloudTrailnames):
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the account number
 	fRegion = region
-	fCloudTrailnames = CloudTrail names we're looking for (null value returns all cloud trails)
+	fCloudTrailnames = List of CloudTrail names we're looking for (null value returns all cloud trails)
 
 	Returned Object looks like this:
 	{
@@ -664,13 +702,16 @@ def find_cloudtrails(ocredentials,fRegion,*fCloudTrailnames):
 		region_name=fRegion)
 	client_ct=session_ct.client('cloudtrail')
 	logging.info("Looking for CloudTrail trails in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
-	try:
-		response=client_ct.describe_trails(trailNameList=[*fCloudTrailnames])['trailList']
-	except ClientError as my_Error:
-		if str(my_Error).find("InvalidTrailNameException") > 0:
-			print("Bad CloudTrail name provided")
-		response=''
-	return(response)
+	for trailname in fCloudTrailnames:
+		try:
+			response=client_ct.describe_trails(trailNameList=[trailname])
+			if len(response['trailList']) > 0:
+				return(response,trailname)
+		except ClientError as my_Error:
+			if str(my_Error).find("InvalidTrailNameException") > 0:
+				print("Bad CloudTrail name provided")
+			response=trailname+" didn't work. Try Again"
+	return(response,trailname)
 
 def del_cloudtrails(ocredentials,fRegion,fCloudTrail):
 	"""

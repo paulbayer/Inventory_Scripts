@@ -120,24 +120,21 @@ It's also possible to run a shell script to automate the deletion of all recorde
 
 """
 print()
-session_aws = boto3.Session(profile_name=pProfile)
-client_sts = session_aws.client('sts')
-role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(pChildAccountId)
-logging.info("Role ARN: %s" % role_arn)
-ChildIsReady=True
+# session_aws = boto3.Session(profile_name=pProfile)
+# client_sts = session_aws.client('sts')
+# role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(pChildAccountId)
+# logging.info("Role ARN: %s" % role_arn)
 json_formatted_str_TP=""
 Issues=0
 # Step 0 -
 # 0. The Child account MUST allow the Master account access into the Child IAM role called "AWSCloudFormationStackSetExecutionRole"
 
 print("This script does 6 things... ")
-print(Fore.BLUE+"  0."+Fore.RESET+" Checks to ensure the "+Fore.RED+"'AWSCloudFormationStackSetExecutionRole'"+Fore.RESET)
-print("     exists in the child account and trusts the Master Org account.")
-print(Fore.BLUE+"  1."+Fore.RESET+" Checks to ensure the "+Fore.RED+"Default VPCs"+Fore.RESET+"in each region are deleted")
-print(Fore.BLUE+"  2."+Fore.RESET+" Checks the child account in each of the regions that support ALZ")
+print(Fore.BLUE+"  0."+Fore.RESET+" Checks to ensure you have the necessary cross-account role access to the child account.")
+print(Fore.BLUE+"  1."+Fore.RESET+" Checks to ensure the "+Fore.RED+"Default VPCs "+Fore.RESET+"in each region are deleted")
+print(Fore.BLUE+"  2."+Fore.RESET+" Checks the child account in each of the regions")
 print("     to see if there's already a "+Fore.RED+"Config Recorder and Delivery Channel "+Fore.RESET+"enabled...")
-print(Fore.BLUE+"  3."+Fore.RESET+" Checks that there isn't a CloudTrail trail called")
-print(Fore.RED+"     'AWS-Landing-Zone-BaselineCloudTrail'"+Fore.RESET+" in the account. ")
+print(Fore.BLUE+"  3."+Fore.RESET+" Checks that there isn't a duplicate "+Fore.RED+"CloudTrail"+Fore.RESET+" trail in the account.")
 print(Fore.BLUE+"  4."+Fore.RESET+" Checks to see if "+Fore.RED+"GuardDuty"+Fore.RESET+" has been enabled for this child account.")
 print("     If it has been, it needs to be deleted before we can adopt this new account")
 print("     into the Org's Automated Landing Zone.")
@@ -149,13 +146,15 @@ print("Since this script is fairly new - All comments or suggestions are enthusi
 print()
 
 try:
-	account_credentials = client_sts.assume_role(
-		RoleArn=role_arn,
-		RoleSessionName="ALZ_CheckAccount")['Credentials']
+	account_credentials,role = Inventory_Modules.get_child_access2(pProfile,pChildAccountId)
+	# account_credentials = client_sts.assume_role(
+	# 	RoleArn=role_arn,
+	# 	RoleSessionName="ALZ_CheckAccount")['Credentials']
 	account_credentials['AccountNumber']=pChildAccountId
-	print("We were able to successfully confirm the role "+Fore.RED+"'AWSCloudFormationStackSetExecutionRole'"+Fore.RESET+" exists and trusts the Master Account")
-	print("Step 0 is complete.")
 	# pprint.pprint(account_credentials)
+	if role.find("failed") > 0:
+		print(Fore.RED,"We weren't able to connect to the Child Account from this Master Account. Please check the role Trust Policy and re-run this script.",Fore.RESET)
+		sys.exit("Exiting due to cross-account Auth Failure")
 except ClientError as my_Error:
 	if str(my_Error).find("AuthFailure") > 0:
 		print("{}: Authorization Failure for account {}".format(pProfile,pChildAccountId))
@@ -181,14 +180,18 @@ except ClientError as my_Error:
 
 logging.error("Was able to successfully connect using the credentials... ")
 print()
+print("We were able to confirm the role"+Fore.GREEN,role,Fore.RESET+"exists in account"+Fore.GREEN,pChildAccountId,Fore.RESET+"and trusts the Master Account")
+print(Fore.GREEN+"** Step 0 completed without issues"+Fore.RESET)
+print()
 
 # Step 1
 	# This part will find and delete the Default VPCs in each region for the child account. We only delete if you provided that in the parameters list.
 try:
+	Step1Success=True
 	DefaultVPCs=[]
 	for region in RegionList:
-		print(ERASE_LINE,"Checking account {} in region {}".format(account_credentials['AccountNumber'],region)," for "+Fore.RED+"default VPCs"+Fore.RESET,end='\r')
-		logging.info("Looking for Default VPCs in account %s from Region %s",account_credentials['AccountNumber'],region)
+		print(ERASE_LINE,"Checking account {} in region {}".format(pChildAccountId,region)," for "+Fore.RED+"default VPCs"+Fore.RESET,end='\r')
+		logging.info("Looking for Default VPCs in account %s from Region %s",pChildAccountId,region)
 		DefaultVPC=Inventory_Modules.find_account_vpcs(account_credentials, region, 'True')
 		if len(DefaultVPC['Vpcs']) > 0:
 				DefaultVPCs.append({
@@ -196,11 +199,11 @@ try:
 					'AccountID':pChildAccountId,
 					'Region':region
 				})
-				ChildIsReady=False
+				Step1Success=False
 				Issues+=1
 except ClientError as my_Error:
 	logging.critical("Failed to identify the Default VPCs in the region properly")
-	ChildIsReady=False
+	Step1Success=False
 	print(my_Error)
 
 for i in range(len(DefaultVPCs)):
@@ -210,15 +213,20 @@ for i in range(len(DefaultVPCs)):
 		DelVPC=Inventory_Modules.del_vpc(account_credentials, region, DefaultVPCs[i]['VPCId'])
 		Issues-=1
 
-
-print(ERASE_LINE+"Checked account {} in {} regions. Found {} default VPCs".format(account_credentials['AccountNumber'],len(RegionList),len(DefaultVPCs)),end='\r')
-print()
-print("Step 1 is complete.")
+print(ERASE_LINE,end='\r')
+if Step1Success:
+	print("Checked account {} in {} regions. ".format(pChildAccountId,len(RegionList))+Fore.GREEN+"Found {} default VPCs".format(len(DefaultVPCs))+Fore.RESET)
+	print(Fore.GREEN+"** Step 1 completed without issues"+Fore.RESET)
+else:
+	print("Checked account {} in {} regions. ".format(pChildAccountId,len(RegionList))+Fore.RED+"Found {} default VPCs".format(len(DefaultVPCs))+Fore.RESET)
+	print(Fore.RED+"** Step 1 completed with blockers found"+Fore.RESET)
 print()
 # Step 2
 	# This part will check the Config Recorder and  Delivery Channel. If they have one, we need to delete it, so we can create another. We'll ask whether this is ok before we delete.
 try:
 	# RegionList=Inventory_Modules.get_service_regions('config','all')
+	print("Checking account {} for a Config Recorders and Delivery Channels in any region".format(pChildAccountId))
+	Step2Success=True
 	ConfigList=[]
 	DeliveryChanList=[]
 	"""
@@ -228,8 +236,8 @@ try:
 	# RegionList.remove('me-south-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
 	# RegionList.remove('ap-east-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
 	for region in RegionList:
-		print(ERASE_LINE,"Checking account {} in region {} for Config Recorder".format(account_credentials['AccountNumber'],region),end='\r')
-		logging.info("Looking for Config Recorders in account %s from Region %s",account_credentials['AccountNumber'],region)
+		print(ERASE_LINE,"Checking account {} in region {} for Config Recorder".format(pChildAccountId,region),end='\r')
+		logging.info("Looking for Config Recorders in account %s from Region %s",pChildAccountId,region)
 		# ConfigRecorder=client_cfg.describe_configuration_recorders()
 		ConfigRecorder=Inventory_Modules.find_config_recorders(account_credentials, region)
 		logging.debug("Tried to capture Config Recorder")
@@ -240,7 +248,7 @@ try:
 				'AccountID':pChildAccountId,
 				'Region':region
 			})
-		print(ERASE_LINE,"Checking account {} in region {} for Delivery Channel".format(account_credentials['AccountNumber'],region),end='\r')
+		print(ERASE_LINE,"Checking account {} in region {} for Delivery Channel".format(pChildAccountId,region),end='\r')
 		DeliveryChannel=Inventory_Modules.find_delivery_channels(account_credentials, region)
 		logging.debug("Tried to capture Delivery Channel")
 		if len(DeliveryChannel['DeliveryChannels']) > 0:
@@ -249,31 +257,33 @@ try:
 				'AccountID':pChildAccountId,
 				'Region':region
 			})
-	print(ERASE_LINE+"Checked account {} in {} regions. Found {} issues with".format(account_credentials['AccountNumber'],len(RegionList),len(ConfigList)+len(DeliveryChanList))+Fore.RED+" Config Recorders and Delivery Channels"+Fore.RESET,end='\r')
+	logging.error("Checked account %s in %s regions. Found %s issues with Config Recorders and Delivery Channels",pChildAccountId,len(RegionList),len(ConfigList)+len(DeliveryChanList))
 except ClientError as my_Error:
 	logging.critical("Failed to capture Config Recorder and Delivery Channels")
-	ChildIsReady=False
+	Step2Success=False
 	print(my_Error)
 
 for i in range(len(ConfigList)):
-	print("I found a config recorder for account {} in region {}".format(ConfigList[i]['AccountID'],ConfigList[i]['Region']))
-	ChildIsReady=False
+	logging.error(Fore.RED+"I found a config recorder for account %s in region %s",ConfigList[i]['AccountID'],ConfigList[i]['Region']+Fore.RESET)
+	Step2Success=False
 	Issues+=1
 	if DeletionRun:
 		logging.warning("Deleting %s in account %s in region %s",ConfigList[i]['Name'],ConfigList[i]['AccountID'],ConfigList[i]['Region'])
 		DelConfigRecorder=Inventory_Modules.del_config_recorder(account_credentials, region, ConfigList[i]['Name'])
 		Issues-=1
 for i in range(len(DeliveryChanList)):
-	print("I found a delivery channel for account {} in region {}".format(DeliveryChanList[i]['AccountID'],DeliveryChanList[i]['Region']))
-	ChildIsReady=False
+	logging.error(Fore.RED+"I found a delivery channel for account %s in region %s",DeliveryChanList[i]['AccountID'],DeliveryChanList[i]['Region']+Fore.RESET)
+	Step2Success=False
 	Issues+=1
 	if DeletionRun:
 		logging.warning("Deleting %s in account %s in region %s",DeliveryChanList[i]['Name'],DeliveryChanList[i]['AccountID'],DeliveryChanList[i]['Region'])
 		DelDeliveryChannel=Inventory_Modules.del_delivery_channel(account_credentials, region, DeliveryChanList[i]['Name'])
 		Issues-=1
 
-print()
-print("Step 2 is complete.")
+if Step2Success:
+	print(ERASE_LINE+Fore.GREEN+"** Step 2 completed without issues"+Fore.RESET)
+else:
+	print(ERASE_LINE+Fore.RED+"** Step 2 completed with blockers found"+Fore.RESET)
 print()
 
 # Step 3
@@ -282,22 +292,24 @@ try:
 	# RegionList=Inventory_Modules.get_service_regions('cloudtrail','all')
 	# RegionList.remove('me-south-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
 	# RegionList.remove('ap-east-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
+	print("Checking account {} for a specially named CloudTrail in any region".format(pChildAccountId))
+	Step3Success=True
 	CTtrails2=[]
 	for region in RegionList:
-		print(ERASE_LINE+"Checking account {} in region {} for CloudTrail named".format(account_credentials['AccountNumber'],region)+Fore.RED+" 'AWS-Landing-Zone-BaselineCloudTrail'"+Fore.RESET,end='\r')
-		logging.warning("Checking region %s for Cloud Trails",region)
-		ctrail='arn:aws:cloudtrail:'+region+':'+account_credentials['AccountNumber']+':trail/AWS-Landing-Zone-BaselineCloudTrail'
-		CTtrails=Inventory_Modules.find_cloudtrails(account_credentials,region,ctrail)
-		if len(CTtrails) > 0:
-			logging.error("Unfortunately, we've found a CloudTrail log named 'AWS-LandingZone-BaselineCloudTrail' in account %s in the %s region, which means we'll have to delete it before this account can be adopted.",account_credentials['AccountNumber'],region)
-			CTtrails2.append(CTtrails[0])
+		logging.error("Checking account %s in region %s for CloudTrail",pChildAccountId,region)
+		print(ERASE_LINE,"Checking account {} in region {} for CloudTrail trails".format(pChildAccountId,region),end='\r')
+		CTtrails,trailname=Inventory_Modules.find_cloudtrails(account_credentials,region)
+		if len(CTtrails['trailList']) > 0:
+			logging.error("Unfortunately, we've found a CloudTrail log named %s in account %s in the %s region, which means we'll have to delete it before this account can be adopted.",trailname,pChildAccountId,region)
+			CTtrails2.append(CTtrails['trailList'][0])
 except ClientError as my_Error:
 	print(my_Error)
 
+# pprint.pprint(CTtrails)
 # pprint.pprint(CTtrails2)
-# sys.exit(99)
 for i in range(len(CTtrails2)):
-	print("I found a CloudTrail trail for account {} in region {} named 'AWS-LandingZone-BaselineCloudTrail' ".format(account_credentials['AccountNumber'],CTtrails2[i]['HomeRegion']))
+	logging.error(Fore.RED+"I found a CloudTrail trail for account %s in region %s named %s ",pChildAccountId,CTtrails2[i]['HomeRegion'],trailname+Fore.RESET)
+	Step3Success=False
 	Issues+=1
 	if DeletionRun:
 		try:
@@ -307,27 +319,31 @@ for i in range(len(CTtrails2)):
 		except ClientError as my_Error:
 			print(my_Error)
 
+if Step3Success:
+	print(ERASE_LINE+Fore.GREEN+"** Step 3 completed without issues"+Fore.RESET)
+else:
+	print(ERASE_LINE+Fore.RED+"** Step 3 completed with blockers found"+Fore.RESET)
 print()
-print("Step 3 is complete.")
 # Step 4 - handled by Step 0
 # 4. There must be an AWSCloudFormationStackSetExecution role present in the account so that StackSets can assume it and deploy stack instances. This role must trust the Organizations Master account. In LZ the account is created with that role name so stacksets just works. You can add this role manually via CloudFormation in the existing account.
 
-print()
 # Step 5
 # 5. The account must not have a pending guard duty invite. You can check from the Guard Duty Console
 try:
 	# RegionList=Inventory_Modules.get_service_regions('guardduty','all')
 	# RegionList.remove('me-south-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
 	# RegionList.remove('ap-east-1')	# Opt-in region, which causes a failure if we check and it's not opted-in
+	print("Checking account {} for any GuardDuty invites".format(pChildAccountId))
+	Step4Success=True
 	GDinvites2=[]
 	for region in RegionList:
-		print(ERASE_LINE+"Checking account {} in region {} for".format(account_credentials['AccountNumber'],region)+Fore.RED+" GuardDuty"+Fore.RESET+" invitations",end='\r')
-		logging.error("Checking account %s in region %s for GuardDuty invites",account_credentials['AccountNumber'],region)
+		logging.error(ERASE_LINE+"Checking account %s in region %s for",pChildAccountId,region+Fore.RED+" GuardDuty"+Fore.RESET+" invitations")
+		logging.error("Checking account %s in region %s for GuardDuty invites",pChildAccountId,region)
 		GDinvites=Inventory_Modules.find_gd_invites(account_credentials,region)
 		if len(GDinvites) > 0:
 			for x in range(len(GDinvites['Invitations'])):
 				logging.warning("GD Invite: %s",str(GDinvites['Invitations'][x]))
-				logging.error("Unfortunately, we've found a GuardDuty invitation for account %s in the %s region from account %s, which means we'll have to delete it before this account can be adopted.",account_credentials['AccountNumber'],region,GDinvites['Invitations'][x]['AccountId'])
+				logging.error("Unfortunately, we've found a GuardDuty invitation for account %s in the %s region from account %s, which means we'll have to delete it before this account can be adopted.",pChildAccountId,region,GDinvites['Invitations'][x]['AccountId'])
 				GDinvites2.append({
 					'AccountId':GDinvites['Invitations'][x]['AccountId'],
 					'InvitationId':GDinvites['Invitations'][x]['InvitationId'],
@@ -337,8 +353,9 @@ except ClientError as my_Error:
 	print(my_Error)
 
 for i in range(len(GDinvites2)):
-	print("I found a GuardDuty invitation for account {} in region {} from account {} ".format(account_credentials['AccountNumber'],GDinvites2[i]['Region'],GDinvites2[i]['AccountId']))
+	logging.error(Fore.RED+"I found a GuardDuty invitation for account %s in region %s from account %s ",pChildAccountId,GDinvites2[i]['Region'],GDinvites2[i]['AccountId']+Fore.RESET)
 	Issues+=1
+	Step4Success=False
 	if DeletionRun:
 		for x in range(len(GDinvites2)):
 			try:
@@ -348,14 +365,11 @@ for i in range(len(GDinvites2)):
 			except ClientError as my_Error:
 				print(my_Error)
 
-print()
-print("Step 4 is complete.")
-if ChildIsReady:
-	print(Fore.BLUE+"So far, we've found {} issues that would hinder the adoption of this account".format(Issues))+Fore.RESET)
+if Step4Success:
+	print(ERASE_LINE+Fore.GREEN+"** Step 4 completed without issues"+Fore.RESET)
 else:
-	print(Fore.RED+"So far, we've found {} issues that would hinder the adoption of this account".format(Issues)+Fore.RESET)
-
-
+	print(ERASE_LINE+Fore.RED+"** Step 4 completed with blockers found"+Fore.RESET)
+print()
 # Step 6
 # 6. STS must be active in all regions. You can check from the Account Settings page in IAM.
 """
@@ -368,6 +382,8 @@ We would have already verified this - since we've used STS to connect to each re
 - If the existing account will be a child account in the Organization, use the AVM launch template through Service Catalog and enter the appropriate configuration parameters.
 '''
 # try:
+Step5Success=True
+print("Checking that the account is part of the AWS Organization.")
 OrgAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 OrgAccountList=[]
 for y in range(len(OrgAccounts)):
@@ -376,14 +392,23 @@ if not (pChildAccountId in OrgAccountList):
 	print()
 	print("Account # {} is not a part of the Organization. This account needs to be moved into the Organization to be adopted into the Landing Zone tool".format(pChildAccountId))
 	print()
+	Step5Success=False
 	Issues+=1
+
+if Step5Success:
+	print(ERASE_LINE+Fore.GREEN+"** Step 5 completed without issues"+Fore.RESET)
+else:
+	print(ERASE_LINE+Fore.RED+"** Step 5 completed with blockers found"+Fore.RESET)
+print()
 # Step 8
 # 8. The existing account can not be in any of the LZ-managed Organizations OUs. By default, these OUs are Core and Applications, but the customer may have chosen different or additional OUs to manage by LZ.
 """
 So we'll need to verify that the parent OU of the account is the root of the organization.
 """
+
+ChildIsReady=Step1Success and Step2Success and Step3Success and Step4Success and Step5Success
 if ChildIsReady:
-	print(Fore.BLUE+"We've found {} issues that would hinder the adoption of this account".format(Issues))+Fore.RESET)
+	print(Fore.GREEN+"**** We've found NO issues that would hinder the adoption of this account ****"+Fore.RESET)
 else:
 	print(Fore.RED+"We've found {} issues that would hinder the adoption of this account".format(Issues)+Fore.RESET)
 
