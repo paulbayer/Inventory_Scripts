@@ -126,6 +126,7 @@ role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(
 logging.info("Role ARN: %s" % role_arn)
 ChildIsReady=True
 json_formatted_str_TP=""
+Issues=0
 # Step 0 -
 # 0. The Child account MUST allow the Master account access into the Child IAM role called "AWSCloudFormationStackSetExecutionRole"
 
@@ -150,7 +151,6 @@ print()
 try:
 	account_credentials = client_sts.assume_role(
 		RoleArn=role_arn,
-		DurationSeconds=3600,
 		RoleSessionName="ALZ_CheckAccount")['Credentials']
 	account_credentials['AccountNumber']=pChildAccountId
 	print("We were able to successfully confirm the role "+Fore.RED+"'AWSCloudFormationStackSetExecutionRole'"+Fore.RESET+" exists and trusts the Master Account")
@@ -163,6 +163,7 @@ except ClientError as my_Error:
 		print("You must add the following lines to the Trust Policy of that role in the child account")
 		print(json_formatted_str_TP)
 		print(my_Error)
+		ChildIsReady=False
 		sys.exit("Exiting due to Authorization Failure...")
 	elif str(my_Error).find("AccessDenied") > 0:
 		print("{}: Access Denied Failure for account {}".format(pProfile,pChildAccountId))
@@ -170,14 +171,17 @@ except ClientError as my_Error:
 		print("You must add the following lines to the Trust Policy of that role in the child account")
 		print(json_formatted_str_TP)
 		print(my_Error)
+		ChildIsReady=False
 		sys.exit("Exiting due to Access Denied Failure...")
 	else:
 		print("{}: Other kind of failure for account {}".format(pProfile,pChildAccountId))
 		print (my_Error)
+		ChildIsReady=False
 		sys.exit("Exiting...")
 
 logging.error("Was able to successfully connect using the credentials... ")
 print()
+
 # Step 1
 	# This part will find and delete the Default VPCs in each region for the child account. We only delete if you provided that in the parameters list.
 try:
@@ -185,13 +189,15 @@ try:
 	for region in RegionList:
 		print(ERASE_LINE,"Checking account {} in region {}".format(account_credentials['AccountNumber'],region)," for "+Fore.RED+"default VPCs"+Fore.RESET,end='\r')
 		logging.info("Looking for Default VPCs in account %s from Region %s",account_credentials['AccountNumber'],region)
-		DefaultVPC=Inventory_Modules.find_default_vpc(account_credentials, region)
-		if len(DefaultVPC) > 0:
+		DefaultVPC=Inventory_Modules.find_account_vpcs(account_credentials, region, 'True')
+		if len(DefaultVPC['Vpcs']) > 0:
 				DefaultVPCs.append({
 					'VPCId':DefaultVPC['Vpcs'][0]['VpcId'],
 					'AccountID':pChildAccountId,
 					'Region':region
 				})
+				ChildIsReady=False
+				Issues+=1
 except ClientError as my_Error:
 	logging.critical("Failed to identify the Default VPCs in the region properly")
 	ChildIsReady=False
@@ -199,13 +205,13 @@ except ClientError as my_Error:
 
 for i in range(len(DefaultVPCs)):
 	print("I found default VPCs for account {} in region {}".format(DefaultVPCs[i]['AccountID'],DefaultVPCs[i]['Region']))
-	ChildIsReady=False
 	if DeletionRun:
 		logging.warning("Deleting VpcId %s in account %s in region %s",DefaultVPCs[i]['VPCId'],DefaultVPCs[i]['AccountID'],DefaultVPCs[i]['Region'])
 		DelVPC=Inventory_Modules.del_vpc(account_credentials, region, DefaultVPCs[i]['VPCId'])
+		Issues-=1
 
-print()
-print(ERASE_LINE+"Checked account {} in {} regions. Found {} issues with".format(account_credentials['AccountNumber'],len(RegionList),len(DefaultVPCs))+Fore.RED+" Default VPCs"+Fore.RESET,end='\r')
+
+print(ERASE_LINE+"Checked account {} in {} regions. Found {} default VPCs".format(account_credentials['AccountNumber'],len(RegionList),len(DefaultVPCs)),end='\r')
 print()
 print("Step 1 is complete.")
 print()
@@ -244,7 +250,6 @@ try:
 				'Region':region
 			})
 	print(ERASE_LINE+"Checked account {} in {} regions. Found {} issues with".format(account_credentials['AccountNumber'],len(RegionList),len(ConfigList)+len(DeliveryChanList))+Fore.RED+" Config Recorders and Delivery Channels"+Fore.RESET,end='\r')
-
 except ClientError as my_Error:
 	logging.critical("Failed to capture Config Recorder and Delivery Channels")
 	ChildIsReady=False
@@ -253,15 +258,19 @@ except ClientError as my_Error:
 for i in range(len(ConfigList)):
 	print("I found a config recorder for account {} in region {}".format(ConfigList[i]['AccountID'],ConfigList[i]['Region']))
 	ChildIsReady=False
+	Issues+=1
 	if DeletionRun:
 		logging.warning("Deleting %s in account %s in region %s",ConfigList[i]['Name'],ConfigList[i]['AccountID'],ConfigList[i]['Region'])
 		DelConfigRecorder=Inventory_Modules.del_config_recorder(account_credentials, region, ConfigList[i]['Name'])
+		Issues-=1
 for i in range(len(DeliveryChanList)):
 	print("I found a delivery channel for account {} in region {}".format(DeliveryChanList[i]['AccountID'],DeliveryChanList[i]['Region']))
 	ChildIsReady=False
+	Issues+=1
 	if DeletionRun:
 		logging.warning("Deleting %s in account %s in region %s",DeliveryChanList[i]['Name'],DeliveryChanList[i]['AccountID'],DeliveryChanList[i]['Region'])
 		DelDeliveryChannel=Inventory_Modules.del_delivery_channel(account_credentials, region, DeliveryChanList[i]['Name'])
+		Issues-=1
 
 print()
 print("Step 2 is complete.")
@@ -289,10 +298,12 @@ except ClientError as my_Error:
 # sys.exit(99)
 for i in range(len(CTtrails2)):
 	print("I found a CloudTrail trail for account {} in region {} named 'AWS-LandingZone-BaselineCloudTrail' ".format(account_credentials['AccountNumber'],CTtrails2[i]['HomeRegion']))
+	Issues+=1
 	if DeletionRun:
 		try:
-			delresponse=Inventory_Modules.del_cloudtrails(account_credentials,region,CTtrails2[i]['TrailARN'])
 			logging.error("CloudTrail trail deletion commencing...")
+			delresponse=Inventory_Modules.del_cloudtrails(account_credentials,region,CTtrails2[i]['TrailARN'])
+			Issues-=1
 		except ClientError as my_Error:
 			print(my_Error)
 
@@ -327,16 +338,23 @@ except ClientError as my_Error:
 
 for i in range(len(GDinvites2)):
 	print("I found a GuardDuty invitation for account {} in region {} from account {} ".format(account_credentials['AccountNumber'],GDinvites2[i]['Region'],GDinvites2[i]['AccountId']))
+	Issues+=1
 	if DeletionRun:
 		for x in range(len(GDinvites2)):
 			try:
 				logging.warning("GuardDuty invite deletion commencing...")
 				delresponse=Inventory_Modules.delete_gd_invites(account_credentials, region, GDinvites2[x]['AccountId'])
+				Issues-=1
 			except ClientError as my_Error:
 				print(my_Error)
 
 print()
 print("Step 4 is complete.")
+if ChildIsReady:
+	print(Fore.BLUE+"So far, we've found {} issues that would hinder the adoption of this account".format(Issues))+Fore.RESET)
+else:
+	print(Fore.RED+"So far, we've found {} issues that would hinder the adoption of this account".format(Issues)+Fore.RESET)
+
 
 # Step 6
 # 6. STS must be active in all regions. You can check from the Account Settings page in IAM.
@@ -344,17 +362,30 @@ print("Step 4 is complete.")
 We would have already verified this - since we've used STS to connect to each region already for the previous steps.
 """
 # Step 7
-
 '''
 7. The account must be part of the Organization and the email address being entered into the LZ parameters must match the account. If 	you try to add an email from an account which is not part of the Org, you will get an error that you are not using a unique email address. If it’s part of the Org, LZ just finds the account and uses the CFN roles.
 - If the existing account is to be imported as a Core Account, modify the manifest.yaml file to use it.
 - If the existing account will be a child account in the Organization, use the AVM launch template through Service Catalog and enter the appropriate configuration parameters.
 '''
+# try:
+OrgAccounts=Inventory_Modules.find_child_accounts2(pProfile)
+OrgAccountList=[]
+for y in range(len(OrgAccounts)):
+	OrgAccountList.append(OrgAccounts[y]['AccountId'])
+if not (pChildAccountId in OrgAccountList):
+	print()
+	print("Account # {} is not a part of the Organization. This account needs to be moved into the Organization to be adopted into the Landing Zone tool".format(pChildAccountId))
+	print()
+	Issues+=1
 # Step 8
 # 8. The existing account can not be in any of the LZ-managed Organizations OUs. By default, these OUs are Core and Applications, but the customer may have chosen different or additional OUs to manage by LZ.
 """
 So we'll need to verify that the parent OU of the account is the root of the organization.
 """
+if ChildIsReady:
+	print(Fore.BLUE+"We've found {} issues that would hinder the adoption of this account".format(Issues))+Fore.RESET)
+else:
+	print(Fore.RED+"We've found {} issues that would hinder the adoption of this account".format(Issues)+Fore.RESET)
 
 print()
 print("Thanks for using this script...")

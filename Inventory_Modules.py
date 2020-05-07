@@ -1,5 +1,4 @@
 
-
 def get_regions(fkey):
 	import boto3, pprint, logging
 	session_ec2=boto3.Session()
@@ -137,10 +136,13 @@ def get_profiles2(fSkipProfiles=[],fprofiles=["all"]):
 def get_parent_profiles(fSkipProfiles=[],fprofiles=["all"]):
 	'''
 	This function should only return profiles from Master Payer Accounts.
-	If they provide a list of profile strings (in fprofiles), then we compare those strings to the full list of profiles we have, and return those profiles that contain the strings AND are Master Payer Accounts.
+	If they provide a list of profile strings (in fprofiles), then we compare those
+	strings to the full list of profiles we have, and return those profiles that
+	contain the strings AND are Master Payer Accounts.
 	'''
 	import boto3, logging
 	from botocore.exceptions import ClientError
+	ERASE_LINE = '\x1b[2K'
 
 	my_Session=boto3.Session()
 	my_profiles=my_Session._session.available_profiles
@@ -151,9 +153,12 @@ def get_parent_profiles(fSkipProfiles=[],fprofiles=["all"]):
 	else:
 		my_profiles=list(set(fprofiles)-set(fSkipProfiles))
 	my_profiles2=[]
+	NumOfProfiles=len(my_profiles)
 	for profile in my_profiles:
+		print(ERASE_LINE,"Checking {} Profile - {} more profiles to go".format(profile,NumOfProfiles),end='\r')
 		logging.warning("Finding whether %s is a root profile",profile)
 		AcctResult=find_if_org_root(profile)
+		NumOfProfiles-=1
 		if AcctResult in ['Root','StandAlone']:
 			logging.warning("%s is a %s Profile",profile,AcctResult)
 			my_profiles2.append(profile)
@@ -204,11 +209,23 @@ def find_acct_email(fOrgRootProfile,fAccountId):
 	return (email_addr)
 
 def find_account_number(fProfile):
-	import boto3
+	import boto3, logging
+	from botocore.exceptions import ClientError
 
-	session_sts = boto3.Session(profile_name=fProfile)
-	client_sts = session_sts.client('sts')
-	response=client_sts.get_caller_identity()['Account']
+	try:
+		session_sts = boto3.Session(profile_name=fProfile)
+		logging.info("Looking for profile %s",fProfile)
+		client_sts = session_sts.client('sts')
+		response=client_sts.get_caller_identity()['Account']
+	except ClientError as my_Error:
+		if str(my_Error).find("UnrecognizedClientException") > 0:
+			print("{}: Security Issue".format(fProfile))
+		elif str(my_Error).find("InvalidClientTokenId") > 0:
+			print("{}: Security Token is bad - probably a bad entry in config".format(fProfile))
+		else:
+			print("Other kind of failure for profile {}".format(profile))
+			print(my_Error)
+		pass
 	return (response)
 
 def find_org_attr(fProfile):
@@ -271,11 +288,16 @@ def find_child_accounts2(fProfile):
 	This can be convenient for appending and removing.
 	"""
 	import boto3, logging
+	from botocore.exceptions import ClientError, NoCredentialsError
 	# Renamed since I'm using the one below instead.
 	child_accounts=[]
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
-	response=client_org.list_accounts()
+	try:
+		response=client_org.list_accounts()
+	except ClientError as my_Error:
+		logging.warning("Profile %s doesn't represent an Org Root account",fProfile)
+		return()
 	theresmore=True
 	while theresmore:
 		for account in response['Accounts']:
@@ -350,11 +372,90 @@ def RemoveCoreAccounts(MainList,AccountsToRemove):
 			NewCA.append(MainList[i])
 	return(NewCA)
 
+def get_child_access(fRootProfile,fRegion,fChildAccount,fRole='AWSCloudFormationStackSetExecutionRole'):
+	import boto3, logging
+	from botocore.exceptions import ClientError
+
+	try:
+		sts_session = boto3.Session(profile_name=fRootProfile)
+		sts_client = sts_session.client('sts',region_name=fRegion)
+		role_arn = 'arn:aws:iam::'+fChildAccount+':role/'+fRole
+		account_credentials = sts_client.assume_role(
+			RoleArn=role_arn,
+			RoleSessionName="Find-ChildAccount-Things")['Credentials']
+		session_aws=boto3.Session(
+			aws_access_key_id=account_credentials['AccessKeyId'],
+			aws_secret_access_key=account_credentials['SecretAccessKey'],
+			aws_session_token=account_credentials['SessionToken'],
+			region_name=fRegion)
+		return(session_aws)
+	except ClientError as my_Error:
+		if my_Error.response['Error']['Code'] == 'ClientError':
+			logging.info(my_Error)
+		return_string=fRole+" failed. Try Again"
+		return(return_string)
+
+def find_if_Isengard_registered(ocredentials):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+	"""
+	import boto3, logging, pprint
+	logging.warning("Key ID #: %s ",str(ocredentials['AccessKeyId']))
+	session_iam=boto3.Session(
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken']
+	)
+	iam_info=session_iam.client('iam')
+	roles=iam_info.list_roles()['Roles']
+	for y in range(len(roles)):
+		if roles[y]['RoleName']=='IsengardRole-DO-NOT-DELETE':
+			return(True)
+	return(False)
+
+# def find_if_LZ_Acct(ocredentials):
+# 	import boto3, logging, pprint
+# 	from botocore.exceptions import ClientError
+# 	"""
+# 	This function isn't used anywhere...
+#
+# 	ocredentials is an object with the following structure:
+# 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+# 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+# 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+# 		- ['ParentAccountNumber'] holds the AWS Account Number
+# 	"""
+#
+# 	logging.warning("Authenticating Account Number: %s ",str(ocredentials['ParentAccountNumber']))
+# 	session_aws=boto3.Session(
+# 		aws_access_key_id = ocredentials['AccessKeyId'],
+# 		aws_secret_access_key = ocredentials['SecretAccessKey'],
+# 		aws_session_token = ocredentials['SessionToken']
+# 	)
+# 	iam_info=session_aws.client('iam')
+# 	try:
+# 		roles=iam_info.list_roles()['Roles']
+# 		AccessSuccess=True
+# 	except ClientError as my_Error:
+# 		if str(my_Error).find("AccessDenied") > 0:
+# 			print("Authorization Failure for account {}".format(ocredentials['ParentAccountNumber']))
+# 		AccessSuccess=False
+# 	if AccessSuccess:
+# 		for y in range(len(roles)):
+# 			if roles[y]['RoleName']=='AWSCloudFormationStackSetExecutionRole':
+# 				return(True)
+# 		return(False)
+# 	else:
+# 		return(False)
+
 """
 Above - Generic functions
 Below - Specific functions to specific features
 """
-def find_default_vpc(ocredentials, fRegion):
+def find_account_vpcs(ocredentials, fRegion, defaultOnly=False):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -369,19 +470,18 @@ def find_default_vpc(ocredentials, fRegion):
 		aws_session_token = ocredentials['SessionToken'],
 		region_name=fRegion)
 	client_vpc=session_vpc.client('ec2')
-	logging.warning("Looking for default VPCs in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
+	if defaultOnly:
+		logging.warning("Looking for default VPCs in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
+	else:
+		logging.warning("Looking for all VPCs in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
 	response=client_vpc.describe_vpcs(
 		Filters=[
         {
             'Name': 'isDefault',
-            'Values': True
+            'Values': ['False']
         } ]
-
-	    # DryRun=True|False,
-	    # NextToken='string',
-	    # MaxResults=123
 	)
-	# logging.info(response)
+	logging.warning("We found %s VPCs", len(response['Vpcs']))
 	return(response)
 
 def del_vpc(ocredentials,fRegion,fVpcId):
@@ -693,90 +793,22 @@ def find_users(ocredentials):
 	users=user_info.list_users()['Users']
 	return(users)
 
-def find_if_Isengard_registered(ocredentials):
-	"""
-	ocredentials is an object with the following structure:
-		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
-		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
-		- ['SessionToken'] holds the AWS_SESSION_TOKEN
-	"""
-	import boto3, logging, pprint
-	logging.warning("Key ID #: %s ",str(ocredentials['AccessKeyId']))
-	session_iam=boto3.Session(
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken']
-	)
-	iam_info=session_iam.client('iam')
-	roles=iam_info.list_roles()['Roles']
-	for y in range(len(roles)):
-		if roles[y]['RoleName']=='IsengardRole-DO-NOT-DELETE':
-			return(True)
-	return(False)
-
-def find_if_LZ_Acct(ocredentials):
-	import boto3, logging, pprint
-	from botocore.exceptions import ClientError
-	"""
-	This function isn't used anywhere...
-
-	ocredentials is an object with the following structure:
-		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
-		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
-		- ['SessionToken'] holds the AWS_SESSION_TOKEN
-		- ['ParentAccountNumber'] holds the AWS Account Number
-	"""
-
-	logging.warning("Authenticating Account Number: %s ",str(ocredentials['ParentAccountNumber']))
-	session_aws=boto3.Session(
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken']
-	)
-	iam_info=session_aws.client('iam')
-	try:
-		roles=iam_info.list_roles()['Roles']
-		AccessSuccess=True
-	except ClientError as my_Error:
-		if str(my_Error).find("AccessDenied") > 0:
-			print("Authorization Failure for account {}".format(ocredentials['ParentAccountNumber']))
-		AccessSuccess=False
-	if AccessSuccess:
-		for y in range(len(roles)):
-			if roles[y]['RoleName']=='AWSCloudFormationStackSetExecutionRole':
-				return(True)
-		return(False)
-	else:
-		return(False)
-
-def find_profile_vpcs(fProfile,fRegion):
+def find_profile_vpcs(fProfile,fRegion,fDefaultOnly):
 
 	import boto3
 	session_ec2=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	vpc_info=session_ec2.client('ec2')
-	vpcs=vpc_info.describe_vpcs()
-	if len(vpcs['Vpcs']) == 1 and vpcs['Vpcs'][0]['IsDefault'] == True and not ('Tags' in vpcs['Vpcs'][0]):
-		return()
+	if fDefaultOnly:
+		vpcs=vpc_info.describe_vpcs(Filters=[{
+			'Name': 'isDefault',
+			'Values': ['true']
+		}])
 	else:
-		return(vpcs)
-	# return(vpcs)
-
-def get_child_access(fRootProfile,fRegion,fChildAccount,fRole='AWSCloudFormationStackSetExecutionRole'):
-	import boto3, logging
-
-	session_sts=boto3.Session(profile_name=fRootProfile)
-	sts_session = boto3.Session(profile_name=fRootProfile)
-	sts_client = sts_session.client('sts',region_name=fRegion)
-	role_arn = 'arn:aws:iam::'+fChildAccount+':role/'+fRole
-	account_credentials = sts_client.assume_role(
-		RoleArn=role_arn,
-		RoleSessionName="Find-ChildAccount-Things")['Credentials']
-	session_aws=boto3.Session(
-		aws_access_key_id=account_credentials['AccessKeyId'],
-		aws_secret_access_key=account_credentials['SecretAccessKey'],
-		aws_session_token=account_credentials['SessionToken'],
-		region_name=fRegion)
-	return(session_aws)
+		vpcs=vpc_info.describe_vpcs()
+	# if len(vpcs['Vpcs']) == 1 and vpcs['Vpcs'][0]['IsDefault'] == True and not ('Tags' in vpcs['Vpcs'][0]):
+	# 	return()
+	# else:
+	return(vpcs)
 
 def find_gd_detectors(fProfile,fRegion):
 

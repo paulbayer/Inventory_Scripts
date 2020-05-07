@@ -59,7 +59,12 @@ verbose=args.loglevel
 logging.basicConfig(level=args.loglevel)
 
 ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
-
+if len(ChildAccounts) == 0:
+	print()
+	print("The profile {} seems to not represent an Org".format(pProfile))
+	print("This script only works with org accounts. Sorry.")
+	print()
+	sys.exit(1)
 ##########################
 ERASE_LINE = '\x1b[2K'
 

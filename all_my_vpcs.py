@@ -28,24 +28,48 @@ parser.add_argument(
 	default=["us-east-1"],
 	help="String fragment of the region(s) you want to check for resources.")
 parser.add_argument(
-    '-d', '--debug',
-    help="Print lots of debugging statements",
-    action="store_const",
-	dest="loglevel",
-	const=logging.INFO,
-    default=logging.ERROR)
+	"--default",
+	dest="pDefaultOnly",
+	metavar="Default Only flag",
+	action="store_const",
+	const=True,	# args.loglevel = 10
+	default=False, # args.loglevel = 50
+	help="Flag to determine whether default VPCs are included in the output.")
 parser.add_argument(
-    '-v', '--verbose',
-    help="Be verbose",
-    action="store_const",
+	'-dd', '--debug',
+	help="Print LOTS of debugging statements",
+	action="store_const",
 	dest="loglevel",
-	const=logging.WARNING)
+	const=logging.DEBUG,	# args.loglevel = 10
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-d',
+	help="Print debugging statements",
+	action="store_const",
+	dest="loglevel",
+	const=logging.INFO,	# args.loglevel = 20
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-vv', '--verbose',
+	help="Be MORE verbose",
+	action="store_const",
+	dest="loglevel",
+	const=logging.WARNING, # args.loglevel = 30
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-v',
+	help="Be verbose",
+	action="store_const",
+	dest="loglevel",
+	const=logging.ERROR, # args.loglevel = 40
+	default=logging.CRITICAL) # args.loglevel = 50
 args = parser.parse_args()
 
 pProfiles=args.pProfiles
 pRegionList=args.pregion
+pDefaultOnly=args.pDefaultOnly
 verbose=args.loglevel
-logging.basicConfig(level=args.loglevel)
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)30s() ] %(message)s")
 
 SkipProfiles=["default","Shared-Fid"]
 
@@ -70,21 +94,28 @@ for region in RegionList:
 	for profile in ProfileList:
 		NumProfilesInvestigated += 1
 		try:
-			Vpcs=Inventory_Modules.find_profile_vpcs(profile,region)
-			VpcNum=len(Vpcs['Vpcs']) if Vpcs['Vpcs']==[] else 0
+			Vpcs=Inventory_Modules.find_profile_vpcs(profile,region,pDefaultOnly)
+			logging.info("Info - Profile %s | Region %s | Found %s vpcs",profile,region,len(Vpcs))
+			VpcNum=len(Vpcs['Vpcs']) if 'Vpcs' in Vpcs else 0
 			print(ERASE_LINE,"Profile: {} | Region: {} | Found {} Vpcs".format(profile,region,VpcNum),end='\r')
+			# print("Profile: {} | Region: {} | Found {} Vpcs".format(profile,region,VpcNum))
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
-				print(ERASE_LINE, profile,":Authorization Failure")
+				print("{}: Authorization Failure connecting to {}".format(profile,region))
+			pass
 		except TypeError as my_Error:
 			print(my_Error)
+			logging.info("There was an error")
 			pass
-		if 'Vpcs' in Vpcs and len(Vpcs['Vpcs']) > 0:
+		# if 'Vpcs' in Vpcs and len(Vpcs['Vpcs']) > 0:
+		if 'Vpcs' in Vpcs:	# If there are no VPCs, you can't reference the index
+			logging.info("Displaying profile %s",profile)
 			for y in range(len(Vpcs['Vpcs'])):
 				VpcId=Vpcs['Vpcs'][y]['VpcId']
 				IsDefault=Vpcs['Vpcs'][y]['IsDefault']
 				CIDR=Vpcs['Vpcs'][y]['CidrBlock']
 				if 'Tags' in Vpcs['Vpcs'][y]:
+					logging.debug("Looking for tags")
 					for z in range(len(Vpcs['Vpcs'][y]['Tags'])):
 						if Vpcs['Vpcs'][y]['Tags'][z]['Key']=="Name":
 							VpcName=Vpcs['Vpcs'][y]['Tags'][z]['Value']
@@ -95,6 +126,6 @@ for region in RegionList:
 		else:
 			continue
 
-print(ERASE_LINE)
+# print(ERASE_LINE)
 print("Found",NumVpcsFound,"Vpcs across",NumProfilesInvestigated,"profiles across",NumRegions,"regions")
 print()
