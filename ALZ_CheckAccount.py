@@ -192,7 +192,7 @@ try:
 	for region in RegionList:
 		print(ERASE_LINE,"Checking account {} in region {}".format(pChildAccountId,region)," for "+Fore.RED+"default VPCs"+Fore.RESET,end='\r')
 		logging.info("Looking for Default VPCs in account %s from Region %s",pChildAccountId,region)
-		DefaultVPC=Inventory_Modules.find_account_vpcs(account_credentials, region, 'True')
+		DefaultVPC=Inventory_Modules.find_account_vpcs(account_credentials, region, True)
 		if len(DefaultVPC['Vpcs']) > 0:
 				DefaultVPCs.append({
 					'VPCId':DefaultVPC['Vpcs'][0]['VpcId'],

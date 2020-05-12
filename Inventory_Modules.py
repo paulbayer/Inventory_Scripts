@@ -489,6 +489,20 @@ def find_if_Isengard_registered(ocredentials):
 # 	else:
 # 		return(False)
 
+def enable_drift_on_stacks(ocredentials,fRegion,fStackName):
+	import boto3,logging
+
+	session_cfn=boto3.Session(
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken'],
+		region_name=fRegion)
+	client_cfn=session_cfn.client('cloudformation')
+	logging.warning("Enabling drift detection on Stack %s in Account %s in region %s", fStackName, ocredentials['AccountNumber'],fRegion)
+	response=client_cfn.detect_stack_drift(
+		StackName=fStackName
+	)
+
 """
 Above - Generic functions
 Below - Specific functions to specific features
@@ -510,15 +524,24 @@ def find_account_vpcs(ocredentials, fRegion, defaultOnly=False):
 	client_vpc=session_vpc.client('ec2')
 	if defaultOnly:
 		logging.warning("Looking for default VPCs in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
+		logging.info("defaultOnly: %s",str(defaultOnly))
+		response=client_vpc.describe_vpcs(
+			Filters=[
+			{
+				'Name': 'isDefault',
+				'Values': ['true']
+			} ]
+		)
 	else:
 		logging.warning("Looking for all VPCs in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
-	response=client_vpc.describe_vpcs(
-		Filters=[
-        {
-            'Name': 'isDefault',
-            'Values': ['False']
-        } ]
-	)
+		logging.info("defaultOnly: %s",str(defaultOnly))
+		response=client_vpc.describe_vpcs(
+			Filters=[
+	        {
+	            'Name': 'isDefault',
+	            'Values': ['false']
+	        } ]
+		)
 	logging.warning("We found %s VPCs", len(response['Vpcs']))
 	return(response)
 
@@ -919,11 +942,11 @@ def find_stacks(fProfile,fRegion,fStackFragment="all",fStatus="active"):
 	import boto3, logging, pprint
 	logging.warning("Profile: %s | Region: %s | Fragment: %s | Status: %s",fProfile, fRegion, fStackFragment,fStatus)
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
-	stack_info=session_cfn.client('cloudformation')
+	client_cfn=session_cfn.client('cloudformation')
 	stacksCopy=[]
 	if (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active') and not (fStackFragment=='All' or fStackFragment=='ALL' or fStackFragment=='all'):
 		# Send back stacks that are active, check the fragment further down.
-		stacks=stack_info.list_stacks(StackStatusFilter=["CREATE_COMPLETE","DELETE_FAILED","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE","DELETE_IN_PROGRESS"])
+		stacks=client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE","DELETE_FAILED","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE","DELETE_IN_PROGRESS"])
 		logging.warning("1 - Found %s stacks. Looking for fragment %s",len(stacks['StackSummaries']),fStackFragment)
 		for stack in stacks['StackSummaries']:
 			if fStackFragment in stack['StackName']:
@@ -932,7 +955,7 @@ def find_stacks(fProfile,fRegion,fStackFragment="all",fStatus="active"):
 				stacksCopy.append(stack)
 	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
 		# Send back all stacks regardless of fragment, check the status further down.
-		stacks=stack_info.list_stacks(StackStatusFilter=["CREATE_COMPLETE","DELETE_FAILED","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE"])
+		stacks=client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE","DELETE_FAILED","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE"])
 		logging.warning("2 - Found ALL %s stacks in 'active' status.",len(stacks['StackSummaries']))
 		for stack in stacks['StackSummaries']:
 			# if fStatus in stack['StackStatus']:
@@ -942,13 +965,13 @@ def find_stacks(fProfile,fRegion,fStackFragment="all",fStatus="active"):
 			stacksCopy.append(stack)
 	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='all' or fStatus=='ALL' or fStatus=='All'):
 		# Send back all stacks.
-		stacks=stack_info.list_stacks()
+		stacks=client_cfn.list_stacks()
 		logging.warning("3 - Found ALL %s stacks in ALL statuses", len(stacks['StackSummaries']))
 		return(stacks['StackSummaries'])
 	elif not (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
 		# Send back stacks that match the single status, check the fragment further down.
 		try:
-			stacks=stack_info.list_stacks()
+			stacks=client_cfn.list_stacks()
 			logging.warning("4 - Found %s stacks ", len(stacks['StackSummaries']))
 		except Exception as e:
 			print(e)
@@ -1031,18 +1054,17 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment="all",fStatus="activ
 	fStatus is a string - default to "active"
 	"""
 	import boto3, logging, pprint
-	logging.error("AccessKeyId:")
 	logging.error("Acct ID #: %s | Region: %s | Fragment: %s | Status: %s",str(ocredentials['AccountNumber']), fRegion, fStackFragment,fStatus)
 	session_cfn=boto3.Session(region_name=fRegion,
 		aws_access_key_id = ocredentials['AccessKeyId'],
 		aws_secret_access_key = ocredentials['SecretAccessKey'],
 		aws_session_token = ocredentials['SessionToken']
 	)
-	stack_info=session_cfn.client('cloudformation')
+	client_cfn=session_cfn.client('cloudformation')
 	stacksCopy=[]
 	if (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active') and not (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All'):
 		# Send back stacks that are active, check the fragment further down.
-		stacks=stack_info.list_stacks(StackStatusFilter=["CREATE_COMPLETE","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE"])
+		stacks=client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE"])
 		for stack in stacks['StackSummaries']:
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match
@@ -1050,12 +1072,12 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment="all",fStatus="activ
 				stacksCopy.append(stack)
 	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='all' or fStatus=='ALL' or fStatus=='All'):
 		# Send back all stacks.
-		stacks=stack_info.list_stacks()
+		stacks=client_cfn.list_stacks()
 		logging.error("4-Found %s the stacks in Account: %s in Region: %s", len(stacks), ocredentials['AccessKeyId'], fRegion)
 		return(stacks['StackSummaries'])
 	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
 		# Send back all stacks regardless of fragment, check the status further down.
-		stacks=stack_info.list_stacks(StackStatusFilter=["CREATE_COMPLETE","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE"])
+		stacks=client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE","UPDATE_COMPLETE","UPDATE_ROLLBACK_COMPLETE"])
 		for stack in stacks['StackSummaries']:
 			logging.error("2-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccountNumber'], fRegion, fStackFragment, fStatus)
 			stacksCopy.append(stack)
@@ -1063,7 +1085,8 @@ def find_stacks_in_acct(ocredentials,fRegion,fStackFragment="all",fStatus="activ
 	elif not (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
 		# Send back stacks that match the single status, check the fragment further down.
 		try:
-			stacks=stack_info.list_stacks(StackStatusFilter=[fStatus])
+			logging.warning("Not looking for active stacks... Looking for Status: %s",fStatus)
+			stacks=client_cfn.list_stacks(StackStatusFilter=[fStatus])
 		except Exception as e:
 			print(e)
 		for stack in stacks['StackSummaries']:
@@ -1104,8 +1127,8 @@ def find_stacksets(fProfile,fRegion,fStackFragment):
 
 	logging.info("Profile: %s | Region: %s | Fragment: %s",fProfile, fRegion, fStackFragment)
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
-	stack_info=session_cfn.client('cloudformation')
-	stacksets=stack_info.list_stack_sets(Status='ACTIVE')
+	client_cfn=session_cfn.client('cloudformation')
+	stacksets=client_cfn.list_stack_sets(Status='ACTIVE')
 	stacksetsCopy=[]
 	# if fStackFragment=='all' or fStackFragment=='ALL':
 	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
@@ -1182,11 +1205,11 @@ def find_stack_instances(fProfile,fRegion,fStackSetName):
 
 	logging.warning("Profile: %s | Region: %s | StackSetName: %s",fProfile, fRegion, fStackSetName)
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
-	stack_info=session_cfn.client('cloudformation')
-	stack_instances=stack_info.list_stack_instances(StackSetName=fStackSetName)
+	client_cfn=session_cfn.client('cloudformation')
+	stack_instances=client_cfn.list_stack_instances(StackSetName=fStackSetName)
 	stack_instances_list=stack_instances['Summaries']
 	while 'NextToken' in stack_instances.keys(): # Get all instance names
-		stack_instances=stack_info.list_stack_instances(StackSetName=fStackSetName,NextToken=stack_instances['NextToken'])
+		stack_instances=client_cfn.list_stack_instances(StackSetName=fStackSetName,NextToken=stack_instances['NextToken'])
 		stack_instances_list.append(stack_instances['Summaries'])
 	return(stack_instances_list)
 
