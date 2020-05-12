@@ -210,7 +210,7 @@ for i in range(len(DefaultVPCs)):
 	print("I found default VPCs for account {} in region {}".format(DefaultVPCs[i]['AccountID'],DefaultVPCs[i]['Region']))
 	if DeletionRun:
 		logging.warning("Deleting VpcId %s in account %s in region %s",DefaultVPCs[i]['VPCId'],DefaultVPCs[i]['AccountID'],DefaultVPCs[i]['Region'])
-		DelVPC=Inventory_Modules.del_vpc(account_credentials, region, DefaultVPCs[i]['VPCId'])
+		DelVPC=Inventory_Modules.del_vpc(account_credentials, DefaultVPCs[i]['Region'], DefaultVPCs[i]['VPCId'])
 		Issues-=1
 
 print(ERASE_LINE,end='\r')
