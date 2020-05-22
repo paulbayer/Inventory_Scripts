@@ -1,7 +1,7 @@
 
-def get_regions(fkey):
+def get_regions(fkey,fprofile="default"):
 	import boto3, pprint, logging
-	session_ec2=boto3.Session()
+	session_ec2=boto3.Session(profile_name=fprofile)
 	region_info=session_ec2.client('ec2')
 	regions=region_info.describe_regions()
 	RegionNames=[]
@@ -18,11 +18,16 @@ def get_regions(fkey):
 				RegionNames2.append(y)
 	return(RegionNames2)
 
-def get_ec2_regions(fkey):
+def get_ec2_regions(fkey,fprofile="default"):
 	import boto3, pprint, logging
-	session_ec2=boto3.Session()
+	session_ec2=boto3.Session(profile_name=fprofile)
 	region_info=session_ec2.client('ec2')
-	regions=region_info.describe_regions()
+	regions=region_info.describe_regions(
+		Filters=[ {
+			'Name': 'opt-in-status',
+			'Values': ['opt-in-not-required','opted-in']
+		} ]
+	)
 	RegionNames=[]
 	for x in range(len(regions['Regions'])):
 		RegionNames.append(regions['Regions'][x]['RegionName'])
@@ -227,6 +232,26 @@ def find_account_number(fProfile):
 			print(my_Error)
 		pass
 	return (response)
+
+def find_calling_identity(fProfile):
+	import boto3, logging
+	from botocore.exceptions import ClientError
+
+	try:
+		session_sts = boto3.Session(profile_name=fProfile)
+		logging.info("Getting creds used within profile %s",fProfile)
+		client_sts = session_sts.client('sts')
+		response=client_sts.get_caller_identity()
+		creds=response['Arn'][response['Arn'].rfind(':')+1:]
+	except ClientError as my_Error:
+		if str(my_Error).find("UnrecognizedClientException") > 0:
+			print("{}: Security Issue".format(fProfile))
+		elif str(my_Error).find("InvalidClientTokenId") > 0:
+			print("{}: Security Token is bad - probably a bad entry in config".format(fProfile))
+		else:
+			print("Other kind of failure for profile {}".format(profile))
+			print(my_Error)
+	return (creds)
 
 def find_org_attr(fProfile):
 	import boto3, logging
@@ -535,13 +560,7 @@ def find_account_vpcs(ocredentials, fRegion, defaultOnly=False):
 	else:
 		logging.warning("Looking for all VPCs in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
 		logging.info("defaultOnly: %s",str(defaultOnly))
-		response=client_vpc.describe_vpcs(
-			Filters=[
-	        {
-	            'Name': 'isDefault',
-	            'Values': ['false']
-	        } ]
-		)
+		response=client_vpc.describe_vpcs()
 	logging.warning("We found %s VPCs", len(response['Vpcs']))
 	return(response)
 
@@ -563,6 +582,17 @@ def del_vpc(ocredentials,fRegion,fVpcId):
 		region_name=fRegion)
 	client_vpc=session_vpc.client('ec2')
 	logging.error("Deleting VPC %s from Region %s in account %s",fVpcId,fRegion,ocredentials['AccountNumber'])
+	"""
+	The process to delete a VPC is a long one.
+	< Thanks to
+		1.) Detach and delete the internet gateway (if there is one)
+		2.) Delete subnets
+		3.) Delete route tables
+		4.) Delete network access lists
+		5.) Delete security groups
+		6.) Delete the VPC
+
+	"""
 	response=client_vpc.delete_vpc(
 		VpcId=fVpcId
 	)
@@ -623,7 +653,7 @@ def del_config_recorder(ocredentials,fRegion, fConfig_recorder_name):
 	client_cfg=session_cfg.client('config')
 	logging.error("Deleting Config Recorder %s from Region %s in account %s",fConfig_recorder_name,fRegion,ocredentials['AccountNumber'])
 	response=client_cfg.delete_configuration_recorders(ConfigurationRecorderName=fConfig_recorder_name)
-	return(response)
+	return(response) # There is no response to send back
 
 def find_delivery_channels(ocredentials,fRegion):
 	"""
@@ -693,25 +723,25 @@ def find_cloudtrails(ocredentials,fRegion,fCloudTrailnames=['AWS-Landing-Zone-Ba
 
 	Returned Object looks like this:
 	{
-	    'trailList': [
-	        {
-	            'Name': 'string',
-	            'S3BucketName': 'string',
-	            'S3KeyPrefix': 'string',
-	            'SnsTopicName': 'string',
-	            'SnsTopicARN': 'string',
-	            'IncludeGlobalServiceEvents': True|False,
-	            'IsMultiRegionTrail': True|False,
-	            'HomeRegion': 'string',
-	            'TrailARN': 'string',
-	            'LogFileValidationEnabled': True|False,
-	            'CloudWatchLogsLogGroupArn': 'string',
-	            'CloudWatchLogsRoleArn': 'string',
-	            'KmsKeyId': 'string',
-	            'HasCustomEventSelectors': True|False,
-	            'HasInsightSelectors': True|False,
-	            'IsOrganizationTrail': True|False
-	        },
+		'trailList': [
+			{
+				'Name': 'string',
+				'S3BucketName': 'string',
+				'S3KeyPrefix': 'string',
+				'SnsTopicName': 'string',
+				'SnsTopicARN': 'string',
+				'IncludeGlobalServiceEvents': True|False,
+				'IsMultiRegionTrail': True|False,
+				'HomeRegion': 'string',
+				'TrailARN': 'string',
+				'LogFileValidationEnabled': True|False,
+				'CloudWatchLogsLogGroupArn': 'string',
+				'CloudWatchLogsRoleArn': 'string',
+				'KmsKeyId': 'string',
+				'HasCustomEventSelectors': True|False,
+				'HasInsightSelectors': True|False,
+				'IsOrganizationTrail': True|False
+			},
 	    ]
 	}
 	"""
@@ -732,7 +762,7 @@ def find_cloudtrails(ocredentials,fRegion,fCloudTrailnames=['AWS-Landing-Zone-Ba
 				return(response,trailname)
 		except ClientError as my_Error:
 			if str(my_Error).find("InvalidTrailNameException") > 0:
-				print("Bad CloudTrail name provided")
+				logging.error("Bad CloudTrail name provided")
 			response=trailname+" didn't work. Try Again"
 	return(response,trailname)
 

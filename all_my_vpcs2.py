@@ -77,23 +77,24 @@ SkipProfiles=["default"]
 NumVpcsFound = 0
 NumRegions = 0
 print()
-fmt='%-20s %-10s %-21s %-20s %-12s %-10s'
-print(fmt % ("Profile","Region","Vpc ID","CIDR","Is Default?","Vpc Name"))
+fmt='%-20s %-15s %-21s %-20s %-12s %-10s'
+print(fmt % ("Account","Region","Vpc ID","CIDR","Is Default?","Vpc Name"))
 print(fmt % ("-------","------","------","----","-----------","--------"))
-RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
+RegionList=Inventory_Modules.get_ec2_regions(pRegionList,pProfile)
 SoughtAllProfiles=False
 AllChildAccounts=[]
 AdminRole="AWSCloudFormationStackSetExecutionRole"
 if pDefault:
 	vpctype="default"
 else:
-	vpctype=""
+	# I use the backspace character to make the sentence format work, since it backspaces over the prior space.
+	# Totally cosmetic, but I'm an idiot that spends an hour to figure out how best to do this.
+	vpctype="\b"
 
 if pProfile in ['all','ALL','All']:
 	# print(Fore.RED+"Doesn't yet work to specify 'all' profiles, since it takes a long time to go through and find only those profiles that either Org Masters, or stand-alone accounts",Fore.RESET)
 	# sys.exit(1)
 	SoughtAllProfiles=True
-	logging.info("Profiles sent to function get_profiles3: %s",pProfile)
 	print("Since you specified 'all' profiles, we going to look through ALL of your profiles. Then we go through and determine which profiles represent the Master of an Organization and which are stand-alone accounts. This will enable us to go through all accounts you have access to for inventorying.")
 	logging.error("Time: %s",datetime.datetime.now())
 	ProfileList=Inventory_Modules.get_parent_profiles(SkipProfiles)
@@ -120,8 +121,10 @@ for profile in ProfileList:
 		Accounts=[{'ParentProfile':profile,'AccountId':MyAcctNumber,'AccountEmail':'noonecares@doesntmatter.com'}]
 		AllChildAccounts=AllChildAccounts+Accounts
 	elif ProfileIsRoot == 'Child':
-		logging.info("Parent Profile name: %s",profile)
-		AllChildAccounts=AllChildAccounts
+		logging.info("Profile name: %s is a child profile",profile)
+		MyAcctNumber=Inventory_Modules.find_account_number(profile)
+		Accounts=[{'ParentProfile':profile,'AccountId':MyAcctNumber,'AccountEmail':'noonecares@doesntmatter.com'}]
+		AllChildAccounts=Accounts
 
 logging.info("# of Regions: %s" % len(RegionList))
 logging.info("# of Master Accounts: %s" % len(ProfileList))
@@ -132,7 +135,7 @@ for i in range(len(AllChildAccounts)):
 	aws_session = boto3.Session(profile_name=AllChildAccounts[i]['ParentProfile'])
 	sts_client = aws_session.client('sts')
 	logging.info("Connecting to account %s using Parent Profile %s:",AllChildAccounts[i]['AccountId'],AllChildAccounts[i]['ParentProfile'])
-	role_arn = "arn:aws:iam::{}:role/".format(AllChildAccounts[i]['AccountId'])+"{}".format(AdminRole)
+	role_arn = "arn:aws:iam::{}:role/{}".format(AllChildAccounts[i]['AccountId'],AdminRole)
 	try:
 		account_credentials = sts_client.assume_role(
 			RoleArn=role_arn,
@@ -156,10 +159,10 @@ for i in range(len(AllChildAccounts)):
 		try:
 			Vpcs=Inventory_Modules.find_account_vpcs(account_credentials,region,pDefault)
 			VpcNum=len(Vpcs['Vpcs']) if Vpcs['Vpcs']==[] else 0
-			print(ERASE_LINE,"Looking in account {} in {} where we found {} {} Vpcs".format(AllChildAccounts[i]['AccountId'],region,VpcNum,vpctype),end='\r')
+			print(ERASE_LINE,"Looking in account "+Fore.RED+"{}".format(AllChildAccounts[i]['AccountId']),Fore.RESET+"in {} where we found {} {} Vpcs".format(region,VpcNum,vpctype),end='\r')
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
-				print(ERASE_LINE, profile,":Authorization Failure")
+				print(ERASE_LINE, "{} :Authorization Failure for account: {} in region {}".format(profile,AllChildAccounts[i]['AccountId'],region))
 		except TypeError as my_Error:
 			print(my_Error)
 			pass
@@ -174,12 +177,12 @@ for i in range(len(AllChildAccounts)):
 							VpcName=Vpcs['Vpcs'][y]['Tags'][z]['Value']
 				else:
 					VpcName="No name defined"
-				print(fmt % (profile,region,VpcId,CIDR,IsDefault,VpcName))
+				print(fmt % (Vpcs['Vpcs'][y]['OwnerId'],region,VpcId,CIDR,IsDefault,VpcName))
 				NumVpcsFound += 1
 		else:
 			continue
 
 print(ERASE_LINE)
-print("Found {} {} Vpcs across {} profiles across {} regions".format(vpctype,NumVpcsFound,len(AllChildAccounts),len(RegionList)))
+print("Found {} {} Vpcs across {} accounts across {} regions".format(NumVpcsFound,vpctype,len(AllChildAccounts),len(RegionList)))
 print()
 print("Thank you for using this script.")

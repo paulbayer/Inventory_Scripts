@@ -28,42 +28,42 @@ ProfileGroup.add_argument(
 	default=[],	# Default to nothing
 	help="Which list of profiles do you want to run for?")
 parser.add_argument(
-    '-R', '--root',
-    help="Display only the root accounts found in the profiles",
-    action="store_const",
+	'-R', '--root',
+	help="Display only the root accounts found in the profiles",
+	action="store_const",
 	dest="rootonly",
 	const=True,
-    default=False)
+	default=False)
 parser.add_argument(
-    '-s', '--short',
-    help="Display only brief listing of the root accounts, and not the Child Accounts under them",
-    action="store_const",
+	'-s', '--short',
+	help="Display only brief listing of the root accounts, and not the Child Accounts under them",
+	action="store_const",
 	dest="shortform",
 	const=True,
-    default=False)
+	default=False)
 parser.add_argument(
-	'-v', '--verbose',
+	'-v',
 	help="Be verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.ERROR, # args.loglevel = 40
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-	'-vv',
+	'-vv', '--verbose',
 	help="Be MORE verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.WARNING, # args.loglevel = 30
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-	'-d', '--debug',
+	'-d',
 	help="Print debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,	# args.loglevel = 20
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-	'-dd',
+	'-dd', '--debug',
 	help="Print LOTS of debugging statements",
 	action="store_const",
 	dest="loglevel",
