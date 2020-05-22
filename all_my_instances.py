@@ -100,19 +100,19 @@ for pProfile in pProfiles:
 	if not SoughtAllProfiles:
 		logging.info("Checking to see if the profiles passed in (%s) are root profiles",pProfile)
 		ProfileIsRoot=Inventory_Modules.find_if_org_root(pProfile)
-		logging.info("---%s---",ProfileIsRoot)
+		logging.info("---%s Profile---",ProfileIsRoot)
 	if ProfileIsRoot == 'Root':
-		logging.info("Parent Profile name: %s",pProfile)
+		logging.info("Profile %s is a Root account",pProfile)
 		ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 		ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
 		AllChildAccounts=AllChildAccounts+ChildAccounts
 	elif ProfileIsRoot == 'StandAlone':
-		logging.info("Parent Profile name: %s",pProfile)
+		logging.info("Profile %s is a Standalone account",pProfile)
 		MyAcctNumber=Inventory_Modules.find_account_number(pProfile)
 		Accounts=[{'ParentProfile':pProfile,'AccountId':MyAcctNumber,'AccountEmail':'noonecares@doesntmatter.com'}]
 		AllChildAccounts=AllChildAccounts+Accounts
 	elif ProfileIsRoot == 'Child':
-		logging.info("Parent Profile name: %s",pProfile)
+		logging.info("Profile %s is a Child Account",pProfile)
 		AllChildAccounts=AllChildAccounts
 
 """
