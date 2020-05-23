@@ -11,7 +11,7 @@ import logging
 init()
 
 parser = argparse.ArgumentParser(
-	description="We\'re going to find all resources within any of the profiles we have access to.",
+	description="We\'re going to find all vpcs within any of the profiles we have access to.",
 	prefix_chars='-+/')
 parser.add_argument(
 	"-p","--profile",

@@ -35,40 +35,40 @@ parser.add_argument(
 	default=[],
 	help="These are the account numbers you don't want to screw with. Likely the core accounts.")
 parser.add_argument(
-    '-dd',
-    help="Print lots of debugging statements",
-    action="store_const",
+	'-dd',
+	help="Print lots of debugging statements",
+	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,	# args.loglevel = 10
-    default=logging.CRITICAL) # args.loglevel = 50
+	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-d', '--debug',
-    help="Print debugging statements",
-    action="store_const",
+	'-d', '--debug',
+	help="Print debugging statements",
+	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,	# args.loglevel = 20
-    default=logging.CRITICAL) # args.loglevel = 50
+	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-vv',
-    help="Be MORE verbose",
-    action="store_const",
+	'-vv',
+	help="Be MORE verbose",
+	action="store_const",
 	dest="loglevel",
 	const=logging.WARNING, # args.loglevel = 30
-    default=logging.CRITICAL) # args.loglevel = 50
+	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-v', '--verbose',
-    help="Be verbose",
-    action="store_const",
+	'-v', '--verbose',
+	help="Be verbose",
+	action="store_const",
 	dest="loglevel",
 	const=logging.ERROR, # args.loglevel = 40
-    default=logging.CRITICAL) # args.loglevel = 50
+	default=logging.CRITICAL) # args.loglevel = 50
 args = parser.parse_args()
 
 pProfiles=args.pProfiles
 pRegionList=args.pRegion
 AccountsToSkip=args.pSkipAccounts
 # logging.basicConfig(level=args.loglevel, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %H:%M:%S')
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
 
 SkipProfiles=["default"]
 
@@ -78,6 +78,9 @@ ERASE_LINE = '\x1b[2K'
 NumInstancesFound = 0
 print()
 fmt='%-12s %-15s %-10s %-15s %-25s %-20s %-42s %-12s'
+print(fmt % ("Profile","Account #","Region","InstanceType","Name","Instance ID","Public DNS Name","State"))
+print(fmt % ("-------","---------","------","------------","----","-----------","---------------","-----"))
+
 RegionList=Inventory_Modules.get_regions(pRegionList)
 AllChildAccounts=[]
 SoughtAllProfiles=False
@@ -104,22 +107,16 @@ for pProfile in pProfiles:
 		ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 		ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
 		AllChildAccounts=AllChildAccounts+ChildAccounts
-		print(fmt % ("Org Profile","Account #","Region","InstanceType","Name","Instance ID","Public DNS Name","State"))
-		print(fmt % ("-----------","---------","------","------------","----","-----------","---------------","-----"))
 	elif ProfileIsRoot == 'StandAlone':
 		logging.info("Profile %s is a Standalone account",pProfile)
 		MyAcctNumber=Inventory_Modules.find_account_number(pProfile)
 		Accounts=[{'ParentProfile':pProfile,'AccountId':MyAcctNumber,'AccountEmail':'noonecares@doesntmatter.com'}]
 		AllChildAccounts=AllChildAccounts+Accounts
-		print(fmt % ("Profile","Account #","Region","InstanceType","Name","Instance ID","Public DNS Name","State"))
-		print(fmt % ("-------","---------","------","------------","----","-----------","---------------","-----"))
 	elif ProfileIsRoot == 'Child':
 		logging.info("Profile %s is a Child Account",pProfile)
 		MyAcctNumber=Inventory_Modules.find_account_number(pProfile)
 		Accounts=[{'ParentProfile':pProfile,'AccountId':MyAcctNumber,'AccountEmail':'noonecares@doesntmatter.com'}]
 		AllChildAccounts=AllChildAccounts+Accounts
-		print(fmt % ("Profile","Account #","Region","InstanceType","Name","Instance ID","Public DNS Name","State"))
-		print(fmt % ("-------","---------","------","------------","----","-----------","---------------","-----"))
 
 """
 logging.info("Passed as parameter %s:",pProfiles)

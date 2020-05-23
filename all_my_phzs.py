@@ -21,47 +21,48 @@ parser.add_argument(
 	default="all",
 	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
 parser.add_argument(
-	"-f","--fragment",
-	dest="pstackfrag",
-	metavar="CloudFormation stack fragment",
-	default="all",
-	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
-parser.add_argument(
-	"-s","--status",
-	dest="pstatus",
-	metavar="CloudFormation status",
-	default="active",
-	help="String that determines whether we only see 'CREATE_COMPLETE' or 'DELETE_COMPLETE' too")
-parser.add_argument(
 	"-r","--region",
 	nargs="*",
 	dest="pregion",
 	metavar="region name string",
-	default="us-east-1",
+	default=["us-east-1"],
 	help="String fragment of the region(s) you want to check for resources.")
 parser.add_argument(
-    '-d', '--debug',
-    help="Print lots of debugging statements",
-    action="store_const",
+	'-v',
+	help="Be verbose",
+	action="store_const",
 	dest="loglevel",
-	const=logging.DEBUG,
-    default=logging.CRITICAL)
+	const=logging.ERROR, # args.loglevel = 40
+	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-v', '--verbose',
-    help="Be verbose",
-    action="store_const",
+	'-vv', '--verbose',
+	help="Be MORE verbose",
+	action="store_const",
 	dest="loglevel",
-	const=logging.INFO)
+	const=logging.WARNING, # args.loglevel = 30
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-d',
+	help="Print debugging statements",
+	action="store_const",
+	dest="loglevel",
+	const=logging.INFO,	# args.loglevel = 20
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-dd', '--debug',
+	help="Print LOTS of debugging statements",
+	action="store_const",
+	dest="loglevel",
+	const=logging.DEBUG,	# args.loglevel = 10
+	default=logging.CRITICAL)
 args = parser.parse_args()
 
 pProfiles=args.pProfiles
 pRegionList=args.pregion
-pstackfrag=args.pstackfrag
-pstatus=args.pstatus
 verbose=args.loglevel
-logging.basicConfig(level=args.loglevel)
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
 
-SkipProfiles=["default","Shared-Fid"]
+SkipProfiles=["default"]
 
 ##########################
 ERASE_LINE = '\x1b[2K'
@@ -97,4 +98,6 @@ for pregion in RegionList:
 				NumPHZsFound += 1
 print(ERASE_LINE)
 print(Fore.RED+"Found",NumPHZsFound,"Hosted Zones across",NumProfilesInvestigated,"profiles across",NumRegions,"regions"+Fore.RESET)
+print()
+print("Thanks for using this script...")
 print()

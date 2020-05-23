@@ -12,7 +12,7 @@ init()
 
 # UsageMsg="You can provide a level to determine whether this script considers only the 'credentials' file, the 'config' file, or both."
 parser = argparse.ArgumentParser(
-	description="We\'re going to find all resources within any of the profiles we have access to.",
+	description="We\'re going to determine whether this new account satisfies all the pre-reqs to be adopted by the Landing Zone.",
 	prefix_chars='-+/')
 parser.add_argument(
 	"--explain",
@@ -52,18 +52,18 @@ parser.add_argument(
 	action="store_const",
 	help="This will fix the issues found. If default VPCs must be deleted, you'll be asked to confirm.")
 parser.add_argument(
-	'-dd', '--debug',
-	help="Print LOTS of debugging statements",
+	"+force",
+	dest="pVPCConfirm",
+	const=True,
+	default=False,
 	action="store_const",
-	dest="loglevel",
-	const=logging.DEBUG,	# args.loglevel = 10
-	default=logging.CRITICAL) # args.loglevel = 50
+	help="This will delete the default VPCs found with NO confirmation. You still have to specify the +fix too")
 parser.add_argument(
-	'-d',
-	help="Print debugging statements",
+	'-v',
+	help="Be verbose",
 	action="store_const",
 	dest="loglevel",
-	const=logging.INFO,	# args.loglevel = 20
+	const=logging.ERROR, # args.loglevel = 40
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
 	'-vv', '--verbose',
@@ -73,11 +73,18 @@ parser.add_argument(
 	const=logging.WARNING, # args.loglevel = 30
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-	'-v',
-	help="Be verbose",
+	'-d',
+	help="Print debugging statements",
 	action="store_const",
 	dest="loglevel",
-	const=logging.ERROR, # args.loglevel = 40
+	const=logging.INFO,	# args.loglevel = 20
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-dd', '--debug',
+	help="Print LOTS of debugging statements",
+	action="store_const",
+	dest="loglevel",
+	const=logging.DEBUG,	# args.loglevel = 10
 	default=logging.CRITICAL) # args.loglevel = 50
 args = parser.parse_args()
 
@@ -87,6 +94,7 @@ pChildAccountId=args.pChildAccountId
 verbose=args.loglevel
 FixRun=args.FixRun
 pExplain=args.pExplain
+pVPCConfirm=args.pVPCConfirm
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)30s() ] %(message)s")
 # This is hard-coded, because this is the listing of regions that are supported by Automated Landing Zone.
 if Quick:
@@ -158,6 +166,16 @@ ProcessStatus=InitDict(6)
 print("This script does 6 things... ")
 print(Fore.BLUE+"  0."+Fore.RESET+" Checks to ensure you have the necessary cross-account role access to the child account.")
 print(Fore.BLUE+"  1."+Fore.RESET+" Checks to ensure the "+Fore.RED+"Default VPCs "+Fore.RESET+"in each region are deleted")
+if FixRun and not pVPCConfirm:
+	print(Fore.BLUE+"	You've asked to delete any default VPCs we find - with confirmation on each one."+Fore.RESET)
+elif FixRun and pVPCConfirm:
+	print()
+	print(Fore.RED+"	You've asked to delete any default VPCs we find - WITH NO CONFIRMATION on each one."+Fore.RESET)
+	print()
+elif pVPCConfirm and not FixRun:
+	print()
+	print(Fore.BLUE+"	You asked us to delete the default VPCs with no confirmation, but didn't provide the '+fixrun' parameter, so we're proceeding with NOT deleting. You can safely interupt this script and run it again with the necessary parameters."+Fore.RESET)
+	print()
 print(Fore.BLUE+"  2."+Fore.RESET+" Checks the child account in each of the regions")
 print("     to see if there's already a "+Fore.RED+"Config Recorder and Delivery Channel "+Fore.RESET+"enabled...")
 print(Fore.BLUE+"  3."+Fore.RESET+" Checks that there isn't a duplicate "+Fore.RED+"CloudTrail"+Fore.RESET+" trail in the account.")
@@ -239,7 +257,10 @@ for i in range(len(DefaultVPCs)):
 	if FixRun:
 		logging.warning("Deleting VpcId %s in account %s in region %s",DefaultVPCs[i]['VPCId'],DefaultVPCs[i]['AccountID'],DefaultVPCs[i]['Region'])
 		try:	# confirm the user really want to delete the VPC. This is irreversible
-			ReallyDelete=(input ("Deletion of {} default VPC has been requested. Are you still sure? (y/n): ".format(DefaultVPCs[i]['Region'])) in ['y','Y'])
+			if pVPCConfirm:
+				ReallyDelete=True
+			else:
+				ReallyDelete=(input ("Deletion of {} default VPC has been requested. Are you still sure? (y/n): ".format(DefaultVPCs[i]['Region'])) in ['y','Y'])
 			if ReallyDelete:
 				DelVPC_Success=(vpc_modules.del_vpc(account_credentials, DefaultVPCs[i]['VPCId'], DefaultVPCs[i]['Region'])==0)
 				if DelVPC_Success:
@@ -474,7 +495,7 @@ FixesWorked=(NumberOfIssues-NumberOfFixes==0)
 if ChildIsReady and NumberOfIssues==0:
 	print(Fore.GREEN+"**** We've found NO issues that would hinder the adoption of this account ****"+Fore.RESET)
 elif ChildIsReady and FixesWorked:
-	print(Fore.GREEN+"We've found and fixed"+Fore.RED,"{}".format(NumberOfFixes)+Fore.RESET,"issues that would have otherwise blocked the adoption of this account".format(Issues)+Fore.RESET)
+	print(Fore.GREEN+"We've found and fixed"+Fore.RED,"{}".format(NumberOfFixes)+Fore.RESET,"issues that would have otherwise blocked the adoption of this account".format(NumberOfIssues)+Fore.RESET)
 else:
 	print(Fore.RED+"We've found {} issues that would hinder the adoption of this account".format(NumberOfIssues-NumberOfFixes)+Fore.RESET)
 

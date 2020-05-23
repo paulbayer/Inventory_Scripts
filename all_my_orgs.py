@@ -78,7 +78,7 @@ rootonly=args.rootonly
 shortform=args.shortform
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
 
-SkipProfiles=["default","Shared-Fid"]
+SkipProfiles=["default"]
 ERASE_LINE = '\x1b[2K'
 
 RootAccts=[]	# List of the Organization Root's Account Number

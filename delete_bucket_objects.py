@@ -1,20 +1,93 @@
 #!/usr/local/bin/python3
 
-import boto3, sys
+import boto3, sys, logging, pprint
+import argparse
+from botocore.exceptions import ClientError
 
-pProfile=sys.argv[1]
-forcequit=sys.argv[2]
-bucket_name=sys.argv[3]
+parser = argparse.ArgumentParser(
+	description="Script to empty out and possibly delete an S3 bucket.",
+	prefix_chars='-+/')
+parser.add_argument(
+	"-p","--profile",
+	dest="pProfile",
+	metavar="profile to use",
+	default="default",
+	help="To specify a profile, use this parameter.")
+parser.add_argument(
+	"-b","--bucket",
+	dest="pBucketName",
+	metavar="bucket to empty and delete",
+	required=True,
+	help="To specify a profile, use this parameter.")
+parser.add_argument(
+	'+delete', '+force-delete',
+	help="Whether or not to delete the bucket after it's been emptied",
+	action="store_const",
+	dest="pForceQuit",
+	const=True,
+	default=False)
+parser.add_argument(
+	'-v',
+	help="Be verbose",
+	action="store_const",
+	dest="loglevel",
+	const=logging.ERROR, # args.loglevel = 40
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-vv', '--verbose',
+	help="Be MORE verbose",
+	action="store_const",
+	dest="loglevel",
+	const=logging.WARNING, # args.loglevel = 30
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-d',
+	help="Print debugging statements",
+	action="store_const",
+	dest="loglevel",
+	const=logging.INFO,	# args.loglevel = 20
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-dd', '--debug',
+	help="Print LOTS of debugging statements",
+	action="store_const",
+	dest="loglevel",
+	const=logging.DEBUG,	# args.loglevel = 10
+	default=logging.CRITICAL)
+args = parser.parse_args()
+
+pProfile=args.pProfile
+pBucketDelete=args.pForceQuit
+pBucketName=args.pBucketName
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
+
+
 session = boto3.Session(profile_name=pProfile)
 s3 = session.resource(service_name='s3')
-bucket = s3.Bucket(bucket_name)
-bucket.object_versions.delete()
-if forcequit == 'y':
-	x = forcequit
-else:
-		x = input("Now that the bucket is empty, do you want to delete the bucket? (y/n): ")
-if (x=="y" or x=="Y"):
+
+print()
+print("This script is about to delete all versions of all objects from bucket {}".format(pBucketName))
+print()
+
+try:
+	bucket = s3.Bucket(pBucketName)
+	# print(len(list(bucket.object_versions.all)))# Deletes everything in the bucket
+	bucket.object_versions.delete()
+except Exception as e:
+	pprint.pprint(e)
+	print("Error messages here")
+
+DeleteBucket=False
+if pBucketDelete:	# They provided the parameter that said they wanted to delete the bucket
 	bucket.delete()
-	print("Bucket: %s has been deleted" % bucket_name)
+	print("Bucket: %s has been deleted" % pBucketName)
 else:
-	print("Bucket: %s has NOT been deleted" % bucket_name)
+	DeleteBucket = (input("Now that the bucket is empty, do you want to delete the bucket? (y/n): ") in ["y","Y"] )
+	if DeleteBucket:
+		bucket.delete()
+		print("Bucket: %s has been deleted" % pBucketName)
+	else:
+		print("Bucket: %s has NOT been deleted" % pBucketName)
+print()
+print("Thanks for using this script...")
+print()

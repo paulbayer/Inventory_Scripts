@@ -456,6 +456,8 @@ def get_child_access2 (fRootProfile, fChildAccount, fRegion='us-east-1',  fRoleL
 				logging.info(my_Error)
 			return_string="{} failed. Try Again".format(str(fRoleList))
 			continue
+	# Returns a dict object since that's what's expected
+	# It will only get to the part below if the child isn't accessed properly using the roles already defined
 	return({},return_string)
 
 def find_if_Isengard_registered(ocredentials):

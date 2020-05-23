@@ -346,7 +346,7 @@ def del_vpc(ocredentials,fVPCId,fRegion):
 	try:
 		#1. Call EC2.Client.describe_vpc_endpoints. Filter on your VPC id. Call EC2.client.delete_vpc_endpoints on each
 		# print(ERASE_LINE,"Deleting vpc...",end='',flush=True)
-		print("Deleting vpc...",end='',flush=True)
+		print("Deleting vpc in {}...".format(fRegion),end='',flush=True)
 
 		logging.info("Deleting vpc-endpoints... for vpc %s in region %s",fVPCId,fRegion)
 		print(".",end='',flush=True)
