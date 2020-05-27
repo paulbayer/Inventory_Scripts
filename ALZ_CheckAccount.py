@@ -191,13 +191,10 @@ print()
 
 try:
 	account_credentials,role = Inventory_Modules.get_child_access2(pProfile,pChildAccountId)
-	# account_credentials = client_sts.assume_role(
-	# 	RoleArn=role_arn,
-	# 	RoleSessionName="ALZ_CheckAccount")['Credentials']
-	account_credentials['AccountNumber']=pChildAccountId
-	# pprint.pprint(account_credentials)
 	if role.find("failed") > 0:
 		print(Fore.RED,"We weren't able to connect to the Child Account from this Master Account. Please check the role Trust Policy and re-run this script.",Fore.RESET)
+		print("The following list of roles were tried, but none were allowed access to account {} using the {} profile".format(pChildAccountId,pProfile))
+		print(Fore.RED,account_credentials,Fore.RESET)
 		ProcessStatus['Step0']['Success']=False
 		sys.exit("Exiting due to cross-account Auth Failure")
 except ClientError as my_Error:
@@ -223,6 +220,7 @@ except ClientError as my_Error:
 		ProcessStatus['Step0']['Success']=False
 		sys.exit("Exiting...")
 
+account_credentials['AccountNumber']=pChildAccountId
 logging.error("Was able to successfully connect using the credentials... ")
 print()
 calling_creds=Inventory_Modules.find_calling_identity(pProfile)
