@@ -45,7 +45,7 @@ parser.add_argument(
 	action="store_const",
 	help="This flag only checks 'us-east-1', so makes the whole script run really fast.")
 parser.add_argument(
-	"+fix",
+	"+fix", "+delete",
 	dest="FixRun",
 	const=True,
 	default=False,
@@ -278,7 +278,7 @@ for i in range(len(DefaultVPCs)):
 
 print()
 if ProcessStatus['Step1']['Success']:
-	print(ERASE_LINE+Fore.GREEN+"** Step 1 completed with no blocking issues"+Fore.RESET)
+	print(ERASE_LINE+Fore.GREEN+"** Step 1 completed with no issues"+Fore.RESET)
 elif ProcessStatus['Step1']['IssuesFound']-ProcessStatus['Step1']['IssuesFixed']==0:
 	print(ERASE_LINE+Fore.GREEN+"** Step 1 found {} issues, but they were fixed by deleting the default vpcs".format(ProcessStatus['Step1']['IssuesFound'])+Fore.RESET)
 	ProcessStatus['Step1']['Success']=True
