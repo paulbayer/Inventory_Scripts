@@ -36,18 +36,33 @@ parser.add_argument(
 	default=["us-east-1"],
 	help="String fragment of the region(s) you want to check for resources.")
 parser.add_argument(
-    '-d', '--debug',
-    help="Print lots of debugging statements",
-    action="store_const",
+	'-v',
+	help="Be verbose",
+	action="store_const",
 	dest="loglevel",
-	const=logging.INFO,
-    default=logging.CRITICAL)
+	const=logging.ERROR, # args.loglevel = 40
+	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-v', '--verbose',
-    help="Be verbose",
-    action="store_const",
+	'-vv', '--verbose',
+	help="Be MORE verbose",
+	action="store_const",
 	dest="loglevel",
-	const=logging.WARNING)
+	const=logging.WARNING, # args.loglevel = 30
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-d',
+	help="Print debugging statements",
+	action="store_const",
+	dest="loglevel",
+	const=logging.INFO,	# args.loglevel = 20
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-dd', '--debug',
+	help="Print LOTS of debugging statements",
+	action="store_const",
+	dest="loglevel",
+	const=logging.DEBUG,	# args.loglevel = 10
+	default=logging.CRITICAL) # args.loglevel = 50
 args = parser.parse_args()
 
 pProfile=args.pProfile
@@ -55,9 +70,9 @@ pRegionList=args.pregion
 pstackfrag=args.pstackfrag
 pstatus=args.pstatus
 verbose=args.loglevel
-logging.basicConfig(level=args.loglevel)
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
 
-SkipProfiles=["default","Shared-Fid"]
+SkipProfiles=["default"]
 ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 
 NumStacksFound=0
@@ -101,3 +116,4 @@ for account in ChildAccounts:
 print(ERASE_LINE)
 print(Fore.RED+"Found",NumStacksFound,"Stacksets across",len(ChildAccounts),"accounts across",len(RegionList),"regions"+Fore.RESET)
 print()
+print("Thanks for using this script...")

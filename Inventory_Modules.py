@@ -446,6 +446,7 @@ def get_child_access2 (fRootProfile, fChildAccount, fRegion='us-east-1',  fRoleL
 	sts_client = sts_session.client('sts',region_name=fRegion)
 	for role in fRoleList:
 		try:
+			logging.info("Trying to access account %s using %s profile assuming role: %s",fChildAccount, fRootProfile, role)
 			role_arn = 'arn:aws:iam::'+fChildAccount+':role/'+role
 			account_credentials = sts_client.assume_role(
 				RoleArn=role_arn,
@@ -456,7 +457,9 @@ def get_child_access2 (fRootProfile, fChildAccount, fRegion='us-east-1',  fRoleL
 				logging.info(my_Error)
 			return_string="{} failed. Try Again".format(str(fRoleList))
 			continue
-	return({},return_string)
+	# Returns a dict object since that's what's expected
+	# It will only get to the part below if the child isn't accessed properly using the roles already defined
+	return(fRoleList,return_string)
 
 def find_if_Isengard_registered(ocredentials):
 	"""

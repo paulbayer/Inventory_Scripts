@@ -42,18 +42,11 @@ parser.add_argument(
 	action="store_const",
 	help="This will delete the identity providers found - without any opportunity to confirm. Be careful!!")
 parser.add_argument(
-	'-dd', '--debug',
-	help="Print LOTS of debugging statements",
+	'-v',
+	help="Be verbose",
 	action="store_const",
 	dest="loglevel",
-	const=logging.DEBUG,	# args.loglevel = 10
-	default=logging.CRITICAL) # args.loglevel = 50
-parser.add_argument(
-	'-d',
-	help="Print debugging statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.INFO,	# args.loglevel = 20
+	const=logging.ERROR, # args.loglevel = 40
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
 	'-vv', '--verbose',
@@ -63,11 +56,18 @@ parser.add_argument(
 	const=logging.WARNING, # args.loglevel = 30
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-	'-v',
-	help="Be verbose",
+	'-d',
+	help="Print debugging statements",
 	action="store_const",
 	dest="loglevel",
-	const=logging.ERROR, # args.loglevel = 40
+	const=logging.INFO,	# args.loglevel = 20
+	default=logging.CRITICAL) # args.loglevel = 50
+parser.add_argument(
+	'-dd', '--debug',
+	help="Print LOTS of debugging statements",
+	action="store_const",
+	dest="loglevel",
+	const=logging.DEBUG,	# args.loglevel = 10
 	default=logging.CRITICAL) # args.loglevel = 50
 args = parser.parse_args()
 
@@ -93,15 +93,10 @@ ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
 # sys.exit(1)
 NumofAccounts=len(ChildAccounts)
 IdpsFound=[]
-aws_session = boto3.Session(profile_name=pProfile)
-sts_client = aws_session.client('sts')
 for account in ChildAccounts:
-	role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
-	logging.info("Role ARN: %s" % role_arn)
 	try:
-		account_credentials = sts_client.assume_role(
-			RoleArn=role_arn,
-			RoleSessionName="Find-Stacks")['Credentials']
+		account_credentials,role_arn = Inventory_Modules.get_child_access2(pProfile, account['AccountId'])
+		logging.info("Role ARN: %s" % role_arn)
 		account_credentials['AccountNumber']=account['AccountId']
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
@@ -116,8 +111,8 @@ for account in ChildAccounts:
 		Idps=Inventory_Modules.find_saml_components_in_acct(account_credentials,pRegion)
 		# pprint.pprint(Stacks)
 		idpNum=len(Idps)
-		logging.warning("Account: %s | pRegion: %s | Found %s Idps", account['AccountId'], pRegion, idpNum )
-		print(ERASE_LINE,Fore.RED+"Account: {} pRegion: {} Found {} Idps. {} accounts to go".format(account['AccountId'],pRegion,idpNum,NumofAccounts)+Fore.RESET,end='\r')
+		logging.warning("Account: %s | Region: %s | Found %s Idps", account['AccountId'], pRegion, idpNum )
+		logging.warning(ERASE_LINE+Fore.RED+"Account: %s pRegion: %s Found %s Idps. Only %s accounts left to go",account['AccountId'],pRegion,idpNum,NumofAccounts+Fore.RESET)
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
 			print(account['AccountId']+": Authorization Failure")
@@ -129,7 +124,7 @@ for account in ChildAccounts:
 			IdpName=Idps[y]['Arn'][NameStart:]
 			print(fmt % (account['AccountId'],pRegion,IdpName))
 			IdpsFound.append({
-				'Account':account['AccountId'],
+				'AccountId':account['AccountId'],
 				'pRegion':pRegion,
 				'IdpName':IdpName,
 				'Arn':Idps[y]['Arn'] })
@@ -143,18 +138,16 @@ print()
 if DeletionRun:
 	logging.warning("Deleting %s Idps",len(IdpsFound))
 	for y in range(len(IdpsFound)):
-		role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(IdpsFound[y]['Account'])
-		sts_client=aws_session.client('sts')
-		account_credentials = sts_client.assume_role(
-			RoleArn=role_arn,
-			RoleSessionName="Find-Idps")['Credentials']
+		account_credentials,role_arn = Inventory_Modules.get_child_access2(pProfile, IdpsFound[y]['AccountId'])
 		session_aws=boto3.Session(pRegion_name=IdpsFound[y]['pRegion'],
 				aws_access_key_id = account_credentials['AccessKeyId'],
 				aws_secret_access_key = account_credentials['SecretAccessKey'],
 				aws_session_token = account_credentials['SessionToken']
 				)
 		iam_client=session_aws.client('iam')
-		print("Deleting Idp {} from account {} in pRegion {}".format(IdpsFound[y]['IdpName'],IdpsFound[y]['Account'],IdpsFound[y]['pRegion']))
+		print("Deleting Idp {} from account {} in pRegion {}".format(IdpsFound[y]['IdpName'],IdpsFound[y]['AccountId'],IdpsFound[y]['pRegion']))
 		response=iam_client.delete_saml_provider(SAMLProviderArn=IdpsFound[y]['Arn'])
 
+print()
 print("Thanks for using this script...")
+print()

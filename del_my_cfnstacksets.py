@@ -1,8 +1,14 @@
 #!/usr/local/bin/python3
 
+import os, sys, pprint, logging, time, datetime
+import Inventory_Modules
+import argparse, boto3
+from colorama import init,Fore,Back,Style
+from botocore.exceptions import ClientError, NoCredentialsError
+
 '''
 TODO:
-	- Enable this script to accept a Session Token to allow for Federated users via Isengard
+	- Enable this script to accept a Session Token to allow for Federated users
 	- Pythonize the whole thing
 	- More Commenting throughout script
 	- There are four possible use-cases:
@@ -16,12 +22,6 @@ TODO:
 		- The stack doesn't exist within the child account, nor within the stack-set
 			- Nothing to do here
 '''
-
-import os, sys, pprint, logging, time, datetime
-import Inventory_Modules
-import argparse, boto3
-from colorama import init,Fore,Back,Style
-from botocore.exceptions import ClientError, NoCredentialsError
 
 ###################
 
@@ -45,7 +45,7 @@ def RemoveTermProtection(fProfile,fAllInstances):
 		try:
 			response=client_cfn.update_termination_protection(
 				EnableTerminationProtection=False,
-		    	StackName=fAllInstances[i]['StackName']
+				StackName=fAllInstances[i]['StackName']
 			)
 		except Exception as e:
 			if e.response['Error']['Code'] == 'ValidationError':
@@ -94,18 +94,18 @@ parser.add_argument(
 	metavar="Account to remove from stacksets",
 	help="The Account number you want removed from ALL of the stacksets and ALL of the regions it's been found.")
 parser.add_argument(
-	'-dd', '--debug',
-	help="Print LOTS of debugging statements",
+	'+delete',
+	help="[Default] Do a Dry-run; if this parameter is specified, we'll delete stacksets we find, with no additional confirmation.",
 	action="store_const",
-	dest="loglevel",
-	const=logging.DEBUG,	# args.loglevel = 10
-	default=logging.CRITICAL) # args.loglevel = 50
+	const=False,
+	default=True,
+	dest="DryRun")
 parser.add_argument(
-	'-d',
-	help="Print debugging statements",
+	'-v',
+	help="Be verbose",
 	action="store_const",
 	dest="loglevel",
-	const=logging.INFO,	# args.loglevel = 20
+	const=logging.ERROR, # args.loglevel = 40
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
 	'-vv', '--verbose',
@@ -115,19 +115,19 @@ parser.add_argument(
 	const=logging.WARNING, # args.loglevel = 30
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-	'-v',
-	help="Be verbose",
+	'-d',
+	help="Print debugging statements",
 	action="store_const",
 	dest="loglevel",
-	const=logging.ERROR, # args.loglevel = 40
+	const=logging.INFO,	# args.loglevel = 20
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '+delete',
-    help="[Default] Do a Dry-run; if this parameter is specified, we'll delete stacksets we find, with no additional confirmation.",
-    action="store_const",
-	const=False,
-	default=True,
-	dest="DryRun")
+	'-dd', '--debug',
+	help="Print LOTS of debugging statements",
+	action="store_const",
+	dest="loglevel",
+	const=logging.DEBUG,	# args.loglevel = 10
+	default=logging.CRITICAL) # args.loglevel = 50
 args = parser.parse_args()
 
 pProfile=args.pProfile
@@ -137,7 +137,7 @@ AccountsToSkip=args.pSkipAccounts
 verbose=args.loglevel
 pdryrun=args.DryRun
 pRemove=args.pRemove
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)10s() ] %(message)s")
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
 
 ##########################
 ERASE_LINE = '\x1b[2K'
@@ -324,5 +324,5 @@ except Exception as e:
 	pass
 
 print()
-print("Now we're done")
+print("Thanks for using this script...")
 print()

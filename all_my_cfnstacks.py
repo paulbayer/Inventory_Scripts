@@ -97,9 +97,8 @@ ERASE_LINE = '\x1b[2K'
 
 print(args.loglevel)
 
-NumStacksFound = 0
 print()
-if args.loglevel < 30:
+if args.loglevel < 21:	# INFO level
 	fmt='%-20s %-15s %-15s %-50s %-50s'
 	print(fmt % ("Account","Region","Stack Status","Stack Name","Stack ID"))
 	print(fmt % ("-------","------","------------","----------","--------"))
@@ -136,25 +135,22 @@ for account in ChildAccounts:
 		break
 	for region in RegionList:
 		try:
-			StackNum=0
 			Stacks=Inventory_Modules.find_stacks_in_acct(account_credentials,region,pstackfrag,pstatus)
 			# pprint.pprint(Stacks)
-			StackNum=len(Stacks)
-			logging.warning("Account: %s | Region: %s | Found %s Stacks", account['AccountId'], region, StackNum )
-			print(ERASE_LINE,Fore.RED+"Account: {} Region: {} Found {} Stacks".format(account['AccountId'],region,StackNum)+Fore.RESET,end='\r')
+			logging.warning("Account: %s | Region: %s | Found %s Stacks", account['AccountId'], region, len(Stacks) )
+			print(ERASE_LINE,Fore.RED+"Account: {} Region: {} Found {} Stacks".format(account['AccountId'],region,len(Stacks))+Fore.RESET,end='\r')
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(account['AccountId']+": Authorization Failure")
-		if StackNum > 0:
+		if len(Stacks) > 0:
 			for y in range(len(Stacks)):
 				StackName=Stacks[y]['StackName']
 				StackStatus=Stacks[y]['StackStatus']
 				StackID=Stacks[y]['StackId']
-				if args.loglevel < 30:
+				if args.loglevel < 21: # INFO level
 					print(fmt % (account['AccountId'],region,StackStatus,StackName,StackID))
 				else:
 					print(fmt % (account['AccountId'],region,StackStatus,StackName))
-				NumStacksFound += 1
 				StacksFound.append({
 					'Account':account['AccountId'],
 					'Region':region,
@@ -169,13 +165,11 @@ for i in range(len(StacksFound)):
 	lRegions.append(StacksFound[i]['Region'])
 	lAccountsAndRegions.append((StacksFound[i]['Account'],StacksFound[i]['Region']))
 print(ERASE_LINE)
-print(Fore.RED+"Looked through",NumStacksFound,"Stacks across",len(ChildAccounts),"accounts across",len(RegionList),"regions"+Fore.RESET)
+print(Fore.RED+"Looked through",len(StacksFound),"Stacks across",len(ChildAccounts),"accounts across",len(RegionList),"regions"+Fore.RESET)
 print()
-print(Fore.RED+"Found",NumStacksFound,"Stacks within",len(set(lAccounts)),"accounts across",len(set(lRegions)),"regions"+Fore.RESET)
-if args.loglevel < 50:
-	pprint.pprint("The list of accounts and regions:")
+if args.loglevel < 21: # INFO level
+	print("The list of accounts and regions:")
 	pprint.pprint(list(sorted(set(lAccountsAndRegions))))
-print()
 # pprint.pprint(StacksFound)
 
 if DeletionRun and ('GuardDuty' in pstackfrag):
@@ -207,4 +201,5 @@ elif DeletionRun:
 		response=Inventory_Modules.delete_stack2(account_credentials,StacksFound[y]['Region'],StacksFound[y]['StackName'])
 		pprint.pprint(response)
 
+print()
 print("Thanks for using this script...")
