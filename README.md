@@ -24,10 +24,7 @@ Additional common parameters:
   - -r: to specify the region for the script to work in. Most scripts take "all" as a valid parameter. Most scripts also assume "us-east-1" as a default if nothing is specified. Also note - you can specify a fragment here - so you can specify "us-east" and get both "us-east-1" and "us-east-2". Specify "us-" and you'll get all four "us-" regions.
   - -f: string fragment - some scripts (specifically ones dealing with CFN stacks and stacksets) take a parameter that allows you to specify a fragment of the stack name, so you can find that stack you can't quite remember the whole name of.
 
-<<<<<<< HEAD
 
-=======
->>>>>>> development
 Purpose Built Scripts
 ------------------
 - **Inventory_Modules.py**
@@ -54,11 +51,8 @@ Purpose Built Scripts
   - I wrote this script to help remove the Config Recorders and Delivery Channels for a given account, so that we could use this within the "adoption" of legacy accounts into the AWS Landing Zone.
   - Now that we have the ALZ_CheckAccount tool, I don't see a lot of use from this script, but it's complete - so why delete it?
 - **del_my_cfnstacksets.py**
-<<<<<<< HEAD
-  - So, originally, when I was creating this library, I had the idea that I would create scripts that found resources - and different scripts that deleted those resources. Hence - both the "all_my_cfnstacksets" as well as "del_my_cfnstacksets". However, I quickly realized that you had to do the finding before you could do the deleting - so I decided to put more effort into the "del*" tool instead of the "find*" tool. Of course - then I realized that having the "deletion" be action in the find script made way more sense, so I tried to put everything I had done from one script into the other. At the end of it all - I had a mish-mash of useful and stale features in both scripts.
-=======
   - So, originally, when I was creating this library, I had the idea that I would create scripts that found resources - and different scripts that deleted those resources. Hence - both the "all_my_cfnstacksets" as well as "del_my_cfnstacksets". However, I quickly realized that you had to do the finding before you could do the deleting - so I decided to put more effort into the "del\*" tool instead of the "find\*" tool. Of course - then I realized that having the "deletion" be action in the find script made way more sense, so I tried to put everything I had done from one script into the other. At the end of it all - I had a mish-mash of useful and stale features in both scripts.
->>>>>>> development
+
   - The truth is that I need to go through this script and make sure everything useful here has gotten into the "all_my_cfnstacksets.py" script and simply move forward with that one only. Still a work in progress, I guess.
 - **all_my_elbs.py**
   - The objective of this script was to find all the various Load Balancers created in various accounts within your org.
