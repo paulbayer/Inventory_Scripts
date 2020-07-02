@@ -29,7 +29,8 @@ parser.add_argument(
 parser.add_argument(
 	"-t","--topic",
 	dest="pTopicFrag",
-	default="all",
+	default=["all"],
+	nargs='*',
 	metavar="topic name string",
 	help="String fragment of the Topic you want to find.")
 parser.add_argument(
