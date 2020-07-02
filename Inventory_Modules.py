@@ -535,6 +535,46 @@ def enable_drift_on_stacks(ocredentials,fRegion,fStackName):
 Above - Generic functions
 Below - Specific functions to specific features
 """
+def find_sns_topics(ocredentials, fRegion, fTopicFrag=['all']):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+
+	Returns:
+		List of Topic ARNs found that match the fragment sent
+"""
+	import boto3, logging, pprint
+	session_sns=boto3.Session(
+		aws_access_key_id = ocredentials['AccessKeyId'],
+		aws_secret_access_key = ocredentials['SecretAccessKey'],
+		aws_session_token = ocredentials['SessionToken'],
+		region_name=fRegion)
+	client_sns=session_sns.client('sns')
+	#TODO: Enable pagination
+	response=client_sns.list_topics()
+	TopicList=[]
+	for item in response['Topics']:
+		TopicList.append(item['TopicArn'])
+	if 'all' in fTopicFrag:
+		logging.warning("Looking for all SNS Topics in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
+		logging.info("Topic Arns Returned: %s",TopicList)
+		logging.warning("We found %s SNS Topics", len(TopicList))
+		return(TopicList)
+	else:
+		logging.warning("Looking for specific SNS Topics in account %s from Region %s",ocredentials['AccountNumber'],fRegion)
+		TopicList2=[]
+		for item in fTopicFrag:
+			for Topic in TopicList:
+				logging.info('Have %s | Looking for %s',Topic,item)
+				if Topic.find(item) >=0:
+					logging.error('Found %s',Topic)
+					TopicList2.append(Topic)
+		logging.warning("We found %s SNS Topics", len(TopicList2))
+		return(TopicList2)
+
 def find_account_vpcs(ocredentials, fRegion, defaultOnly=False):
 	"""
 	ocredentials is an object with the following structure:
