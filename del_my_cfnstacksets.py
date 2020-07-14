@@ -32,11 +32,6 @@ def randomString(stringLength=10):
 	letters = string.ascii_lowercase
 	return ''.join(random.choice(letters) for i in range(stringLength))
 
-# print ("Random String is ", randomString() )
-# print ("Random String is ", randomString(10) )
-# print ("Random String is ", randomString(10) )
-# sys.exit(9)
-
 def RemoveTermProtection(fProfile,fAllInstances):
 	for i in range(len(fAllInstances)):
 		logging.warning("Profile: %s | Region: %s | ChildAccount: %s" % (fProfile,fAllInstances[i]['ChildRegion'],fAllInstances[i]['ChildAccount']))
@@ -119,7 +114,7 @@ parser.add_argument(
 	help="Print debugging statements",
 	action="store_const",
 	dest="loglevel",
-	const=logging.INFO,	# args.loglevel = 20
+	const=logging.INFO, # args.loglevel = 20
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
 	'-dd', '--debug',
@@ -170,7 +165,7 @@ logging.info("Found %s StackSetNames that matched your fragment" % (len(StackSet
 for i in range(len(StackSetNames)):
 	print(ERASE_LINE,"Looking for stacksets with '{}' string in account {} in region {}".format(StackSetNames[i]['StackSetName'],ProfileAccountNumber,pRegion),end='\r')
 	StackInstances=Inventory_Modules.find_stack_instances(pProfile,pRegion,StackSetNames[i]['StackSetName'])
-	# pprint.pprint(StackInstances)
+	pprint.pprint(StackInstances)
 	logging.warning("Found %s Stack Instances within the StackSet %s" % (len(StackInstances),StackSetNames[i]['StackSetName']))
 	for j in range(len(StackInstances)):
 		AllInstances.append({
@@ -238,7 +233,7 @@ for account in AccountList:
 		try:
 			response=client_org.detach_policy(
 				PolicyId=policy,
-		    	TargetId=account
+				TargetId=account
 			)
 			logging.warning("Successfully detached policies from account %s" % (account))
 		except Exception as e:
@@ -256,14 +251,6 @@ for account in AccountList:
 				break
 		finally:
 			logging.info("Only %s more accounts to go",str(NumofAccounts))
-
-# print("There are {} items in AllInstances".format(len(AllInstances)))
-# print("There are {} items in StackSetNames".format(len(StackSetNames)))
-# print()
-# pprint.pprint(AllInstances[0])
-# print()
-# pprint.pprint(StackSetNames[0])
-# sys.exit(8)
 
 session_cfn=boto3.Session(profile_name=pProfile,region_name=pRegion)
 for i in range(len(StackSetNames)):
