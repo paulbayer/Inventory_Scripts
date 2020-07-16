@@ -168,7 +168,11 @@ for i in range(len(StackSetNames)):
 	logging.warning("Found %s Stack Instances within the StackSet %s" % (len(StackInstances),StackSetNames[i]['StackSetName']))
 	# pprint.pprint(StackInstances)
 	for j in range(len(StackInstances)):
-		pprint.pprint(StackInstances[j])
+		# pprint.pprint(StackInstances[j])
+		logging.DEBUG("This is j: %s", str(j))
+		logging.DEBUG("This is StackId: %s", StackInstances[j]['StackId'])
+		logging.DEBUG("This is ChildAccount: %s", StackInstances[j]['ChildAccount'])
+		logging.DEBUG("This is ChildRegion: %s", StackInstances[j]['ChildRegion'])
 		AllInstances.append({
 			'ParentAccountNumber':ProfileAccountNumber,
 			'ChildAccount':StackInstances[j]['Account'],
@@ -178,8 +182,8 @@ for i in range(len(StackSetNames)):
 			'StackStatus':StackInstances[j]['Status'],
 			'StackSetName':StackInstances[j]['StackSetId'][:StackInstances[j]['StackSetId'].find(':')]
 		})
-		pprint.pprint(AllInstances)
-		sys.exit(99)
+		# pprint.pprint(AllInstances)
+		# sys.exit(99)
 
 print()
 logging.error("Found %s stack instances." % (len(AllInstances)))
