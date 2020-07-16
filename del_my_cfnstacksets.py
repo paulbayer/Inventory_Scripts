@@ -165,7 +165,7 @@ logging.info("Found %s StackSetNames that matched your fragment" % (len(StackSet
 for i in range(len(StackSetNames)):
 	print(ERASE_LINE,"Looking for stacksets with '{}' string in account {} in region {}".format(StackSetNames[i]['StackSetName'],ProfileAccountNumber,pRegion),end='\r')
 	StackInstances=Inventory_Modules.find_stack_instances(pProfile,pRegion,StackSetNames[i]['StackSetName'])
-	pprint.pprint(StackInstances)
+	# pprint.pprint(StackInstances)
 	logging.warning("Found %s Stack Instances within the StackSet %s" % (len(StackInstances),StackSetNames[i]['StackSetName']))
 	for j in range(len(StackInstances)):
 		AllInstances.append({
