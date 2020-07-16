@@ -169,10 +169,10 @@ for i in range(len(StackSetNames)):
 	# pprint.pprint(StackInstances)
 	for j in range(len(StackInstances)):
 		# pprint.pprint(StackInstances[j])
-		logging.DEBUG("This is j: %s", str(j))
-		logging.DEBUG("This is StackId: %s", StackInstances[j]['StackId'])
-		logging.DEBUG("This is ChildAccount: %s", StackInstances[j]['ChildAccount'])
-		logging.DEBUG("This is ChildRegion: %s", StackInstances[j]['ChildRegion'])
+		logging.debug("This is j: %s", str(j))
+		logging.debug("This is StackId: %s", str(StackInstances[j]['StackId']))
+		logging.debug("This is ChildAccount: %s", StackInstances[j]['Account'])
+		logging.debug("This is ChildRegion: %s", StackInstances[j]['Region'])
 		AllInstances.append({
 			'ParentAccountNumber':ProfileAccountNumber,
 			'ChildAccount':StackInstances[j]['Account'],
