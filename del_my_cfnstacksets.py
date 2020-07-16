@@ -178,6 +178,7 @@ for i in range(len(StackSetNames)):
 			'StackStatus':StackInstances[j]['Status'],
 			'StackSetName':StackInstances[j]['StackSetId'][:StackInstances[j]['StackSetId'].find(':')]
 		})
+		pprint.pprint(AllInstances)
 		sys.exit(99)
 
 print()
