@@ -252,8 +252,6 @@ for i in range(len(all_config_resources)):
 
 print(ERASE_LINE)
 print("We scanned {} accounts and {} regions totalling {} possible areas for resources.".format(len(ChildAccounts),len(cfg_regions),len(ChildAccounts)*len(cfg_regions)))
-print("Found {} Configuration Recorders across {} accounts across {} regions".format(len(all_config_resources),len(ChildAccounts),len(cfg_regions)))
-print("Found {} Delivery Channels across {} profiles across {} regions".format(len(all_config_resources),len(ChildAccounts),len(cfg_regions)))
 print()
 
 ###############
