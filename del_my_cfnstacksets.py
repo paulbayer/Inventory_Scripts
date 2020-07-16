@@ -169,10 +169,10 @@ for i in range(len(StackSetNames)):
 	# pprint.pprint(StackInstances)
 	for j in range(len(StackInstances)):
 		if not 'StackId' in StackInstances[j].keys():
-			break
+			continue
 		if not (StackInstances[j]['Account'] == pRemove):
 			logging.info("Found a stack instance, but the account didn't match %s... exiting", pRemove)
-			break
+			continue
 		# pprint.pprint(StackInstances[j])
 		logging.debug("This is j: %s", str(j))
 		logging.debug("This is StackId: %s", str(StackInstances[j]['StackId']))
