@@ -165,9 +165,10 @@ logging.info("Found %s StackSetNames that matched your fragment" % (len(StackSet
 for i in range(len(StackSetNames)):
 	print(ERASE_LINE,"Looking for stacksets with '{}' string in account {} in region {}".format(StackSetNames[i]['StackSetName'],ProfileAccountNumber,pRegion),end='\r')
 	StackInstances=Inventory_Modules.find_stack_instances(pProfile,pRegion,StackSetNames[i]['StackSetName'])
-	# pprint.pprint(StackInstances)
 	logging.warning("Found %s Stack Instances within the StackSet %s" % (len(StackInstances),StackSetNames[i]['StackSetName']))
+	# pprint.pprint(StackInstances)
 	for j in range(len(StackInstances)):
+		pprint.pprint(StackInstances[j])
 		AllInstances.append({
 			'ParentAccountNumber':ProfileAccountNumber,
 			'ChildAccount':StackInstances[j]['Account'],
@@ -177,8 +178,8 @@ for i in range(len(StackSetNames)):
 			'StackStatus':StackInstances[j]['Status'],
 			'StackSetName':StackInstances[j]['StackSetId'][:StackInstances[j]['StackSetId'].find(':')]
 		})
+		sys.exit(99)
 
-# for profile in ProfileList:	# Expectation that there is ONLY ONE PROFILE MATCHED.
 print()
 logging.error("Found %s stack instances." % (len(AllInstances)))
 # pprint.pprint(AllInstances)
