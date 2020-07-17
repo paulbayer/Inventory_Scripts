@@ -1286,7 +1286,7 @@ def find_stack_instances(fProfile,fRegion,fStackSetName):
 		stack_instances_list.append(stack_instances['Summaries'])
 	return(stack_instances_list)
 
-def delete_stack_instances(fProfile,fRegion,lAccounts,lRegions,fStackSetName,fOperationName="StackDelete"):
+def delete_stack_instances(fProfile,fRegion,lAccounts,lRegions,fStackSetName,fRetainStacks=False,fOperationName="StackDelete"):
 	"""
 	fProfile is the Root Profile that owns the stackset
 	fRegion is the region where the stackset resides
@@ -1304,7 +1304,7 @@ def delete_stack_instances(fProfile,fRegion,lAccounts,lRegions,fStackSetName,fOp
 		StackSetName=fStackSetName,
 		Accounts=lAccounts,
 		Regions=lRegions,
-		RetainStacks=False,
+		RetainStacks=fRetainStacks,
 		OperationId=fOperationName
 	)
 

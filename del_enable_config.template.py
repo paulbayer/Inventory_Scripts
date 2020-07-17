@@ -242,7 +242,8 @@ for account in ChildAccounts:
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(profile+": Authorization Failure for account {}".format(account['AccountId']))
-
+	NumAccountsInvestigated += 1
+	print(ERASE_LINE+Fore.GREEN+"Checked {} Accounts. Only {} left to go...".format(NumAccountsInvestigated,len(ChildAccounts)-NumAccountsInvestigated),Fore.RESET)
 print()
 fmt='%-20s %-15s %-20s %-20s'
 print(fmt % ("Account ID","Region","Type","Resource Name"))

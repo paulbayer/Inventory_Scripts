@@ -86,6 +86,7 @@ parser.add_argument(
 parser.add_argument(
 	"-R","--Remove",
 	dest="pRemove",
+	default="NotProvided",
 	metavar="Account to remove from stacksets",
 	help="The Account number you want removed from ALL of the stacksets and ALL of the regions it's been found.")
 parser.add_argument(
@@ -95,6 +96,13 @@ parser.add_argument(
 	const=False,
 	default=True,
 	dest="DryRun")
+parser.add_argument(
+	'+force',
+	help="This parameter will remove the account from a stackset - WITHOUT trying to remove the stacks within the child. This is a VERY bad thing to do unless you're absolutely sure.",
+	action="store_const",
+	const=True,
+	default=False,
+	dest="RetainStacks")
 parser.add_argument(
 	'-v',
 	help="Be verbose",
@@ -110,7 +118,7 @@ parser.add_argument(
 	const=logging.WARNING, # args.loglevel = 30
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-	'-d',
+	'-d', '-vvv',
 	help="Print debugging statements",
 	action="store_const",
 	dest="loglevel",
@@ -127,12 +135,92 @@ args = parser.parse_args()
 
 pProfile=args.pProfile
 pRegion=args.pRegion
+pForce=args.RetainStacks
 pStackfrag=args.pStackfrag
 AccountsToSkip=args.pSkipAccounts
 verbose=args.loglevel
 pdryrun=args.DryRun
 pRemove=args.pRemove
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
+
+########################
+####################
+# Required Parameters:
+#	StackSetNames
+#	RegionList
+#	AccountList
+#	pProfile
+#	pRegion
+#	pRemove
+#	pForce
+#
+####################
+def delete_stack_instances(fStackSetNames,fForce=False):
+	session_cfn=boto3.Session(profile_name=pProfile,region_name=pRegion)
+	logging.warning("Removing instances from %s StackSet" % (fStackSetNames['StackSetName']))
+	try:
+		StackSetOpId='Delete-'+randomString(5)
+		response=Inventory_Modules.delete_stack_instances(pProfile,pRegion,AccountList,RegionList,fStackSetNames['StackSetName'],fForce,StackSetOpId)
+		# pprint.pprint(response)
+	except Exception as e:
+		if e.response['Error']['Code'] == 'StackSetNotFoundException':
+			logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
+		else:
+			print("Error: ",e)
+			return("Failed-Other")
+	StackOperationsRunning=True
+	client_cfn=session_cfn.client('cloudformation')
+	timer=10
+	InstancesToSkip=0
+	SpecificInstancesLeft=0
+	while StackOperationsRunning:
+		logging.debug("Got into the While Loop")
+		logging.warning(fStackSetNames['StackSetName'])
+		try:
+			time.sleep(3)
+			Status=client_cfn.list_stack_set_operations(StackSetName=fStackSetNames['StackSetName'])
+			# pprint.pprint(Status)
+			logging.info("StackSet Operation state is %s" % Status['Summaries'][0]['Status'])
+			if Status['Summaries'][0]['Status'] in ['CANCELLED','FAILED']:
+				Reason=client_cfn.list_stack_set_operation_results(StackSetName=fStackSetNames['StackSetName'],    OperationId=StackSetOpId)
+				for k in range(len(Reason)):
+					logging.info("Reason: %s",Reason['Summaries'][k]['StatusReason'])
+					if Reason['Summaries'][k]['Status']=='FAILED' and Reason['Summaries'][k]['StatusReason'].find("role with trust relationship to Role") > 0:
+						logging.info("StackSet Operation status reason is: %s" % Reason['Summaries'][k]['StatusReason'])
+						print("Error removing account {} from the StackSet {}. We should try to delete the stack instance with '--no-retain-stacks' enabled...".format(pRemove,fStackSetNames['StackSetName']))
+						return("Failed-ForceIt")
+			response2=client_cfn.list_stack_instances(StackSetName=fStackSetNames['StackSetName'])['Summaries']
+			for j in range(len(response2)):
+				if response2[j]['Account'] in AccountsToSkip:
+					InstancesToSkip+=1
+				elif response2[j]['Account'] == pRemove:
+					SpecificInstancesLeft+=1
+			if pRemove=='NotProvided':
+				InstancesLeft=len(response2)-InstancesToSkip
+				logging.info("There are still %s instances left in the stackset" % InstancesLeft)
+			else:
+				InstancesLeft=SpecificInstancesLeft
+				logging.info("There are still %s instances of account %s left in the stackset", SpecificInstancesLeft, pRemove)
+			StackOperationsRunning=(Status['Summaries'][0]['Status'] in ['RUNNING','PENDING'])
+			logging.info("StackOperationsRunning is %s" % StackOperationsRunning)
+			if StackOperationsRunning:
+				print(ERASE_LINE+"Waiting {} seconds for {} to be fully deleted. There's still {} instances left.".format(timer,fStackSetNames['StackSetName'],InstancesLeft),end='\r')
+				time.sleep(10)
+				timer+=10
+			elif Status['Summaries'][0]['Status'] == 'SUCCEEDED':
+				logging.info("Successfully removed %s from %s",pRemove,fStackSetNames['StackSetName'])
+				return("Success")
+			else:
+				logging.info("Something else failed")
+				return("Failed-Other")
+		except Exception as e:
+			# if e.response['Error']['Code'] == 'StackSetNotFoundException':
+			# 	logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
+			# 	StackOperationsRunning=True
+			# 	pass
+			# else:
+				print("Error: ",e)
+				break
 
 ##########################
 ERASE_LINE = '\x1b[2K'
@@ -155,7 +243,7 @@ print()
 # Get the StackSet names from the Master Profile
 StackSetNames=Inventory_Modules.find_stacksets(pProfile,pRegion,pStackfrag)
 ProfileAccountNumber=Inventory_Modules.find_account_number(pProfile)
-logging.info("Found %s StackSetNames that matched your fragment" % (len(StackSetNames)))
+logging.error("Found %s StackSetNames that matched your fragment" % (len(StackSetNames)))
 # for i in range(len(StackSetNames)):
 # 	if 'AWSControlTower' in StackSetNames[i]['StackSetName']:
 # 		continue
@@ -169,8 +257,11 @@ for i in range(len(StackSetNames)):
 	# pprint.pprint(StackInstances)
 	for j in range(len(StackInstances)):
 		if not 'StackId' in StackInstances[j].keys():
+			logging.info("The stack instance found doesn't have a stackid associated")
 			continue
-		if not (StackInstances[j]['Account'] == pRemove):
+		if pRemove=='NotProvided':
+			pass
+		elif not (StackInstances[j]['Account'] == pRemove):
 			logging.info("Found a stack instance, but the account didn't match %s... exiting", pRemove)
 			continue
 		# pprint.pprint(StackInstances[j])
@@ -197,32 +288,75 @@ logging.error("Found %s stack instances." % (len(AllInstances)))
 for i in range(len(AllInstances)):
 	logging.error("Account %s in Region %s has Stack %s in status %s", AllInstances[i]['ChildAccount'], AllInstances[i]['ChildRegion'], AllInstances[i]['StackName'], AllInstances[i]['StackStatus'])
 
-AccountList=[]
-StackSetStillInUse=[]
-for i in range(len(AllInstances)):
-	if AllInstances[i]['ChildAccount'] in AccountsToSkip:
-		StackSetStillInUse.append(AllInstances[i]['StackSetName'])
-		continue
-	else:
-		AccountList.append(AllInstances[i]['ChildAccount'])
-AccountList=list(set(AccountList))
-StackSetStillInUse=list(set(StackSetStillInUse))
 
-if pdryrun:
-	print("Found {} StackSets that matched, with a total of {} instances".format(len(StackSetNames),len(AllInstances)))
-	# pprint.pprint(AccountList)
-	print("We're Done")
+if pdryrun and pRemove=='NotProvided':
 	print()
-	sys.exit(0)
+	print("Found {} StackSets that matched, with {} total instances".format(len(StackSetNames),len(AllInstances)))
+elif pdryrun:
+	print()
+	print("Out of {} StackSets that matched, there are {} instances of account {}".format(len(StackSetNames),len(AllInstances),pRemove))
+elif not pdryrun:
+	AccountList=[]
+	StackSetStillInUse=[]
+	for i in range(len(AllInstances)):
+		if AllInstances[i]['ChildAccount'] in AccountsToSkip: # Either means the stackset is still in use
+			StackSetStillInUse.append(AllInstances[i]['StackSetName'])
+		elif not pRemove=='NotProvided':
+			StackSetStillInUse.append(AllInstances[i]['StackSetName'])
+			AccountList.append(AllInstances[i]['ChildAccount'])
+		else:
+			AccountList.append(AllInstances[i]['ChildAccount'])
+	AccountList=list(set(AccountList))
+	StackSetStillInUse=list(set(StackSetStillInUse))
 
-print("Removing {} stack instances from the {} StackSets found".format(len(AllInstances),len(StackSetNames)))
+	print("Removing {} stack instances from the {} StackSets found".format(len(AllInstances),len(StackSetNames)))
 
-RegionList=[]
-for i in range(len(AllInstances)):
-	RegionList.append(AllInstances[i]['ChildRegion'])
+	RegionList=[]
+	for i in range(len(AllInstances)):
+		RegionList.append(AllInstances[i]['ChildRegion'])
 
-RegionList=list(set(RegionList))
+	RegionList=list(set(RegionList))
+	# pprint.pprint(StackSetNames)
+	for m in range(len(StackSetNames)):
+		result=delete_stack_instances(StackSetNames[m],pForce)
+		if result=='Success':
+			print("Successfully finished StackSet {}".format(StackSetNames[m]['StackSetName']))
+		elif pForce==True and result=='Failed-ForceIt':
+			print("Some other problem happened.")
+		elif pForce==False and result=='Failed-ForceIt':
+			Decision=(input ("Deletion of Stack Instances failed, but might work if we force it. You wanna try that? (y/n): ") in ['y','Y'])
+			if Decision:
+				result=delete_stack_instances(StackSetNames[m],True)	# Try it again, forcing it this time
+				if result=='Success':
+					print(ERASE_LINE+"Successfully finished StackSet {}".format(StackSetNames[m]['StackSetName']))
+				elif pForce==True and result=='Failed-ForceIt':
+					print(ERASE_LINE+"Some other problem happened.")
+				elif result=='Failed-Other':
+					print(ERASE_LINE+"Something else failed... Who knows?")
+		elif result=='Failed-Other':
+			print("Something else failed... Who knows?")
 
+	if pRemove == 'NotProvided':
+		try:
+			print()
+			print("Now deleting {} stacksets from {} Profile".format(len(StackSetNames)-len(StackSetStillInUse),pProfile))
+			for i in range(len(StackSetNames)):
+				# pprint.pprint(StackSetNames[i])
+				# pprint.pprint(StackSetStillInUse)
+				if StackSetNames[i]['StackSetName'] in StackSetStillInUse:
+					continue
+				else:
+					response=Inventory_Modules.delete_stackset(pProfile,pRegion,StackSetNames[i]['StackSetName'])
+					logging.warning("StackSet %s has been deleted from Root account %s in region %s" % (StackSetNames[i]['StackSetName'],pProfile,pRegion))
+		except Exception as e:
+			pprint.pprint(e)
+			pass
+
+'''
+This section removes the SCP policies to ensure that if there's a policy that disallows removing config or other tools, this will take care of that.
+'''
+# The following section is commented out since we shouldn't be removing SCPs from accounts and NOT putting them back!!
+'''
 PolicyListOutput=[]
 PolicyList=[]
 session_org=boto3.Session(profile_name=pProfile,region_name=pRegion)
@@ -234,9 +368,6 @@ for j in range(len(PolicyListOutput['Policies'])):
 	else:
 		continue
 
-'''
-This section removes the SCP policies to ensure that if there's a policy that disallows removing config or other tools, this will take care of that.
-'''
 NumofAccounts=len(AccountList)
 for account in AccountList:
 	NumofAccounts-=1
@@ -262,64 +393,8 @@ for account in AccountList:
 				break
 		finally:
 			logging.info("Only %s more accounts to go",str(NumofAccounts))
+'''
 
-session_cfn=boto3.Session(profile_name=pProfile,region_name=pRegion)
-for i in range(len(StackSetNames)):
-	logging.warning("Removing all instances from %s StackSet" % (StackSetNames[i]['StackSetName']))
-	try:
-		response=Inventory_Modules.delete_stack_instances(pProfile,pRegion,AccountList,RegionList,StackSetNames[i]['StackSetName'],"Delete-"+randomString(5))
-		# pprint.pprint(response)
-	except Exception as e:
-		if e.response['Error']['Code'] == 'StackSetNotFoundException':
-			logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
-		else:
-			print("Error: ",e)
-			break
-	StackOperationsRunning=True
-	client_cfn=session_cfn.client('cloudformation')
-	timer=0
-	InstancesToSkip=0
-	while StackOperationsRunning:
-		logging.info("Got into the While Loop")
-		logging.warning(StackSetNames[i]['StackSetName'])
-		try:
-			response1=client_cfn.list_stack_set_operations(StackSetName=StackSetNames[i]['StackSetName'])['Summaries'][0]['Status']
-			logging.info("StackSet Operation state is %s" % response1)
-			response2=client_cfn.list_stack_instances(StackSetName=StackSetNames[i]['StackSetName'])['Summaries']
-			logging.info("There are still %s instances left" % len(response2))
-			for j in range(len(response2)):
-				if response2[j]['Account'] in AccountsToSkip:
-					InstancesToSkip+=1
-			InstancesLeft=len(response2)-InstancesToSkip
-			StackOperationsRunning=(response1 == 'RUNNING')
-			logging.info("StackOperationsRunning is %s" % StackOperationsRunning)
-			if StackOperationsRunning:
-				print(ERASE_LINE+"Waiting {} seconds for {} to be fully deleted. There's still {} instances left.".format(timer,StackSetNames[i]['StackSetName'],len(response2)),end='\r')
-				time.sleep(10)
-				timer+=10
-		except Exception as e:
-			# if e.response['Error']['Code'] == 'StackSetNotFoundException':
-			# 	logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
-			# 	StackOperationsRunning=True
-			# 	pass
-			# else:
-				print("Error: ",e)
-				break
-
-print("Now deleting {} stacksets from {} Profile".format(len(StackSetNames)-len(StackSetStillInUse),pProfile))
-
-try:
-	for i in range(len(StackSetNames)):
-		# pprint.pprint(StackSetNames[i])
-		# pprint.pprint(StackSetStillInUse)
-		if StackSetNames[i]['StackSetName'] in StackSetStillInUse:
-			continue
-		else:
-			response=Inventory_Modules.delete_stackset(pProfile,pRegion,StackSetNames[i]['StackSetName'])
-			logging.warning("StackSet %s has been deleted from Root account %s in region %s" % (StackSetNames[i]['StackSetName'],pProfile,pRegion))
-except Exception as e:
-	pprint.pprint(e)
-	pass
 
 print()
 print("Thanks for using this script...")
