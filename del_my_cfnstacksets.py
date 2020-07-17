@@ -320,7 +320,7 @@ elif not pdryrun:
 	for m in range(len(StackSetNames)):
 		result=delete_stack_instances(StackSetNames[m],pForce)
 		if result=='Success':
-			print("Successfully finished StackSet {}".format(StackSetNames[m]['StackSetName']))
+			print(ERASE_LINE+"Successfully finished StackSet {}".format(StackSetNames[m]['StackSetName']))
 		elif pForce==True and result=='Failed-ForceIt':
 			print("Some other problem happened.")
 		elif pForce==False and result=='Failed-ForceIt':
