@@ -279,14 +279,12 @@ for i in range(len(StackSetNames)):
 			'StackSetName':StackInstances[j]['StackSetId'][:StackInstances[j]['StackSetId'].find(':')]
 		})
 		# pprint.pprint(AllInstances)
-		# sys.exit(99)
 
-print()
+print(ERASE_LINE)
 logging.error("Found %s stack instances." % (len(AllInstances)))
-# pprint.pprint(AllInstances)
 
 for i in range(len(AllInstances)):
-	logging.error("Account %s in Region %s has Stack %s in status %s", AllInstances[i]['ChildAccount'], AllInstances[i]['ChildRegion'], AllInstances[i]['StackName'], AllInstances[i]['StackStatus'])
+	logging.warning("Account %s in Region %s has Stack %s in status %s", AllInstances[i]['ChildAccount'], AllInstances[i]['ChildRegion'], AllInstances[i]['StackName'], AllInstances[i]['StackStatus'])
 
 AccountList=[]
 StackSetStillInUse=[]
@@ -303,25 +301,25 @@ for i in range(len(AllInstances)):
 	# This isn't specific per account, as the deletion API doesn't need it to be, and it's easier to keep a single list of all regions, instead of per StackSet
 	# If we update this script to allow the removal of individual regions as well as individual accounts, then we'll do that.
 	RegionList.append(AllInstances[i]['ChildRegion'])
-AccountList=list(set(AccountList))
-StackSetStillInUse=list(set(StackSetStillInUse))
-RegionList=list(set(RegionList))
+AccountList=sorted(list(set(AccountList)))
+StackSetStillInUse=sorted(list(set(StackSetStillInUse)))
+RegionList=sorted(list(set(RegionList)))
 
 if pdryrun and pRemove=='NotProvided':
-	print()
 	# pprint.pprint(AllInstances)
-	print("Found {} StackSets that matched, with {} total instances".format(len(StackSetNames),len(AllInstances)))
-	print("We found the following unique accounts across all StackSets found")
-	for n in range(len(AccountList)):
-		print("	{}".format(AccountList[n]),end=' ')
-		JustThisRegion=[]
-		for p in range(len(AllInstances)):
-			if AllInstances[p]['ChildAccount'] == AccountList[n]:
-				JustThisRegion.append(AllInstances[p]['ChildRegion'])
-		JustThisRegion=list(set(JustThisRegion))
-		for p in range(len(JustThisRegion)):
-			print("	{}".format(JustThisRegion[p]),end='	')
-		print()
+	print("Found {} StackSets that matched, with {} total instances across {} accounts".format(len(StackSetNames),len(AllInstances),len(AccountList)))
+	if args.loglevel < 50:
+		print("We found the following unique accounts across all StackSets found")
+		for n in range(len(AccountList)):
+			print("|{}".format(AccountList[n]),end=' ')
+			JustThisRegion=[]
+			for p in range(len(AllInstances)):
+				if AllInstances[p]['ChildAccount'] == AccountList[n]:
+					JustThisRegion.append(AllInstances[p]['ChildRegion'])
+			JustThisRegion=list(set(JustThisRegion))
+			for p in range(len(JustThisRegion)):
+				print("|{}".format(JustThisRegion[p]),end='')
+			print()
 elif pdryrun:
 	print()
 	print("Out of {} StackSets that matched, there are {} instances of account {}".format(len(StackSetNames),len(AllInstances),pRemove))
