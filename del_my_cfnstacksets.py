@@ -244,12 +244,7 @@ print()
 StackSetNames=Inventory_Modules.find_stacksets(pProfile,pRegion,pStackfrag)
 ProfileAccountNumber=Inventory_Modules.find_account_number(pProfile)
 logging.error("Found %s StackSetNames that matched your fragment" % (len(StackSetNames)))
-# for i in range(len(StackSetNames)):
-# 	if 'AWSControlTower' in StackSetNames[i]['StackSetName']:
-# 		continue
-# 	else:
-# 		StackSetNames2.append(StackSetNames[i])
-# StackSetNames=StackSetNames2
+
 for i in range(len(StackSetNames)):
 	print(ERASE_LINE,"Looking for stacksets with '{}' string in account {} in region {}".format(StackSetNames[i]['StackSetName'],ProfileAccountNumber,pRegion),end='\r')
 	StackInstances=Inventory_Modules.find_stack_instances(pProfile,pRegion,StackSetNames[i]['StackSetName'])
@@ -338,11 +333,11 @@ elif not pdryrun:
 			if Decision:
 				result=delete_stack_instances(StackSetNames[m],True)	# Try it again, forcing it this time
 				if result=='Success':
-					print(ERASE_LINE+"Successfully finished StackSet {}".format(StackSetNames[m]['StackSetName']))
+					print(ERASE_LINE+"Successfully retried StackSet {}".format(StackSetNames[m]['StackSetName']))
 				elif pForce==True and result=='Failed-ForceIt':
-					print(ERASE_LINE+"Some other problem happened.")
+					print(ERASE_LINE+"Some other problem happened on the retry.")
 				elif result=='Failed-Other':
-					print(ERASE_LINE+"Something else failed... Who knows?")
+					print(ERASE_LINE+"Something else failed on the retry... Who knows?")
 		elif result=='Failed-Other':
 			print("Something else failed... Who knows?")
 
