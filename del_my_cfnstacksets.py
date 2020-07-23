@@ -208,6 +208,7 @@ def delete_stack_instances(fStackSetNames,fForce=False):
 				time.sleep(10)
 				timer+=10
 			elif Status['Summaries'][0]['Status'] == 'SUCCEEDED':
+				pprint.pprint(Status['Summaries'])
 				logging.info("Successfully removed %s from %s",pRemove,fStackSetNames['StackSetName'])
 				return("Success")
 			else:
