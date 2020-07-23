@@ -320,8 +320,15 @@ else:
 	ReallyDelete=False
 
 if DeletionRun and (ReallyDelete or ForceDelete):
-	logging.warning("Deleting all Config Recorders")
+	logging.warning("Deleting all Config Resources")
 	for y in range(len(all_config_resources)):
+		logging.error("Deleting %s named %s",all_config_resources[y]['Type'], all_config_resources[y]['ResourceName'])
+		try:
+			delete_resources(all_config_resources[y])
+		except Exception as e:
+			pprint.pprint(e)
+			sys.exit(9)
+		'''
 		session_cf_child=boto3.Session(
 				aws_access_key_id=all_config_resources[y]['AccessKeyId'],
 				aws_secret_access_key=all_config_resources[y]['SecretAccessKey'],
@@ -358,6 +365,6 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 			DeliveryChannelName=all_config_resources[y]['ResourceName']
 		)
 		logging.warning("Delivery Channel %s has been deleted from child account %s in region %s" % (str(all_config_resources[y]['ResourceName'][0]),str(all_config_resources[y]['AccountId']),str(all_config_resources[y]['Region'])))
-
+		'''
 print()
 print("Thank you for using this tool")
