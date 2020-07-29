@@ -95,8 +95,9 @@ for account in ChildAccounts:
 			RoleArn=role_arn,
 			RoleSessionName="Find-StackSets")['Credentials']
 	except ClientError as my_Error:
-		if str(my_Error).find("AuthFailure") > 0:
-			print(profile+": Authorization Failure for account {}".format(account['AccountId']))
+		if str(my_Error).find("AuthFailure") > 0 or str(my_Error).find("AccessDenied") > 0:
+			logging.error("%s: Authorization Failure for account %s", pProfile,account['AccountId'])
+			continue
 	for region in RegionList:
 		try:
 			StackSets = None

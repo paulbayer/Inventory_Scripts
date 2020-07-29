@@ -121,7 +121,7 @@ for account in ChildAccounts:
 	try:
 		account_credentials = sts_client.assume_role(
 			RoleArn=role_arn,
-			RoleSessionName="Find-Enable-Config-Resoruces")['Credentials']
+			RoleSessionName="Find-Enable-Config-Resources")['Credentials']
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
 			print(profile+": Authorization Failure for account {}".format(account['AccountId']))
@@ -322,8 +322,9 @@ else:
 if DeletionRun and (ReallyDelete or ForceDelete):
 	logging.warning("Deleting all Config Resources")
 	for y in range(len(all_config_resources)):
-		logging.error("Deleting %s named %s",all_config_resources[y]['Type'], all_config_resources[y]['ResourceName'])
+		print(ERASE_LINE+"Removing {} resource from account {}".format(all_config_resources[i]['Type'],all_config_resources[i]['AccountId']))
 		try:
+			logging.error("Deleting %s named %s",all_config_resources[y]['Type'], all_config_resources[y]['ResourceName'])
 			delete_resources(all_config_resources[y])
 		except Exception as e:
 			pprint.pprint(e)
