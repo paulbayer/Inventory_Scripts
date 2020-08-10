@@ -1283,7 +1283,8 @@ def find_stack_instances(fProfile,fRegion,fStackSetName):
 	stack_instances_list=stack_instances['Summaries']
 	while 'NextToken' in stack_instances.keys(): # Get all instance names
 		stack_instances=client_cfn.list_stack_instances(StackSetName=fStackSetName,NextToken=stack_instances['NextToken'])
-		stack_instances_list.append(stack_instances['Summaries'])
+		for i in range(len(stack_instances)):
+			stack_instances_list.append(stack_instances['Summaries'][i])
 	return(stack_instances_list)
 
 def delete_stack_instances(fProfile,fRegion,lAccounts,lRegions,fStackSetName,fRetainStacks=False,fOperationName="StackDelete"):

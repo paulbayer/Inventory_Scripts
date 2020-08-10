@@ -59,32 +59,32 @@ parser = argparse.ArgumentParser(
 	description="We\'re going to find all resources within any of the profiles we have access to.",
 	prefix_chars='-+/')
 parser.add_argument(
-	"-p","--profile",
+	"-p", "--profile",
 	dest="pProfile",
 	metavar="profile to use",
 	help="You need to specify a specific ROOT profile")
 parser.add_argument(
-	"-f","--fragment",
+	"-f", "--fragment",
 	dest="pStackfrag",
 	nargs="*",
 	metavar="CloudFormation stack fragment",
 	default=["all"],
 	help="List containing fragment(s) of the cloudformation stack or stackset(s) you want to check for.")
 parser.add_argument(
-	"-k","--skip",
+	"-k", "--skip",
 	dest="pSkipAccounts",
 	nargs="*",
 	metavar="Accounts to leave alone",
 	default=[],
 	help="These are the account numbers you don't want to screw with. Likely the core accounts.")
 parser.add_argument(
-	"-r","--region",
+	"-r", "--region",
 	dest="pRegion",
 	metavar="region name string",
 	default="us-east-1",
 	help="The Master region you want to check for StackSets. Only one region is checked per script run.")
 parser.add_argument(
-	"-R","--Remove",
+	"-R", "--Remove",
 	dest="pRemove",
 	default="NotProvided",
 	metavar="Account to remove from stacksets",
@@ -146,16 +146,16 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(leve
 ########################
 ####################
 # Required Parameters:
-#	StackSetNames
-#	RegionList
-#	AccountList
-#	pProfile
-#	pRegion
-#	pRemove
-#	pForce
+# StackSetNames
+# RegionList
+# AccountList
+# pProfile
+# pRegion
+# pRemove
+# pForce
 #
 ####################
-def delete_stack_instances(fStackSetNames,fForce=False):
+def delete_stack_instances(fStackSetNames, fForce=False):
 	session_cfn=boto3.Session(profile_name=pProfile,region_name=pRegion)
 	logging.warning("Removing instances from %s StackSet" % (fStackSetNames['StackSetName']))
 	try:
@@ -220,8 +220,8 @@ def delete_stack_instances(fStackSetNames,fForce=False):
 			# 	StackOperationsRunning=True
 			# 	pass
 			# else:
-				print("Error: ",e)
-				break
+			print("Error: ", e)
+			break
 
 ##########################
 ERASE_LINE = '\x1b[2K'
@@ -242,17 +242,18 @@ print("		Specifically to find this account number: {}".format(pRemove))
 print()
 
 # Get the StackSet names from the Master Profile
-StackSetNames=Inventory_Modules.find_stacksets(pProfile,pRegion,pStackfrag)
+StackSetNames=Inventory_Modules.find_stacksets(pProfile, pRegion, pStackfrag)
 ProfileAccountNumber=Inventory_Modules.find_account_number(pProfile)
 logging.error("Found %s StackSetNames that matched your fragment" % (len(StackSetNames)))
 
 for i in range(len(StackSetNames)):
-	print(ERASE_LINE,"Looking for stacksets with '{}' string in account {} in region {}".format(StackSetNames[i]['StackSetName'],ProfileAccountNumber,pRegion),end='\r')
-	StackInstances=Inventory_Modules.find_stack_instances(pProfile,pRegion,StackSetNames[i]['StackSetName'])
-	logging.warning("Found %s Stack Instances within the StackSet %s" % (len(StackInstances),StackSetNames[i]['StackSetName']))
+	print(ERASE_LINE, "Looking for stacksets with '{}' string in account {} in region {}".format(StackSetNames[i]['StackSetName'], ProfileAccountNumber, pRegion), end='\r')
+	StackInstances=Inventory_Modules.find_stack_instances(pProfile, pRegion, StackSetNames[i]['StackSetName'])
 	# pprint.pprint(StackInstances)
+	# sys.exit(99)
+	logging.warning("Found %s Stack Instances within the StackSet %s" % (len(StackInstances), StackSetNames[i]['StackSetName']))
 	for j in range(len(StackInstances)):
-		if not 'StackId' in StackInstances[j].keys():
+		if 'StackId' not in StackInstances[j].keys():
 			logging.info("The stack instance found doesn't have a stackid associated")
 			continue
 		if pRemove=='NotProvided':
@@ -261,7 +262,7 @@ for i in range(len(StackSetNames)):
 			logging.info("Found a stack instance, but the account didn't match %s... exiting", pRemove)
 			continue
 		# pprint.pprint(StackInstances[j])
-		logging.debug("This is j: %s", str(j))
+		logging.debug("This is Instance #: %s", str(j))
 		logging.debug("This is StackId: %s", str(StackInstances[j]['StackId']))
 		logging.debug("This is ChildAccount: %s", StackInstances[j]['Account'])
 		logging.debug("This is ChildRegion: %s", StackInstances[j]['Region'])

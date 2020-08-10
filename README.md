@@ -6,6 +6,8 @@ Inventory_Scripts is a git repository to aggregate a number of scripts I've writ
 
 ***Note***: *I've tried to make the "verbose" and "debugging" options standard across all of the scripts. Apologies if they're not.*
 
+***Note***: *I've also made this repo available at https://github.com/paulbayer/Inventory_Scripts for customers.*
+
 Common Parameters
 ------------------
   - -v for some additional logging (level: ERROR)
@@ -27,9 +29,6 @@ Additional common parameters:
 
 Purpose Built Scripts
 ------------------
-- **Inventory_Modules.py**
-  - This is the "utils" file that is referenced by nearly every other script I've written. I didn't know Python well enough when I started to know that I should have named this "utils". If I get ambitious, maybe I'll go through and rename it within every script.
-
 - **ALZ_CheckAccount.py**
   - This script takes an Organization Master Account profile, and checks additional accounts to see if they meet the pre-reqs to be "adopted" by either Landing Zone or Control Tower.
   - If there are blockers to the adoption (like the default VPCs being present, or Config Recorder already being enabled), it can rectify those blockers it finds. However - to avoid mistakes - it only does this if you specifically select that in the submitted parameters.
@@ -96,3 +95,10 @@ Purpose Built Scripts
     - The other is to resolve a problem that exists with the AWS Landing Zone tool - which creates Parameter Store entries and doesn't clean them up when needed. Since the Parameter Store has a limit of 10,000 entries - some sophisticated, long-time customers could hit this limit and be frustrated by the inability to easily remediate this acknowledged bug.
       - This script can solve that problem by using the "--ALZ" parameter and the "-b" parameter to identify any left-over parameters that should be cleaned up since so many days back (ideally further back than your last successful Pipeline run).
     - As usual - provide the "+delete" parameter to allow the script to programmatically remediate the problem.
+
+Utility Scripts
+----------------
+- **Inventory_Modules.py**
+  - This is the "utils" file that is referenced by nearly every other script I've written. I didn't know Python well enough when I started to know that I should have named this "utils". If I get ambitious, maybe I'll go through and rename it within every script.
+- **vpc_modules.py**
+  - This is another "utils" collection, generally specific to the "ALZ_CheckAccount" script as well as the all_my_vpcs(2).py script, because all of the VPC deletion functions are in this library file. Props to
