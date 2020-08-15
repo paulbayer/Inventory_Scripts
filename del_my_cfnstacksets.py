@@ -96,6 +96,13 @@ parser.add_argument(
 	metavar="Account to remove from stacksets",
 	help="The Account number you want removed from ALL of the stacksets and ALL of the regions it's been found.")
 parser.add_argument(
+	'-check',
+	help="Do a comparison of the accounts found in the stacksets to the accounts found in the Organization and list out any that have been closed or suspended, but never removed from the stacksets.",
+	action="store_const",
+	const=True,
+	default=False,
+	dest="AccountCheck")
+parser.add_argument(
 	'+delete',
 	help="[Default] Do a Dry-run; if this parameter is specified, we'll delete stacksets we find, with no additional confirmation.",
 	action="store_const",
@@ -144,6 +151,7 @@ pRegion=args.pRegion
 pForce=args.RetainStacks
 pStackfrag=args.pStackfrag
 AccountsToSkip=args.pSkipAccounts
+pCheckAccount=args.AccountCheck
 verbose=args.loglevel
 pdryrun=args.DryRun
 pRemove=args.pRemove
@@ -247,6 +255,8 @@ print("		In the ROOT profile {} and all children".format(pProfile))
 print("		In these regions: {}".format(pRegion))
 print("		For stacksets that contain these fragments: {}".format(pStackfrag))
 print("		Specifically to find this account number: {}".format(pRemove))
+if pCheckAccount:
+	print("		We'll also output those accounts in the stacksets that are no longer part of the organization")
 print()
 
 # Get the StackSet names from the Master Profile
@@ -310,6 +320,15 @@ AccountList=sorted(list(set(AccountList)))
 StackSetStillInUse=sorted(list(set(StackSetStillInUse)))
 RegionList=sorted(list(set(RegionList)))
 
+if pCheckAccount:
+	OrgAccounts=Inventory_Modules.find_child_accounts2(pProfile)
+	OrgAccountList=[]
+	for i in range(len(OrgAccounts)):
+		OrgAccountList.append(OrgAccounts[i]['AccountId'])
+	ClosedAccounts=list(set(AccountList)-set(OrgAccountList))
+	for item in ClosedAccounts:
+		print("Account {} is not in the Organization".format(item))
+
 if pdryrun and pRemove=='NotProvided':
 	# pprint.pprint(AllInstances)
 	print("Found {} StackSets that matched, with {} total instances across {} accounts".format(len(StackSetNames), len(AllInstances), len(AccountList)))
@@ -328,6 +347,12 @@ if pdryrun and pRemove=='NotProvided':
 elif pdryrun:
 	print()
 	print("Out of {} StackSets that matched, there are {} instances of account {}".format(len(StackSetNames), len(AllInstances), pRemove))
+	if args.loglevel < 50:
+		print("We found that account {} shows up in these stacksets in these regions:".format(pRemove))
+		for i in range(len(AllInstances)):
+			if AllInstances[i]['ChildAccount']==pRemove:
+				fmt='%-50s %-15s'
+				print(fmt % ("	{}".format(AllInstances[i]['StackSetName']), "{}".format(AllInstances[i]['ChildRegion'])))
 elif not pdryrun:
 	print()
 	print("Removing {} stack instances from the {} StackSets found".format(len(AllInstances), len(StackSetNames)))

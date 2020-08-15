@@ -47,8 +47,8 @@ def get_ec2_regions(fkey, fprofile="default"):
 def get_service_regions(service, fkey):
 	"""
 	Parameters:
-		service = the AWS service we're trying to get regions for. This is useful since not all services are supported in all regions.
-		fkey = A string fragment of what region we're looking for. If 'all', then we send back all regions for that service. If they send "us-" (for example), we would send back only those regions which matched that fragment. This is good for focusing a search on only those regions you're searching within.
+		service=the AWS service we're trying to get regions for. This is useful since not all services are supported in all regions.
+		fkey=A string fragment of what region we're looking for. If 'all', then we send back all regions for that service. If they send "us-" (for example), we would send back only those regions which matched that fragment. This is good for focusing a search on only those regions you're searching within.
 	"""
 	import boto3, pprint, logging
 	# session=boto3.Session.get_available_regions(service)
@@ -71,9 +71,9 @@ def get_valid_service_regions(service, fkey, bValidate=False):
 """
 """
 	Parameters:
-		service = the AWS service we're trying to get regions for. This is useful since not all services are supported in all regions.
-		fkey = A string fragment of what region we're looking for. If 'all', then we send back all regions for that service. If they send "us-" (for example), we would send back only those regions which matched that fragment. This is good for focusing a search on only those regions you're searching within.
-		bValidate = this is a Boolean that will determine whether we validate the regions before we send them back.
+		service=the AWS service we're trying to get regions for. This is useful since not all services are supported in all regions.
+		fkey=A string fragment of what region we're looking for. If 'all', then we send back all regions for that service. If they send "us-" (for example), we would send back only those regions which matched that fragment. This is good for focusing a search on only those regions you're searching within.
+		bValidate=this is a Boolean that will determine whether we validate the regions before we send them back.
 """
 """
 	import boto3, pprint, logging
@@ -84,7 +84,7 @@ def get_valid_service_regions(service, fkey, bValidate=False):
 	RegionNames=[]
 	for x in range(len(regions)):
 		try:
-			account_credentials = client_sts.assume_role(
+			account_credentials=client_sts.assume_role(
 				RoleArn=role_arn, 	# What role_arn can we rely on to be available to us in EVERY account?
 				RoleSessionName="Region_Validating")['Credentials']
 			logging.info("STS works in region {}".format(region))
@@ -152,7 +152,7 @@ def get_parent_profiles(fSkipProfiles=[], fprofiles=["all"]):
 	'''
 	import boto3, logging
 	from botocore.exceptions import ClientError
-	ERASE_LINE = '\x1b[2K'
+	ERASE_LINE='\x1b[2K'
 
 	my_Session=boto3.Session()
 	my_profiles=my_Session._session.available_profiles
@@ -199,8 +199,8 @@ def find_if_org_root(fProfile):
 def find_if_alz(fProfile):
 	import boto3
 
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('s3')
+	session_org=boto3.Session(profile_name=fProfile)
+	client_org=session_org.client('s3')
 	response=client_org.list_buckets()
 	for bucket in response['Buckets']:
 		if "aws-landing-zone-configuration" in bucket['Name']:
@@ -214,8 +214,8 @@ def find_acct_email(fOrgRootProfile, fAccountId):
 	This function *unfortunately* only works with organization accounts.
 	"""
 
-	session_org = boto3.Session(profile_name=fOrgRootProfile)
-	client_org = session_org.client('organizations')
+	session_org=boto3.Session(profile_name=fOrgRootProfile)
+	client_org=session_org.client('organizations')
 	email_addr=client_org.describe_account(AccountId=fAccountId)['Account']['Email']
 	# email_addr=response['Account']['Email']
 	return (email_addr)
@@ -226,9 +226,9 @@ def find_account_number(fProfile):
 	from botocore.exceptions import ClientError
 
 	try:
-		session_sts = boto3.Session(profile_name=fProfile)
+		session_sts=boto3.Session(profile_name=fProfile)
 		logging.info("Looking for profile %s", fProfile)
-		client_sts = session_sts.client('sts')
+		client_sts=session_sts.client('sts')
 		response=client_sts.get_caller_identity()['Account']
 	except ClientError as my_Error:
 		if str(my_Error).find("UnrecognizedClientException") > 0:
@@ -247,9 +247,9 @@ def find_calling_identity(fProfile):
 	from botocore.exceptions import ClientError
 
 	try:
-		session_sts = boto3.Session(profile_name=fProfile)
+		session_sts=boto3.Session(profile_name=fProfile)
 		logging.info("Getting creds used within profile %s", fProfile)
-		client_sts = session_sts.client('sts')
+		client_sts=session_sts.client('sts')
 		response=client_sts.get_caller_identity()
 		creds=response['Arn'][response['Arn'].rfind(':')+1:]
 	except ClientError as my_Error:
@@ -284,8 +284,8 @@ def find_org_attr(fProfile):
 	}
 
 	"""
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
+	session_org=boto3.Session(profile_name=fProfile)
+	client_org=session_org.client('organizations')
 	try:
 		response=client_org.describe_organization()['Organization']
 	except ClientError as my_Error:
@@ -308,8 +308,8 @@ def find_org_attr(fProfile):
 def find_org_attr2(fProfile):
 	import boto3
 	# Unused... and renamed
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
+	session_org=boto3.Session(profile_name=fProfile)
+	client_org=session_org.client('organizations')
 	response=client_org.describe_organization()
 	root_org=response['Organization']['MasterAccountId']
 	org_id=response['Organization']['Id']
@@ -328,8 +328,8 @@ def find_child_accounts2(fProfile):
 	from botocore.exceptions import ClientError
 	# Renamed since I'm using the one below instead.
 	child_accounts=[]
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
+	session_org=boto3.Session(profile_name=fProfile)
+	client_org=session_org.client('organizations')
 	try:
 		response=client_org.list_accounts()
 	except ClientError as my_Error:
@@ -365,10 +365,10 @@ def find_child_accounts(fProfile="default"):
 	from botocore.exceptions import ClientError
 
 	child_accounts={}
-	session_org = boto3.Session(profile_name=fProfile)
+	session_org=boto3.Session(profile_name=fProfile)
 	theresmore=False
 	try:
-		client_org = session_org.client('organizations')
+		client_org=session_org.client('organizations')
 		response=client_org.list_accounts()
 		theresmore=True
 	except ClientError as my_Error:
@@ -424,12 +424,12 @@ def get_child_access(fRootProfile, fRegion, fChildAccount, fRoleList=['AWSCloudF
 	import boto3, logging
 	from botocore.exceptions import ClientError
 
-	sts_session = boto3.Session(profile_name=fRootProfile)
-	sts_client = sts_session.client('sts', region_name=fRegion)
+	sts_session=boto3.Session(profile_name=fRootProfile)
+	sts_client=sts_session.client('sts', region_name=fRegion)
 	for role in fRoleList:
 		try:
-			role_arn = 'arn:aws:iam::'+fChildAccount+':role/'+role
-			account_credentials = sts_client.assume_role(
+			role_arn='arn:aws:iam::'+fChildAccount+':role/'+role
+			account_credentials=sts_client.assume_role(
 				RoleArn=role_arn,
 				RoleSessionName="Find-ChildAccount-Things")['Credentials']
 			session_aws=boto3.Session(
@@ -458,13 +458,13 @@ def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1',  fRoleLi
 	import boto3, logging
 	from botocore.exceptions import ClientError
 
-	sts_session = boto3.Session(profile_name=fRootProfile)
-	sts_client = sts_session.client('sts', region_name=fRegion)
+	sts_session=boto3.Session(profile_name=fRootProfile)
+	sts_client=sts_session.client('sts', region_name=fRegion)
 	for role in fRoleList:
 		try:
 			logging.info("Trying to access account %s using %s profile assuming role: %s", fChildAccount, fRootProfile, role)
-			role_arn = 'arn:aws:iam::'+fChildAccount+':role/'+role
-			account_credentials = sts_client.assume_role(
+			role_arn='arn:aws:iam::'+fChildAccount+':role/'+role
+			account_credentials=sts_client.assume_role(
 				RoleArn=role_arn,
 				RoleSessionName="Find-ChildAccount-Things")['Credentials']
 			return(account_credentials, role)
@@ -514,9 +514,9 @@ def find_if_Isengard_registered(ocredentials):
 #
 # 	logging.warning("Authenticating Account Number: %s ", str(ocredentials['ParentAccountNumber']))
 # 	session_aws=boto3.Session(
-# 		aws_access_key_id = ocredentials['AccessKeyId'],
-# 		aws_secret_access_key = ocredentials['SecretAccessKey'],
-# 		aws_session_token = ocredentials['SessionToken']
+# 		aws_access_key_id=ocredentials['AccessKeyId'],
+# 		aws_secret_access_key=ocredentials['SecretAccessKey'],
+# 		aws_session_token=ocredentials['SessionToken']
 # 	)
 # 	iam_info=session_aws.client('iam')
 # 	try:
@@ -566,9 +566,9 @@ def find_sns_topics(ocredentials, fRegion, fTopicFrag=['all']):
 """
 	import boto3, logging, pprint
 	session_sns=boto3.Session(
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken'],
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken'],
 		region_name=fRegion)
 	client_sns=session_sns.client('sns')
 	#TODO: Enable pagination
@@ -594,6 +594,47 @@ def find_sns_topics(ocredentials, fRegion, fTopicFrag=['all']):
 		return(TopicList2)
 
 
+def find_role_names(ocredentials, fRegion, fRoleNameFrag=['all']):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+
+	Returns:
+		List of Topic ARNs found that match the fragment sent
+"""
+	import boto3, logging, pprint
+	session_iam=boto3.Session(
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken'],
+		region_name=fRegion)
+	client_iam=session_iam.client('iam')
+	#TODO: Enable pagination
+	response=client_iam.list_roles()['Roles']
+	RoleNameList=[]
+	for item in response:
+		RoleNameList.append(item['RoleName'])
+	if 'all' in fRoleNameFrag:
+		logging.warning("Looking for all RoleNames in account %s from Region %s", ocredentials['AccountNumber'], fRegion)
+		logging.info("RoleName Arns Returned: %s", RoleNameList)
+		logging.warning("We found %s RoleNames", len(RoleNameList))
+		return(RoleNameList)
+	else:
+		logging.warning("Looking for specific RoleNames in account %s from Region %s", ocredentials['AccountNumber'], fRegion)
+		RoleNameList2=[]
+		for item in fRoleNameFrag:
+			for RoleName in RoleNameList:
+				logging.info('Have %s | Looking for %s', RoleName, item)
+				if RoleName.find(item) >=0:
+					logging.error('Found %s', RoleName)
+					RoleNameList2.append(RoleName)
+		logging.warning("We found %s Roles", len(RoleNameList2))
+		return(RoleNameList2)
+
+
 def find_account_vpcs(ocredentials, fRegion, defaultOnly=False):
 	"""
 	ocredentials is an object with the following structure:
@@ -604,9 +645,9 @@ def find_account_vpcs(ocredentials, fRegion, defaultOnly=False):
 """
 	import boto3, logging, pprint
 	session_vpc=boto3.Session(
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken'],
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken'],
 		region_name=fRegion)
 	client_vpc=session_vpc.client('ec2')
 	if defaultOnly:
@@ -634,14 +675,14 @@ def del_vpc(ocredentials, fRegion, fVpcId):
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the account number
-	fRegion = region
-	fVpcId = VPC ID
+	fRegion=region
+	fVpcId=VPC ID
 	"""
 	import boto3, logging, pprint
 	session_vpc=boto3.Session(
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken'],
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken'],
 		region_name=fRegion)
 	client_vpc=session_vpc.client('ec2')
 	logging.error("Deleting VPC %s from Region %s in account %s", fVpcId, fRegion, ocredentials['AccountNumber'])
@@ -687,13 +728,13 @@ def find_config_recorders(ocredentials, fRegion):
 	"""
 	import boto3, logging, pprint
 	session_cfg=boto3.Session(
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken'],
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken'],
 		region_name=fRegion)
 	client_cfg=session_cfg.client('config')
 	logging.warning("Looking for Config Recorders in account %s from Region %s", ocredentials['AccountNumber'], fRegion)
-	response=client_cfg.describe_configuration_recorder()
+	response=client_cfg.describe_configuration_recorders()
 	# logging.info(response)
 	return(response)
 
@@ -705,14 +746,14 @@ def del_config_recorder(ocredentials, fRegion, fConfig_recorder_name):
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the account number
-	fRegion = region
-	fConfig_recorder_name = Config Recorder Name
+	fRegion=region
+	fConfig_recorder_name=Config Recorder Name
 	"""
-	import boto3, logging, pprint
+	import boto3, logging
 	session_cfg=boto3.Session(
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken'],
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken'],
 		region_name=fRegion)
 	client_cfg=session_cfg.client('config')
 	logging.error("Deleting Config Recorder %s from Region %s in account %s", fConfig_recorder_name, fRegion, ocredentials['AccountNumber'])
@@ -745,9 +786,9 @@ def find_delivery_channels(ocredentials, fRegion):
 	"""
 	import boto3, logging
 	session_cfg=boto3.Session(
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken'],
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken'],
 		region_name=fRegion)
 	client_cfg=session_cfg.client('config')
 	logging.warning("Looking for Delivery Channels in account %s from Region %s", ocredentials['AccountNumber'], fRegion)
@@ -763,14 +804,14 @@ def del_delivery_channel(ocredentials, fRegion, fDelivery_channel_name):
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the account number
-	rRegion = region
-	fDelivery_channel_name = delivery channel name
+	rRegion=region
+	fDelivery_channel_name=delivery channel name
 	"""
 	import boto3, logging
 	session_cfg=boto3.Session(
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken'],
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken'],
 		region_name=fRegion)
 	client_cfg=session_cfg.client('config')
 	logging.error("Deleting Delivery Channel %s from Region %s in account %s", fDelivery_channel_name, fRegion, ocredentials['AccountNumber'])
@@ -785,8 +826,8 @@ def find_cloudtrails(ocredentials, fRegion, fCloudTrailnames=['AWS-Landing-Zone-
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the account number
-	fRegion = region
-	fCloudTrailnames = List of CloudTrail names we're looking for (null value returns all cloud trails)
+	fRegion=region
+	fCloudTrailnames=List of CloudTrail names we're looking for (null value returns all cloud trails)
 
 	Returned Object looks like this:
 	{
@@ -809,16 +850,16 @@ def find_cloudtrails(ocredentials, fRegion, fCloudTrailnames=['AWS-Landing-Zone-
 				'HasInsightSelectors': True|False,
 				'IsOrganizationTrail': True|False
 			},
-	    ]
+		]
 	}
 	"""
 	import boto3, logging
 	from botocore.exceptions import ClientError
 
 	session_ct=boto3.Session(
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken'],
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken'],
 		region_name=fRegion)
 	client_ct=session_ct.client('cloudtrail')
 	logging.info("Looking for CloudTrail trails in account %s from Region %s", ocredentials['AccountNumber'], fRegion)
@@ -841,14 +882,14 @@ def del_cloudtrails(ocredentials, fRegion, fCloudTrail):
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the account number
-	fRegion = region
-	fCloudTrail = CloudTrail we're deleting
+	fRegion=region
+	fCloudTrail=CloudTrail we're deleting
 	"""
 	import boto3, logging
 	session_ct=boto3.Session(
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken'],
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken'],
 		region_name=fRegion)
 	client_ct=session_ct.client('cloudtrail')
 	logging.info("Deleting CloudTrail %s in account %s from Region %s", fCloudTrail, ocredentials['AccountNumber'], fRegion)
@@ -863,15 +904,15 @@ def find_gd_invites(ocredentials, fRegion):
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the account number
-	fRegion = region
+	fRegion=region
 	"""
 	import boto3, logging
 	from botocore.exceptions import ClientError
 
 	session_gd=boto3.Session(
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken'],
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken'],
 		region_name=fRegion)
 	client_gd=session_gd.client('guardduty')
 	logging.info("Looking for GuardDuty invitations in account %s from Region %s", ocredentials['AccountNumber'], fRegion)
@@ -879,12 +920,12 @@ def find_gd_invites(ocredentials, fRegion):
 		response=client_gd.list_invitations()
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print(account['AccountId']+": Authorization Failure for account {}".format(account['AccountId']))
+			print(ocredentials['AccountNumber']+": Authorization Failure for account {}".format(ocredentials['AccountNumber']))
 		if str(my_Error).find("security token included in the request is invalid") > 0:
-			print("Account #:"+account['AccountId']+" - It's likely that the region you're trying ({}) isn\'t enabled for your account".format(region))
+			print("Account #:"+ocredentials['AccountNumber']+" - It's likely that the region you're trying ({}) isn\'t enabled for your account".format(fRegion))
 		else:
 			print(my_Error)
-		response={'Invitations':[]}
+		response={'Invitations': []}
 	return(response)
 
 
@@ -895,15 +936,15 @@ def delete_gd_invites(ocredentials, fRegion, fAccountId):
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the account number
-	fRegion = region
+	fRegion=region
 	"""
 	import boto3, logging
 	from botocore.exceptions import ClientError
 
 	session_gd=boto3.Session(
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken'],
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken'],
 		region_name=fRegion)
 	client_gd=session_gd.client('guardduty')
 	logging.info("Looking for GuardDuty invitations in account %s from Region %s", ocredentials['AccountNumber'], fRegion)
@@ -913,9 +954,9 @@ def delete_gd_invites(ocredentials, fRegion, fAccountId):
 		)
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print(account['AccountId']+": Authorization Failure for account {}".format(account['AccountId']))
+			print(ocredentials['AccountNumber']+": Authorization Failure for account {}".format(ocredentials['AccountNumber']))
 		if str(my_Error).find("security token included in the request is invalid") > 0:
-			print("Account #:"+account['AccountId']+" - It's likely that the region you're trying ({}) isn\'t enabled for your account".format(region))
+			print("Account #:"+ocredentials['AccountNumber']+" - It's likely that the region you're trying ({}) isn\'t enabled for your account".format(fRegion))
 		else:
 			print(my_Error)
 	return(response['Invitations'])
@@ -931,9 +972,9 @@ def find_account_instances(ocredentials, fRegion):
 	"""
 	import boto3, logging
 	session_ec2=boto3.Session(
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken'],
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken'],
 		region_name=fRegion)
 	instance_info=session_ec2.client('ec2')
 	logging.warning("Looking in account # %s", ocredentials['AccountNumber'])
@@ -951,9 +992,9 @@ def find_users(ocredentials):
 	import boto3, logging, pprint
 	logging.warning("Key ID #: %s ", str(ocredentials['AccessKeyId']))
 	session_iam=boto3.Session(
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken']
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken']
 	)
 	user_info=session_iam.client('iam')
 	users=user_info.list_users()['Users']
@@ -1028,14 +1069,14 @@ def find_load_balancers(fProfile, fRegion, fStackFragment, fStatus):
 	elif (fStackFragment=='all' or fStackFragment=='ALL'):
 		for load_balancer in load_balancers['LoadBalancers']:
 			if fStatus in load_balancer['State']['Code']:
-				logging.warning("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", load_balancer['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
-				load_balancer_Copy.append(load_balancer)
+				logging.warning("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", load_balancers['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
+				load_balancers_Copy.append(load_balancer)
 	elif (fStatus=='active' or fStatus=='ACTIVE'):
 		for load_balancer in load_balancers['LoadBalancers']:
 			if fStackFragment in load_balancer['LoadBalancerName']:
-				logging.warning("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", load_balancer['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
-				load_balancer_Copy.append(load_balancer)
-	return(load_balancer_Copy)
+				logging.warning("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", load_balancers['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
+				load_balancers_Copy.append(load_balancer)
+	return(load_balancers_Copy)
 
 
 def find_stacks(fProfile, fRegion, fStackFragment="all", fStatus="active"):
@@ -1103,10 +1144,10 @@ def delete_stack(fprofile, fRegion, fStackName, **kwargs):
 	"""
 	import boto3, logging, pprint
 	if "RetainResources" in kwargs:
-		RetainResources = True
-		ResourcesToRetain = kwargs['ResourcesToRetain']
+		RetainResources=True
+		ResourcesToRetain=kwargs['ResourcesToRetain']
 	else:
-		RetainResources = False
+		RetainResources=False
 	session_cfn=boto3.Session(profile_name=fprofile, region_name=fRegion)
 	client_cfn=session_cfn.client('cloudformation')
 	if RetainResources:
@@ -1133,14 +1174,14 @@ def delete_stack2(ocredentials, fRegion, fStackName, **kwargs):
 	"""
 	import boto3, logging, pprint
 	if "RetainResources" in kwargs:
-		RetainResources = True
-		ResourcesToRetain = kwargs['ResourcesToRetain']
+		RetainResources=True
+		ResourcesToRetain=kwargs['ResourcesToRetain']
 	else:
-		RetainResources = False
+		RetainResources=False
 	session_cfn=boto3.Session(region_name=fRegion,
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken']
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken']
 	)
 	client_cfn=session_cfn.client('cloudformation')
 	if RetainResources:
@@ -1168,9 +1209,9 @@ def find_stacks_in_acct(ocredentials, fRegion, fStackFragment="all", fStatus="ac
 	import boto3, logging, pprint
 	logging.error("Acct ID #: %s | Region: %s | Fragment: %s | Status: %s", str(ocredentials['AccountNumber']), fRegion, fStackFragment, fStatus)
 	session_cfn=boto3.Session(region_name=fRegion,
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken']
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken']
 	)
 	client_cfn=session_cfn.client('cloudformation')
 	stacksCopy=[]
@@ -1222,9 +1263,9 @@ def find_saml_components_in_acct(ocredentials, fRegion):
 	import boto3, logging, pprint
 	logging.error("Acct ID #: %s | Region: %s ", str(ocredentials['AccountNumber']), fRegion)
 	session_aws=boto3.Session(region_name=fRegion,
-		aws_access_key_id = ocredentials['AccessKeyId'],
-		aws_secret_access_key = ocredentials['SecretAccessKey'],
-		aws_session_token = ocredentials['SessionToken']
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken']
 	)
 	iam_info=session_aws.client('iam')
 	saml_providers=iam_info.list_saml_providers()['SAMLProviderList']
@@ -1236,6 +1277,20 @@ def find_stacksets(fProfile, fRegion, fStackFragment):
 	fProfile is a string
 	fRegion is a string
 	fStackFragment is a list
+
+	Returns a list that looks like this:
+	[
+	{'DriftStatus': 'NOT_CHECKED',
+	 'StackSetId': 'AWS-Landing-Zone-GuardDutyMaster:48ce0116-2d67-45e2-9141-6c0bfd555363',
+	 'StackSetName': 'AWS-Landing-Zone-GuardDutyMaster',
+	 'Status': 'ACTIVE'
+	},
+	{'DriftStatus': 'NOT_CHECKED',
+	 'StackSetId': 'AWS-Landing-Zone-GuardDutyMaster:48ce0116-2d67-45e2-9141-6c0bfd555363',
+	 'StackSetName': 'AWS-Landing-Zone-GuardDutyMaster',
+	 'Status': 'ACTIVE'
+	},
+	]
 	"""
 	import boto3, logging, pprint
 
@@ -1345,7 +1400,7 @@ def delete_stack_instances(fProfile, fRegion, lAccounts, lRegions, fStackSetName
 	logging.warning("Deleting %s stackset over %s accounts across %s regions" % (fStackSetName, len(lAccounts), len(lRegions)))
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	client_cfn=session_cfn.client('cloudformation')
-	response = client_cfn.delete_stack_instances(
+	response=client_cfn.delete_stack_instances(
 		StackSetName=fStackSetName,
 		Accounts=lAccounts,
 		Regions=lRegions,
@@ -1390,23 +1445,23 @@ def find_sc_products(fProfile, fRegion, fStatus="ERROR"):
 	from Inventory_Modules import find_account_number
 
 	response2=[]
-	AccountNumber=find_account_number(fProfile)
+	# AccountNumber=find_account_number(fProfile)
 	session_sc=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	client_sc=session_sc.client('servicecatalog')
 	if (fStatus=='All' or fStatus=='ALL' or fStatus=='all'):
-		response = client_sc.search_provisioned_products()
+		response=client_sc.search_provisioned_products()
 		while 'NextPageToken' in response.keys():
 			response2.append(response['ProvisionedProducts'])
-			response = client_sc.search_provisioned_products(NextPageToken=response['NextPageToken'])
+			response=client_sc.search_provisioned_products(NextPageToken=response['NextPageToken'])
 	else:	# We filter down to only the statuses asked for
-		response = client_sc.search_provisioned_products(
+		response=client_sc.search_provisioned_products(
 			Filters={
 				'SearchQuery': ['status:'+fStatus]
 			}
 		)
 		while 'NextPageToken' in response.keys():
 			response2.append(response['ProvisionedProducts'])
-			response = client_sc.search_provisioned_products(
+			response=client_sc.search_provisioned_products(
 				Filters={
 					'SearchQuery': ['status:'+fStatus]
 				},
@@ -1437,7 +1492,7 @@ def find_ssm_parameters(fProfile, fRegion):
 	"""
 	import boto3, logging, pprint
 	from botocore.exceptions import ClientError
-	ERASE_LINE = '\x1b[2K'
+	ERASE_LINE='\x1b[2K'
 
 	logging.warning("Finding ssm parameters for profile %s in Region %s", fProfile, fRegion)
 	session_ssm=boto3.Session(profile_name=fProfile, region_name=fRegion)

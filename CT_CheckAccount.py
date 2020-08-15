@@ -11,7 +11,7 @@ import logging
 init()
 
 parser = argparse.ArgumentParser(
-	description="We\'re going to determine whether this new account satisfies all the pre-reqs to be adopted by the Landing Zone.",
+	description="We\'re going to determine whether this new account satisfies all the pre-reqs to be adopted by AWS Control Tower.",
 	prefix_chars='-+/')
 parser.add_argument(
 	"--explain",
@@ -31,10 +31,10 @@ parser.add_argument(
 parser.add_argument(
 	"-a", "--account",
 	dest="pChildAccountId",
-	metavar="New Account to be adopted into LZ",
+	metavar="New Account to be adopted into Control Tower",
 	default="123456789012",
 	required=True,
-	help="This is the account number of the account you're checking, to see if it can be adopted into the ALZ.")
+	help="This is the account number of the account you're checking, to see if it can be adopted into AWS Control Tower.")
 parser.add_argument(
 	"-q", "--quick",
 	dest="Quick",
@@ -72,7 +72,7 @@ parser.add_argument(
 	const=logging.WARNING, # args.loglevel = 30
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-	'-vvv', '--info',
+	'-vvv',
 	help="Print debugging statements",
 	action="store_const",
 	dest="loglevel",
@@ -100,24 +100,19 @@ if Quick:
 	RegionList=['us-east-1']
 else:
 	# RegionList=Inventory_Modules.get_ec2_regions('all', pProfile)
-	# ap-northeast-3 doesn't support Config (and therefore doesn't support ALZ), but is a region that is normally included within EC2. Therefore - this is easier.
-	RegionList=['ap-northeast-1', 'ap-northeast-2', 'ap-south-1', 'ap-southeast-1', 'ap-southeast-2', 'ca-central-1', 'eu-central-1', 'eu-north-1', 'eu-west-1', 'eu-west-2', 'eu-west-3', 'sa-east-1', 'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2']
+	# ap-northeast-3 doesn't support Config (and therefore doesn't support Control Tower), but is a region that is normally included within EC2. Therefore - this is easier.
+	RegionList=['us-east-1', 'us-east-2', 'us-west-2', 'eu-west-1', 'ap-southeast-2']
+	# RegionList.append('ap-northeast-1', 'ap-northeast-2', 'ap-south-1', 'ap-southeast-1',  'ca-central-1', 'eu-central-1', 'eu-north-1', 'eu-west-1', 'eu-west-2', 'eu-west-3', 'sa-east-1')
 
 ERASE_LINE = '\x1b[2K'
-
-"""
-Accessible only from within AWS:
-
-Steps of this script come from here: https://w.amazon.com/bin/view/AWS/Teams/SA/AWS_Solutions_Builder/Working_Backwards/AWS_Solutions-Foundations-Landing-Zone/Landing_Zone_FAQs/#HWhatifmycustomerdoesn27twanttotakenoforananswer3F
-"""
+NumOfSteps=8
 
 ExplainMessage="""
+Objective: This script aims to make it easier to "adopt" an existing account into a Control Tower environment.
 
-0. The Child account MUST allow the Master account access into the Child IAM role called "AWSCloudFormationStackSetExecutionRole"
-0a. There must be an "AWSCloudFormationStackSetExecution" or "AWSControlTowerExecutionRole" role present in the account so that StackSets can assume it and deploy stack instances. This role must trust the Organizations Master account. In LZ the account is created with that role name so stacksets just works. You can add this role manually via CloudFormation in the existing account. [I did this as a step 0]
-0b. STS must be active in all regions. You can check from the Account Settings page in IAM. Since we're using STS to connect to the account from the Master, this requirement is checked by successfully completing step 0.
-
-1. The account must not contain any resources/config associated with the Default VPCs in ANY region e.g. security groups cannot exist associated with the Default VPC. Default VPCs will be deleted in the account in all regions, if they contain some dependency (usually a Security Group or an EIP) then deleting the VPC fails and the deployment rolls back. You can either manually delete them all or verify there are no dependencies, in some cases manually deleting them all is faster than roll back.
+0. The Child account MUST allow the Master account access into the Child IAM role called "AWSControlTowerExecutionRole"
+0a. There must be an "AWSControlTowerExecutionRole" role present in the account so that StackSets can assume it and deploy stack instances. This role must trust the Organizations Master account. In Control Tower, accounts are created with that role name so stacksets just work. You can add this role manually via CloudFormation in the existing account.
+0b. STS must be active in all regions checked. You can check from the Account Settings page in IAM. Since we're using STS to connect to the account from the Master, this requirement is checked by successfully completing step 0.
 
 2. There must be no active config channel and recorder in the account as “there can be only one” of each. This must also be deleted via CLI, not console, switching config off in the console is NOT good enough and just disables it. To Delete the delivery channel and the configuration recorder (can be done via CLI and Python script only):
 aws configservice describe-delivery-channels
@@ -127,16 +122,23 @@ aws configservice stop-configuration-recorder --configuration-recorder-name <NAM
 aws configservice delete-delivery-channel --delivery-channel-name <NAME-FROM-DESCRIBE-OUTPUT>
 aws configservice delete-configuration-recorder --configuration-recorder-name <NAME-FROM-DESCRIBE-OUTPUT
 
-3. The account must not have a Cloudtrail Trail name the same name as the LZ Trail ("AWS-Landing-Zone-BaselineCloudTrail")
+3. The account must not have a Cloudtrail Trail name with 'ControlTower' in the name ("aws-controltower-BaselineCloudTrail")
 
 4. The account must not have a pending guard duty invite. You can check from the Guard Duty Console
 
-5. The account must be part of the Organization and the email address being entered into the LZ parameters must match the account. If you try to add an email from an account which is not part of the Org, you will get an error that you are not using a unique email address. If it’s part of the Org, LZ just finds the account and uses the CFN roles.
+5. The account must be part of the Organization and the email address being entered into the CT parameters must match the account. If you try to add an email from an account which is not part of the Org, you will get an error that you are not using a unique email address. If it’s part of the Org, CT just finds the account and uses the CFN roles.
 - If the existing account is to be imported as a Core Account, modify the manifest.yaml file to use it.
 - If the existing account will be a child account in the Organization, use the AVM launch template through Service Catalog and enter the appropriate configuration parameters.
 ​​​​​​​
-6. The existing account can not be in any of the LZ-managed Organizations OUs. By default, these OUs are Core and Applications, but the customer may have chosen different or additional OUs to manage by LZ.
+6. The existing account can not be in any of the CT-managed Organizations OUs. By default, these OUs are Core and Applications, but the customer may have chosen different or additional OUs to manage by CT.
 
+
+SNS topics name containing "ControlTower"
+Lambda Functions name containing "ControlTower"
+Role name containing "ControlTower"
+Bucket created for AWS Config
+SNS topic created for AWS Config
+CloudWatch Log group containing "aws-controltower/CloudTrailLogs"
 """
 print()
 if pExplain:
@@ -159,23 +161,12 @@ def InitDict(StepCount):
 		fProcessStatus[Step]['IssuesFixed']=0
 	return(fProcessStatus)
 
-ProcessStatus=InitDict(6)
+ProcessStatus=InitDict(NumOfSteps)
 # Step 0 -
 # 0. The Child account MUST allow the Master account access into the Child IAM role called "AWSCloudFormationStackSetExecutionRole"
 
-print("This script does 6 things... ")
+print("This script does {} things... ".format(NumOfSteps))
 print(Fore.BLUE+"  0."+Fore.RESET+" Checks to ensure you have the necessary cross-account role access to the child account.")
-print(Fore.BLUE+"  1."+Fore.RESET+" Checks to ensure the "+Fore.RED+"Default VPCs "+Fore.RESET+"in each region are deleted")
-if FixRun and not pVPCConfirm:
-	print(Fore.BLUE+"	You've asked to delete any default VPCs we find - with confirmation on each one."+Fore.RESET)
-elif FixRun and pVPCConfirm:
-	print()
-	print(Fore.RED+"	You've asked to delete any default VPCs we find - WITH NO CONFIRMATION on each one."+Fore.RESET)
-	print()
-elif pVPCConfirm and not FixRun:
-	print()
-	print(Fore.BLUE+"	You asked us to delete the default VPCs with no confirmation, but didn't provide the '+fixrun' parameter, so we're proceeding with NOT deleting. You can safely interupt this script and run it again with the necessary parameters."+Fore.RESET)
-	print()
 print(Fore.BLUE+"  2."+Fore.RESET+" Checks the child account in each of the regions")
 print("     to see if there's already a "+Fore.RED+"Config Recorder and Delivery Channel "+Fore.RESET+"enabled...")
 print(Fore.BLUE+"  3."+Fore.RESET+" Checks that there isn't a duplicate "+Fore.RED+"CloudTrail"+Fore.RESET+" trail in the account.")
@@ -358,7 +349,7 @@ else:
 	print(ERASE_LINE+Fore.RED+"** Step 2 completed with blockers found"+Fore.RESET)
 print()
 # Step 3
-# 3. The account must not have a Cloudtrail Trail name the same name as the LZ Trail ("AWS-Landing-Zone-BaselineCloudTrail")
+# 3. The account must not have a Cloudtrail Trail name the same name as the CT Trail ("AWS-Landing-Zone-BaselineCloudTrail")
 try:
 	print("Checking account {} for a specially named CloudTrail in all regions".format(pChildAccountId))
 	CTtrails2=[]
@@ -397,7 +388,7 @@ else:
 	print(ERASE_LINE+Fore.RED+"** Step 3 completed with blockers found"+Fore.RESET)
 print()
 # Step 4 - handled by Step 0
-# 4. There must be an AWSCloudFormationStackSetExecution role present in the account so that StackSets can assume it and deploy stack instances. This role must trust the Organizations Master account. In LZ the account is created with that role name so stacksets just works. You can add this role manually via CloudFormation in the existing account.
+# 4. There must be an AWSCloudFormationStackSetExecution role present in the account so that StackSets can assume it and deploy stack instances. This role must trust the Organizations Master account. In CT the account is created with that role name so stacksets just works. You can add this role manually via CloudFormation in the existing account.
 
 # Step 4
 # 4. The account must not have a pending guard duty invite. You can check from the Guard Duty Console
@@ -405,7 +396,7 @@ try:
 	print("Checking account {} for any GuardDuty invites".format(pChildAccountId))
 	GDinvites2=[]
 	for region in RegionList:
-		logging.error(ERASE_LINE+"Checking account %s in region %s for", pChildAccountId, region+Fore.RED+" GuardDuty"+Fore.RESET+" invitations")
+		logging.error("Checking account %s in region %s for", pChildAccountId, region+Fore.RED+" GuardDuty"+Fore.RESET+" invitations")
 		logging.error("Checking account %s in region %s for GuardDuty invites", pChildAccountId, region)
 		GDinvites=Inventory_Modules.find_gd_invites(account_credentials, region)
 		if len(GDinvites) > 0:
@@ -446,14 +437,15 @@ elif (ProcessStatus['Step4']['IssuesFound']>ProcessStatus['Step4']['IssuesFixed'
 else:
 	print(ERASE_LINE+Fore.RED+"** Step 4 completed with blockers found"+Fore.RESET)
 print()
-# Step 6
-# 6. STS must be active in all regions. You can check from the Account Settings page in IAM.
+# Step 4a
+# 4a. STS must be active in all regions. You can check from the Account Settings page in IAM.
 """
 We would have already verified this - since we've used STS to connect to each region already for the previous steps.
 """
-# Step 7
+
+# Step 5
 '''
-5. The account must be part of the Organization and the email address being entered into the LZ parameters must match the account. If 	you try to add an email from an account which is not part of the Org, you will get an error that you are not using a unique email address. If it’s part of the Org, LZ just finds the account and uses the CFN roles.
+5. The account must be part of the Organization and the email address being entered into the CT parameters must match the account. If 	you try to add an email from an account which is not part of the Org, you will get an error that you are not using a unique email address. If it’s part of the Org, CT just finds the account and uses the CFN roles.
 - If the existing account is to be imported as a Core Account, modify the manifest.yaml file to use it.
 - If the existing account will be a child account in the Organization, use the AVM launch template through Service Catalog and enter the appropriate configuration parameters.
 '''
@@ -481,9 +473,108 @@ else:
 	print(ERASE_LINE+Fore.RED+"** Step 5 completed with blockers found"+Fore.RESET)
 print()
 # Step 6
-# 6. The existing account can not be in any of the LZ-managed Organizations OUs. By default, these OUs are Core and Applications, but the customer may have chosen different or additional OUs to manage by LZ.
+# 6. The existing account can not be in any of the CT-managed Organizations OUs. By default, these OUs are Core and Applications, but the customer may have chosen different or additional OUs to manage by CT.
 """
 So we'll need to verify that the parent OU of the account is the root of the organization.
+
+TODO Here
+"""
+# Step 7 - Check for other resources which have 'controltower' in the name
+# Checking for SNS Topics
+try:
+	print("Checking account {} for any SNS topics containing the 'controltower' string".format(pChildAccountId))
+	SNSTopics2=[]
+	for region in RegionList:
+		logging.error("Checking account %s in region %s for", pChildAccountId, region+Fore.RED+" SNS Topics"+Fore.RESET)
+		SNSTopics=Inventory_Modules.find_sns_topics(account_credentials, region, ['controltower', 'ControlTower'])
+		if len(SNSTopics) > 0:
+			for x in range(len(SNSTopics)):
+				logging.warning("SNS Topic: %s", str(SNSTopics[x]))
+				logging.error("Unfortunately, we've found an SNS Topic  for account %s in the %s region, which means we'll have to delete it before this account can be adopted.", pChildAccountId, region)
+				ProcessStatus['Step7']['IssuesFound']+=1
+				SNSTopics2.append({
+					'AccountId': pChildAccountId,
+					'TopicArn': SNSTopics[x],
+					'Region': region
+				})
+except ClientError as my_Error:
+	print(my_Error)
+	ProcessStatus['Step7']['Success']=False
+
+"""
+for i in range(len(GDinvites2)):
+	logging.error(Fore.RED+"I found a GuardDuty invitation for account %s in region %s from account %s ", pChildAccountId, GDinvites2[i]['Region'], GDinvites2[i]['AccountId']+Fore.RESET)
+	ProcessStatus['Step7']['IssuesFound']+=1
+	ProcessStatus['Step7']['Success']=False
+	if FixRun:
+		for x in range(len(GDinvites2)):
+			try:
+				logging.warning("SNS Topic deletion commencing...")
+				delresponse=Inventory_Modules.delete_gd_invites(account_credentials, region, GDinvites2[x]['AccountId'])
+				ProcessStatus['Step7']['IssuesFixed']+=1
+				# We assume the process worked. We should probably NOT assume this.
+			except ClientError as my_Error:
+				print(my_Error)
+
+if ProcessStatus['Step7']['Success']:
+	print(ERASE_LINE+Fore.GREEN+"** Step 7 completed with no issues"+Fore.RESET)
+elif ProcessStatus['Step7']['IssuesFound']-ProcessStatus['Step7']['IssuesFixed']==0:
+	print(ERASE_LINE+Fore.GREEN+"** Step 7 found {} SNS Topics, but they were deleted".format(ProcessStatus['Step7']['IssuesFound'])+Fore.RESET)
+	ProcessStatus['Step7']['Success']=True
+elif (ProcessStatus['Step7']['IssuesFound']>ProcessStatus['Step7']['IssuesFixed']):
+	print(ERASE_LINE+Fore.RED+"** Step 7 completed, but there were {} SNS Topics found that couldn't be deleted".format(ProcessStatus['Step7']['IssuesFound']-ProcessStatus['Step7']['IssuesFixed'])+Fore.RESET)
+else:
+	print(ERASE_LINE+Fore.RED+"** Step 7 completed with blockers found"+Fore.RESET)
+print()
+"""
+# Step 8
+# Checking for Lambda functions
+
+#Step 9
+# Checking for Role names
+try:
+	print("Checking account {} for any Role names containing the 'controltower' string".format(pChildAccountId))
+	RoleNames2=[]
+	logging.error("Checking account %s in region %s for", pChildAccountId, region+Fore.RED+" Role names"+Fore.RESET)
+	RoleNames=Inventory_Modules.find_role_names(account_credentials, 'us-east-1', ['controltower', 'ControlTower'])
+	if len(RoleNames) > 0:
+		for x in range(len(RoleNames)):
+			logging.warning("Role Name: %s", str(RoleNames[x]))
+			logging.error("Unfortunately, we've found a Role Name for account %s, which means we'll have to delete it before this account can be adopted.", pChildAccountId)
+			ProcessStatus['Step9']['IssuesFound']+=1
+			RoleNames2.append({
+				'AccountId': pChildAccountId,
+				'TopicArn': RoleNames[x]
+			})
+except ClientError as my_Error:
+	print(my_Error)
+	ProcessStatus['Step9']['Success']=False
+
+"""
+for i in range(len(GDinvites2)):
+	logging.error(Fore.RED+"I found a GuardDuty invitation for account %s in region %s from account %s ", pChildAccountId, GDinvites2[i]['Region'], GDinvites2[i]['AccountId']+Fore.RESET)
+	ProcessStatus['Step9']['IssuesFound']+=1
+	ProcessStatus['Step9']['Success']=False
+	if FixRun:
+		for x in range(len(GDinvites2)):
+			try:
+				logging.warning("SNS Topic deletion commencing...")
+				delresponse=Inventory_Modules.delete_gd_invites(account_credentials, region, GDinvites2[x]['AccountId'])
+				ProcessStatus['Step9']['IssuesFixed']+=1
+				# We assume the process worked. We should probably NOT assume this.
+			except ClientError as my_Error:
+				print(my_Error)
+
+if ProcessStatus['Step9']['Success']:
+	print(ERASE_LINE+Fore.GREEN+"** Step 9 completed with no issues"+Fore.RESET)
+elif ProcessStatus['Step9']['IssuesFound']-ProcessStatus['Step9']['IssuesFixed']==0:
+	print(ERASE_LINE+Fore.GREEN+"** Step 9 found {} SNS Topics, but they were deleted".format(ProcessStatus['Step9']['IssuesFound'])+Fore.RESET)
+	ProcessStatus['Step9']['Success']=True
+elif (ProcessStatus['Step9']['IssuesFound']>ProcessStatus['Step9']['IssuesFixed']):
+	print(ERASE_LINE+Fore.RED+"** Step 9 completed, but there were {} SNS Topics found that couldn't be deleted".format(ProcessStatus['Step9']['IssuesFound']-ProcessStatus['Step9']['IssuesFixed'])+Fore.RESET)
+else:
+	print(ERASE_LINE+Fore.RED+"** Step 9 completed with blockers found"+Fore.RESET)
+print()
 """
 
 ChildIsReady=ProcessStatus['Step1']['Success'] and ProcessStatus['Step2']['Success'] and ProcessStatus['Step3']['Success'] and ProcessStatus['Step4']['Success'] and ProcessStatus['Step5']['Success']

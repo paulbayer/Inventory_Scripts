@@ -14,41 +14,41 @@ parser = argparse.ArgumentParser(
 	description="We\'re going to find the necessary information to register this account within Isengard.",
 	prefix_chars='-+/')
 parser.add_argument(
-	"-p","--profile",
+	"-p", "--profile",
 	dest="pProfile",
 	metavar="profile to use",
 	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
 parser.add_argument(
-    '-f', '--force',
+	'-f', '--force',
 	const=True,
 	default=False,
 	dest="pForcedReg",
 	action="store_const",
-    help="Force a registration with Isengard")
+	help="Force a registration with Isengard")
 parser.add_argument(
-    '-d', '--debug',
-    help="Print debugging statements",
-    action="store_const",
+	'-d', '--debug',
+	help="Print debugging statements",
+	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,	# args.loglevel = 20
-    default=logging.CRITICAL) # args.loglevel = 50
+	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-dd',
-    help="Print lots of debugging statements",
-    action="store_const",
+	'-dd',
+	help="Print lots of debugging statements",
+	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,	# args.loglevel = 20
-    default=logging.CRITICAL) # args.loglevel = 50
+	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-    '-v', '--verbose',
-    help="Be verbose",
-    action="store_const",
+	'-v', '--verbose',
+	help="Be verbose",
+	action="store_const",
 	dest="loglevel",
 	const=logging.ERROR) # args.loglevel = 40
 parser.add_argument(
-    '-vv',
-    help="Be MORE verbose",
-    action="store_const",
+	'-vv',
+	help="Be MORE verbose",
+	action="store_const",
 	dest="loglevel",
 	const=logging.WARNING) # args.loglevel = 30
 args = parser.parse_args()
@@ -70,15 +70,15 @@ ERASE_LINE = '\x1b[2K'
 
 print()
 fmt='%-15s %-25s %-15s %-24s'
-print(fmt % ("Account","Email","AccessKey","Secret Access Key"))
-print(fmt % ("-------","------","------","-------------"))
+print(fmt % ("Account", "Email", "AccessKey", "Secret Access Key"))
+print(fmt % ("-------", "-----", "---------", "-----------------"))
 
 sts_session = boto3.Session(profile_name=pProfile)
 sts_client = sts_session.client('sts')
 AccountsToRegister=[]
 AccountsRegistered=0
 for account in ChildAccounts:
-	rolenames=['AWSCloudFormationStackSetExecutionRole','OrganizationalFullAccess','OrganizationAccountAccessRole','AWSControlTowerExecution','Owner','admin-crossAccount']
+	rolenames=['AWSCloudFormationStackSetExecutionRole', 'OrganizationalFullAccess', 'OrganizationAccountAccessRole', 'AWSControlTowerExecution', 'Owner', 'admin-crossAccount']
 	# role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
 	# role_arn = "arn:aws:iam::{}:role/OrganizationalFullAccess".format(account['AccountId'])
 	# role_arn = "arn:aws:iam::{}:role/AWSControlTowerExecution".format(account['AccountId'])
@@ -136,7 +136,7 @@ for account in AccountsToRegister:
 		)
 		print("Alice already exists!!")
 		AccessKeyMetadata=iam_client.list_access_keys(
-    		UserName='Alice'
+			UserName='Alice'
 		)
 		DeleteUser=True
 	except ClientError as my_Error:
