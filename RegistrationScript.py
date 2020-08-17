@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
 	"-p", "--profile",
 	dest="pProfile",
+	default='default',
 	metavar="profile to use",
 	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
 parser.add_argument(
@@ -86,7 +87,7 @@ for account in ChildAccounts:
 	# role_arn = "arn:aws:iam::{}:role/Owner".format(account['AccountId'])
 	# role_arn = "arn:aws:iam::{}:role/admin-crossAccount".format(account['AccountId'])
 	for rolename in rolenames:
-		role_arn = "arn:aws:iam::{}:role/{}".format(account['AccountId'],rolename)
+		role_arn = "arn:aws:iam::{}:role/{}".format(account['AccountId'], rolename)
 		logging.info("Role ARN: %s" % role_arn)
 		try:
 			AccountErrored=False
@@ -95,11 +96,11 @@ for account in ChildAccounts:
 				RoleSessionName="RegistrationScript")['Credentials']
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
-				print(pProfile+": Authorization Failure to account {} using {}".format(account['AccountId'],role_arn))
+				print(pProfile+": Authorization Failure to account {} using {}".format(account['AccountId'], role_arn))
 				AccountErrored=True
 				continue	# Try the next rolename
 			elif str(my_Error).find("AccessDenied") > 0:
-				print(pProfile+": Authentication Denied to account {} using {}".format(account['AccountId'],role_arn))
+				print(pProfile+": Authentication Denied to account {} using {}".format(account['AccountId'], role_arn))
 				AccountErrored=True
 				continue	# Try the next rolename
 				print(my_Error)

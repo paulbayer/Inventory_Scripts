@@ -321,17 +321,20 @@ StackSetStillInUse=sorted(list(set(StackSetStillInUse)))
 RegionList=sorted(list(set(RegionList)))
 
 if pCheckAccount:
+	logging.warning("Printing any accounts within the stacksets that aren't a part of the Organization")
 	OrgAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 	OrgAccountList=[]
 	for i in range(len(OrgAccounts)):
 		OrgAccountList.append(OrgAccounts[i]['AccountId'])
+	logging.info("There are %s accounts in the Org, and %s unique accounts in all stacksets found", len(OrgAccountList), len(AccountList))
 	ClosedAccounts=list(set(AccountList)-set(OrgAccountList))
+	logging.info("Found %s accounts that don't belong", len(ClosedAccounts))
 	for item in ClosedAccounts:
 		print("Account {} is not in the Organization".format(item))
 
 if pdryrun and pRemove=='NotProvided':
 	# pprint.pprint(AllInstances)
-	print("Found {} StackSets that matched, with {} total instances across {} accounts".format(len(StackSetNames), len(AllInstances), len(AccountList)))
+	print("Found {} StackSets that matched, with {} total instances across {} accounts, across {} regions".format(len(StackSetNames), len(AllInstances), len(AccountList), len(RegionList)))
 	if args.loglevel < 50:
 		print("We found the following unique accounts across all StackSets found")
 		for n in range(len(AccountList)):
