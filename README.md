@@ -32,12 +32,20 @@ Purpose Built Scripts
 - **ALZ_CheckAccount.py**
   - This script takes an Organization Master Account profile, and checks additional accounts to see if they meet the pre-reqs to be "adopted" by either Landing Zone or Control Tower.
   - If there are blockers to the adoption (like the default VPCs being present, or Config Recorder already being enabled), it can rectify those blockers it finds. However - to avoid mistakes - it only does this if you specifically select that in the submitted parameters.
+  - While this script was focused on ALZ, it also *sort of* supports an account being adopted by Control Tower too.
+
+- **CT_CheckAccount.py**
+  - This script takes an Organization Master Account profile, and checks additional accounts to see if they meet the pre-reqs to be "adopted" by Control Tower.
+  - If there are blockers to the adoption (like the Config Recorder already being enabled), it can rectify those blockers it finds. However - to avoid mistakes - it only does this if you specifically select that in the submitted parameters. This script is still being worked on.
 
 - **RegistrationScript.py**
   - This script goes through an Organization and determines (based on roles) whether the account has been on-boarded to the AWS Federation tool or not. If not, it creates a temporary user ("Alice") and prints the information to the screen to be able to register the account to the tool.
 
 - **SC_Products_to_CFN_Stacks.py**
   - This script is focused on reconciling the SC Products with the CFN Stacks they create. It definitely can happen that a CFN stack can exist without a corresponding SC Product, and it can happen that an SC Product can exist without a corresponding CFN stack (I'm looking at you AWS Control Tower!). However, when an SC Product is in ERROR state and the CFN stack is in an error state - you're best served by terminating the SC Product and starting over. This script can help you find those instances and even offers to get rid of them for you.
+- **del_enable_config.template.py**
+  - This script was specifically created to remove the resources created during the "Enable Config" stack through the ALZ. Since this stack enables the Config Recorder, Delivery Channel, SNS Topic, Lambda Function, and SNS Notification Forwarder; all of these resources can be removed with this script.
+ 
 
   Generic Scripts
   ------------------
@@ -50,7 +58,7 @@ Purpose Built Scripts
 - **all_my_config_recorders_and_delivery_channels.py**
   - I wrote this script to help remove the Config Recorders and Delivery Channels for a given account, so that we could use this within the "adoption" of legacy accounts into the AWS Landing Zone.
   - Now that we have the ALZ_CheckAccount tool, I don't see a lot of use from this script, but it's complete - so why delete it?
-- **del_my_cfnstacksets.py**
+- **mod_my_cfnstacksets.py**
   - So, originally, when I was creating this library, I had the idea that I would create scripts that found resources - and different scripts that deleted those resources. Hence - both the "all_my_cfnstacksets" as well as "del_my_cfnstacksets". However, I quickly realized that you had to do the finding before you could do the deleting - so I decided to put more effort into the "del\*" tool instead of the "find\*" tool. Of course - then I realized that having the "deletion" be action in the find script made way more sense, so I tried to put everything I had done from one script into the other. At the end of it all - I had a mish-mash of useful and stale features in both scripts.
 
   - The truth is that I need to go through this script and make sure everything useful here has gotten into the "all_my_cfnstacksets.py" script and simply move forward with that one only. Still a work in progress, I guess.

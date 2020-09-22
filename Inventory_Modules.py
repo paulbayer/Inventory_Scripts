@@ -167,7 +167,11 @@ def get_parent_profiles(fSkipProfiles=[], fprofiles=["all"]):
 	for profile in my_profiles:
 		print(ERASE_LINE, "Checking {} Profile - {} more profiles to go".format(profile, NumOfProfiles), end='\r')
 		logging.warning("Finding whether %s is a root profile", profile)
-		AcctResult=find_if_org_root(profile)
+		try:
+			AcctResult=find_if_org_root(profile)
+		except ClientError as my_Error:
+			print(my_Error)
+			continue
 		NumOfProfiles-=1
 		if AcctResult in ['Root', 'StandAlone']:
 			logging.warning("%s is a %s Profile", profile, AcctResult)
@@ -225,11 +229,14 @@ def find_account_number(fProfile):
 	import boto3, logging
 	from botocore.exceptions import ClientError
 
+	Success=False
+	FailResponse='123456789012'
 	try:
 		session_sts=boto3.Session(profile_name=fProfile)
 		logging.info("Looking for profile %s", fProfile)
 		client_sts=session_sts.client('sts')
 		response=client_sts.get_caller_identity()['Account']
+		Success=True
 	except ClientError as my_Error:
 		if str(my_Error).find("UnrecognizedClientException") > 0:
 			print("{}: Security Issue".format(fProfile))
@@ -239,7 +246,10 @@ def find_account_number(fProfile):
 			print("Other kind of failure for profile {}".format(fProfile))
 			print(my_Error)
 		pass
-	return (response)
+	if Success:
+		return(response)
+	else:
+		return(FailResponse)
 
 
 def find_calling_identity(fProfile):
@@ -265,7 +275,7 @@ def find_calling_identity(fProfile):
 
 def find_org_attr(fProfile):
 	import boto3, logging
-	from botocore.exceptions import ClientError
+	from botocore.exceptions import ClientError, CredentialRetrievalError
 	"""
 	Response is a dict that looks like this:
 	{
@@ -286,24 +296,31 @@ def find_org_attr(fProfile):
 	"""
 	session_org=boto3.Session(profile_name=fProfile)
 	client_org=session_org.client('organizations')
+	Success=False
+	FailResponse={'MasterAccountId': 'StandAlone', 'Id': 'None'}
 	try:
 		response=client_org.describe_organization()['Organization']
+		Success=True
 	except ClientError as my_Error:
 		if str(my_Error).find("UnrecognizedClientException") > 0:
 			print(fProfile+": Security Issue")
 		elif str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
 			logging.warning("%s: Account isn't a part of an Organization", fProfile)	# Stand-alone account
-			response={'MasterAccountId': 'StandAlone', 'Id': 'None'}
 			# Need to figure out how to provide the account's own number here as MasterAccountId
 		elif str(my_Error).find("InvalidClientTokenId") > 0:
 			print(fProfile+": Security Token is bad - probably a bad entry in config")
-		else:
-			print(fProfile+": Other kind of failure")
-			print(my_Error)
-			response={'MasterAccountId': '123456789012', 'Id': 'None'}
 		pass
-	return (response)
-
+	except CredentialRetrievalError as my_Error:
+		print(fProfile+": Other kind of failure")
+		print(my_Error)
+		pass
+	except:
+		print("Other kind of failure")
+		pass
+	if Success:
+		return (response)
+	else:
+		return (FailResponse)
 
 def find_org_attr2(fProfile):
 	import boto3
