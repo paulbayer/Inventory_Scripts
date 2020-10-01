@@ -15,7 +15,7 @@ parser.add_argument(
 	"-p","--profile",
 	dest="pProfile",
 	metavar="profile to use",
-	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
+	help="To specify a specific profile, use this parameter.")
 parser.add_argument(
 	"-f","--fragment",
 	dest="pstackfrag",

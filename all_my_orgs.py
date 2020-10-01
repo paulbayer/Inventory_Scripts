@@ -56,14 +56,14 @@ parser.add_argument(
 	const=logging.WARNING, # args.loglevel = 30
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-	'-d',
+	'-vvv',
 	help="Print debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,	# args.loglevel = 20
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-	'-dd', '--debug',
+	'-d', '--debug',
 	help="Print LOTS of debugging statements",
 	action="store_const",
 	dest="loglevel",
@@ -160,9 +160,14 @@ if ShowEverything:
 		ErrorFlag = False
 		try:
 			AcctNum = Inventory_Modules.find_account_number(profile)
-			AcctAttr = Inventory_Modules.find_org_attr(profile)
-			MasterAcct = AcctAttr['MasterAccountId']
-			OrgId = AcctAttr['Id']
+			logging.info("AccountNumber: {}".format(AcctNum))
+			if AcctNum == '123456789012':
+				ErrorFlag = True
+				pass
+			else:
+				AcctAttr = Inventory_Modules.find_org_attr(profile)
+				MasterAcct = AcctAttr['MasterAccountId']
+				OrgId = AcctAttr['Id']
 		except ClientError as my_Error:
 			ErrorFlag = True
 			if str(my_Error).find("AWSOrganizationsNotInUseException") > 0:

@@ -126,7 +126,6 @@ for account in ChildAccounts:
 		if str(my_Error).find("AuthFailure") > 0:
 			print(profile+": Authorization Failure for account {}".format(account['AccountId']))
 	for region in cfg_regions:
-		NumAccountsInvestigated += 1
 		session_aws=boto3.Session(
 			aws_access_key_id=account_credentials['AccessKeyId'],
 			aws_secret_access_key=account_credentials['SecretAccessKey'],

@@ -134,6 +134,7 @@ for account in ChildAccounts:
 			print (my_Error)
 		break
 	for region in RegionList:
+		Stacks=False
 		try:
 			Stacks=Inventory_Modules.find_stacks_in_acct(account_credentials,region,pstackfrag,pstatus)
 			# pprint.pprint(Stacks)
@@ -142,7 +143,7 @@ for account in ChildAccounts:
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(account['AccountId']+": Authorization Failure")
-		if len(Stacks) > 0:
+		if Stacks and len(Stacks) > 0:
 			for y in range(len(Stacks)):
 				StackName=Stacks[y]['StackName']
 				StackStatus=Stacks[y]['StackStatus']

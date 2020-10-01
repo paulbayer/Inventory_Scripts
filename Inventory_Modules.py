@@ -227,7 +227,7 @@ def find_acct_email(fOrgRootProfile, fAccountId):
 
 def find_account_number(fProfile):
 	import boto3, logging
-	from botocore.exceptions import ClientError
+	from botocore.exceptions import ClientError, CredentialRetrievalError
 
 	Success=False
 	FailResponse='123456789012'
@@ -242,9 +242,13 @@ def find_account_number(fProfile):
 			print("{}: Security Issue".format(fProfile))
 		elif str(my_Error).find("InvalidClientTokenId") > 0:
 			print("{}: Security Token is bad - probably a bad entry in config".format(fProfile))
-		else:
-			print("Other kind of failure for profile {}".format(fProfile))
-			print(my_Error)
+	except CredentialRetrievalError as my_Error:
+		if str(my_Error).find("CredentialRetrievalError") > 0:
+			print("{}: Some custom process isn't working".format(fProfile))
+			pass
+	except:
+		print("Other kind of failure for profile {}".format(fProfile))
+		print(my_Error)
 		pass
 	if Success:
 		return(response)

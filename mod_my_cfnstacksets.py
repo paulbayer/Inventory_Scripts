@@ -64,7 +64,7 @@ def RemoveTermProtection(fProfile, fAllInstances):
 init()
 
 parser = argparse.ArgumentParser(
-	description="This script removes stacksets entirely, or removes accounts or regions from specific stacksets. This script can also determine if you have included accounts in your stacksets that have been removed (closed or suspended) from your Organization",
+	description="This script removes stacksets entirely, or removes accounts from specific stacksets. This script can also determine if you have included accounts in your stacksets that have been removed (closed or suspended) from your Organization",
 	prefix_chars='-+/')
 parser.add_argument(
 	"-p", "--profile",

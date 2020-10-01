@@ -45,7 +45,7 @@ Purpose Built Scripts
   - This script is focused on reconciling the SC Products with the CFN Stacks they create. It definitely can happen that a CFN stack can exist without a corresponding SC Product, and it can happen that an SC Product can exist without a corresponding CFN stack (I'm looking at you AWS Control Tower!). However, when an SC Product is in ERROR state and the CFN stack is in an error state - you're best served by terminating the SC Product and starting over. This script can help you find those instances and even offers to get rid of them for you.
 - **del_enable_config.template.py**
   - This script was specifically created to remove the resources created during the "Enable Config" stack through the ALZ. Since this stack enables the Config Recorder, Delivery Channel, SNS Topic, Lambda Function, and SNS Notification Forwarder; all of these resources can be removed with this script.
- 
+
 
   Generic Scripts
   ------------------
@@ -104,7 +104,7 @@ Purpose Built Scripts
       - This script can solve that problem by using the "--ALZ" parameter and the "-b" parameter to identify any left-over parameters that should be cleaned up since so many days back (ideally further back than your last successful Pipeline run).
     - As usual - provide the "+delete" parameter to allow the script to programmatically remediate the problem.
 
-Utility Scripts
+Utility Files
 ----------------
 - **Inventory_Modules.py**
   - This is the "utils" file that is referenced by nearly every other script I've written. I didn't know Python well enough when I started to know that I should have named this "utils". If I get ambitious, maybe I'll go through and rename it within every script.
