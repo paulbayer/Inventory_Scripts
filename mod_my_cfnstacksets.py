@@ -31,7 +31,6 @@ TODO:
 
 ###################
 
-
 def randomString(stringLength=10):
 	import random
 	import string
@@ -139,14 +138,14 @@ parser.add_argument(
 	const=logging.WARNING, # args.loglevel = 30
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-	'-d', '-vvv',
+	'-vvv',
 	help="Print debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO, # args.loglevel = 20
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-	'-dd', '--debug',
+	'-d', '--debug',
 	help="Print LOTS of debugging statements",
 	action="store_const",
 	dest="loglevel",
@@ -167,7 +166,7 @@ pRegionRemove=args.pRegionRemove
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
 
 ########################
-####################
+#### delete_stack_instances #####
 # Required Parameters:
 # StackSetNames
 # RegionList

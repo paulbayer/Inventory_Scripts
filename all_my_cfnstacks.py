@@ -132,7 +132,7 @@ for account in ChildAccounts:
 		else:
 			print(pProfile+": Other kind of failure for account {}".format(account['AccountId']))
 			print (my_Error)
-		break
+		continue
 	for region in RegionList:
 		Stacks=False
 		try:

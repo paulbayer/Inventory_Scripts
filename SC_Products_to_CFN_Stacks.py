@@ -1,10 +1,10 @@
 #!/usr/local/bin/python3
 
-import os, sys, pprint, boto3
+import boto3
 import Inventory_Modules
 import argparse
 from colorama import init, Fore, Style
-from botocore.exceptions import ClientError, NoCredentialsError
+from botocore.exceptions import ClientError
 
 import logging
 
@@ -98,7 +98,6 @@ try:
 			ErroredSCPExists=True
 	for i in range(len(SCProducts)):
 		print(ERASE_LINE, Fore.RED+"Checking {} of {} products".format(i+1, len(SCProducts))+Fore.RESET, end='\r')
-		# CFNresponse=Inventory_Modules.find_stacks(pProfile,pRegion,SCProducts[i]['SCPId'],"all")
 		CFNresponse=Inventory_Modules.find_stacks(pProfile, pRegion, SCProducts[i]['SCPId'])
 		logging.error("There are %s matches for SC Provisioned Product Name %s", len(CFNresponse), SCProducts[i]['SCPName'])
 		try:

@@ -134,7 +134,7 @@ aws configservice delete-configuration-recorder --configuration-recorder-name <N
 5. The account must be part of the Organization and the email address being entered into the LZ parameters must match the account. If you try to add an email from an account which is not part of the Org, you will get an error that you are not using a unique email address. If it’s part of the Org, LZ just finds the account and uses the CFN roles.
 - If the existing account is to be imported as a Core Account, modify the manifest.yaml file to use it.
 - If the existing account will be a child account in the Organization, use the AVM launch template through Service Catalog and enter the appropriate configuration parameters.
-​​​​​​​
+
 6. The existing account can not be in any of the LZ-managed Organizations OUs. By default, these OUs are Core and Applications, but the customer may have chosen different or additional OUs to manage by LZ.
 
 """
@@ -144,7 +144,6 @@ if pExplain:
 	sys.exit("Exiting after Script Explanation...")
 
 json_formatted_str_TP=""
-
 
 def InitDict(StepCount):
 	fProcessStatus={}
