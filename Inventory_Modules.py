@@ -467,7 +467,7 @@ def get_child_access(fRootProfile, fRegion, fChildAccount, fRoleList=['AWSCloudF
 	return(return_string)
 
 
-def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1',  fRoleList=['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution', 'OrganizationAccountAccessRole']):
+def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1',  fRoleList=['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution', 'OrganizationAccountAccessRole','AdministratorAccess']):
 	"""
 	- fRootProfile is a string
 	- rRegion expects a string representing one of the AWS regions ('us-east-1', 'eu-west-1', etc.)

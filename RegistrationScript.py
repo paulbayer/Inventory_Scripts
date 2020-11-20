@@ -27,14 +27,14 @@ parser.add_argument(
 	action="store_const",
 	help="Force a registration with Isengard")
 parser.add_argument(
-	'-d', '--debug',
+	'-vvv',
 	help="Print debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,	# args.loglevel = 20
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-	'-dd',
+	'-d', '--debug',
 	help="Print lots of debugging statements",
 	action="store_const",
 	dest="loglevel",
@@ -68,18 +68,15 @@ if len(ChildAccounts) == 0:
 	sys.exit(1)
 ##########################
 ERASE_LINE = '\x1b[2K'
+##########################
 
 print()
-fmt='%-15s %-25s %-15s %-24s'
-print(fmt % ("Account", "Email", "AccessKey", "Secret Access Key"))
-print(fmt % ("-------", "-----", "---------", "-----------------"))
-
 sts_session = boto3.Session(profile_name=pProfile)
 sts_client = sts_session.client('sts')
 AccountsToRegister=[]
 AccountsRegistered=0
 for account in ChildAccounts:
-	rolenames=['AWSCloudFormationStackSetExecutionRole', 'OrganizationalFullAccess', 'OrganizationAccountAccessRole', 'AWSControlTowerExecution', 'Owner', 'admin-crossAccount']
+	rolenames=['AWSCloudFormationStackSetExecutionRole', 'OrganizationalFullAccess', 'OrganizationAccountAccessRole', 'AWSControlTowerExecution', 'Owner', 'admin-crossAccount','AdministratorAccess']
 	# role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
 	# role_arn = "arn:aws:iam::{}:role/OrganizationalFullAccess".format(account['AccountId'])
 	# role_arn = "arn:aws:iam::{}:role/AWSControlTowerExecution".format(account['AccountId'])
@@ -90,7 +87,7 @@ for account in ChildAccounts:
 		role_arn = "arn:aws:iam::{}:role/{}".format(account['AccountId'], rolename)
 		logging.info("Role ARN: %s" % role_arn)
 		try:
-			AccountErrored=False
+			AccountErrored = False
 			account_credentials = sts_client.assume_role(
 				RoleArn=role_arn,
 				RoleSessionName="RegistrationScript")['Credentials']
@@ -120,7 +117,7 @@ for account in ChildAccounts:
 		break
 logging.info("There are %s accounts to register",len(AccountsToRegister))
 for account in AccountsToRegister:
-	print(ERASE_LINE,Fore.RED+"Setting up Account with credentials for Isengard registration: ",account['AccountId'],"Email: ",account['AccountEmail'],"using rolename: ",account['RoleName']+Fore.RESET,end="\r")
+	print(ERASE_LINE,Fore.RED+"Setting up Account with credentials for Isengard registration: ",account['AccountId'],"Email: ",account['AccountEmail'],"using rolename: ",account['RoleName']+Fore.RESET,end='\r')
 	aws_session=boto3.Session(
 		aws_access_key_id = account['AccountCredentials']['AccessKeyId'],
 		aws_secret_access_key = account['AccountCredentials']['SecretAccessKey'],
