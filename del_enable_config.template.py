@@ -59,15 +59,15 @@ parser.add_argument( # Force
 	const=True,
 	default=False)
 parser.add_argument( # args.loglevel = 10
-	'-dd', '--debug',
+	'-d', '--debug',
 	help="Print lots of debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,
 	default=logging.CRITICAL)
 parser.add_argument( # args.loglevel = 20
-	'-d',
-	help="Print debugging statements",
+	'-vvv',
+	help="Print INFO level statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,

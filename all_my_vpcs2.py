@@ -35,15 +35,15 @@ parser.add_argument(
 	default=["us-east-1"],
 	help="String fragment of the region(s) you want to check for resources.")
 parser.add_argument(
-	'-dd', '--debug',
+	'-d', '--debug',
 	help="Print LOTS of debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,	# args.loglevel = 10
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-	'-d',
-	help="Print debugging statements",
+	'-vvv',
+	help="Print INFO level statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,	# args.loglevel = 20

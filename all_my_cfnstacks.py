@@ -54,15 +54,15 @@ parser.add_argument(
 	action="store_const",
 	help="This will delete the stacks found - without any opportunity to confirm. Be careful!!")
 parser.add_argument(
-	'-dd', '--debug',
+	'-d', '--debug',
 	help="Print LOTS of debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,	# args.loglevel = 10
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
-	'-d',
-	help="Print debugging statements",
+	'-vvv',
+	help="Print INFO level",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,	# args.loglevel = 20
