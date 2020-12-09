@@ -27,7 +27,7 @@ parser.add_argument(
 	dest="pstatus",
 	metavar="CloudFormation status",
 	default="active",
-	help="String that determines whether we only see 'CREATE_COMPLETE' or 'DELETE_COMPLETE' too")
+	help="String that determines whether we only see 'CREATE_COMPLETE' or 'DELETE_COMPLETE' too. Valid values are 'ACTIVE' or 'DELETED'" )
 parser.add_argument(
 	"-r","--region",
 	nargs="*",

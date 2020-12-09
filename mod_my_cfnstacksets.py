@@ -78,6 +78,12 @@ parser.add_argument(
 	default=["all"],
 	help="List containing fragment(s) of the cloudformation stack or stackset(s) you want to check for.")
 parser.add_argument(
+	"-s","--status",
+	dest="pstatus",
+	metavar="Stack instance status",
+	default="CURRENT",
+	help="Filter for the status of the stack *instances*" )
+parser.add_argument(
 	"-k", "--skip",
 	dest="pSkipAccounts",
 	nargs="*",
@@ -100,7 +106,7 @@ parser.add_argument(
 	'-R', "--RemoveRegion",
 	help="The region you want to remove from all the stacksets.",
 	default="NotProvided",
-	metavar="Region to remove from stacksets",
+	metavar="region-name",
 	dest="pRegionRemove")
 parser.add_argument(
 	'-check',
@@ -139,14 +145,14 @@ parser.add_argument(
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
 	'-vvv',
-	help="Print debugging statements",
+	help="Print INFO level statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO, # args.loglevel = 20
 	default=logging.CRITICAL) # args.loglevel = 50
 parser.add_argument(
 	'-d', '--debug',
-	help="Print LOTS of debugging statements",
+	help="Print debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,	# args.loglevel = 10
@@ -161,6 +167,7 @@ AccountsToSkip=args.pSkipAccounts
 pCheckAccount=args.AccountCheck
 verbose=args.loglevel
 pdryrun=args.DryRun
+pstatus=args.pstatus
 pAccountRemove=args.pAccountRemove
 pRegionRemove=args.pRegionRemove
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
@@ -267,7 +274,11 @@ else:
 print("		In the ROOT profile {} and all children".format(pProfile))
 print("		In these regions: {}".format(pRegion))
 print("		For stacksets that contain these fragments: {}".format(pStackfrag))
-print("		Specifically to find this account number: {}".format(pAccountRemove))
+print("		For stack instances that match this status: {}".format(pstatus))
+if pAccountRemove == "NotProvided":
+	pass
+else:
+	print("		Specifically to find this account number: {}".format(pAccountRemove))
 if pCheckAccount:
 	print("		We'll also display those accounts in the stacksets that are no longer part of the organization")
 print()
@@ -296,6 +307,7 @@ for i in range(len(StackSetNames)):
 		# pprint.pprint(StackInstances[j])
 		logging.debug("This is Instance #: %s", str(j))
 		logging.debug("This is StackId: %s", str(StackInstances[j]['StackId']))
+		logging.debug("This is instance status: %s", str(StackInstances[j]['Status']))
 		logging.debug("This is ChildAccount: %s", StackInstances[j]['Account'])
 		logging.debug("This is ChildRegion: %s", StackInstances[j]['Region'])
 		AllInstances.append({
@@ -350,6 +362,26 @@ if pCheckAccount:
 			print("Account {} is not in the Organization".format(item))
 	print()
 
+
+'''
+The next section is broken up into a few pieces. I should try to re-write this to make it easier to read, but I decided to comment here instead.
+
+* if pdryrun and pAccountRemove=='NotProvided'
+ - This handles the scenario where we're doing a read-only run, and we didn't provide a specific Account that we're interested in.
+ - This should be the normal case - where we're just doing a generic read of all stacksets in an account.
+ - By default, it will print out the last line - summarizing everything found.
+ - If you have additional verbosity set, it will print out a list of stacksets found, and a list of the accounts with the regions enabled by the stacksets,
+* if pdryrun (which means you DID specify a specific account you're looking for)
+ - It will print that it found that account associated with X number of stacksets.
+ - If you have additional verbosity set, it will print out which stacksets that account is associated with, and which regions.
+* If this is NOT a dry-run (meaning you want to take action on the stacksets)
+ - We assume you're looking to remove accounts from a specific stackset
+ - We ask whether you're sure if you want to remove the account, unless you've also supplied the "+force" parameter, which bypasses the extra check
+* If you didn't supply the Account Number
+ - then we assume you wanted to remove the stack instances from the stackset(s)
+ - except we previously allowed certain accounts to be "skipped", so we need to make sure we're skipping those accounts when we remove stack instances from these stacksets.
+ - 
+'''
 
 if pdryrun and pAccountRemove=='NotProvided':
 	# pprint.pprint(AllInstances)
@@ -413,7 +445,7 @@ elif not pdryrun:
 					continue
 				else:
 					response=Inventory_Modules.delete_stackset(pProfile, pRegion, StackSetNames[i]['StackSetName'])
-					logging.warning("StackSet %s has been deleted from Root account %s in region %s" % (StackSetNames[i]['StackSetName'], pProfile, pRegion))
+					logging.warning("StackSet %s has been deleted from account %s in region %s" % (StackSetNames[i]['StackSetName'], pProfile, pRegion))
 		except Exception as e:
 			pprint.pprint(e)
 			pass

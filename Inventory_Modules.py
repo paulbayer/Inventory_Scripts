@@ -227,7 +227,7 @@ def find_acct_email(fOrgRootProfile, fAccountId):
 
 def find_account_number(fProfile):
 	import boto3, logging
-	from botocore.exceptions import ClientError, CredentialRetrievalError
+	from botocore.exceptions import ClientError, CredentialRetrievalError, InvalidConfigError
 
 	Success=False
 	FailResponse='123456789012'
@@ -245,6 +245,10 @@ def find_account_number(fProfile):
 	except CredentialRetrievalError as my_Error:
 		if str(my_Error).find("CredentialRetrievalError") > 0:
 			print("{}: Some custom process isn't working".format(fProfile))
+			pass
+	except InvalidConfigError as my_Error:
+		if str(my_Error).find("InvalidConfigError") > 0:
+			print("{}: profile is invalid. Probably due to a config profile based on a credential that doesn't work".format(fProfile))
 			pass
 	except:
 		print("Other kind of failure for profile {}".format(fProfile))
@@ -1432,8 +1436,8 @@ def delete_stack_instances(fProfile, fRegion, lAccounts, lRegions, fStackSetName
 
 def find_sc_products(fProfile, fRegion, fStatus="ERROR"):
 	"""
-	fProfile is the Root Profile that owns the Account we're interogating
-	fRegion is the region we're interogating
+	fProfile is the Root Profile that owns the Account we're interrogating
+	fRegion is the region we're interrogating
 	fStatus is the status of SC products we're looking for. Defaults to "ERROR"
 
 	Returned list looks like this:

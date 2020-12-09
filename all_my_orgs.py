@@ -35,7 +35,7 @@ parser.add_argument(
 	const=True,
 	default=False)
 parser.add_argument(
-	'-s', '--short',
+	'-s', '--q', '--short',
 	help="Display only brief listing of the root accounts, and not the Child Accounts under them",
 	action="store_const",
 	dest="shortform",
