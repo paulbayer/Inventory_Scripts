@@ -474,11 +474,12 @@ def get_child_access(fRootProfile, fRegion, fChildAccount, fRoleList=['AWSCloudF
 def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1',  fRoleList=['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution', 'OrganizationAccountAccessRole','AdministratorAccess']):
 	"""
 	- fRootProfile is a string
-	- rRegion expects a string representing one of the AWS regions ('us-east-1', 'eu-west-1', etc.)
 	- fChildAccount expects an AWS account number (ostensibly of a Child Account)
+	- rRegion expects a string representing one of the AWS regions ('us-east-1', 'eu-west-1', etc.)
 	- fRoleList expects a list of roles to try, but defaults to a list of typical roles, in case you don't provide
 
-	The response object is a dict with account_credentials to pass onto other functions
+	The first response object is a dict with account_credentials to pass onto other functions
+	The second response object is the rolename that worked to gain access to the target account
 	"""
 	import boto3, logging
 	from botocore.exceptions import ClientError
@@ -1070,6 +1071,45 @@ def find_profile_functions(fProfile, fRegion):
 	functions=lambda_info.list_functions()
 	return(functions)
 
+
+def find_lambda_functions(ocredentials, fRegion, fSearchStrings):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the AccountId
+	fRegion is a string
+	fSearchString is a list of strings
+	"""
+
+	import boto3
+	session_lambda=boto3.Session(region_name=fRegion,
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken']
+	)
+	client_lambda=session_lambda.client('lambda')
+	functions=client_lambda.list_functions()['Functions']
+	functions2=[]
+	for i in range(len(functions)):
+		for searchitem in fSearchStrings:
+			if searchitem in functions[i]['FunctionName']:
+				functions2.append({
+					'FunctionName' : functions[i]['FunctionName'],
+					'FunctionArn' : functions[i]['FunctionArn'],
+					'Role' : functions[i]['Role']
+				})
+	return(functions2)
+
+
+def get_lambda_code_url(fprofile, fregion, fFunctionName):
+
+	import boto3
+	session_lambda=boto3.Session(profile_name=fprofile, region_name=fregion)
+	client_lambda=session_lambda.client('lambda')
+	code_url=client_lambda.get_function(FunctionName=fFunctionName)['Code']['Location']
+	return(code_url)
 
 def find_private_hosted_zones(fProfile, fRegion):
 
