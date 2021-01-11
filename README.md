@@ -51,8 +51,9 @@ Purpose Built Scripts
 - **del_enable_config.template.py**
   - This script was specifically created to remove the resources created during the "Enable Config" stack through the ALZ. Since this stack enables the Config Recorder, Delivery Channel, SNS Topic, Lambda Function, and SNS Notification Forwarder; all of these resources can be removed with this script.
   
-- **AddRoleToMemberAccounts.py**
+- **UpdateRoleToMemberAccounts.py**
   - I wrote this script realizing that there's no easy way to "convert" an ALZ account over to the CT model, before you have the necessary "AWSControlTowerExecutionRole" created within the member/ child account. This script does that for you - when given the proper parameters. Perhaps I'll add a default method to the script when I can.
+  - I updated this script to also allow "removal" of a rolename (assuming it's been setup with this script [TODO]). This way, the script can be used and also "backed out" - since it doesn't offer much of a confirmation on changes.
 
 
   Generic Scripts
