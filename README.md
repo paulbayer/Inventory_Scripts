@@ -54,6 +54,9 @@ Purpose Built Scripts
 - **UpdateRoleToMemberAccounts.py**
   - I wrote this script realizing that there's no easy way to "convert" an ALZ account over to the CT model, before you have the necessary "AWSControlTowerExecutionRole" created within the member/ child account. This script does that for you - when given the proper parameters. Perhaps I'll add a default method to the script when I can.
   - I updated this script to also allow "removal" of a rolename (assuming it's been setup with this script [TODO]). This way, the script can be used and also "backed out" - since it doesn't offer much of a confirmation on changes.
+  
+- **find_my_LZ_versions.py**
+  - I wrote this script because I've noticed that many customers find it difficult to find their own ALZ versions, and some customers have multiple Landing Zones (like me), so it makes it even harder to keep track. This script will take either a single profile, or the keyword "all" and determine whether your profile is the Management Account of a Landing Zone - or in the case of "all", go through all of your profiles and find those accounts which are Landing Zones roots, and tell you the version of the ALZ in that account.  
 
 
   Generic Scripts

@@ -104,7 +104,7 @@ def get_valid_service_regions(service, fkey, bValidate=False):
 """
 
 
-def get_profiles(fSkipProfiles, fprofiles=["all"]):
+def get_profiles(fSkipProfiles=['default'], fprofiles=["all"]):
 	'''
 	We assume that the user of this function wants all profiles.
 	If they provide a list of profile strings (in fprofiles), then we compare those strings to the full list of profiles we have, and return those profiles that contain the strings they sent.
@@ -126,7 +126,7 @@ def get_profiles(fSkipProfiles, fprofiles=["all"]):
 	return(ProfileList)
 
 
-def get_profiles2(fSkipProfiles=[], fprofiles=["all"]):
+def get_profiles2(fSkipProfiles=['default'], fprofiles=["all"]):
 	'''
 	We assume that the user of this function wants all profiles.
 	If they provide a list of profile strings (in fprofiles), then we compare those strings to the full list of profiles we have, and return those profiles that contain the strings they sent.
@@ -205,11 +205,38 @@ def find_if_alz(fProfile):
 
 	session_org=boto3.Session(profile_name=fProfile)
 	client_org=session_org.client('s3')
-	response=client_org.list_buckets()
-	for bucket in response['Buckets']:
+	bucket_list=client_org.list_buckets()
+	response={}
+	response['BucketName'] = None
+	response['ALZ'] = False
+	for bucket in bucket_list['Buckets']:
 		if "aws-landing-zone-configuration" in bucket['Name']:
-				return(True)
-	return(False)
+				response['BucketName'] = bucket['Name']
+				response['ALZ'] = True
+				response['Region'] = find_bucket_location(fProfile,bucket['Name'])
+	return(response)
+
+
+def find_bucket_location(fProfile, fBucketname):
+	import boto3
+	import logging
+	from botocore.exceptions import ClientError, NoCredentialsError
+
+	session_org=boto3.Session(profile_name=fProfile)
+	client_org=session_org.client('s3')
+	try:
+		response=client_org.get_bucket_location(
+			Bucket=fBucketname
+		)
+	except ClientError as my_Error:
+		if str(my_Error).find("AccessDenied") > 0:
+			logging.error("Authorization Failure for profile {}".format(fProfile))
+		return(None)
+	if response['LocationConstraint'] is None:
+		location='us-east-1'
+	else:
+		location=response['LocationConstraint']
+	return(location)
 
 
 def find_acct_email(fOrgRootProfile, fAccountId):
@@ -242,6 +269,7 @@ def find_account_number(fProfile):
 			print("{}: Security Issue".format(fProfile))
 		elif str(my_Error).find("InvalidClientTokenId") > 0:
 			print("{}: Security Token is bad - probably a bad entry in config".format(fProfile))
+			pass
 	except CredentialRetrievalError as my_Error:
 		if str(my_Error).find("CredentialRetrievalError") > 0:
 			print("{}: Some custom process isn't working".format(fProfile))
@@ -252,7 +280,7 @@ def find_account_number(fProfile):
 			pass
 	except:
 		print("Other kind of failure for profile {}".format(fProfile))
-		print(my_Error)
+		# print(my_Error)
 		pass
 	if Success:
 		return(response)

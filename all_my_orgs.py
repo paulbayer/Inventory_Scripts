@@ -230,7 +230,7 @@ if ShowEverything:
 			child_accounts={}
 			MasterAcct=Inventory_Modules.find_account_number(profile)
 			child_accounts=Inventory_Modules.find_child_accounts(profile)
-			landing_zone=Inventory_Modules.find_if_alz(profile)
+			landing_zone=Inventory_Modules.find_if_alz(profile)['ALZ']
 			NumOfAccounts=NumOfAccounts + len(child_accounts)
 			if landing_zone:
 				fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+Fore.RED+'%-6s '+Fore.RESET
@@ -254,7 +254,7 @@ elif not ShowEverything:
 	child_accounts={}
 	MasterAcct=Inventory_Modules.find_account_number(pProfile)
 	child_accounts=Inventory_Modules.find_child_accounts(pProfile)
-	landing_zone=Inventory_Modules.find_if_alz(pProfile)
+	landing_zone=Inventory_Modules.find_if_alz(pProfile)['ALZ']
 	NumOfAccounts=NumOfAccounts + len(child_accounts)
 	if landing_zone:
 		fmt='%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+Fore.RED+'%-6s '+Fore.RESET

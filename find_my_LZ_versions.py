@@ -4,7 +4,7 @@ import os, sys, pprint, datetime
 import Inventory_Modules
 import argparse, boto3
 from colorama import init,Fore,Back,Style
-from botocore.exceptions import ClientError, NoCredentialsError
+from botocore.exceptions import ClientError, CredentialRetrievalError, InvalidConfigError, NoCredentialsError
 
 import logging
 
@@ -18,7 +18,7 @@ parser.add_argument(
 	dest="pProfile",
 	metavar="profile to use",
 	default="default",
-	help="Must specify a root profile. Default will be the default profile")
+	help="Must specify a root profile. Default will be the default profile. You can specify 'all' ")
 parser.add_argument(
 	'-d', '--debug',
 	help="Print LOTS of debugging statements",
@@ -55,27 +55,60 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(leve
 
 ##########################
 ERASE_LINE = '\x1b[2K'
+SkipProfiles=['default']
 
+if pProfile in ['all', 'All', 'ALL']:
+	logging.info("%s was provided as the profile, so we're going to check ALL of their profiles to find all of the management accounts, and list out all of their ALZ versions.", pProfile)
+	print("You've specified multiple profiles, so we've got to find them, determine which profiles represent Management Accounts, and then parse through those. This will take a few moments.")
+	AllProfiles=Inventory_Modules.get_profiles2()
+else:
+	AllProfiles=[pProfile]
 
-
-print()
-fmt='%-20s %-15s %-21s'
-print(fmt % ("Account","ALZ Stack Name","ALZ Version"))
-print(fmt % ("-------","--------------","-----------"))
-
-accountnum=Inventory_Modules.find_account_number(pProfile)
-
-aws_session=boto3.Session(profile_name=pProfile)
-aws_client=aws_session.client('cloudformation')
-
-stack_list=aws_client.describe_stacks()['Stacks']
-
-for i in range(len(stack_list)):
-	print(ERASE_LINE+"Checking stack {}".format(stack_list[i]['StackName']),end='\r')
-	if 'Description' in stack_list[i].keys() and stack_list[i]['Description'].find("SO0044") > 0:
-		print(fmt % (accountnum, stack_list[i]['StackName'],stack_list[i]['Outputs'][1]['OutputValue']))
-
+ALZProfiles=[]
+for profile in AllProfiles:
+	print(ERASE_LINE,"Checking profile: {}".format(profile),end="\r")
+	try:
+		ALZMgmntAcct=Inventory_Modules.find_if_alz(profile)
+		if ALZMgmntAcct['ALZ']:
+			accountnum = Inventory_Modules.find_account_number(profile)
+			ALZProfiles.append({
+				'Profile': profile,
+				'Acctnum': accountnum,
+				'Region': ALZMgmntAcct['Region']
+			})
+	except ClientError as my_Error:
+		if str(my_Error).find("UnrecognizedClientException") > 0:
+			logging.error("%s: Security Issue", fProfile)
+		elif str(my_Error).find("InvalidClientTokenId") > 0:
+			logging.error("%s: Security Token is bad - probably a bad entry in config", fProfile)
+			pass
+	except CredentialRetrievalError as my_Error:
+		if str(my_Error).find("CredentialRetrievalError") > 0:
+			logging.error("%s: Some custom process isn't working", fProfile)
+			pass
+	except InvalidConfigError as my_Error:
+		if str(my_Error).find("InvalidConfigError") > 0:
+			logging.error("%s: profile is invalid. Probably due to a config profile based on a credential that doesn't work", fProfile)
+			pass
 
 print(ERASE_LINE)
+fmt='%-20s %-13s %-15s %-35s %-21s'
+print(fmt % ("Profile","Account","Region","ALZ Stack Name","ALZ Version"))
+print(fmt % ("-------","-------","------","--------------","-----------"))
+
+for item in ALZProfiles:
+	aws_session=boto3.Session(profile_name=item['Profile'], region_name=item['Region'])
+	aws_client=aws_session.client('cloudformation')
+	stack_list=aws_client.describe_stacks()['Stacks']
+	for i in range(len(stack_list)):
+		print(ERASE_LINE+"Checking stack {} to see if it is the ALZ initiation stack".format(stack_list[i]['StackName']),end='\r')
+		if 'Description' in stack_list[i].keys() and stack_list[i]['Description'].find("SO0044") > 0:
+			for j in range(len(stack_list[i]['Outputs'])):
+				if stack_list[i]['Outputs'][j]['OutputKey'] == 'LandingZoneSolutionVersion':
+					ALZVersion=stack_list[i]['Outputs'][j]['OutputValue']
+			print(fmt % (item['Profile'], item['Acctnum'], item['Region'], stack_list[i]['StackName'],ALZVersion))
+
+print(ERASE_LINE)
+print("Checked {} accounts. Found {} ALZs".format(len(AllProfiles), len(ALZProfiles)))
 print()
 print("Thank you for using this script.")
