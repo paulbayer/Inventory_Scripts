@@ -465,7 +465,7 @@ def RemoveCoreAccounts(MainList, AccountsToRemove):
 	return(NewCA)
 
 
-def get_child_access(fRootProfile, fRegion, fChildAccount, fRoleList=['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution', 'OrganizationAccountAccessRole']):
+def get_child_access(fRootProfile, fRegion, fChildAccount, fRoleList=['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution', 'OrganizationAccountAccessRole', 'DevAccess']):
 	"""
 	- fRootProfile is a string
 	- rRegion expects a string representing one of the AWS regions ('us-east-1', 'eu-west-1', etc.)

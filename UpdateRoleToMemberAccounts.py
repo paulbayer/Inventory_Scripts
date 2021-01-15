@@ -67,7 +67,7 @@ pProfile=args.pProfile
 pRoleNameToAdd=args.pRoleNameToAdd
 pRoleNameToRemove=args.pRoleNameToRemove
 verbose=args.loglevel
-logging.basicConfig(level=args.loglevel)
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
 
 ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 if len(ChildAccounts) == 0:
