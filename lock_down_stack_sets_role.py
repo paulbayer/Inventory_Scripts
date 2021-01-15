@@ -26,6 +26,18 @@ parser.add_argument(
 	metavar="region to use",
 	help="This profile should be for the Management Account - with access into the children.")
 parser.add_argument(
+	"-R", "--access_rolename",
+	dest="pAccessRole",
+	default='AWSCloudFormationStackSetExecutionRole',
+	metavar="role to use for access to child accounts",
+	help="This parameter specifies the role that will allow this script to have access to the children accounts.")
+parser.add_argument(
+	"-t", "--target_rolename",
+	dest="pTargetRole",
+	default='AWSCloudFormationStackSetExecutionRole',
+	metavar="role to change",
+	help="This parameter specifies the role to have its Trust Policy changed.")
+parser.add_argument(
 	"-l", "--lock",
 	dest="pLock",
 	action="store_const",
@@ -64,6 +76,8 @@ args = parser.parse_args()
 
 pProfile=args.pProfile
 pRegion=args.pRegion
+pTargetRole=args.pTargetRole
+pAccessRole=args.pAccessRole
 pLock=args.pLock
 verbose=args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
@@ -80,6 +94,9 @@ if len(ChildAccounts) == 0:
 ERASE_LINE = '\x1b[2K'
 ##########################
 
+print("We're using the {} role to gain access to the child accounts".format(pAccessRole))
+print("We're targeting the {} role to change its Trust Policy".format(pTargetRole))
+
 '''
 1. Collect SSM parameters with the ARNs that should be in the permission
 2. Create the TrustPolicy in JSON
@@ -87,7 +104,7 @@ ERASE_LINE = '\x1b[2K'
 4. Connect to each account, and update the existing trust policy with the new policy
 '''
 # 1. Collect parameters with the ARNs that should be in the permission
-lock_down_arns_list=[]
+# lock_down_arns_list=[]
 allowed_arns=[]
 aws_session=boto3.Session(profile_name=pProfile, region_name=pRegion)
 ssm_client=aws_session.client('ssm')
@@ -146,15 +163,14 @@ child_accounts=Inventory_Modules.find_child_accounts2(pProfile)
 sts_client = aws_session.client('sts')
 TrustPoliciesChanged=0
 for acct in child_accounts:
-	ConnectionSuccess=False
+	ConnectionSuccess = False
 	try:
-		role_name="AWSCloudFormationStackSetExecutionRole"
-		role_arn = "arn:aws:iam::{}:role/{}".format(acct['AccountId'], role_name)
+		role_arn = "arn:aws:iam::{}:role/{}".format(acct['AccountId'], pAccessRole)
 		account_credentials = sts_client.assume_role(
 			RoleArn=role_arn,
 			RoleSessionName="RegistrationScript")['Credentials']
 		account_credentials['Account'] = acct['AccountId']
-		logging.warning("Accessed Account %s using rolename %s" % (acct['AccountId'], role_name))
+		logging.warning("Accessed Account %s using rolename %s" % (acct['AccountId'], pAccessRole))
 		ConnectionSuccess = True
 	except ClientError as my_Error:
 		logging.error("Account %s is already locked down, so we couldn't change the role's Trust Policy", acct['AccountId'])
@@ -169,7 +185,7 @@ for acct in child_accounts:
 				aws_session_token=account_credentials['SessionToken']
 			)
 			iam_client = iam_session.client('iam')
-			trustpolicyupdate=iam_client.update_assume_role_policy(RoleName=role_name, PolicyDocument=Trust_Policy_json)
+			trustpolicyupdate=iam_client.update_assume_role_policy(RoleName=pTargetRole, PolicyDocument=Trust_Policy_json)
 			TrustPoliciesChanged+=1
 		except ClientError as my_Error:
 			logging.warning(my_Error)
