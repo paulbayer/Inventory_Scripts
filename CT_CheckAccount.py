@@ -104,6 +104,25 @@ else:
 	RegionList=['us-east-1', 'us-east-2', 'us-west-2', 'eu-west-1', 'ap-southeast-2', 'ap-southeast-1', 'eu-central-1', 'eu-north-1', 'eu-west-2', 'ca-central-1']
 
 ERASE_LINE = '\x1b[2K'
+
+print(ERASE_LINE,"Gathering all account data from {} profile".format(pProfile),end="\r")
+logging.info("Confirming that this profile {%s} represents a Management Account", pProfile)
+ProfileIsRoot=Inventory_Modules.find_if_org_root(pProfile)
+logging.info("---%s---",ProfileIsRoot)
+if ProfileIsRoot == 'Root':
+	logging.info("Profile represents a Management Account: %s",pProfile)
+	ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
+	# ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
+elif ProfileIsRoot == 'StandAlone':
+	logging.info("Profile represents a Standalone account: %s",pProfile)
+	MyAcctNumber=Inventory_Modules.find_account_number(pProfile)
+	ChildAccounts=[]
+elif ProfileIsRoot == 'Child':
+	logging.info("Profile name: %s is a child account",pProfile)
+	MyAcctNumber=Inventory_Modules.find_account_number(pProfile)
+	ChildAccounts=[]
+
+ERASE_LINE = '\x1b[2K'
 NumOfSteps=10
 
 ExplainMessage="""
@@ -165,34 +184,36 @@ ProcessStatus=InitDict(NumOfSteps)
 # Step 0 -
 # 0. The Child account MUST allow the Management account access into the Child IAM role called "AWSCloudFormationStackSetExecutionRole"
 
-print("This script does {} things... ".format(NumOfSteps))
-print(Fore.BLUE+"  0."+Fore.RESET+" Checks to ensure you have the necessary cross-account role access to the child account.")
-print(Fore.BLUE+"  1."+Fore.RESET+" This check previously checked for default VPCs, but has since been removed.")
-print(Fore.BLUE+"  2."+Fore.RESET+" Checks the child account in each of the regions")
-print("     to see if there's already a "+Fore.RED+"Config Recorder and Delivery Channel "+Fore.RESET+"enabled...")
-print(Fore.BLUE+"  3."+Fore.RESET+" Checks that there isn't a duplicate "+Fore.RED+"CloudTrail"+Fore.RESET+" trail in the account.")
-print(Fore.BLUE+"  4."+Fore.RESET+" This check previously checked for the presence of GuardDuty within this account, but has since been removed.")
-# print(Fore.BLUE+"  4."+Fore.RESET+" Checks to see if "+Fore.RED+"GuardDuty"+Fore.RESET+" has been enabled for this child account.")
-# print("     If it has been, it needs to be deleted before we can adopt this new account into the Control Tower Organization.")
-print(Fore.BLUE+"  5."+Fore.RESET+" This child account "+Fore.RED+"must exist"+Fore.RESET+" within the Parent Organization.")
-print("     If it doesn't - then you must move it into this Org - this script can't do that for you.")
-print(Fore.BLUE+"  6."+Fore.RESET+" The target account "+Fore.RED+"can't exist"+Fore.RESET+" within an already managed OU.")
-print("     If it does - then you're already managing this account with Control Tower and just don't know it.")
-print(Fore.BLUE+"  7."+Fore.RESET+" Looking for "+Fore.RED+"SNS Topics"+Fore.RESET+" with duplicate names.")
-print("     If found, we can delete them, but you probably want to do that manually - to be sure.")
-print(Fore.BLUE+"  8."+Fore.RESET+" Looking for "+Fore.RED+"Lambda Functions"+Fore.RESET+" with duplicate names.")
-print("     If found, we can delete them, but you probably want to do that manually - to be sure.")
-print(Fore.BLUE+"  9."+Fore.RESET+" Looking for "+Fore.RED+"IAM Roles"+Fore.RESET+" with duplicate names.")
-print("     If found, we can delete them, but you probably want to do that manually - to be sure.")
-print()
-print("Since this script is fairly new - All comments or suggestions are enthusiastically encouraged")
-print()
+if args.loglevel < 50:
+	print("This script does {} things... ".format(NumOfSteps))
+	print(Fore.BLUE+"  0."+Fore.RESET+" Checks to ensure you have the necessary cross-account role access to the child account.")
+	print(Fore.BLUE+"  1."+Fore.RESET+" This check previously checked for default VPCs, but has since been removed.")
+	print(Fore.BLUE+"  2."+Fore.RESET+" Checks the child account in each of the regions")
+	print("     to see if there's already a "+Fore.RED+"Config Recorder and Delivery Channel "+Fore.RESET+"enabled...")
+	print(Fore.BLUE+"  3."+Fore.RESET+" Checks that there isn't a duplicate "+Fore.RED+"CloudTrail"+Fore.RESET+" trail in the account.")
+	print(Fore.BLUE+"  4."+Fore.RESET+" This check previously checked for the presence of GuardDuty within this account, but has since been removed.")
+	# print(Fore.BLUE+"  4."+Fore.RESET+" Checks to see if "+Fore.RED+"GuardDuty"+Fore.RESET+" has been enabled for this child account.")
+	# print("     If it has been, it needs to be deleted before we can adopt this new account into the Control Tower Organization.")
+	print(Fore.BLUE+"  5."+Fore.RESET+" This child account "+Fore.RED+"must exist"+Fore.RESET+" within the Parent Organization.")
+	print("     If it doesn't - then you must move it into this Org - this script can't do that for you.")
+	print(Fore.BLUE+"  6."+Fore.RESET+" The target account "+Fore.RED+"can't exist"+Fore.RESET+" within an already managed OU.")
+	print("     If it does - then you're already managing this account with Control Tower and just don't know it.")
+	print(Fore.BLUE+"  7."+Fore.RESET+" Looking for "+Fore.RED+"SNS Topics"+Fore.RESET+" with duplicate names.")
+	print("     If found, we can delete them, but you probably want to do that manually - to be sure.")
+	print(Fore.BLUE+"  8."+Fore.RESET+" Looking for "+Fore.RED+"Lambda Functions"+Fore.RESET+" with duplicate names.")
+	print("     If found, we can delete them, but you probably want to do that manually - to be sure.")
+	print(Fore.BLUE+"  9."+Fore.RESET+" Looking for "+Fore.RED+"IAM Roles"+Fore.RESET+" with duplicate names.")
+	print("     If found, we can delete them, but you probably want to do that manually - to be sure.")
+	print()
+	print("Since this script is fairly new - All comments or suggestions are enthusiastically encouraged")
+	print()
 
+#Step 0
 Step='Step0'
 CTRoles = ['AWSControlTowerExecution', 'AWSCloudFormationStackSetExecutionRole']
 role = CTRoles[0]
 print(Fore.BLUE + "{}:".format(Step) + Fore.RESET)
-print(" Confirming we have the necessary cross-account access to account {}".format(pChildAccountId))
+print("Confirming we have the necessary cross-account access to account {}".format(pChildAccountId))
 try:
 	account_credentials, role = Inventory_Modules.get_child_access2(pProfile, pChildAccountId, 'us-east-1', CTRoles)
 	if role.find("failed") > 0:
@@ -241,7 +262,7 @@ If you're really interested in the code that used to be here - check out the "AL
 """
 
 # Step 2
-	# This part will check the Config Recorder and  Delivery Channel. If they have one, we need to delete it, so we can create another. We'll ask whether this is ok before we delete.
+# This part will check the Config Recorder and  Delivery Channel. If they have one, we need to delete it, so we can create another. We'll ask whether this is ok before we delete.
 Step='Step2'
 try:
 	# RegionList=Inventory_Modules.get_service_regions('config', 'all')
@@ -358,7 +379,7 @@ else:
 	print(ERASE_LINE+Fore.RED+"** {} completed with blockers found".format(Step)+Fore.RESET)
 print()
 
-"""
+""" Step 4
 # Step 4 -- The lack of or use of GuardDuty isn't a pre-requisite for Control Tower --
 # 4. This section checks for a pending guard duty invite. You can also check from the Guard Duty Console
 Step='Step4'
