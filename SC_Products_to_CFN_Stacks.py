@@ -78,6 +78,17 @@ def sort_by_email(elem):
 
 
 ##########################
+'''
+Significant Variable Explanation:
+	'AcctList' holds a list of accounts within this Org.
+	'SCresponse' holds a native list of Service Catalog Provisioned Products supplied by the native API.  
+	'SCProducts' holds a refined list of the Service Catalog Provisioned Products from the 'SCresponse' list, but only the fields we're interested in. 
+	** TODO: I duplicated this listing, in case later I decided to add some additional useful fields to the dict. 
+	'SCP2Stacks' holds a list of the CloudFormation Stacks in this account that *match* the Provisioned Products.
+	** TODO: This list should hold *all* stacks and then we could find stacks for accounts that no longer exist.
+
+'''
+
 ERASE_LINE = '\x1b[2K'
 
 print()
@@ -85,8 +96,12 @@ print()
 SCP2Stacks = []
 SCProducts = []
 ErroredSCPExists = False
-session_cfn = boto3.Session(profile_name=pProfile, region_name=pRegion)
-client_cfn = session_cfn.client('cloudformation')
+session_aws = boto3.Session(profile_name=pProfile, region_name=pRegion)
+client_org = session_aws.client('organizations')
+client_cfn = session_aws.client('cloudformation')
+
+AcctList = Inventory_Modules.find_child_accounts2(pProfile)
+
 try:
 	SCresponse = Inventory_Modules.find_sc_products(pProfile, pRegion, "All")
 	logging.warning("A list of the SC Products found:")
@@ -111,7 +126,7 @@ try:
 				stack_info = client_cfn.describe_stacks(
 					StackName=CFNresponse[0]['StackName']
 				)
-				# The above command fails if the stack found (by the find_stacks function has been deleted)
+				# The above command fails if the stack found (by the find_stacks function) has been deleted
 				# The following section determines the NEW Account's AccountEmail and AccountID
 				if 'Parameters' in stack_info['Stacks'][0].keys() and len(stack_info['Stacks'][0]['Parameters']) > 0:
 					AccountEmail = 'None'
@@ -172,8 +187,12 @@ try:
 
 	# Do any of the account numbers show up more than once in this list?
 	AccountHistogram = {}
-	for i in range(len(SCP2Stacks)):
-		AccountHistogram[SCP2Stacks[i]['AccountID']] = 0
+	## We initialize the listing from the full list of accounts in the Org.
+	## TODO: This might not be a good idea, if it misses the stacks which are associated with accounts no longer within the Org.
+	for i in range(len(AcctList)):
+		AccountHistogram[AcctList[i]['AccountId']] = 0
+	## We add a one to each account which is represented within the Stacks listing. This allows us to catch duplicates and also accounts which do not have a stack associated.
+	## Note it does *not* help us catch stacks associated with an account that's been removed.
 	for i in range(len(SCP2Stacks)):
 		AccountHistogram[SCP2Stacks[i]['AccountID']] += 1
 	fmt = '%-15s %-52s %-8s %-35s %-10s %-18s %-20s'
@@ -197,11 +216,17 @@ except ClientError as my_Error:
 		print(pProfile + ": Other kind of failure ")
 		print(my_Error)
 
+print()
 for acctnum in AccountHistogram.keys():
-	if AccountHistogram[acctnum] > 1:
-		print("Account Number {} appears to have multiple SC Products associated with it. This can be a problem".format(acctnum))
+	if AccountHistogram[acctnum] == 1:
+		pass    # This is the desired state, so no user output is needed.
+	elif AccountHistogram[acctnum] > 1:
+		print("Account Number "+Fore.RED+"{}".format(acctnum)+Fore.RESET+" appears to have multiple SC Products associated with it. This can be a problem")
+	elif AccountHistogram[acctnum] < 1:
+		print("Account Number "+Fore.RED+"{}".format(acctnum)+Fore.RESET+" appears to not have an SC Product associated with it. This can be a problem")
 
 if ErroredSCPExists:
+	print()
 	print("You probably want to remove the following SC Products:")
 	session_sc = boto3.Session(profile_name=pProfile, region_name=pRegion)
 	client_sc = session_sc.client('servicecatalog')

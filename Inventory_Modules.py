@@ -444,13 +444,13 @@ def RemoveCoreAccounts(MainList, AccountsToRemove):
 	import logging
 	"""
 	MainList is expected to come through looking like this:
-		[{'AccountEmail': 'paulbaye+LZ2@amazon.com', 'AccountId': '911769525492'},
-		{'AccountEmail': 'Paulbaye+LZ2Log@amazon.com', 'AccountId': '785529286764'},
+		[{'AccountEmail': 'User+LZ@example.com', 'AccountId': '0123xxxx8912'},
+		{'AccountEmail': 'User+LZ_Log@example.com', 'AccountId': '1234xxxx9012'},
 			< ... >
-		{'AccountEmail': 'paulbaye+LZ2SS@amazon.com', 'AccountId': '728530570730'},
-	 	{'AccountEmail': 'paulbaye+Demo2@amazon.com', 'AccountId': '906348505515'}]
+		{'AccountEmail': 'User+LZ_SS@example.com', 'AccountId': '9876xxxx1000'},
+	 	{'AccountEmail': 'User+Demo@example.com', 'AccountId': '9638xxxx012'}]
 	AccountsToRemove is simply a list of accounts you don't want to screw with. It might look like this:
-		['911769525492', '906348505515']
+		['9876xxxx1000', '9638xxxx1012']
 	"""
 
 	NewCA=[]
@@ -1186,17 +1186,26 @@ def find_stacks(fProfile, fRegion, fStackFragment="all", fStatus="active"):
 	logging.warning("Profile: %s | Region: %s | Fragment: %s | Status: %s", fProfile, fRegion, fStackFragment, fStatus)
 	session_cfn=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	client_cfn=session_cfn.client('cloudformation')
+	AllStacks=[]
+	response=client_cfn.describe_stacks()
+	AllStacks = response['Stacks']
+	logging.info("Found %s stacks this time around", len(response['Stacks']))
+	while 'NextToken' not in response.keys():
+		response = client_cfn.describe_stacks()
+		AllStacks.append(response['Stacks'])
+		logging.info("Found %s stacks this time around", len(response['Stacks']))
+	logging.info("Done with loops and found a total of %s stacks", len(AllStacks))
 	stacksCopy=[]
-	if (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active') and not (fStackFragment=='All' or fStackFragment=='ALL' or fStackFragment=='all'):
+	if fStatus.lower()=='active' and not fStackFragment.lower()=='all':
 		# Send back stacks that are active, check the fragment further down.
-		stacks=client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE", "DELETE_FAILED", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE", "DELETE_IN_PROGRESS"])
+		# stacks=client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE", "DELETE_FAILED", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE", "DELETE_IN_PROGRESS"])
 		logging.warning("1 - Found %s stacks. Looking for fragment %s", len(stacks['StackSummaries']), fStackFragment)
-		for stack in stacks['StackSummaries']:
+		for stack in AllStacks:
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match
 				logging.warning("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
-	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
+	elif fStackFragment.lower()=='all' and fStatus.lower()=='active':
 		# Send back all stacks regardless of fragment, check the status further down.
 		stacks=client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE", "DELETE_FAILED", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"])
 		logging.warning("2 - Found ALL %s stacks in 'active' status.", len(stacks['StackSummaries']))
@@ -1206,12 +1215,12 @@ def find_stacks(fProfile, fRegion, fStackFragment="all", fStatus="active"):
 			# I don't see this happening unless someone wants Stacks in a "Deleted" or "Rollback" type status
 			logging.warning("Found stack %s in Profile: %s in Region: %s regardless of fragment and Status: %s", stack['StackName'], fProfile, fRegion, fStatus)
 			stacksCopy.append(stack)
-	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='all' or fStatus=='ALL' or fStatus=='All'):
+	elif fStackFragment.lower()=='all' and fStatus.lower()=='all':
 		# Send back all stacks.
 		stacks=client_cfn.list_stacks()
 		logging.warning("3 - Found ALL %s stacks in ALL statuses", len(stacks['StackSummaries']))
 		return(stacks['StackSummaries'])
-	elif not (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
+	elif not fStatus.lower()=='active':
 		# Send back stacks that match the single status, check the fragment further down.
 		try:
 			stacks=client_cfn.list_stacks()
@@ -1308,7 +1317,7 @@ def find_stacks_in_acct(ocredentials, fRegion, fStackFragment="all", fStatus="ac
 	)
 	client_cfn=session_cfn.client('cloudformation')
 	stacksCopy=[]
-	if (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active') and not (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All'):
+	if fStatus.lower()=='active' and not fStackFragment.lower()=='all':
 		# Send back stacks that are active, check the fragment further down.
 		stacks=client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"])
 		for stack in stacks['StackSummaries']:
@@ -1316,19 +1325,19 @@ def find_stacks_in_acct(ocredentials, fRegion, fStackFragment="all", fStatus="ac
 				# Check the fragment now - only send back those that match
 				logging.error("1-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccountNumber'], fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
-	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='all' or fStatus=='ALL' or fStatus=='All'):
+	elif fStackFragment.lower()=='all' and fStatus.lower()=='all':
 		# Send back all stacks.
 		stacks=client_cfn.list_stacks()
 		logging.error("4-Found %s the stacks in Account: %s in Region: %s", len(stacks), ocredentials['AccessKeyId'], fRegion)
 		return(stacks['StackSummaries'])
-	elif (fStackFragment=='all' or fStackFragment=='ALL' or fStackFragment=='All') and (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
+	elif fStackFragment.lower()=='all' and fStatus.lower()=='active':
 		# Send back all stacks regardless of fragment, check the status further down.
 		stacks=client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"])
 		for stack in stacks['StackSummaries']:
 			logging.error("2-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s", stack['StackName'], ocredentials['AccountNumber'], fRegion, fStackFragment, fStatus)
 			stacksCopy.append(stack)
 			# logging.warning("StackStatus: %s | My status: %s", stack['StackStatus'], fStatus)
-	elif not (fStatus=='active' or fStatus=='ACTIVE' or fStatus=='Active'):
+	elif not fStatus.lower()=='active':
 		# Send back stacks that match the single status, check the fragment further down.
 		try:
 			logging.warning("Not looking for active stacks... Looking for Status: %s", fStatus)
@@ -1535,13 +1544,11 @@ def find_sc_products(fProfile, fRegion, fStatus="ERROR"):
 	]
 	"""
 	import boto3, logging, pprint
-	from Inventory_Modules import find_account_number
 
 	response2=[]
-	# AccountNumber=find_account_number(fProfile)
 	session_sc=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	client_sc=session_sc.client('servicecatalog')
-	if (fStatus=='All' or fStatus=='ALL' or fStatus=='all'):
+	if fStatus.lower()=='all':
 		response=client_sc.search_provisioned_products()
 		while 'NextPageToken' in response.keys():
 			response2.append(response['ProvisionedProducts'])
