@@ -1,11 +1,11 @@
-#!/usr/local/bin/python3
+#!/user/bin/env python3
 
-import os, sys, pprint
+import sys, pprint
 import Inventory_Modules, boto3
 import argparse
-from colorama import init,Fore,Back,Style
-from botocore.exceptions import ClientError, NoCredentialsError, EndpointConnectionError
-from urllib3.exceptions import NewConnectionError
+from colorama import init,Fore
+from botocore.exceptions import ClientError
+
 
 import logging
 
@@ -42,25 +42,40 @@ parser.add_argument(
 	const=True,
     default=False)
 parser.add_argument(
-    '-d', '--debug',
-    help="Print lots of debugging statements",
-    action="store_const",
+	'-v',
+	help="Be verbose",
+	action="store_const",
 	dest="loglevel",
-	const=logging.INFO,
-    default=logging.CRITICAL)
+	const=logging.ERROR,  # args.loglevel = 40
+	default=logging.CRITICAL)  # args.loglevel = 50
 parser.add_argument(
-    '-v', '--verbose',
-    help="Be verbose",
-    action="store_const",
+	'-vv', '--verbose',
+	help="Be MORE verbose",
+	action="store_const",
 	dest="loglevel",
-	const=logging.WARNING)
+	const=logging.WARNING,  # args.loglevel = 30
+	default=logging.CRITICAL)  # args.loglevel = 50
+parser.add_argument(
+	'-vvv',
+	help="Print INFO level statements",
+	action="store_const",
+	dest="loglevel",
+	const=logging.INFO,  # args.loglevel = 20
+	default=logging.CRITICAL)  # args.loglevel = 50
+parser.add_argument(
+	'-d', '--debug',
+	help="Print LOTS of debugging statements",
+	action="store_const",
+	dest="loglevel",
+	const=logging.DEBUG,  # args.loglevel = 10
+	default=logging.CRITICAL)  # args.loglevel = 50
 args = parser.parse_args()
 
 pProfile=args.pProfile
 DeletionRun=args.flagDelete
 ForceDelete=args.ForceDelete
 AccountsToSkip=args.pSkipAccounts
-logging.basicConfig(level=args.loglevel)
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
 
 ##########################
 ERASE_LINE = '\x1b[2K'
@@ -90,7 +105,8 @@ for account in ChildAccounts:
 			RoleSessionName="Find-GuardDuty-Detectors")['Credentials']
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print(profile+": Authorization Failure for account {}".format(account['AccountId']))
+			print("Authorization Failure for account {}".format(account['AccountId']))
+		sys.exit("Credentials failure")
 	for region in gd_regions:
 		logging.info("Checking Region: %s" % region)
 		NumAccountsInvestigated += 1
@@ -114,7 +130,9 @@ for account in ChildAccounts:
 				continue
 			else:
 				print(my_Error)
-		if len(response['Invitations']) > 0:
+				continue
+		# if len(response['Invitations']) > 0:
+		if 'Invitations' in response.keys():
 			for i in range(len(response['Invitations'])):
 				all_gd_invites.append({
 					'AccountId':response['Invitations'][i]['AccountId'],
@@ -143,7 +161,7 @@ for account in ChildAccounts:
 				print(ERASE_LINE,Fore.RED+"No luck in account: {}".format(account['AccountId'])+Fore.RESET,end='\r')
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
-				print(profile+": Authorization Failure for account {}".format(account['AccountId']))
+				print("Authorization Failure for account {}".format(account['AccountId']))
 
 if args.loglevel < 50:
 	print()
@@ -180,7 +198,6 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 			Output=client_gd_child.delete_invitations(
 				AccountIds=[all_gd_invites[y]['AccountId']]
 			)
-			# pprint.pprint(Output)
 		except Exception as e:
 			if e.response['Error']['Code'] == 'BadRequestException':
 				logging.warning("Caught exception 'BadRequestException', handling the exception...")
@@ -209,7 +226,7 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 		# MemberList.append('704627748197')
 		try:
 			Output=0
-			Output=client_gd_child.disassociate_from_master_account(
+			client_gd_child.disassociate_from_master_account(
 				DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
 			)
 		except Exception as e:
@@ -219,17 +236,17 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 		## Disassociate Members
 		##
 		if MemberList:	# This handles the scenario where the detectors aren't associated with the Master
-			Output=client_gd_child.disassociate_members(
+			client_gd_child.disassociate_members(
 				AccountIds=MemberList,
 	    		DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
 			)
 			logging.warning("Account %s has been disassociated from master account" % str(all_gd_detectors[y]['AccountId']))
-			Output=client_gd_child.delete_members(
+			client_gd_child.delete_members(
 				AccountIds=[all_gd_detectors[y]['AccountId']],
 	    		DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
 			)
 			logging.warning("Account %s has been deleted from master account" % str(all_gd_detectors[y]['AccountId']))
-		Output=client_gd_child.delete_detector(
+		client_gd_child.delete_detector(
     		DetectorId=str(all_gd_detectors[y]['DetectorIds'][0])
 		)
 		logging.warning("Detector %s has been deleted from child account %s" % (str(all_gd_detectors[y]['DetectorIds'][0]),str(all_gd_detectors[y]['AccountId'])))

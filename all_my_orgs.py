@@ -1,12 +1,13 @@
-#!python3
+#!/user/bin/env python3
 
-import os, sys, pprint, logging
+import os
+import sys
+import logging
 import argparse
-import boto3
 import Inventory_Modules
 
 from botocore.exceptions import ClientError, NoCredentialsError, InvalidConfigError
-from colorama import init,Fore,Back,Style
+from colorama import init,Fore,Style
 
 init()
 
@@ -137,8 +138,8 @@ else: # Use case #3 from above
 			print()
 			print(Fore.RED + "Provided profile: {} isn't a Master Billing Account profile!!".format(profile) + Fore.RESET)
 			print("Skipping...")
-			continue
 			ShowEverything=False
+			continue
 	sys.exit("Finished %s profiles!" % len(pProfiles))	# Finished the multiple profiles provided.
 
 """
@@ -151,7 +152,7 @@ if ShowEverything:
 	print ("------------------------------------")
 	print (fmt % ("Profile Name","Account Number","Master Org Acct","Org ID","Root Acct?"))
 	print (fmt % ("------------","--------------","---------------","------","----------"))
-	for profile in Inventory_Modules.get_profiles(SkipProfiles,"all"):
+	for profile in Inventory_Modules.get_profiles2(SkipProfiles,"all"):
 		AcctNum = "Blank Acct"
 		MasterAcct = "Blank Root"
 		OrgId = "o-xxxxxxxxxx"
@@ -197,7 +198,7 @@ if ShowEverything:
 			else:
 				print("Credentials Error")
 				print(my_Error)
-		if (AcctNum==MasterAcct and not ErrorFlag):
+		if AcctNum==MasterAcct and not ErrorFlag:
 			RootAcct=True
 			RootAccts.append(MasterAcct)
 			RootProfiles.append(profile)
@@ -206,7 +207,14 @@ if ShowEverything:
 		else:
 			RootAcct=False
 
-		# If I create a dictionary from the Root Accts and Root Profiles Lists - I can use that to determine which profile belongs to the root user of my (child) account. But this dictionary is only guaranteed to be valid after ALL profiles have been checked, so... it doesn't solve our issue - unless we don't write anything to the screen until *everything* is done, and we keep all output in another dictionary - where we can populate the missing data at the end... but that takes a long time, since nothing would be sent to the screen in the meantime.
+		'''
+		If I create a dictionary from the Root Accts and Root Profiles Lists - 
+		I can use that to determine which profile belongs to the root user of my (child) account.
+		But this dictionary is only guaranteed to be valid after ALL profiles have been checked, 
+		so... it doesn't solve our issue - unless we don't write anything to the screen until *everything* is done, 
+		and we keep all output in another dictionary - where we can populate the missing data at the end... 
+		but that takes a long time, since nothing would be sent to the screen in the meantime.
+		'''
 		# dictionary.update(dict(zip(RootAccts, RootProfiles)))
 
 	#	 Print results for this profile

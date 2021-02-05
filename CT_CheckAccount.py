@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3
+#!/user/bin/env python3
 
 import sys
 import Inventory_Modules

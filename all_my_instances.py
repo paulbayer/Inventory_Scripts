@@ -1,4 +1,4 @@
-#!./venv/bin/python3
+#!/user/bin/env python3
 
 import os, sys, pprint, boto3, datetime
 import Inventory_Modules
@@ -107,7 +107,7 @@ if "all" in pProfiles:
 	# print(Fore.RED+"Doesn't yet work to specify 'all' profiles, since it takes a long time to go through and find only those profiles that either Org Masters, or stand-alone accounts", Fore.RESET)
 	# sys.exit(1)
 	SoughtAllProfiles=True
-	logging.info("Profiles sent to function get_profiles3: %s", pProfiles)
+	logging.info("Profiles sent to function get_parent_profiles: %s", pProfiles)
 	print("Since you specified 'all' profiles, we going to look through ALL of your profiles. Then we go through and determine which profiles represent the Master of an Organization and which are stand-alone accounts. This will enable us to go through all accounts you have access to for inventorying.")
 	logging.error("Time: %s", datetime.datetime.now())
 	try:

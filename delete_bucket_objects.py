@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3
+#!/user/bin/env python3
 
 import boto3, sys, logging, pprint
 import argparse

@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3
+#!/usr/bin/env python3
 
 import boto3
 import Inventory_Modules
@@ -68,13 +68,12 @@ pProfile = args.pProfile
 pRegion = args.pregion
 verbose = args.loglevel
 DeletionRun = args.DeletionRun
-logging.basicConfig(level=args.loglevel,
-                    format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
 
 
 ##########################
 def sort_by_email(elem):
-	return (elem('AccountEmail'))
+	return elem('AccountEmail')
 
 
 ##########################
@@ -101,6 +100,7 @@ client_org = session_aws.client('organizations')
 client_cfn = session_aws.client('cloudformation')
 
 AcctList = Inventory_Modules.find_child_accounts2(pProfile)
+AccountHistogram = {}
 
 try:
 	SCresponse = Inventory_Modules.find_sc_products(pProfile, pRegion, "All")
@@ -128,8 +128,9 @@ try:
 				)
 				# The above command fails if the stack found (by the find_stacks function) has been deleted
 				# The following section determines the NEW Account's AccountEmail and AccountID
+				AccountEmail = 'None'
+				AccountID = 'None'
 				if 'Parameters' in stack_info['Stacks'][0].keys() and len(stack_info['Stacks'][0]['Parameters']) > 0:
-					AccountEmail = 'None'
 					for y in range(len(stack_info['Stacks'][0]['Parameters'])):
 						if stack_info['Stacks'][0]['Parameters'][y]['ParameterKey'] == 'AccountEmail':
 							AccountEmail = stack_info['Stacks'][0]['Parameters'][y]['ParameterValue']
@@ -146,8 +147,6 @@ try:
 							logging.info("Outputs key present, but no account ID")
 				else:
 					logging.info("No Outputs key present")
-					AccountID = 'None'
-					AccountEmail = 'None'
 				SCProductName = SCProducts[i]['SCPName']
 				SCProductId = SCProducts[i]['SCPId']
 				SCStatus = SCProducts[i]['SCPStatus']
@@ -186,7 +185,6 @@ try:
 	# SCP2Stacks = sorted_list
 
 	# Do any of the account numbers show up more than once in this list?
-	AccountHistogram = {}
 	## We initialize the listing from the full list of accounts in the Org.
 	## TODO: This might not be a good idea, if it misses the stacks which are associated with accounts no longer within the Org.
 	for i in range(len(AcctList)):

@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3
+#!/user/bin/env python3
 
 import os, sys, pprint, boto3, re, datetime
 import Inventory_Modules
