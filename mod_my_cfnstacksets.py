@@ -416,6 +416,7 @@ elif not pdryrun:
 	print("Removing {} stack instances from the {} StackSets found".format(len(AllInstances), len(StackSetNames)))
 	# pprint.pprint(StackSetNames)
 	for m in range(len(StackSetNames)):
+		logging.info("About to delete account %s from stackset %s in regions %s ")
 		result=delete_stack_instances(pProfile, pRegion, AccountList, pAccountRemove, AccountsToSkip, RegionList, StackSetNames[m], pForce)
 		if result=='Success':
 			print(ERASE_LINE+"Successfully finished StackSet {}".format(StackSetNames[m]['StackSetName']))

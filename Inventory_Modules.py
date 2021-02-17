@@ -523,7 +523,7 @@ def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1',  fRoleLi
 
 	if fRoleList == None:
 		fRoleList = ['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution', 'OrganizationAccountAccessRole',
-	             'AdministratorAccess']
+	             'AdministratorAccess', 'Owner']
 	sts_session=boto3.Session(profile_name=fRootProfile)
 	sts_client=sts_session.client('sts', region_name=fRegion)
 	for role in fRoleList:
@@ -564,41 +564,6 @@ def find_if_Isengard_registered(ocredentials):
 		if roles[y]['RoleName']=='IsengardRole-DO-NOT-DELETE':
 			return(True)
 	return(False)
-
-# def find_if_LZ_Acct(ocredentials):
-# 	import boto3, logging, pprint
-# 	from botocore.exceptions import ClientError
-# 	"""
-# 	This function isn't used anywhere...
-#
-# 	ocredentials is an object with the following structure:
-# 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
-# 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
-# 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
-# 		- ['ParentAccountNumber'] holds the AWS Account Number
-# 	"""
-#
-# 	logging.warning("Authenticating Account Number: %s ", str(ocredentials['ParentAccountNumber']))
-# 	session_aws=boto3.Session(
-# 		aws_access_key_id=ocredentials['AccessKeyId'],
-# 		aws_secret_access_key=ocredentials['SecretAccessKey'],
-# 		aws_session_token=ocredentials['SessionToken']
-# 	)
-# 	iam_info=session_aws.client('iam')
-# 	try:
-# 		roles=iam_info.list_roles()['Roles']
-# 		AccessSuccess=True
-# 	except ClientError as my_Error:
-# 		if str(my_Error).find("AccessDenied") > 0:
-# 			print("Authorization Failure for account {}".format(ocredentials['ParentAccountNumber']))
-# 		AccessSuccess=False
-# 	if AccessSuccess:
-# 		for y in range(len(roles)):
-# 			if roles[y]['RoleName']=='AWSCloudFormationStackSetExecutionRole':
-# 				return(True)
-# 		return(False)
-# 	else:
-# 		return(False)
 
 
 def enable_drift_on_stacks(ocredentials, fRegion, fStackName):
@@ -672,7 +637,7 @@ def find_role_names(ocredentials, fRegion, fRoleNameFrag=None):
 		- ['AccountNumber'] holds the account number
 
 	Returns:
-		List of Topic ARNs found that match the fragment sent
+		List of Role Names found that match the fragment list sent
 """
 	import boto3
 	import logging
@@ -707,6 +672,53 @@ def find_role_names(ocredentials, fRegion, fRoleNameFrag=None):
 		logging.warning("We found %s Roles", len(RoleNameList2))
 		return(RoleNameList2)
 
+def find_cw_log_group_names(ocredentials, fRegion, fCWLogGroupFrag=None):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+
+	Returns:
+		List of CloudWatch Log Group Names found that match the fragment list
+"""
+	import boto3
+	import logging
+
+	if fCWLogGroupFrag==None:
+		fCWLogGroupFrag=['all']
+	session_cw=boto3.Session(
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken'],
+		region_name=fRegion)
+	client_cw=session_cw.client('logs')
+	#TODO: Enable pagination # Defaults to 50
+	CWLogGroupList=[]
+	FirstTime=True
+	response={}
+	while 'nextToken' in response.keys() or FirstTime:
+		FirstTime=False
+		response = client_cw.describe_log_groups()
+		for item in response['logGroups']:
+			CWLogGroupList.append(item['logGroupName'])
+	if 'all' in fCWLogGroupFrag:
+		logging.warning("Looking for all Log Group names in account %s from Region %s", ocredentials['AccountNumber'], fRegion)
+		logging.info("Log Group Names Returned: %s", CWLogGroupList)
+		logging.warning("We found %s Log Group names", len(CWLogGroupList))
+		return(CWLogGroupList)
+	else:
+		logging.warning("Looking for specific Log Group names in account %s from Region %s", ocredentials['AccountNumber'], fRegion)
+		CWLogGroupList2=[]
+		for item in fCWLogGroupFrag:
+			for logGroupName in CWLogGroupList:
+				logging.info('Have %s | Looking for %s', logGroupName, item)
+				if logGroupName.find(item) >=0:
+					logging.error('Found %s', logGroupName)
+					CWLogGroupList2.append(logGroupName)
+		logging.warning("We found %s Log Groups", len(CWLogGroupList2))
+		return(CWLogGroupList2)
 
 def find_account_vpcs(ocredentials, fRegion, defaultOnly=False):
 	"""
@@ -715,7 +727,7 @@ def find_account_vpcs(ocredentials, fRegion, defaultOnly=False):
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the account number
-"""
+	"""
 	import boto3
 	import logging
 
@@ -739,43 +751,8 @@ def find_account_vpcs(ocredentials, fRegion, defaultOnly=False):
 		logging.warning("Looking for all VPCs in account %s from Region %s", ocredentials['AccountNumber'], fRegion)
 		logging.info("defaultOnly: %s", str(defaultOnly))
 		response=client_vpc.describe_vpcs()
+	#TODO: Enable pagination
 	logging.warning("We found %s VPCs", len(response['Vpcs']))
-	return(response)
-
-
-def del_vpc(ocredentials, fRegion, fVpcId):
-	"""
-	ocredentials is an object with the following structure:
-		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
-		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
-		- ['SessionToken'] holds the AWS_SESSION_TOKEN
-		- ['AccountNumber'] holds the account number
-	fRegion=region
-	fVpcId=VPC ID
-	"""
-	import boto3
-	import logging
-	session_vpc=boto3.Session(
-		aws_access_key_id=ocredentials['AccessKeyId'],
-		aws_secret_access_key=ocredentials['SecretAccessKey'],
-		aws_session_token=ocredentials['SessionToken'],
-		region_name=fRegion)
-	client_vpc=session_vpc.client('ec2')
-	logging.error("Deleting VPC %s from Region %s in account %s", fVpcId, fRegion, ocredentials['AccountNumber'])
-	"""
-	The process to delete a VPC is a long one.
-	< Thanks to
-		1.) Detach and delete the internet gateway (if there is one)
-		2.) Delete subnets
-		3.) Delete route tables
-		4.) Delete network access lists
-		5.) Delete security groups
-		6.) Delete the VPC
-
-	"""
-	response=client_vpc.delete_vpc(
-		VpcId=fVpcId
-	)
 	return(response)
 
 
@@ -801,6 +778,8 @@ def find_config_recorders(ocredentials, fRegion):
 			}
 		]
 	}
+
+	Pagination isn't an issue here since only one config recorder per account / region is allowed.
 	"""
 	import boto3
 	import logging
@@ -861,6 +840,8 @@ def find_delivery_channels(ocredentials, fRegion):
 		},
 		]
 	}
+
+	Pagination isn't an issue here since delivery channels are limited to only one / account / region
 	"""
 	import boto3, logging
 	session_cfg=boto3.Session(
@@ -934,8 +915,6 @@ def find_cloudtrails(ocredentials, fRegion, fCloudTrailnames=None):
 	import boto3, logging
 	from botocore.exceptions import ClientError
 
-	if fCloudTrailnames == None:
-		fCloudTrailnames = ['AWS-Landing-Zone-BaselineCloudTrail', 'aws-controltower-BaselineCloudTrail']
 	session_ct=boto3.Session(
 		aws_access_key_id=ocredentials['AccessKeyId'],
 		aws_secret_access_key=ocredentials['SecretAccessKey'],
@@ -943,16 +922,32 @@ def find_cloudtrails(ocredentials, fRegion, fCloudTrailnames=None):
 		region_name=fRegion)
 	client_ct=session_ct.client('cloudtrail')
 	logging.info("Looking for CloudTrail trails in account %s from Region %s", ocredentials['AccountNumber'], fRegion)
-	for trailname in fCloudTrailnames:
+	if fCloudTrailnames == None:    # Therefore - they're really looking for a list of trails
 		try:
-			response=client_ct.describe_trails(trailNameList=[trailname])
-			if len(response['trailList']) > 0:
-				return(response, trailname)
+			response=client_ct.list_trails()
+			trailname = "Various"
+			fullresponse = response['Trails']
+			if 'NextToken' in response.keys():
+				while 'NextToken' in response.keys():
+					response=client_ct.list_trails()
+					fullresponse.append(response['Trails'])
 		except ClientError as my_Error:
 			if str(my_Error).find("InvalidTrailNameException") > 0:
 				logging.error("Bad CloudTrail name provided")
 			response=trailname+" didn't work. Try Again"
-	return(response, trailname)
+		return(fullresponse, trailname)
+	else:
+		#  TODO: This doesn't work... Needs to be fixed.
+		for trailname in fCloudTrailnames:  # They've provided a list of trails and want specific info about them
+			try:
+				response=client_ct.describe_trails(trailNameList=[trailname])
+				if len(response['trailList']) > 0:
+					return(response, trailname)
+			except ClientError as my_Error:
+				if str(my_Error).find("InvalidTrailNameException") > 0:
+					logging.error("Bad CloudTrail name provided")
+				response=trailname+" didn't work. Try Again"
+		return(response, trailname)
 
 
 def del_cloudtrails(ocredentials, fRegion, fCloudTrail):
@@ -1057,8 +1052,9 @@ def find_account_instances(ocredentials, fRegion):
 		aws_session_token=ocredentials['SessionToken'],
 		region_name=fRegion)
 	instance_info=session_ec2.client('ec2')
-	logging.warning("Looking in account # %s", ocredentials['AccountNumber'])
+	logging.warning("Looking in account # %s in region %s", ocredentials['AccountNumber'], fRegion)
 	instances=instance_info.describe_instances()
+	# TODO: Consider pagination here
 	return(instances)
 
 
@@ -1080,6 +1076,7 @@ def find_users(ocredentials):
 	)
 	user_info=session_iam.client('iam')
 	users=user_info.list_users()['Users']
+	# TODO: Consider pagination here
 	return(users)
 
 
@@ -1101,24 +1098,24 @@ def find_profile_vpcs(fProfile, fRegion, fDefaultOnly):
 	# else:
 	return(vpcs)
 
-
-def find_gd_detectors(fProfile, fRegion):
-	import boto3
-
-	session=boto3.Session(profile_name=fProfile, region_name=fRegion)
-	object_info=session.client('guardduty')
-	object=object_info.list_detectors()
-	return(object)
-	# return(vpcs)
-
-
-def del_gd_detectors(fProfile, fRegion, fDetectorId):
-	import boto3
-
-	session=boto3.Session(profile_name=fProfile, region_name=fRegion)
-	object_info=session.client('guardduty')
-	object=object_info.delete_detector(DetectorId=fDetectorId)
-	return(object)
+#
+# def find_gd_detectors(fProfile, fRegion):
+# 	import boto3
+#
+# 	session=boto3.Session(profile_name=fProfile, region_name=fRegion)
+# 	object_info=session.client('guardduty')
+# 	object=object_info.list_detectors()
+# 	return(object)
+# 	# return(vpcs)
+#
+#
+# def del_gd_detectors(fProfile, fRegion, fDetectorId):
+# 	import boto3
+#
+# 	session=boto3.Session(profile_name=fProfile, region_name=fRegion)
+# 	object_info=session.client('guardduty')
+# 	object=object_info.delete_detector(DetectorId=fDetectorId)
+# 	return(object)
 
 
 def find_profile_functions(fProfile, fRegion):
@@ -1177,6 +1174,18 @@ def find_private_hosted_zones(fProfile, fRegion):
 	hosted_zones=phz_info.list_hosted_zones()
 	return(hosted_zones)
 
+def find_private_hosted_zones2(ocredentials, fRegion):
+
+	import boto3
+	session_r53=boto3.Session(region_name=fRegion,
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken']
+	)
+	phz_info=session_r53.client('route53')
+	hosted_zones=phz_info.list_hosted_zones()
+	return(hosted_zones)
+
 
 def find_load_balancers(fProfile, fRegion, fStackFragment, fStatus):
 
@@ -1212,6 +1221,27 @@ def find_stacks(fProfile, fRegion, fStackFragment="all", fStatus="active"):
 	fStatus is a string
 
 	Returns a dict that looks like this:
+		'StackId':
+		'StackName':
+		'TemplateDescription':
+		'CreationTime': {
+			'day':
+			'fold':
+			'hour':
+			'max':
+			'microsecond':
+			'min':
+			'minute':
+			'month':
+			'resolution':
+			'second':
+			'tzinfo':
+			'year':
+		}
+		'StackStatus':
+		'DriftInformation': {
+			'StackDriftStatus': ['NOT_CHECKED']
+		}
 
 	"""
 	import boto3

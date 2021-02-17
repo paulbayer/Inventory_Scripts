@@ -110,7 +110,7 @@ ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
 cfg_regions=Inventory_Modules.get_service_regions('config',pRegions)
 
 all_config_resources=[]
-all_config_resources=[]
+
 print("Searching {} accounts and {} regions".format(len(ChildAccounts),len(cfg_regions)))
 
 sts_session = boto3.Session(profile_name=pProfile)

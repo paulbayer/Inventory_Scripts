@@ -357,7 +357,8 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 		CTtrails2=[]
 		for region in fRegionList:
 			print(ERASE_LINE, "Checking account {} in region {} for CloudTrail trails".format(fChildAccountId, region), end='\r')
-			CTtrails, trailname=Inventory_Modules.find_cloudtrails(account_credentials, region)
+			CTtrails, trailname=Inventory_Modules.find_cloudtrails(account_credentials, region, 'aws-controltower-BaselineCloudTrail')
+			# if 'trailList' in CTtrails.keys():
 			if len(CTtrails['trailList']) > 0:
 				logging.error("Unfortunately, we've found a CloudTrail log named %s in account %s in the %s region, which means we'll have to delete it before this account can be adopted.", trailname, fChildAccountId, region)
 				CTtrails2.append(CTtrails['trailList'][0])
@@ -623,13 +624,42 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 	Step = 'Step10'
 	try:
 		print(Fore.BLUE + "{}:".format(Step) + Fore.RESET)
-		print(
-			" Checking account {} to make sure there are no duplicate CloudWatch Log Groups".format(fChildAccountId))
-		print(" -- Not yet implemented -- ")
+		print("Checking account {} to make sure there are no duplicate CloudWatch Log Groups".format(fChildAccountId))
+		LogGroupNames2=[]
+		for region in fRegionList:
+			logging.error("Checking account %s for", fChildAccountId + Fore.RED+" duplicate CloudWatch Log Group names"+Fore.RESET)
+			LogGroupNames=Inventory_Modules.find_cw_log_group_names(account_credentials, region, ['controltower', 'ControlTower'])
+			if len(LogGroupNames) > 0:
+				logging.info("Unfortunately, account %s contains %s log groups with reserved names, which means we'll have to delete them before this account can be adopted.",
+					fChildAccountId, len(LogGroupNames))
+				for x in range(len(LogGroupNames)):
+					logging.warning("Log Group Name: %s", str(LogGroupNames[x]))
+					ProcessStatus[Step]['Success'] = False
+					ProcessStatus[Step]['IssuesFound'] += 1
+					LogGroupNames2.append({
+						'AccountId': fChildAccountId,
+						'LogGroupName': LogGroupNames[x]
+					})
+					ProcessStatus[Step]['ProblemsFound'].append(LogGroupNames2)
 	except ClientError as my_Error:
 		print(my_Error)
 		ProcessStatus[Step]['Success'] = False
+
+	if ProcessStatus[Step]['Success']:
+		print(ERASE_LINE + Fore.GREEN + "** {} completed with no issues".format(Step) + Fore.RESET)
+	elif ProcessStatus[Step]['IssuesFound'] - ProcessStatus[Step]['IssuesFixed'] == 0:
+		print(
+			ERASE_LINE + Fore.GREEN + "** {} found {} issues, but we were able to remove the offending IAM roles".format(
+				Step, ProcessStatus[Step]['IssuesFound']) + Fore.RESET)
+		ProcessStatus[Step]['Success'] = True
+	elif ProcessStatus[Step]['IssuesFound'] > ProcessStatus[Step]['IssuesFixed']:
+		print(
+			ERASE_LINE + Fore.RED + "** {} completed, but there were {} blockers found that remain to be fixed".format(
+				Step, ProcessStatus[Step]['IssuesFound'] - ProcessStatus[Step]['IssuesFixed']) + Fore.RESET)
+	else:
+		print(ERASE_LINE + Fore.RED + "** {} completed with blockers found".format(Step) + Fore.RESET)
 	print()
+
 
 	##### Function Summary #############
 	TotalIssuesFound=0
@@ -685,17 +715,18 @@ for i in OrgResults:
 	x.add_row([i['AccountId'],i['IssuesFound'],i['IssuesFixed'],i['Ready']])
 	y.add_row([
 		i['AccountId'],
-		i['Step0']['IssuesFound']-i['Step0']['IssuesFixed'],
-		i['Step2']['IssuesFound'] - i['Step0']['IssuesFixed'],
-		i['Step3']['IssuesFound'] - i['Step0']['IssuesFixed'],
-		i['Step4']['IssuesFound'] - i['Step0']['IssuesFixed'],
-		i['Step5']['IssuesFound'] - i['Step0']['IssuesFixed'],
-		i['Step6']['IssuesFound'] - i['Step0']['IssuesFixed'],
-		i['Step7']['IssuesFound'] - i['Step0']['IssuesFixed'],
-		i['Step8']['IssuesFound'] - i['Step0']['IssuesFixed'],
-		i['Step9']['IssuesFound'] - i['Step0']['IssuesFixed'],
+		i['Step0']['IssuesFound'] - i['Step0']['IssuesFixed'],
+		i['Step2']['IssuesFound'] - i['Step2']['IssuesFixed'],
+		i['Step3']['IssuesFound'] - i['Step3']['IssuesFixed'],
+		i['Step4']['IssuesFound'] - i['Step4']['IssuesFixed'],
+		i['Step5']['IssuesFound'] - i['Step5']['IssuesFixed'],
+		i['Step6']['IssuesFound'] - i['Step6']['IssuesFixed'],
+		i['Step7']['IssuesFound'] - i['Step7']['IssuesFixed'],
+		i['Step8']['IssuesFound'] - i['Step8']['IssuesFixed'],
+		i['Step9']['IssuesFound'] - i['Step9']['IssuesFixed'],
+		i['Step10']['IssuesFound'] - i['Step10']['IssuesFixed'],
 		'None Yet',
-		i['Step0']['Success'] and i['Step2']['Success'] and i['Step3']['Success'] and i['Step4']['Success'] and i['Step5']['Success'] and i['Step6']['Success'] and i['Step7']['Success'] and i['Step8']['Success'] and i['Step9']['Success']
+		i['Step0']['Success'] and i['Step2']['Success'] and i['Step3']['Success'] and i['Step4']['Success'] and i['Step5']['Success'] and i['Step6']['Success'] and i['Step7']['Success'] and i['Step8']['Success'] and i['Step9']['Success'] and i['Step10']['Success']
 	])
 print("The following table represents the accounts looked at, and whether they are ready to be incorporated into a Control Tower environment.")
 print(x)

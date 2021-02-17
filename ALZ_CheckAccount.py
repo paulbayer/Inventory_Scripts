@@ -363,7 +363,7 @@ try:
 	CTtrails2=[]
 	for region in RegionList:
 		print(ERASE_LINE, "Checking account {} in region {} for CloudTrail trails".format(pChildAccountId, region), end='\r')
-		CTtrails, trailname=Inventory_Modules.find_cloudtrails(account_credentials, region)
+		CTtrails, trailname=Inventory_Modules.find_cloudtrails(account_credentials, region, ['AWS-Landing-Zone-BaselineCloudTrail'])
 		if len(CTtrails['trailList']) > 0:
 			logging.error("Unfortunately, we've found a CloudTrail log named %s in account %s in the %s region, which means we'll have to delete it before this account can be adopted.", trailname, pChildAccountId, region)
 			CTtrails2.append(CTtrails['trailList'][0])

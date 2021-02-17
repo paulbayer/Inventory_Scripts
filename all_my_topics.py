@@ -11,7 +11,7 @@ import logging
 init()
 
 parser = argparse.ArgumentParser(
-	description="This script finds vpcs (or only default vpcs) in all accounts within our Organization.",
+	description="This script finds sns topics in all accounts within our Organization.",
 	prefix_chars='-+/')
 parser.add_argument(
 	"-p","--profile",
