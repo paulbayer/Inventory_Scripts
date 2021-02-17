@@ -186,7 +186,7 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(leve
 ####################
 
 
-def delete_stack_instances(fProfile, fRegion, fAccountList, fAccountRemove, fAccountsToSkip, fRegionList, fStackSet, fForce=False):
+def delete_stack_instances(fProfile, fRegion, fAccountList, fAccountRemove, fAccountsToSkip, fRegionList, fStackSet, fForce=True):
 	session_cfn=boto3.Session(profile_name=pProfile, region_name=pRegion)
 	logging.warning("Removing instances from %s StackSet" % (fStackSet['StackSetName']))
 	try:
@@ -424,7 +424,7 @@ elif not pdryrun:
 		elif pForce is False and result=='Failed-ForceIt':
 			Decision=(input("Deletion of Stack Instances failed, but might work if we force it. Shall we force it? (y/n): ") in ['y', 'Y'])
 			if Decision:
-				result = delete_stack_instances(pProfile, pRegion, AccountList, pAccountRemove, AccountsToSkip, RegionList, StackSetNames[m], pForce) 	# Try it again, forcing it this time
+				result = delete_stack_instances(pProfile, pRegion, AccountList, pAccountRemove, AccountsToSkip, RegionList, StackSetNames[m], False) 	# Try it again, forcing it this time
 				if result=='Success':
 					print(ERASE_LINE+"Successfully retried StackSet {}".format(StackSetNames[m]['StackSetName']))
 				elif pForce is True and result=='Failed-ForceIt':
