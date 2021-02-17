@@ -424,7 +424,7 @@ elif not pdryrun:
 		elif pForce is False and result=='Failed-ForceIt':
 			Decision=(input("Deletion of Stack Instances failed, but might work if we force it. Shall we force it? (y/n): ") in ['y', 'Y'])
 			if Decision:
-				result=delete_stack_instances(StackSetNames[m], True)	# Try it again, forcing it this time
+				result = delete_stack_instances(pProfile, pRegion, AccountList, pAccountRemove, AccountsToSkip, RegionList, StackSetNames[m], pForce) 	# Try it again, forcing it this time
 				if result=='Success':
 					print(ERASE_LINE+"Successfully retried StackSet {}".format(StackSetNames[m]['StackSetName']))
 				elif pForce is True and result=='Failed-ForceIt':
