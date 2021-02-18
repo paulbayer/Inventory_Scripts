@@ -231,6 +231,7 @@ print()
 # This part will find and delete the Default VPCs in each region for the child account. We only delete if you provided that in the parameters list.
 try:
 	DefaultVPCs=[]
+	print("Checking account {} for default VPCs in any region".format(pChildAccountId))
 	for region in RegionList:
 		print(ERASE_LINE, "Checking account {} in region {}".format(pChildAccountId, region), "for", Fore.RED+"default VPCs"+Fore.RESET, end='\r')
 		logging.info("Looking for Default VPCs in account %s from Region %s", pChildAccountId, region)
