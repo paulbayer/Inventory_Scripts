@@ -524,6 +524,8 @@ def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1',  fRoleLi
 	if fRoleList == None:
 		fRoleList = ['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution', 'OrganizationAccountAccessRole',
 	             'AdministratorAccess', 'Owner']
+	if not isinstance(fChildAccount, str):  # Make sure the passed in account number is a string
+		fChildAccount=str(fChildAccount)
 	sts_session=boto3.Session(profile_name=fRootProfile)
 	sts_client=sts_session.client('sts', region_name=fRegion)
 	for role in fRoleList:
@@ -1637,7 +1639,7 @@ def find_sc_products(fProfile, fRegion, fStatus="ERROR"):
 				Filters={
 					'SearchQuery': ['status:'+fStatus]
 				},
-				NextPageToken=response['NextPageToken']
+				PageToken=response['NextPageToken']
 			)
 	response2.append(response['ProvisionedProducts'])
 	return(response2[0])
