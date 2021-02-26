@@ -1626,7 +1626,7 @@ def find_sc_products(fProfile, fRegion, fStatus="ERROR"):
 		response=client_sc.search_provisioned_products()
 		while 'NextPageToken' in response.keys():
 			response2.append(response['ProvisionedProducts'])
-			response=client_sc.search_provisioned_products(NextPageToken=response['NextPageToken'])
+			response=client_sc.search_provisioned_products(PageToken=response['NextPageToken'])
 	else:	# We filter down to only the statuses asked for
 		response=client_sc.search_provisioned_products(
 			Filters={
