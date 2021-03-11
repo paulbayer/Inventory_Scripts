@@ -180,17 +180,17 @@ try:
 				CFNStackStatus = 'None'
 				AccountID = 'None'
 				AccountEmail = 'None'
-			SCP2Stacks.append({
-				'SCProductName': SCProductName,
-				'SCProductId': SCProductId,
-				'SCStatus': SCStatus,
-				'ProvisioningArtifactName': ProvisioningArtifactName,
-				'CFNStackName': 'None',
-				'CFNStackStatus': 'None',
-				'AccountEmail': 'None',
-				'AccountID': 'None',
-				'AccountStatus': 'None'
-			})
+				SCP2Stacks.append({
+					'SCProductName': SCProductName,
+					'SCProductId': SCProductId,
+					'SCStatus': SCStatus,
+					'ProvisioningArtifactName': ProvisioningArtifactName,
+					'CFNStackName': 'None',
+					'CFNStackStatus': 'None',
+					'AccountEmail': 'None',
+					'AccountID': 'None',
+					'AccountStatus': 'None'
+				})
 		except ClientError as my_Error:
 			if str(my_Error).find("ValidationError") > 0:
 				print("Validation Failure ")
