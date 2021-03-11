@@ -400,7 +400,8 @@ def find_child_accounts2(fProfile):
 			child_accounts.append({
 				'ParentProfile': fProfile,
 				'AccountId': account['Id'],
-				'AccountEmail': account['Email']
+				'AccountEmail': account['Email'],
+				'AccountStatus': account['Status']
 			})
 		if 'NextToken' in response:
 			theresmore=True
