@@ -160,6 +160,17 @@ try:
 				ProvisioningArtifactName = SCProducts[i]['ProvisioningArtifactName']
 				CFNStackName = CFNresponse[0]['StackName']
 				CFNStackStatus = CFNresponse[0]['StackStatus']
+				SCP2Stacks.append({
+					'SCProductName': SCProductName,
+					'SCProductId': SCProductId,
+					'SCStatus': SCStatus,
+					'ProvisioningArtifactName': ProvisioningArtifactName,
+					'CFNStackName': CFNStackName,
+					'CFNStackStatus': CFNStackStatus,
+					'AccountEmail': AccountEmail,
+					'AccountID': AccountID,
+					'AccountStatus': AccountHistogram[AccountID]
+				})
 			else:  # This takes effect when CFNResponse can't find any stacks with the Service Catalog Product ID
 				SCProductName = SCProducts[i]['SCPName']
 				SCProductId = SCProducts[i]['SCPId']
@@ -174,11 +185,11 @@ try:
 				'SCProductId': SCProductId,
 				'SCStatus': SCStatus,
 				'ProvisioningArtifactName': ProvisioningArtifactName,
-				'CFNStackName': CFNStackName,
-				'CFNStackStatus': CFNStackStatus,
-				'AccountEmail': AccountEmail,
-				'AccountID': AccountID,
-				'AccountStatus': AccountHistogram[AccountID]
+				'CFNStackName': 'None',
+				'CFNStackStatus': 'None',
+				'AccountEmail': 'None',
+				'AccountID': 'None',
+				'AccountStatus': 'None'
 			})
 		except ClientError as my_Error:
 			if str(my_Error).find("ValidationError") > 0:
