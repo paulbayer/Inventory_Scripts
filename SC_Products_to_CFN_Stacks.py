@@ -147,7 +147,10 @@ try:
 						              stack_info['Stacks'][0]['Outputs'][y]['OutputValue'])
 						if stack_info['Stacks'][0]['Outputs'][y]['OutputKey'] == 'AccountID':
 							AccountID = stack_info['Stacks'][0]['Outputs'][y]['OutputValue']
-							AccountStatus=AccountHistogram[AccountID]
+							if AccountID in AccountHistogram.keys():
+								AccountStatus=AccountHistogram[AccountID]
+							else:
+								AccountStatus='Closed'
 							logging.error(Fore.RED + "Found the Account ID: %s" % AccountID + Fore.RESET)
 							if AccountID in SuspendedAccounts:
 								logging.error(Fore.RED + "Account ID %s has been suspended" + Fore.RESET, AccountID)
