@@ -214,6 +214,8 @@ try:
 	for i in range(len(SCP2Stacks)):
 		if SCP2Stacks[i]['AccountID'] == 'None':
 			continue
+		elif not SCP2Stacks[i]['AccountID'] in AccountHistogram.keys():
+			AccountStatus = 'Closed'
 		else:
 			if isinstance(AccountHistogram[SCP2Stacks[i]['AccountID']], str):   # This means that the value is still either "ACTIVE" or "SUSPENDED"
 				AccountHistogram[SCP2Stacks[i]['AccountID']] = 1
