@@ -147,6 +147,7 @@ try:
 						              stack_info['Stacks'][0]['Outputs'][y]['OutputValue'])
 						if stack_info['Stacks'][0]['Outputs'][y]['OutputKey'] == 'AccountID':
 							AccountID = stack_info['Stacks'][0]['Outputs'][y]['OutputValue']
+							AccountStatus=AccountHistogram[AccountID]
 							logging.error(Fore.RED + "Found the Account ID: %s" % AccountID + Fore.RESET)
 							if AccountID in SuspendedAccounts:
 								logging.error(Fore.RED + "Account ID %s has been suspended" + Fore.RESET, AccountID)
@@ -163,7 +164,7 @@ try:
 				CFNStackStatus = CFNresponse[0]['StackStatus']
 				# AccountEmail should have been assigned in the 'Parameters' if-then above
 				# AccountID should have been assigned in the 'Outputs' if-then above
-				AccountStatus = AccountHistogram[AccountID]
+				# AccountStatus should have been assigned in the 'Outputs' if-then above
 			else:  # This takes effect when CFNResponse can't find any stacks with the Service Catalog Product ID
 				CFNStackName = 'None'
 				CFNStackStatus = 'None'
