@@ -139,6 +139,7 @@ try:
 					for y in range(len(stack_info['Stacks'][0]['Parameters'])):
 						if stack_info['Stacks'][0]['Parameters'][y]['ParameterKey'] == 'AccountEmail':
 							AccountEmail = stack_info['Stacks'][0]['Parameters'][y]['ParameterValue']
+							logging.error("Account Email is %s" % AccountEmail)
 				if 'Outputs' in stack_info['Stacks'][0].keys():
 					for y in range(len(stack_info['Stacks'][0]['Outputs'])):
 						logging.error("Output Key %s for stack %s is %s",
@@ -146,32 +147,34 @@ try:
 						              stack_info['Stacks'][0]['Outputs'][y]['OutputValue'])
 						if stack_info['Stacks'][0]['Outputs'][y]['OutputKey'] == 'AccountID':
 							AccountID = stack_info['Stacks'][0]['Outputs'][y]['OutputValue']
-							logging.error(Fore.RED + "Found the Account ID" + Fore.RESET)
+							logging.error(Fore.RED + "Found the Account ID: %s" % AccountID + Fore.RESET)
 							if AccountID in SuspendedAccounts:
 								logging.error(Fore.RED + "Account ID %s has been suspended" + Fore.RESET, AccountID)
 							break
 						else:
-							logging.info("Outputs key present, but no account ID")
+							logging.error("Outputs key present, but no account ID")
+							AccountID='None'
+							AccountStatus='None'
 				else:
-					logging.info("No Outputs key present")
-				SCProductName = SCProducts[i]['SCPName']
-				SCProductId = SCProducts[i]['SCPId']
-				SCStatus = SCProducts[i]['SCPStatus']
-				ProvisioningArtifactName = SCProducts[i]['ProvisioningArtifactName']
+					logging.error("No Outputs key present")
+					AccountID='None'
+					AccountStatus='None'
 				CFNStackName = CFNresponse[0]['StackName']
 				CFNStackStatus = CFNresponse[0]['StackStatus']
+				# AccountEmail should have been assigned in the 'Parameters' if-then above
+				# AccountID should have been assigned in the 'Outputs' if-then above
 				AccountStatus = AccountHistogram[AccountID]
 			else:  # This takes effect when CFNResponse can't find any stacks with the Service Catalog Product ID
-				SCProductName = SCProducts[i]['SCPName']
-				SCProductId = SCProducts[i]['SCPId']
-				SCStatus = SCProducts[i]['SCPStatus']
-				ProvisioningArtifactName = SCProducts[i]['ProvisioningArtifactName']
 				CFNStackName = 'None'
 				CFNStackStatus = 'None'
 				AccountID = 'None'
 				AccountEmail = 'None'
 				AccountStatus = 'None'
 			logging.error("AccountID: %s | AccountEmail: %s | CFNStackName: %s | CFNStackStatus: %s | SC Product: %s" % (AccountID, AccountEmail, CFNStackName, CFNStackStatus, SCProducts[i]))
+			SCProductName = SCProducts[i]['SCPName']
+			SCProductId = SCProducts[i]['SCPId']
+			SCStatus = SCProducts[i]['SCPStatus']
+			ProvisioningArtifactName = SCProducts[i]['ProvisioningArtifactName']
 			SCP2Stacks.append({
 				'SCProductName': SCProductName,
 				'SCProductId': SCProductId,
@@ -195,7 +198,7 @@ try:
 	# sorted_list = sorted(SCP2Stacks, key = sort_by_email)
 	# SCP2Stacks = sorted_list
 	# Need to create a loop here that compares the "SCP2Stacks" list with the "AcctList" list to see if any Accounts are Suspended
-	# We should list out Suspended accounts in the SCP2Stacks readout at the end - in case any acounts have both a provisioned product, but are also suspended.
+	# We should list out Suspended accounts in the SCP2Stacks readout at the end - in case any accounts have both a provisioned product, but are also suspended.
 
 	# Do any of the account numbers show up more than once in this list?
 	## We initialize the listing from the full list of accounts in the Org.
