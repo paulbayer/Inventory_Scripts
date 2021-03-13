@@ -85,7 +85,7 @@ Significant Variable Explanation:
 	** TODO: I duplicated this listing, in case later I decided to add some additional useful fields to the dict. 
 	'SCP2Stacks' holds a list of the CloudFormation Stacks in this account that *match* the Provisioned Products.
 	** TODO: This list should hold *all* stacks and then we could find stacks for accounts that no longer exist.
-
+	'AccountHistogram' holds the list of accounts (the account numbers are the keys in this dict) and the number of SC products that are created for this account is the value of that key.
 '''
 
 ERASE_LINE = '\x1b[2K'
@@ -108,7 +108,7 @@ for account in AcctList:
 		SuspendedAccounts.append(account['AccountId'])
 
 try:
-	SCresponse = Inventory_Modules.find_sc_products(pProfile, pRegion, "All")
+	SCresponse = Inventory_Modules.find_sc_products(pProfile, pRegion, "All",10)
 	logging.warning("A list of the SC Products found:")
 	for i in range(len(SCresponse)):
 		logging.warning("SC Product Name %s | SC Product Status %s", SCresponse[i]['Name'], SCresponse[i]['Status'])
@@ -221,18 +221,51 @@ try:
 				AccountHistogram[SCP2Stacks[i]['AccountID']] = 1
 			else:
 				AccountHistogram[SCP2Stacks[i]['AccountID']] += 1
-	fmt = '%-15s %-52s %-8s %-35s %-10s %-18s %-10s %-20s'
+	namelength=0
+	for _ in range(len(SCP2Stacks)):
+		if namelength < len(SCP2Stacks[_]['SCProductName']):
+			namelength=len(SCP2Stacks[_]['SCProductName'])
+		else:
+			pass
+	# fmt = '%-15s %-52s %-8s %-35s %-10s %-18s %-10s %-20s'
 	print()
-	print(
-		fmt % ("Account Number", "SC Product Name", "Version","CFN Stack Name", "SC Status", "CFN Stack Status", "Acct Status", "AccountEmail"))
-	print(
-		fmt % ("--------------", "---------------", "-------","--------------", "---------", "----------------", "-----------", "------------"))
+	fmt='{0:<15} {1:{namelength}} {2:<8} {3:<35} {4:<10} {5:<10} {6:<10} {7:<20}'
+	print(fmt.format("Account Number",
+                   "SC Product Name", "Version",
+                   "CFN Stack Name",
+                   "SC Status",
+                   "CFN Stack Status",
+                   "Acct Status",
+                   "AccountEmail",
+                   namelength=namelength))
+	# print(fmt % ("Account Number", "SC Product Name", "Version","CFN Stack Name", "SC Status", "CFN Stack Status", "Acct Status", "AccountEmail"))
+	print(fmt.format("--------------", "---------------", "-------","--------------", "---------", "----------------", "-----------", "------------",namelength=namelength))
 	for i in range(len(SCP2Stacks)):
 		if SCP2Stacks[i]['SCStatus'] == 'ERROR' or SCP2Stacks[i]['SCStatus'] == 'TAINTED':
-			print(Fore.RED + fmt % (SCP2Stacks[i]['AccountID'], SCP2Stacks[i]['SCProductName'], SCP2Stacks[i]['ProvisioningArtifactName'], SCP2Stacks[i]['CFNStackName'], SCP2Stacks[i]['SCStatus'], SCP2Stacks[i]['CFNStackStatus'], SCP2Stacks[i]['AccountStatus'], SCP2Stacks[i]['AccountEmail']) + Style.RESET_ALL)
+			print(Fore.RED+fmt.format(SCP2Stacks[i]['AccountID'],
+                            SCP2Stacks[i]['SCProductName'],
+                            SCP2Stacks[i]['ProvisioningArtifactName'],
+                            SCP2Stacks[i]['CFNStackName'],
+                            SCP2Stacks[i]['SCStatus'],
+                            SCP2Stacks[i]['CFNStackStatus'],
+                            SCP2Stacks[i]['AccountStatus'],
+                            SCP2Stacks[i]['AccountEmail'],
+                            namelength=namelength)+Fore.RESET)
+	# print(Fore.RED + fmt % (SCP2Stacks[i]['AccountID'], SCP2Stacks[i]['SCProductName'], SCP2Stacks[i]['ProvisioningArtifactName'], SCP2Stacks[i]['CFNStackName'], SCP2Stacks[i]['SCStatus'], SCP2Stacks[i]['CFNStackStatus'], SCP2Stacks[i]['AccountStatus'], SCP2Stacks[i]['AccountEmail']) + Style.RESET_ALL)
 		else:
-			print(fmt % (SCP2Stacks[i]['AccountID'], SCP2Stacks[i]['SCProductName'], SCP2Stacks[i]['ProvisioningArtifactName'], SCP2Stacks[i]['CFNStackName'],
-			             SCP2Stacks[i]['SCStatus'], SCP2Stacks[i]['CFNStackStatus'], SCP2Stacks[i]['AccountStatus'], SCP2Stacks[i]['AccountEmail']))
+			print(fmt.format(
+				SCP2Stacks[i]['AccountID'],
+				SCP2Stacks[i]['SCProductName'],
+				SCP2Stacks[i]['ProvisioningArtifactName'],
+				SCP2Stacks[i]['CFNStackName'],
+				SCP2Stacks[i]['SCStatus'],
+				SCP2Stacks[i]['CFNStackStatus'],
+				SCP2Stacks[i]['AccountStatus'],
+				SCP2Stacks[i]['AccountEmail'],
+				namelength=namelength))
+
+			# print(fmt % (SCP2Stacks[i]['AccountID'], SCP2Stacks[i]['SCProductName'], SCP2Stacks[i]['ProvisioningArtifactName'], SCP2Stacks[i]['CFNStackName'],
+			#              SCP2Stacks[i]['SCStatus'], SCP2Stacks[i]['CFNStackStatus'], SCP2Stacks[i]['AccountStatus'], SCP2Stacks[i]['AccountEmail']))
 except ClientError as my_Error:
 	if str(my_Error).find("AuthFailure") > 0:
 		print(pProfile + ": Authorization Failure ")
@@ -280,3 +313,10 @@ if ErroredSCPExists:
 
 print()
 print("Thanks for using this script...")
+for i in AccountHistogram:
+	print(i,":",AccountHistogram[i])
+	# if AccountHistogram[i]
+print("We found {} accounts within the Org".format(len(AcctList)))
+print("We found {} Service Catalog Products".format(len(SCresponse)))
+print("We found {} Suspended / Closed accounts".format('Some Number'))
+print("We found {} Service Catalog Products with no account attached".format('Some Number'))
