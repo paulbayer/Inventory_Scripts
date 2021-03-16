@@ -20,18 +20,30 @@ parser.add_argument(
 	default='default',
 	metavar="profile to use",
 	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
+parser.add_argument(
+	"-a", "--account",
+	dest="pAccount",
+	default=None,
+	metavar="Single account to check/ update",
+	help="To specify a specific account to check/ update, use this parameter. Default is to update all accounts within an Org.")
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument(
-	"-r", "--role",
+	"-r", "--RoleToAdd", "+r", "+role",
 	dest="pRoleNameToAdd",
 	metavar="role to create",
-	default='',
+	default=None,
 	help="Rolename to be added to a number of accounts")
+group.add_argument(
+	"-c", "--rolecheck",
+	dest="pRoleNameToCheck",
+	metavar="role to check to see if it exists",
+	default=None,
+	help="Rolename to be checked for existence")
 group.add_argument(
 	"-R", "--RoleToRemove",
 	dest="pRoleNameToRemove",
 	metavar="role to remove",
-	default='',
+	default=None,
 	help="Rolename to be removed from a number of accounts")
 parser.add_argument(
 	'-v',
@@ -64,24 +76,36 @@ parser.add_argument(
 args = parser.parse_args()
 
 pProfile=args.pProfile
+pAccount=args.pAccount
 pRoleNameToAdd=args.pRoleNameToAdd
 pRoleNameToRemove=args.pRoleNameToRemove
+pRoleNameToCheck=args.pRoleNameToCheck
 verbose=args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
 
-ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
-if len(ChildAccounts) == 0:
-	print()
-	print("The profile {} does not represent an Org".format(pProfile))
-	print("This script only works with org accounts. Sorry.")
-	print()
-	sys.exit(1)
+if pAccount is None:
+	ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
+	if len(ChildAccounts) == 0:
+		print()
+		print("The profile {} does not represent an Org".format(pProfile))
+		print("This script only works with org accounts. Sorry.")
+		print()
+		sys.exit(1)
+elif not len(pAccount) == 12:
+	print("The provided Account number must be 12 digits")
+	sys.exit(2)
+else:
+	ChildAccounts=[{'ParentProfile': pProfile,
+	               'AccountId':pAccount,
+	               'AccountEmail': 'Not Provided',
+	               'AccountStatus': 'Unknown'
+	               }]
 ##########################
 ERASE_LINE = '\x1b[2K'
 ##########################
 
 
-def createrole(ocredentials, fRootAccount, pAccount, frole):
+def createrole(ocredentials, fRootAccount, frole):
 	import simplejson as json
 	import boto3
 	from colorama import init, Fore
@@ -172,7 +196,6 @@ def removerole(ocredentials, frole):
 		print(my_Error)
 		pass
 
-
 def roleexists(ocredentials, frole):
 	import boto3
 
@@ -200,6 +223,7 @@ RootAccountNumber = Inventory_Modules.find_account_number(pProfile)
 sts_session = boto3.Session(profile_name=pProfile)
 sts_client = sts_session.client('sts')
 UpdatedAccounts=0
+Results=[]
 for account in ChildAccounts:
 	ConnectionSuccess = False
 	rolenames=['AWSCloudFormationStackSetExecutionRole', 'OrganizationalFullAccess', 'OrganizationAccountAccessRole', 'AWSControlTowerExecution', 'Owner', 'admin-crossAccount','AdministratorAccess']
@@ -208,9 +232,8 @@ for account in ChildAccounts:
 	'''
 	# role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
 	for rolename in rolenames:
-		if ConnectionSuccess:
+		if ConnectionSuccess:   # Indicating that the previous run of this loop was successful and we can skip trying
 			break
-		# print(ERASE_LINE, "Trying to access account {} using role {}".format(account['AccountId'], rolename), end="\r")
 		print(ERASE_LINE,"Trying to access account {} using role {}".format(account['AccountId'], rolename),end="\r")
 		role_arn = "arn:aws:iam::{}:role/{}".format(account['AccountId'], rolename)
 		logging.info("Role ARN: %s" % role_arn)
@@ -219,17 +242,42 @@ for account in ChildAccounts:
 				RoleArn=role_arn,
 				RoleSessionName="RegistrationScript")['Credentials']
 			account_credentials['Account'] = account['AccountId']
-			logging.warning("Accessed Account %s using rolename %s" % (account['AccountId'], rolename))
+			logging.warning("Successfully accessed account %s using rolename %s" % (account['AccountId'], rolename))
 			ConnectionSuccess = True
-			if pRoleNameToRemove=="" and roleexists(account_credentials, pRoleNameToAdd):
-				logging.warning("Role {} already exists", pRoleNameToAdd)
+			if not pRoleNameToCheck==None:
+				logging.warning("Checking to see if role %s exists in account %s", pRoleNameToCheck, account['AccountId'])
+				if roleexists(account_credentials, pRoleNameToCheck):
+					Results.append({
+						'AccountId': account['AccountId'],
+						'Role': pRoleNameToCheck,
+						'Result': 'Role Exists'
+					})
+					UpdatedAccounts += 1
+				else:
+					Results.append({
+						'AccountId': account['AccountId'],
+						'Role': pRoleNameToCheck,
+						'Result': 'Nonexistent Role'
+					})
+			elif pRoleNameToRemove==None and roleexists(account_credentials, pRoleNameToAdd):
+				logging.warning("Role %s already exists", pRoleNameToAdd)
 				break
-			elif not (pRoleNameToRemove=="") and roleexists(account_credentials, pRoleNameToRemove):
+			elif not (pRoleNameToRemove==None) and roleexists(account_credentials, pRoleNameToRemove):
 				logging.warning("Removing role %s from account %s", pRoleNameToRemove, account['AccountId'])
 				removerole(account_credentials, pRoleNameToRemove)
+				Results.append({
+					'AccountId': account['AccountId'],
+					'Role': pRoleNameToRemove,
+					'Result': 'Role Removed'
+				})
 				UpdatedAccounts += 1
-			elif not (pRoleNameToAdd == "") and not (rolename == pRoleNameToAdd):
-				createrole(account_credentials, RootAccountNumber, account['AccountId'], pRoleNameToAdd)
+			elif not (pRoleNameToAdd == None) and not (rolename == pRoleNameToAdd):
+				createrole(account_credentials, RootAccountNumber, pRoleNameToAdd)
+				Results.append({
+					'AccountId': account['AccountId'],
+					'Role': pRoleNameToRemove,
+					'Result': 'Role Created'
+				})
 				UpdatedAccounts += 1
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
@@ -241,10 +289,24 @@ for account in ChildAccounts:
 				ConnectionSuccess = False
 				continue	# Try the next rolename
 
+
+print()
 print()
 print("Thanks for using the tool.")
-print("We found {} accounts under your organization".format(len(ChildAccounts)))
-if not (pRoleNameToAdd == ""):
+if not pAccount is None:
+	print("You asked me to check account {} under your organization".format(ChildAccounts[0]['AccountId']))
+else:
+	print("We found {} accounts under your organization".format(len(ChildAccounts)))
+	print("Of these, we checked {} accounts".format(len(Results)))
+if verbose < 40:    # Warning, Info and Debug - skips ERROR
+	AccountList=[]
+	for i in Results:
+		AccountList.append(i['AccountId'])
+	logging.warning("We checked the following accounts: %s", str(AccountList))
+
+if not (pRoleNameToCheck == None):
+	print("We found {} accounts that included the {} role".format(UpdatedAccounts, pRoleNameToCheck))
+elif not (pRoleNameToAdd == None):
 	print("We updated {} accounts to include the {} role".format(UpdatedAccounts, pRoleNameToAdd))
-elif not (pRoleNameToRemove == ""):
+elif not (pRoleNameToRemove == None):
 	print("We updated {} accounts to remove the {} role".format(UpdatedAccounts, pRoleNameToRemove))
