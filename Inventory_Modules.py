@@ -1586,11 +1586,12 @@ def delete_stack_instances(fProfile, fRegion, lAccounts, lRegions, fStackSetName
 	)
 
 
-def find_sc_products(fProfile, fRegion, fStatus="ERROR"):
+def find_sc_products(fProfile, fRegion, fStatus="ERROR", flimit=100):
 	"""
 	fProfile is the Root Profile that owns the Account we're interrogating
 	fRegion is the region we're interrogating
 	fStatus is the status of SC products we're looking for. Defaults to "ERROR"
+	flimit is the max number of products to find. This is used for debugging, mainly
 
 	Returned list looks like this:
 	[
@@ -1624,26 +1625,26 @@ def find_sc_products(fProfile, fRegion, fStatus="ERROR"):
 	session_sc=boto3.Session(profile_name=fProfile, region_name=fRegion)
 	client_sc=session_sc.client('servicecatalog')
 	if fStatus.lower()=='all':
-		response=client_sc.search_provisioned_products()
+		response=client_sc.search_provisioned_products(PageSize=flimit)
 		while 'NextPageToken' in response.keys():
-			response2.append(response['ProvisionedProducts'])
-			response=client_sc.search_provisioned_products(PageToken=response['NextPageToken'])
+			response2.extend(response['ProvisionedProducts'])
+			response=client_sc.search_provisioned_products(PageToken=response['NextPageToken'],PageSize=flimit)
 	else:	# We filter down to only the statuses asked for
-		response=client_sc.search_provisioned_products(
+		response=client_sc.search_provisioned_products(PageSize=flimit,
 			Filters={
 				'SearchQuery': ['status:'+fStatus]
 			}
 		)
 		while 'NextPageToken' in response.keys():
-			response2.append(response['ProvisionedProducts'])
-			response=client_sc.search_provisioned_products(
+			response2.extend(response['ProvisionedProducts'])
+			response=client_sc.search_provisioned_products(PageSize=flimit,
 				Filters={
 					'SearchQuery': ['status:'+fStatus]
 				},
 				PageToken=response['NextPageToken']
 			)
-	response2.append(response['ProvisionedProducts'])
-	return(response2[0])
+	response2.extend(response['ProvisionedProducts'])
+	return(response2)
 
 
 def find_ssm_parameters(fProfile, fRegion):

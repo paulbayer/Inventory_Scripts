@@ -253,7 +253,7 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 			print("{}: Other kind of failure for account {}".format(fProfile, fChildAccountId))
 			print(my_Error)
 			ProcessStatus[Step]['Success']=False
-			sys.exit("Exiting...")
+			sys.exit("Exiting for other failure...")
 	
 	account_credentials['AccountNumber']=fChildAccountId
 	logging.error("Was able to successfully connect using the credentials... ")

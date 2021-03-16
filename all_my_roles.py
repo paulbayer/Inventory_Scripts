@@ -126,7 +126,8 @@ for account in ChildAccounts:
 		RoleNum = 0
 		account_credentials, role_arn = Inventory_Modules.get_child_access2(pProfile, account['AccountId'])
 		if role_arn.find("failed") > 0:
-			sys.exit("Access to member accounts failed...")
+			logging.error("Access to member account %s failed...", account['AccountId'])
+			continue
 		account_credentials['AccountId'] = account['AccountId']
 		logging.info("Connecting to %s with %s role", account['AccountId'], role_arn)
 		logging.info("Role ARN: %s" % role_arn)

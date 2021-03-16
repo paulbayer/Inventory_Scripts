@@ -35,7 +35,7 @@ parser.add_argument(
 	const=True,
 	help="Whether to delete the detectors it finds.")
 parser.add_argument(
-    '-f', '--force',
+    '+f', '--force',
     help="force deletion without asking first",
     action="store_const",
 	dest="ForceDelete",

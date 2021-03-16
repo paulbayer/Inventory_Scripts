@@ -5,6 +5,10 @@
     <orderEntry type="jdk" jdkName="Python 3.8 (Inventory_Scripts)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
+  <component name="PackageRequirementsSettings">
+    <option name="versionSpecifier" value="Greater or equal (&gt;=x.y.z)" />
+    <option name="keepMatchingSpecifier" value="false" />
+  </component>
   <component name="PyDocumentationSettings">
     <option name="format" value="PLAIN" />
     <option name="myDocStringFormat" value="Plain" />
