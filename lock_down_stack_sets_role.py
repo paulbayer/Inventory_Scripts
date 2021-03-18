@@ -19,13 +19,6 @@ parser.add_argument(
 	metavar="profile to use",
 	help="This profile should be for the Management Account - with access into the children.")
 parser.add_argument(
-	"-r", "--region",
-	dest="pRegion",
-	required = True,
-	default='us-east-1',
-	metavar="region to use",
-	help="This profile should be for the Management Account - with access into the children.")
-parser.add_argument(
 	"-R", "--access_rolename",
 	dest="pAccessRole",
 	default='AWSCloudFormationStackSetExecutionRole',
@@ -38,7 +31,14 @@ parser.add_argument(
 	metavar="role to change",
 	help="This parameter specifies the role to have its Trust Policy changed.")
 parser.add_argument(
-	"-l", "--lock",
+	"+f", "--fix",
+	dest="pFix",
+	action="store_const",
+	const=True,
+	default=False,
+	help="This parameter determines whether to make any changes in child accounts.")
+parser.add_argument(
+	"+l", "--lock",
 	dest="pLock",
 	action="store_const",
 	const=True,
@@ -75,12 +75,12 @@ parser.add_argument(
 args = parser.parse_args()
 
 pProfile=args.pProfile
-pRegion=args.pRegion
 pTargetRole=args.pTargetRole
 pAccessRole=args.pAccessRole
 pLock=args.pLock
+pFix=args.pFix
 verbose=args.loglevel
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 ParentAcctNum=Inventory_Modules.find_account_number(pProfile)
 ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
@@ -106,7 +106,7 @@ print("We're targeting the {} role to change its Trust Policy".format(pTargetRol
 # 1. Collect parameters with the ARNs that should be in the permission
 # lock_down_arns_list=[]
 allowed_arns=[]
-aws_session=boto3.Session(profile_name=pProfile, region_name=pRegion)
+aws_session=boto3.Session(profile_name=pProfile)
 ssm_client=aws_session.client('ssm')
 param_list=ssm_client.describe_parameters(ParameterFilters=[{'Key':'Name', 'Option':'Contains', 'Values':['lock_down_role_arns_list']}])['Parameters']
 if len(param_list) == 0:
@@ -116,6 +116,7 @@ if len(param_list) == 0:
 	sys.exit(2)
 for i in param_list:
 	response=param=ssm_client.get_parameter(Name=i['Name'])
+	logging.info("Adding %s to the list for i: %s" % (response['Parameter']['Value'], i['Name']))
 	allowed_arns.append(response['Parameter']['Value'])
 
 # 2. Create the Trust Policy in JSON
@@ -162,6 +163,7 @@ child_accounts=Inventory_Modules.find_child_accounts2(pProfile)
 # 4. Connect to each account, and detach the existing policy, and apply the new policy
 sts_client = aws_session.client('sts')
 TrustPoliciesChanged=0
+ErroredAccounts=[]
 for acct in child_accounts:
 	ConnectionSuccess = False
 	try:
@@ -173,8 +175,9 @@ for acct in child_accounts:
 		logging.warning("Accessed Account %s using rolename %s" % (acct['AccountId'], pAccessRole))
 		ConnectionSuccess = True
 	except ClientError as my_Error:
-		logging.error("Account %s is already locked down, so we couldn't change the role's Trust Policy", acct['AccountId'])
+		logging.error("Account %s, role %s is already locked down to only Lambda functions, so we couldn't access the role's Trust Policy", acct['AccountId'], pTargetRole)
 		logging.warning(my_Error)
+		ErroredAccounts.append(acct['AccountId'])
 		pass
 	if ConnectionSuccess:
 		try:
@@ -185,8 +188,17 @@ for acct in child_accounts:
 				aws_session_token=account_credentials['SessionToken']
 			)
 			iam_client = iam_session.client('iam')
-			trustpolicyupdate=iam_client.update_assume_role_policy(RoleName=pTargetRole, PolicyDocument=Trust_Policy_json)
-			TrustPoliciesChanged+=1
+			trustpolicyexisting=iam_client.get_role(RoleName=pTargetRole)
+			logging.info("Found Trust Policy %s in account %s for role %s" % (
+				json.dumps(trustpolicyexisting['Role']['AssumeRolePolicyDocument']),
+				acct['AccountId'],
+				pTargetRole))
+			if pFix:
+				trustpolicyupdate=iam_client.update_assume_role_policy(RoleName=pTargetRole, PolicyDocument=Trust_Policy_json)
+				TrustPoliciesChanged+=1
+				logging.error("Updated Trust Policy in Account %s for role %s" % (acct['AccountId'], pTargetRole))
+			else:
+				logging.error("Account %s - no changes made" % (acct['AccountId']))
 		except ClientError as my_Error:
 			logging.warning(my_Error)
 			pass
@@ -194,4 +206,6 @@ for acct in child_accounts:
 print(ERASE_LINE)
 print("We found {} accounts under your organization".format(len(ChildAccounts)))
 print("We changed {} Trust Policies".format(TrustPoliciesChanged))
+if len(ErroredAccounts) > 0:
+	print("We weren't able to access {} accounts, likely due to it already being locked down.".format(len(ErroredAccounts)))
 print("Thanks for using the tool.")
