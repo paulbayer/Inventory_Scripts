@@ -259,7 +259,7 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 	logging.error("Was able to successfully connect using the credentials... ")
 	print()
 	calling_creds=Inventory_Modules.find_calling_identity(fProfile)
-	print("Confirmed the role "+Fore.GREEN + role + Fore.RESET+" exists in account "+Fore.GREEN + fChildAccountId + Fore.RESET+" and trusts "+Fore.GREEN + "{}".format(calling_creds)+Fore.RESET + " within the Management Account")
+	print("Confirmed the role "+Fore.GREEN + role + Fore.RESET+" exists in account "+Fore.GREEN + fChildAccountId + Fore.RESET+" and trusts "+Fore.GREEN + "{}".format(calling_creds['Short'])+Fore.RESET + " within the Management Account")
 	print(Fore.GREEN+"** Step 0 completed without issues"+Fore.RESET)
 	print()
 	

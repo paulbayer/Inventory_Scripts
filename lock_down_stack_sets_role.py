@@ -31,19 +31,26 @@ parser.add_argument(
 	metavar="role to change",
 	help="This parameter specifies the role to have its Trust Policy changed.")
 parser.add_argument(
-	"+f", "--fix",
+	"+f", "--fix", "+fix",
 	dest="pFix",
 	action="store_const",
 	const=True,
 	default=False,
 	help="This parameter determines whether to make any changes in child accounts.")
 parser.add_argument(
-	"+l", "--lock",
+	"+l", "--lock", "+lock",
 	dest="pLock",
 	action="store_const",
 	const=True,
 	default=False,
 	help="This parameter determines whether to lock the Trust Policy.")
+parser.add_argument(
+	"-s", "--safety",
+	dest="pSafety",
+	action="store_const",
+	const=False,
+	default=True,
+	help="Adding this parameter will 'remove the safety' - by not including the principle running this script, which might mean you get locked out of making further changes.")
 parser.add_argument(
 	'-v',
 	help="Be verbose",
@@ -78,6 +85,7 @@ pProfile=args.pProfile
 pTargetRole=args.pTargetRole
 pAccessRole=args.pAccessRole
 pLock=args.pLock
+pSafety=args.pSafety
 pFix=args.pFix
 verbose=args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
@@ -119,10 +127,20 @@ for i in param_list:
 	logging.info("Adding %s to the list for i: %s" % (response['Parameter']['Value'], i['Name']))
 	allowed_arns.append(response['Parameter']['Value'])
 
+# 1.5 Find who is running the script and add their credential as a safety
+Creds=Inventory_Modules.find_calling_identity(pProfile)
+if pSafety:
+	allowed_arns.append(Creds['Arn'])
 # 2. Create the Trust Policy in JSON
 import simplejson as json
 
 if pLock:
+	if pSafety and pFix:
+		logging.error("Locking down the Trust Policy to *only* the Lambda functions.")
+	elif pFix:
+		logging.error("Locking down the Trust Policy to the Lambda functions and %s." % (Creds['Arn']))
+	else:
+		logging.critical("While you asked us to lock things down, You didn't use the '+f' parameter, so we're not changing a thing.")
 	Trust_Policy = {
 		"Version": "2012-10-17",
         "Statement": [
@@ -175,7 +193,7 @@ for acct in child_accounts:
 		logging.warning("Accessed Account %s using rolename %s" % (acct['AccountId'], pAccessRole))
 		ConnectionSuccess = True
 	except ClientError as my_Error:
-		logging.error("Account %s, role %s is already locked down to only Lambda functions, so we couldn't access the role's Trust Policy", acct['AccountId'], pTargetRole)
+		logging.error("Account %s, role %s was unavailable to change, so we couldn't access the role's Trust Policy", acct['AccountId'], pTargetRole)
 		logging.warning(my_Error)
 		ErroredAccounts.append(acct['AccountId'])
 		pass
@@ -197,6 +215,11 @@ for acct in child_accounts:
 				trustpolicyupdate=iam_client.update_assume_role_policy(RoleName=pTargetRole, PolicyDocument=Trust_Policy_json)
 				TrustPoliciesChanged+=1
 				logging.error("Updated Trust Policy in Account %s for role %s" % (acct['AccountId'], pTargetRole))
+				trustpolicyexisting = iam_client.get_role(RoleName=pTargetRole)
+				logging.info("Updated Trust Policy %s in account %s for role %s" % (
+					json.dumps(trustpolicyexisting['Role']['AssumeRolePolicyDocument']),
+					acct['AccountId'],
+					pTargetRole))
 			else:
 				logging.error("Account %s - no changes made" % (acct['AccountId']))
 		except ClientError as my_Error:
@@ -205,7 +228,16 @@ for acct in child_accounts:
 
 print(ERASE_LINE)
 print("We found {} accounts under your organization".format(len(ChildAccounts)))
-print("We changed {} Trust Policies".format(TrustPoliciesChanged))
+if pLock and pFix:
+	print("We locked {} Trust Policies".format(TrustPoliciesChanged))
+elif not pLock and pFix:
+	print("We unlocked {} Trust Policies".format(TrustPoliciesChanged))
+else:
+	print("We didn't change {} Trust Policies".format(TrustPoliciesChanged))
 if len(ErroredAccounts) > 0:
-	print("We weren't able to access {} accounts, likely due to it already being locked down.".format(len(ErroredAccounts)))
+	print("We weren't able to access {} accounts.".format(len(ErroredAccounts)))
+if verbose < 50:
+	print("Here are the accounts that were not updated")
+	for i in ErroredAccounts:
+		print(i)
 print("Thanks for using the tool.")
