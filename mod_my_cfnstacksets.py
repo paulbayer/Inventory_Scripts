@@ -138,7 +138,7 @@ pdryrun=args.DryRun
 pstatus=args.pstatus
 pAccountRemove=args.pAccountRemove
 pRegionRemove=args.pRegionRemove
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 
 ###################
@@ -149,26 +149,6 @@ def randomString(stringLength=10):
 	# Generate a random string of fixed length
 	letters = string.ascii_lowercase
 	return ''.join(random.choice(letters) for i in range(stringLength))
-
-
-# def RemoveTermProtection(fProfile, fAllInstances):
-# 	for i in range(len(fAllInstances)):
-# 		logging.warning("Profile: %s | Region: %s | ChildAccount: %s" % (fProfile, fAllInstances[i]['ChildRegion'], fAllInstances[i]['ChildAccount']))
-# 		session_cfn=Inventory_Modules.get_child_access(fProfile, fAllInstances[i]['ChildRegion'], fAllInstances[i]['ChildAccount'])
-# 		client_cfn=session_cfn.client('cloudformation')
-# 		try:
-# 			response=client_cfn.update_termination_protection(
-# 				EnableTerminationProtection=False,
-# 				StackName=fAllInstances[i]['StackName']
-# 			)
-# 		except Exception as e:
-# 			if e.response['Error']['Code'] == 'ValidationError':
-# 				logging.info("Caught exception 'ValidationError', ignoring the exception...")
-# 				print()
-# 				pass
-#
-# 		logging.info("Stack %s had termination protection removed from it in Account %s in Region %s" % (fAllInstances[i]['StackName'], fAllInstances[i]['ChildAccount'], fAllInstances[i]['ChildRegion']))
-# 	return (True)
 
 ########################
 #### delete_stack_instances #####
@@ -184,7 +164,7 @@ def randomString(stringLength=10):
 ####################
 
 
-def delete_stack_instances(fProfile, fRegion, fAccountList, fAccountRemove, fAccountsToSkip, fRegionList, fStackSet, fForce=True):
+def _delete_stack_instances(fProfile, fRegion, fAccountList, fAccountRemove, fAccountsToSkip, fRegionList, fStackSet, fForce=True):
 	session_cfn=boto3.Session(profile_name=pProfile, region_name=pRegion)
 	logging.warning("Removing instances from %s StackSet" % (fStackSet['StackSetName']))
 	try:
@@ -273,7 +253,7 @@ else:
 print("		In the ROOT profile {} and all children".format(pProfile))
 print("		In these regions: {}".format(pRegion))
 print("		For stacksets that contain these fragments: {}".format(pStackfrag))
-print("		For stack instances that match this status: {}".format(pstatus))
+# print("		For stack instances that match this status: {}".format(pstatus))
 if pAccountRemove == "NotProvided":
 	pass
 else:
@@ -296,8 +276,8 @@ for i in range(len(StackSetNames)):
 	logging.warning("Found %s Stack Instances within the StackSet %s" % (len(StackInstances), StackSetNames[i]['StackSetName']))
 	for j in range(len(StackInstances)):
 		if 'StackId' not in StackInstances[j].keys():
-			logging.info("The stack instance found doesn't have a stackid associated")
-			continue
+			logging.info("The stack instance found doesn't have a stackid associated. Which means it's never been deployed and probably OUTDATED")
+			pass
 		if pAccountRemove=='NotProvided':
 			pass
 		elif not (StackInstances[j]['Account'] == pAccountRemove):
@@ -305,7 +285,7 @@ for i in range(len(StackSetNames)):
 			continue
 		# pprint.pprint(StackInstances[j])
 		logging.debug("This is Instance #: %s", str(j))
-		logging.debug("This is StackId: %s", str(StackInstances[j]['StackId']))
+		# logging.debug("This is StackId: %s", str(StackInstances[j]['StackId']))
 		logging.debug("This is instance status: %s", str(StackInstances[j]['Status']))
 		logging.debug("This is ChildAccount: %s", StackInstances[j]['Account'])
 		logging.debug("This is ChildRegion: %s", StackInstances[j]['Region'])
@@ -314,17 +294,18 @@ for i in range(len(StackSetNames)):
 			'ChildAccount': StackInstances[j]['Account'],
 			'ChildRegion': StackInstances[j]['Region'],
 			# This next line finds the value of the Child StackName (which includes a random GUID) and assigns it within our dict
-			'StackName': StackInstances[j]['StackId'][StackInstances[j]['StackId'].find('/')+1:StackInstances[j]['StackId'].find('/', StackInstances[j]['StackId'].find('/')+1)],
+			# 'StackName': StackInstances[j]['StackId'][StackInstances[j]['StackId'].find('/')+1:StackInstances[j]['StackId'].find('/', StackInstances[j]['StackId'].find('/')+1)],
 			'StackStatus': StackInstances[j]['Status'],
 			'StackSetName': StackInstances[j]['StackSetId'][:StackInstances[j]['StackSetId'].find(':')]
 		})
 		# pprint.pprint(AllInstances)
+		print(".",end='')
 
 print(ERASE_LINE)
 logging.error("Found %s stack instances." % (len(AllInstances)))
 
-for i in range(len(AllInstances)):
-	logging.info("Account %s in Region %s has Stack %s in status %s", AllInstances[i]['ChildAccount'], AllInstances[i]['ChildRegion'], AllInstances[i]['StackName'], AllInstances[i]['StackStatus'])
+# for i in range(len(AllInstances)):
+# 	logging.info("Account %s in Region %s has Stack %s in status %s", AllInstances[i]['ChildAccount'], AllInstances[i]['ChildRegion'], AllInstances[i]['StackName'], AllInstances[i]['StackStatus'])
 
 AccountList=[]
 StackSetStillInUse=[]
@@ -423,7 +404,7 @@ elif not pdryrun:
 	# pprint.pprint(StackSetNames)
 	for m in range(len(StackSetNames)):
 		logging.info("About to remove account %s from stackset %s in regions %s ", pAccountRemove, StackSetNames[m], str(RegionList))
-		result=delete_stack_instances(pProfile, pRegion, AccountList, pAccountRemove, AccountsToSkip, RegionList, StackSetNames[m], pForce)
+		result=_delete_stack_instances(pProfile, pRegion, AccountList, pAccountRemove, AccountsToSkip, RegionList, StackSetNames[m], pForce)
 		if result=='Success':
 			print(ERASE_LINE+"Successfully finished StackSet {}".format(StackSetNames[m]['StackSetName']))
 		elif pForce is True and result=='Failed-ForceIt':
@@ -431,7 +412,7 @@ elif not pdryrun:
 		elif pForce is False and result=='Failed-ForceIt':
 			Decision=(input("Deletion of Stack Instances failed, but might work if we force it. Shall we force it? (y/n): ") in ['y', 'Y'])
 			if Decision:
-				result = delete_stack_instances(pProfile, pRegion, AccountList, pAccountRemove, AccountsToSkip, RegionList, StackSetNames[m], True) 	# Try it again, forcing it this time
+				result = _delete_stack_instances(pProfile, pRegion, AccountList, pAccountRemove, AccountsToSkip, RegionList, StackSetNames[m], True) 	# Try it again, forcing it this time
 				if result=='Success':
 					print(ERASE_LINE+"Successfully retried StackSet {}".format(StackSetNames[m]['StackSetName']))
 				elif pForce is True and result=='Failed-ForceIt':
@@ -456,50 +437,6 @@ elif not pdryrun:
 		except Exception as e:
 			pprint.pprint(e)
 			pass
-
-'''
-This section removes the SCP policies to ensure that if there's a policy that disallows removing config or other tools, this will take care of that.
-'''
-# The following section is commented out since we shouldn't be removing SCPs from accounts and NOT putting them back!!
-'''
-PolicyListOutput=[]
-PolicyList=[]
-session_org=boto3.Session(profile_name=pProfile, region_name=pRegion)
-client_org=session_org.client('organizations')
-PolicyListOutput=client_org.list_policies(Filter='SERVICE_CONTROL_POLICY')
-for j in range(len(PolicyListOutput['Policies'])):
-	if not (PolicyListOutput['Policies'][j]['Id']=='p-FullAWSAccess'):
-		PolicyList.append(PolicyListOutput['Policies'][j]['Id'])
-	else:
-		continue
-
-NumofAccounts=len(AccountList)
-for account in AccountList:
-	NumofAccounts-=1
-	for policy in PolicyList:
-		try:
-			response=client_org.detach_policy(
-				PolicyId=policy,
-				TargetId=account
-			)
-			logging.warning("Successfully detached policies from account %s" % (account))
-		except Exception as e:
-			if e.response['Error']['Code'] == 'OperationInProgressException':
-				logging.info("Caught exception 'OperationInProgressException', handling the exception...")
-				pass
-			elif e.response['Error']['Code'] == 'PolicyNotAttachedException':
-				logging.info("Caught exception 'PolicyNotAttachedException', handling the exception...")
-				pass
-			elif e.response['Error']['Code'] == 'ConcurrentModificationException':
-				logging.info("Caught exception 'ConcurrentModificationException', handling the exception...")
-				pass
-			else:
-				logging.info("Wasn't able to successfully detach policy from account %s. Maybe it's already detached?" % (account))
-				break
-		finally:
-			logging.info("Only %s more accounts to go", str(NumofAccounts))
-'''
-
 
 print()
 print("Thanks for using this script...")
