@@ -301,7 +301,9 @@ def find_calling_identity(fProfile):
 		logging.info("Getting creds used within profile %s", fProfile)
 		client_sts=session_sts.client('sts')
 		response=client_sts.get_caller_identity()
-		creds=response['Arn'][response['Arn'].rfind(':')+1:]
+		creds={}
+		creds['Arn']=response['Arn']
+		creds['Short']=response['Arn'][response['Arn'].rfind(':')+1:]
 	except ClientError as my_Error:
 		if str(my_Error).find("UnrecognizedClientException") > 0:
 			print("{}: Security Issue".format(fProfile))
@@ -1541,7 +1543,7 @@ def delete_stackset(fProfile, fRegion, fStackSetName):
 	return(response)
 
 
-def find_stack_instances(fProfile, fRegion, fStackSetName):
+def find_stack_instances(fProfile, fRegion, fStackSetName, fStatus='CURRENT'):
 	"""
 	fProfile is a string
 	fRegion is a string
