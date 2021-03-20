@@ -4,7 +4,7 @@ import os, sys, pprint, boto3, datetime
 import Inventory_Modules
 import argparse
 from colorama import init, Fore
-from botocore.exceptions import ClientError, InvalidConfigError, NoCredentialsError, CredentialRetrievalError
+from botocore.exceptions import ClientError, ProfileNotFound, InvalidConfigError, NoCredentialsError, CredentialRetrievalError
 
 import logging
 
