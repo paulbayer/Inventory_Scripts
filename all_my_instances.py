@@ -18,8 +18,8 @@ parser.add_argument(
 	dest="pProfiles",
 	nargs="*",
 	metavar="profile to use",
-	default="[all]",
-	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
+	default=[None],
+	help="To specify a specific profile, use this parameter. Default will be to use Environment Variables, including those in ~/.aws/credentials and ~/.aws/config")
 parser.add_argument(
 	"-r", "--region",
 	nargs="*",
@@ -64,26 +64,45 @@ parser.add_argument(
 	default=logging.CRITICAL) # args.loglevel = 50
 args = parser.parse_args()
 
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
-
-# Get environment variables
-EnvProfile = os.getenv('AWS_PROFILE')
-EnvAccessKey = os.getenv('AWS_ACCESS_KEY_ID')
-EnvSecretKey = os.getenv('AWS_SECRET_ACCESS_KEY')
-EnvSessionToken = os.getenv('AWS_SESSION_TOKEN')
-EnvDefaultRegion = os.getenv('AWS_DEFAULT_REGION')
-
-pprint.pprint(EnvProfile)
-
-if str(EnvProfile)=='None':
-	pProfiles=list(set(args.pProfiles))
-	logging.error("Using provided profile: %s", pProfiles)
-else:
-	pProfiles=[EnvProfile]
-	logging.error("Using profile from Environment Variable: %s", pProfiles)
-
+pProfiles=args.pProfiles
 pRegionList=args.pRegion
 AccountsToSkip=args.pSkipAccounts
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+
+EnvVars={}
+# Get environment variables
+EnvVars['Profile'] = os.getenv('AWS_PROFILE')
+EnvVars['AccessKey'] = os.getenv('AWS_ACCESS_KEY_ID')
+EnvVars['SecretKey'] = os.getenv('AWS_SECRET_ACCESS_KEY')
+EnvVars['SessionToken'] = os.getenv('AWS_SESSION_TOKEN')
+EnvVars['DefaultRegion'] = os.getenv('AWS_DEFAULT_REGION')
+
+pprint.pprint(EnvVars)
+
+try:
+	response=Inventory_Modules.find_calling_identity('default')
+	defaultWorks=True
+except ProfileNotFound as e:
+	print(e)
+	defaultWorks=False
+
+# They provided no credentials at all
+if pProfiles is [None] and EnvVars['Profile'] is None and EnvVars['AccessKey'] is None and not defaultWorks:
+	print("You need to provide some type of credentials")
+	sys.exit("No credentials")
+# They provided the profile name in the Environment Variables
+elif pProfiles is [None] and EnvVars['AccessKey'] is None and EnvVars['Profile'] is not None:
+	pProfiles = [EnvVars['Profile']]
+	logging.error("Using profile from env vars: %s", pProfiles[0])
+# They provided the Persistent Access Key and Token in the Environment Variables
+elif pProfiles is [None] and EnvVars['AccessKey'] is not None and EnvVars['SessionToken'] is not None:
+	pProfiles = [EnvVars['Profile']]
+	logging.error("Using provided access key: %s", pProfiles)
+# They provided no credentials at all
+else:
+	pProfiles=[EnvVars['Profile']]
+	logging.error("Using profile from Environment Variable: %s", pProfiles)
+
 
 # logging.basicConfig(level=args.loglevel, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %H:%M:%S')
 
