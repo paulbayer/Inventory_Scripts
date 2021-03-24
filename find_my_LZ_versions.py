@@ -1,10 +1,9 @@
 #!/user/bin/env python3
 
-import os, sys, pprint, datetime
 import Inventory_Modules
 import argparse, boto3
-from colorama import init,Fore,Back,Style
-from botocore.exceptions import ClientError, CredentialRetrievalError, InvalidConfigError, NoCredentialsError
+from colorama import init
+from botocore.exceptions import ClientError, CredentialRetrievalError, InvalidConfigError
 
 import logging
 
@@ -78,17 +77,17 @@ for profile in AllProfiles:
 			})
 	except ClientError as my_Error:
 		if str(my_Error).find("UnrecognizedClientException") > 0:
-			logging.error("%s: Security Issue", fProfile)
+			logging.error("%s: Security Issue", profile)
 		elif str(my_Error).find("InvalidClientTokenId") > 0:
-			logging.error("%s: Security Token is bad - probably a bad entry in config", fProfile)
+			logging.error("%s: Security Token is bad - probably a bad entry in config", profile)
 			pass
 	except CredentialRetrievalError as my_Error:
 		if str(my_Error).find("CredentialRetrievalError") > 0:
-			logging.error("%s: Some custom process isn't working", fProfile)
+			logging.error("%s: Some custom process isn't working", profile)
 			pass
 	except InvalidConfigError as my_Error:
 		if str(my_Error).find("InvalidConfigError") > 0:
-			logging.error("%s: profile is invalid. Probably due to a config profile based on a credential that doesn't work", fProfile)
+			logging.error("%s: profile is invalid. Probably due to a config profile based on a credential that doesn't work", profile)
 			pass
 
 print(ERASE_LINE)
