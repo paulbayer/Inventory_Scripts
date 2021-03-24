@@ -1,10 +1,10 @@
 #!/user/bin/env python3
 
-import os, sys, pprint, boto3, datetime
+import os, sys, boto3
 import Inventory_Modules
 import argparse
 from colorama import init, Fore
-from botocore.exceptions import ClientError, ProfileNotFound, InvalidConfigError, NoCredentialsError, CredentialRetrievalError
+from botocore.exceptions import ClientError
 
 import logging
 
@@ -26,13 +26,6 @@ parser.add_argument(
 	metavar="region name string",
 	default=["us-east-1"],
 	help="String fragment of the region(s) you want to check for resources.")
-parser.add_argument(
-	"-k", "--skip",
-	dest="pSkipAccounts",
-	nargs="*",
-	metavar="Accounts to leave alone",
-	default=[],
-	help="These are the account numbers you don't want to screw with. Likely the core accounts.")
 parser.add_argument(
 	'-d', '--debug',
 	help="Print debugging statements - only for developers",
@@ -65,26 +58,38 @@ args = parser.parse_args()
 
 pProfile=args.pProfile
 pRegionList=args.pRegion
-AccountsToSkip=args.pSkipAccounts
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
-EnvVars={}
+EnvVars= {'Profile': os.getenv('AWS_PROFILE'),
+          'AccessKey': os.getenv('AWS_ACCESS_KEY_ID'),
+          'SecretKey': os.getenv('AWS_SECRET_ACCESS_KEY'),
+          'SessionToken': os.getenv('AWS_SESSION_TOKEN'),
+          'DefaultRegion': os.getenv('AWS_DEFAULT_REGION')}
 # Get environment variables
-EnvVars['Profile'] = os.getenv('AWS_PROFILE')
-EnvVars['AccessKey'] = os.getenv('AWS_ACCESS_KEY_ID')
-EnvVars['SecretKey'] = os.getenv('AWS_SECRET_ACCESS_KEY')
-EnvVars['SessionToken'] = os.getenv('AWS_SESSION_TOKEN')
-EnvVars['DefaultRegion'] = os.getenv('AWS_DEFAULT_REGION')
 
-pprint.pprint(EnvVars)
+logging.warning("EnvVars: %s" % str(EnvVars))
+account_credentials= {'Profile': None,
+                      'AccessKeyId': None,
+                      'SecretAccessKey': None,
+                      'SessionToken': None,
+                      'AccountNumber': None}
 
-# try:
-# 	response=Inventory_Modules.find_calling_identity('default')
-# 	defaultWorks=True
-# except ProfileNotFound as e:
-# 	print(e)
-# 	defaultWorks=False
+'''
+Possible Use Cases:
 
+User supplies a profile that represents: 
+	1) an IAM user (This is a persistent session, using key and secret)
+	2) an IAM role
+	3) an IAM role authenticated via another account (This would be using a a session token)
+
+User supplies persistent credentials (Access_Key and Secret_Key)
+	1) If there's no Session Token, one could be created via an STS call
+
+User supplies ephemeral credentials (Access_Key, Secret_Key and Session Token)
+	1) Since there's a session token, we can simply use that 
+'''
+
+ProfileSupplied=False
 # They provided a profile (or more than one) at the command line
 if pProfile is not None:
 	logging.error("Using the provided profile from the command line")
@@ -95,30 +100,33 @@ if pProfile is not None:
 elif pProfile is None:
 	# They provided the profile name in the Environment Variables
 	if EnvVars['Profile'] is not None:
-		pProfile = [EnvVars['Profile']]
+		pProfile = EnvVars['Profile']
 		SessionToken=False
 		ProfileSupplied = True
-		logging.error("Using profile from env vars: %s", pProfile[0])
+		logging.error("Using profile from env vars: %s", pProfile)
 	# They provided the Persistent Access Key and Secret in the Environment Variables
 	elif EnvVars['AccessKey'] is not None and EnvVars['SessionToken'] is None:
-		pProfile = [EnvVars['Profile']]
+		pProfile = EnvVars['Profile']
 		SessionToken=False
 		ProfileSupplied = False
+		account_credentials['AccessKeyId'] = EnvVars['AccessKey']
+		account_credentials['SecretAccessKey'] = EnvVars['SecretKey']
 		logging.error("Using provided access key: %s", pProfile)
 	# They provided the ephemeral Access Key and Token in the Environment Variables
 	elif EnvVars['AccessKey'] is not None and EnvVars['SessionToken'] is not None:
-		pProfile = [EnvVars['Profile']]
+		pProfile = EnvVars['Profile']
 		SessionToken=True
 		ProfileSupplied = False
+		account_credentials['AccessKeyId'] = EnvVars['AccessKey']
+		account_credentials['SecretAccessKey'] = EnvVars['SecretKey']
+		account_credentials['SessionToken'] = EnvVars['SessionToken']
 		logging.error("Using provided access key with a session token: %s", pProfile)
 # They provided no credentials at all
 else:
+	ProfileSupplied = False
 	print("No authentication mechanisms left!")
-	sys.exit("No credentials left")
+	sys.exit("No authentication mechanisms left")
 
-logging.error("We're using profiles: %s" % (pProfile))
-
-SkipProfile=["default"]
 
 
 ##########################
@@ -135,65 +143,40 @@ elif not ProfileSupplied:
 	print(fmt % ("Account #", "Region", "InstanceType", "Name", "Instance ID", "Public DNS Name", "State"))
 	print(fmt % ("---------", "------", "------------", "----", "-----------", "---------------", "-----"))
 
-
 RegionList=Inventory_Modules.get_regions(pRegionList)
 AllChildAccounts=[]
 SoughtAllProfiles=False
 
-# if "all" in pProfile:
-# 	SoughtAllProfiles=True
-# 	logging.info("Profiles sent to function get_parent_profiles: %s", pProfile)
-# 	print("Since you specified 'all' profiles, we going to look through ALL of your profiles. Then we go through and determine which profiles represent the Master of an Organization and which are stand-alone accounts. This will enable us to go through all accounts you have access to for inventorying.")
-# 	logging.error("Time: %s", datetime.datetime.now())
-# 	try:
-# 		pProfile=Inventory_Modules.get_parent_profiles('all',SkipProfiles)
-# 	except ClientError as e:
-# 		pass
-# 	except CredentialRetrievalError as e:
-# 		print(e)
-# 		pass
-# 	logging.error("Time: %s", datetime.datetime.now())
-# 	logging.error("Found %s root profiles", len(pProfile))
-# 	logging.info("Profiles Returned from function get_parent_profiles: %s", pProfile)
-
 ProfileIsRoot = Inventory_Modules.find_if_org_root(pProfile)
-#
-# for pProfile in pProfile:
-# 	if not SoughtAllProfiles:
-# 		logging.info("Checking to see if the profiles passed in (%s) are root profiles", pProfile)
-# 		# ProfileIsRoot=Inventory_Modules.find_if_org_root(pProfile)
-# 		logging.info("---%s Profile---", ProfileIsRoot)
+
 if ProfileIsRoot == 'Root':
 	logging.info("Profile %s is a Root account", pProfile)
-	ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
-	AllChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts, AccountsToSkip)
+	Creds=Inventory_Modules.find_calling_identity(pProfile)
+	AllChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
 elif ProfileIsRoot == 'StandAlone':
 	logging.info("Profile %s is a Standalone account", pProfile)
-	MyAcctNumber=Inventory_Modules.find_account_number(pProfile)
-	Accounts=[{
+	Creds=Inventory_Modules.find_calling_identity(pProfile)
+	AllChildAccounts=[{
 		'ParentProfile': pProfile,
-		'AccountId': MyAcctNumber,
+		'AccountId': Creds['AccountId'],
+		'Arn': Creds['Arn'],
 		'AccountEmail': 'noonecares@doesntmatter.com'}]
-	AllChildAccounts=Accounts
+	account_credentials['Profile'] = pProfile
 elif ProfileIsRoot == 'Child':
 	logging.info("Profile %s is a Child Account", pProfile)
-	MyAcctNumber=Inventory_Modules.find_account_number(pProfile)
-	Accounts=[{
+	Creds=Inventory_Modules.find_calling_identity(pProfile)
+	AllChildAccounts=[{
 		'ParentProfile': pProfile,
-		'AccountId': MyAcctNumber,
+		'AccountId': Creds['AccountId'],
+		'Arn': Creds['Arn'],
 		'AccountEmail': 'noonecares@doesntmatter.com'}]
-	AllChildAccounts=Accounts
+	account_credentials['Profile']=pProfile
 
-"""
-logging.info("Passed as parameter %s:", pProfile)
-logging.info("Passed to function %s:", pProfile)
-logging.info("ChildAccounts %s:", ChildAccounts)
-logging.info("AllChildAccounts %s:", AllChildAccounts)
-"""
-# ProfileList=Inventory_Modules.get_profiles(SkipProfiles, pProfile)
-# pprint.pprint(RegionList)
-# aws_session = boto3.Session(profile_name=pProfile)
-# sts_client = aws_session.client('sts')
+Instances={}
+# Removing all accounts which are SUSPENDED
+for i in reversed(range(len(AllChildAccounts))):
+	if AllChildAccounts[i]['AccountStatus'] == 'SUSPENDED':
+		del AllChildAccounts[i]
 for i in range(len(AllChildAccounts)):
 	aws_session = boto3.Session(profile_name=AllChildAccounts[i]['ParentProfile'])
 	sts_client = aws_session.client('sts')
@@ -204,9 +187,13 @@ for i in range(len(AllChildAccounts)):
 	role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(AllChildAccounts[i]['AccountId'])
 	logging.info("Role ARN: %s" % role_arn)
 	try:
-		account_credentials = sts_client.assume_role(
-			RoleArn=role_arn,
-			RoleSessionName="Find-Instances")['Credentials']
+		# This is a standalone or child account and the profile provided is all we need
+		if len(AllChildAccounts) == 1 and pProfile == AllChildAccounts[i]['ParentProfile']:
+			continue    # We've already populated the account_credentials dict above
+		# The profile provided is of a root account, which has access to the member accounts via some role
+		else:
+			account_credentials, role = Inventory_Modules.get_child_access2(AllChildAccounts[i]['ParentProfile'], AllChildAccounts[i]['AccountId'])
+			account_credentials['Profile']=pProfile
 		account_credentials['AccountNumber']=AllChildAccounts[i]['AccountId']
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
