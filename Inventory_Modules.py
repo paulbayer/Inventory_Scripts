@@ -148,7 +148,7 @@ def get_profiles2(fSkipProfiles=None, fprofiles=None):
 	return(my_profiles)
 
 
-def get_parent_profiles(fSkipProfiles=None, fprofiles=None):
+def get_parent_profiles(fprofiles=None, fSkipProfiles=None):
 	'''
 	This function should only return profiles from Master Payer Accounts.
 	If they provide a list of profile strings (in fprofiles), then we compare those

@@ -15,10 +15,9 @@ parser = argparse.ArgumentParser(
 	prefix_chars='-+/')
 parser.add_argument(
 	"-p", "--profile",
-	dest="pProfiles",
-	nargs="*",
+	dest="pProfile",
 	metavar="profile to use",
-	default=[None],
+	default=None,
 	help="To specify a specific profile, use this parameter. Default will be to use Environment Variables, including those in ~/.aws/credentials and ~/.aws/config")
 parser.add_argument(
 	"-r", "--region",
@@ -64,7 +63,7 @@ parser.add_argument(
 	default=logging.CRITICAL) # args.loglevel = 50
 args = parser.parse_args()
 
-pProfiles=args.pProfiles
+pProfile=args.pProfile
 pRegionList=args.pRegion
 AccountsToSkip=args.pSkipAccounts
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
@@ -79,34 +78,47 @@ EnvVars['DefaultRegion'] = os.getenv('AWS_DEFAULT_REGION')
 
 pprint.pprint(EnvVars)
 
-try:
-	response=Inventory_Modules.find_calling_identity('default')
-	defaultWorks=True
-except ProfileNotFound as e:
-	print(e)
-	defaultWorks=False
+# try:
+# 	response=Inventory_Modules.find_calling_identity('default')
+# 	defaultWorks=True
+# except ProfileNotFound as e:
+# 	print(e)
+# 	defaultWorks=False
 
-# They provided no credentials at all
-if pProfiles is [None] and EnvVars['Profile'] is None and EnvVars['AccessKey'] is None and not defaultWorks:
-	print("You need to provide some type of credentials")
-	sys.exit("No credentials")
-# They provided the profile name in the Environment Variables
-elif pProfiles is [None] and EnvVars['AccessKey'] is None and EnvVars['Profile'] is not None:
-	pProfiles = [EnvVars['Profile']]
-	logging.error("Using profile from env vars: %s", pProfiles[0])
-# They provided the Persistent Access Key and Token in the Environment Variables
-elif pProfiles is [None] and EnvVars['AccessKey'] is not None and EnvVars['SessionToken'] is not None:
-	pProfiles = [EnvVars['Profile']]
-	logging.error("Using provided access key: %s", pProfiles)
+# They provided a profile (or more than one) at the command line
+if pProfile is not None:
+	logging.error("Using the provided profile from the command line")
+	SessionToken=False
+	ProfileSupplied=True
+	pass
+# They didn't provide a profile parameter
+elif pProfile is None:
+	# They provided the profile name in the Environment Variables
+	if EnvVars['Profile'] is not None:
+		pProfile = [EnvVars['Profile']]
+		SessionToken=False
+		ProfileSupplied = True
+		logging.error("Using profile from env vars: %s", pProfile[0])
+	# They provided the Persistent Access Key and Secret in the Environment Variables
+	elif EnvVars['AccessKey'] is not None and EnvVars['SessionToken'] is None:
+		pProfile = [EnvVars['Profile']]
+		SessionToken=False
+		ProfileSupplied = False
+		logging.error("Using provided access key: %s", pProfile)
+	# They provided the ephemeral Access Key and Token in the Environment Variables
+	elif EnvVars['AccessKey'] is not None and EnvVars['SessionToken'] is not None:
+		pProfile = [EnvVars['Profile']]
+		SessionToken=True
+		ProfileSupplied = False
+		logging.error("Using provided access key with a session token: %s", pProfile)
 # They provided no credentials at all
 else:
-	pProfiles=[EnvVars['Profile']]
-	logging.error("Using profile from Environment Variable: %s", pProfiles)
+	print("No authentication mechanisms left!")
+	sys.exit("No credentials left")
 
+logging.error("We're using profiles: %s" % (pProfile))
 
-# logging.basicConfig(level=args.loglevel, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %H:%M:%S')
-
-SkipProfiles=["default", "ASG"]
+SkipProfile=["default"]
 
 
 ##########################
@@ -114,67 +126,71 @@ ERASE_LINE = '\x1b[2K'
 
 NumInstancesFound = 0
 print()
-fmt='%-12s %-15s %-10s %-15s %-25s %-20s %-42s %-12s'
-print(fmt % ("Profile", "Account #", "Region", "InstanceType", "Name", "Instance ID", "Public DNS Name", "State"))
-print(fmt % ("-------", "---------", "------", "------------", "----", "-----------", "---------------", "-----"))
+if ProfileSupplied:
+	fmt='%-12s %-15s %-10s %-15s %-25s %-20s %-42s %-12s'
+	print(fmt % ("Profile", "Account #", "Region", "InstanceType", "Name", "Instance ID", "Public DNS Name", "State"))
+	print(fmt % ("-------", "---------", "------", "------------", "----", "-----------", "---------------", "-----"))
+elif not ProfileSupplied:
+	fmt='%-15s %-10s %-15s %-25s %-20s %-42s %-12s'
+	print(fmt % ("Account #", "Region", "InstanceType", "Name", "Instance ID", "Public DNS Name", "State"))
+	print(fmt % ("---------", "------", "------------", "----", "-----------", "---------------", "-----"))
+
 
 RegionList=Inventory_Modules.get_regions(pRegionList)
 AllChildAccounts=[]
 SoughtAllProfiles=False
 
-if "all" in pProfiles:
-	# print(Fore.RED+"Doesn't yet work to specify 'all' profiles, since it takes a long time to go through and find only those profiles that either Org Masters, or stand-alone accounts", Fore.RESET)
-	# sys.exit(1)
-	SoughtAllProfiles=True
-	logging.info("Profiles sent to function get_parent_profiles: %s", pProfiles)
-	print("Since you specified 'all' profiles, we going to look through ALL of your profiles. Then we go through and determine which profiles represent the Master of an Organization and which are stand-alone accounts. This will enable us to go through all accounts you have access to for inventorying.")
-	logging.error("Time: %s", datetime.datetime.now())
-	try:
-		pProfiles=Inventory_Modules.get_parent_profiles(SkipProfiles)
-	except ClientError as e:
-		pass
-	except CredentialRetrievalError as e:
-		print(e)
-		pass
-	logging.error("Time: %s", datetime.datetime.now())
-	logging.error("Found %s root profiles", len(pProfiles))
-	logging.info("Profiles Returned from function get_parent_profiles: %s", pProfiles)
+# if "all" in pProfile:
+# 	SoughtAllProfiles=True
+# 	logging.info("Profiles sent to function get_parent_profiles: %s", pProfile)
+# 	print("Since you specified 'all' profiles, we going to look through ALL of your profiles. Then we go through and determine which profiles represent the Master of an Organization and which are stand-alone accounts. This will enable us to go through all accounts you have access to for inventorying.")
+# 	logging.error("Time: %s", datetime.datetime.now())
+# 	try:
+# 		pProfile=Inventory_Modules.get_parent_profiles('all',SkipProfiles)
+# 	except ClientError as e:
+# 		pass
+# 	except CredentialRetrievalError as e:
+# 		print(e)
+# 		pass
+# 	logging.error("Time: %s", datetime.datetime.now())
+# 	logging.error("Found %s root profiles", len(pProfile))
+# 	logging.info("Profiles Returned from function get_parent_profiles: %s", pProfile)
 
-for pProfile in pProfiles:
-	ProfileIsRoot=Inventory_Modules.find_if_org_root(pProfile)
-	if not SoughtAllProfiles:
-		logging.info("Checking to see if the profiles passed in (%s) are root profiles", pProfile)
-		# ProfileIsRoot=Inventory_Modules.find_if_org_root(pProfile)
-		logging.info("---%s Profile---", ProfileIsRoot)
-	if ProfileIsRoot == 'Root':
-		logging.info("Profile %s is a Root account", pProfile)
-		ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
-		ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts, AccountsToSkip)
-		AllChildAccounts=AllChildAccounts+ChildAccounts
-	elif ProfileIsRoot == 'StandAlone':
-		logging.info("Profile %s is a Standalone account", pProfile)
-		MyAcctNumber=Inventory_Modules.find_account_number(pProfile)
-		Accounts=[{
-			'ParentProfile': pProfile,
-			'AccountId': MyAcctNumber,
-			'AccountEmail': 'noonecares@doesntmatter.com'}]
-		AllChildAccounts=AllChildAccounts+Accounts
-	elif ProfileIsRoot == 'Child':
-		logging.info("Profile %s is a Child Account", pProfile)
-		MyAcctNumber=Inventory_Modules.find_account_number(pProfile)
-		Accounts=[{
-			'ParentProfile': pProfile,
-			'AccountId': MyAcctNumber,
-			'AccountEmail': 'noonecares@doesntmatter.com'}]
-		AllChildAccounts=AllChildAccounts+Accounts
+ProfileIsRoot = Inventory_Modules.find_if_org_root(pProfile)
+#
+# for pProfile in pProfile:
+# 	if not SoughtAllProfiles:
+# 		logging.info("Checking to see if the profiles passed in (%s) are root profiles", pProfile)
+# 		# ProfileIsRoot=Inventory_Modules.find_if_org_root(pProfile)
+# 		logging.info("---%s Profile---", ProfileIsRoot)
+if ProfileIsRoot == 'Root':
+	logging.info("Profile %s is a Root account", pProfile)
+	ChildAccounts=Inventory_Modules.find_child_accounts2(pProfile)
+	AllChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts, AccountsToSkip)
+elif ProfileIsRoot == 'StandAlone':
+	logging.info("Profile %s is a Standalone account", pProfile)
+	MyAcctNumber=Inventory_Modules.find_account_number(pProfile)
+	Accounts=[{
+		'ParentProfile': pProfile,
+		'AccountId': MyAcctNumber,
+		'AccountEmail': 'noonecares@doesntmatter.com'}]
+	AllChildAccounts=Accounts
+elif ProfileIsRoot == 'Child':
+	logging.info("Profile %s is a Child Account", pProfile)
+	MyAcctNumber=Inventory_Modules.find_account_number(pProfile)
+	Accounts=[{
+		'ParentProfile': pProfile,
+		'AccountId': MyAcctNumber,
+		'AccountEmail': 'noonecares@doesntmatter.com'}]
+	AllChildAccounts=Accounts
 
 """
-logging.info("Passed as parameter %s:", pProfiles)
+logging.info("Passed as parameter %s:", pProfile)
 logging.info("Passed to function %s:", pProfile)
 logging.info("ChildAccounts %s:", ChildAccounts)
 logging.info("AllChildAccounts %s:", AllChildAccounts)
 """
-# ProfileList=Inventory_Modules.get_profiles(SkipProfiles, pProfiles)
+# ProfileList=Inventory_Modules.get_profiles(SkipProfiles, pProfile)
 # pprint.pprint(RegionList)
 # aws_session = boto3.Session(profile_name=pProfile)
 # sts_client = aws_session.client('sts')

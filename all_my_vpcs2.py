@@ -97,7 +97,7 @@ if pProfile in ['all','ALL','All']:
 	SoughtAllProfiles=True
 	print("Since you specified 'all' profiles, we going to look through ALL of your profiles. Then we go through and determine which profiles represent the Master of an Organization and which are stand-alone accounts. This will enable us to go through all accounts you have access to for inventorying.")
 	logging.error("Time: %s",datetime.datetime.now())
-	ProfileList=Inventory_Modules.get_parent_profiles(SkipProfiles)
+	ProfileList=Inventory_Modules.get_parent_profiles('all',SkipProfiles)
 	logging.error("Time: %s",datetime.datetime.now())
 	logging.error("Found %s root profiles",len(ProfileList))
 	# logging.info("Profiles Returned from function get_parent_profiles: %s",pProfile)
