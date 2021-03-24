@@ -101,12 +101,12 @@ for item in ALZProfiles:
 	aws_client=aws_session.client('cloudformation')
 	stack_list=aws_client.describe_stacks()['Stacks']
 	for i in range(len(stack_list)):
-		print(ERASE_LINE+"Checking stack {} to see if it is the ALZ initiation stack".format(stack_list[i]['StackName']),end='\r')
+		logging.warning("Checking stack %s to see if it is the ALZ initiation stack" % (stack_list[i]['StackName']))
 		if 'Description' in stack_list[i].keys() and stack_list[i]['Description'].find("SO0044") > 0:
 			for j in range(len(stack_list[i]['Outputs'])):
 				if stack_list[i]['Outputs'][j]['OutputKey'] == 'LandingZoneSolutionVersion':
 					ALZVersion=stack_list[i]['Outputs'][j]['OutputValue']
-			print(fmt % (item['Profile'], item['Acctnum'], item['Region'], stack_list[i]['StackName'],ALZVersion))
+					print(fmt % (item['Profile'], item['Acctnum'], item['Region'], stack_list[i]['StackName'],ALZVersion))
 
 print(ERASE_LINE)
 print("Checked {} accounts. Found {} ALZs".format(len(AllProfiles), len(ALZProfiles)))
