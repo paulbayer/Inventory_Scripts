@@ -1012,7 +1012,7 @@ def delete_gd_invites(ocredentials, fRegion, fAccountId):
 	return(response['Invitations'])
 
 
-def find_account_instances(ocredentials, fRegion):
+def find_account_instances(ocredentials, fRegion='us-east-1'):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -1022,19 +1022,22 @@ def find_account_instances(ocredentials, fRegion):
 		- ['Profile'] can hold the profile, instead of the session credentials
 	"""
 	import boto3, logging
-	if ocredentials['Profile'] is None:
+	if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
+		session_ec2=boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
+	else:
 		session_ec2=boto3.Session(
 			aws_access_key_id=ocredentials['AccessKeyId'],
 			aws_secret_access_key=ocredentials['SecretAccessKey'],
 			aws_session_token=ocredentials['SessionToken'],
 			region_name=fRegion)
-	else:
-		session_ec2=boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
 	instance_info=session_ec2.client('ec2')
-	logging.warning("Looking in account # %s in region %s", ocredentials['AccountNumber'], fRegion)
+	logging.warning("Looking for instances in account # %s in region %s", ocredentials['AccountNumber'], fRegion)
 	instances=instance_info.describe_instances()
-	# TODO: Consider pagination here
-	return(instances)
+	AllInstances = instances
+	while 'NextToken' in instances.keys():
+		instances=instance_info.describe_instances(NextToken=instances['NextToken'])
+		AllInstances['Reservations'].extend(instances['Reservations'])
+	return(AllInstances)
 
 
 def find_users(ocredentials):
