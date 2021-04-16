@@ -64,44 +64,6 @@ def get_service_regions(service, fkey):
 				RegionNames.append(y)
 	return(RegionNames)
 
-"""	# This function is still a work in progress...
-def get_valid_service_regions(service, fkey, bValidate=False):
-"""
-"""
-	Parameters:
-		service=the AWS service we're trying to get regions for. This is useful since not all services are supported in all regions.
-		fkey=A string fragment of what region we're looking for. If 'all', then we send back all regions for that service. If they send "us-" (for example), we would send back only those regions which matched that fragment. This is good for focusing a search on only those regions you're searching within.
-		bValidate=this is a Boolean that will determine whether we validate the regions before we send them back.
-"""
-"""
-	import boto3, pprint, logging
-	# session=boto3.Session.get_available_regions(service)
-	# region_info=session.client(service)
-	s=boto3.Session()
-	regions=s.get_available_regions(service, partition_name='aws', allow_non_regional=False)
-	RegionNames=[]
-	for x in range(len(regions)):
-		try:
-			account_credentials=client_sts.assume_role(
-				RoleArn=role_arn, 	# What role_arn can we rely on to be available to us in EVERY account?
-				RoleSessionName="Region_Validating")['Credentials']
-			logging.info("STS works in region {}".format(region))
-			RegionNames.append(regions[x])
-		except Exception as e:
-			if e.response['Error']['Code'] == 'InvalidClientTokenId':
-				logging.error("You probably haven't enabled region %s", regions[x])
-	if "all" in fkey or "ALL" in fkey:
-		return(RegionNames)
-	for x in fkey:
-		for y in regions:
-			logging.info('Have %s | Looking for %s', y, x)
-			if y.find(x) >=0:
-				logging.info('Found %s', y)
-				RegionNames.append(y)
-	return(RegionNames)
-"""
-
-
 def get_profiles(fSkipProfiles=None, fprofiles=None):
 	'''
 	We assume that the user of this function wants all profiles.
@@ -207,7 +169,6 @@ def find_if_org_root(fProfile):
 	else:
 		logging.info("%s is a Child account", fProfile)
 		return('Child')
-
 
 def find_if_alz(fProfile):
 	import boto3
@@ -338,11 +299,11 @@ def find_org_attr(fProfile):
 	}
 
 	"""
-	session_org=boto3.Session(profile_name=fProfile)
-	client_org=session_org.client('organizations')
-	Success=False
-	FailResponse={'MasterAccountId': 'StandAlone', 'Id': 'None'}
 	try:
+		Success = False
+		FailResponse = {'MasterAccountId': 'StandAlone', 'Id': 'None'}
+		session_org=boto3.Session(profile_name=fProfile)
+		client_org=session_org.client('organizations')
 		response=client_org.describe_organization()['Organization']
 		Success=True
 	except ClientError as my_Error:
@@ -355,7 +316,7 @@ def find_org_attr(fProfile):
 			print(fProfile+": Security Token is bad - probably a bad entry in config")
 		pass
 	except CredentialRetrievalError as my_Error:
-		print(fProfile+": Other kind of failure")
+		print("{}: Failure pulling or updating credentials".format(fProfile))
 		print(my_Error)
 		pass
 	except:
@@ -399,7 +360,7 @@ def find_child_accounts2(fProfile):
 	theresmore=True
 	while theresmore:
 		for account in response['Accounts']:
-			logging.warning("Account ID: %s | Account Email: %s" % (account['Id'], account['Email']))
+			logging.warning("Profile: %s | Account ID: %s | Account Email: %s" % (fProfile, account['Id'], account['Email']))
 			child_accounts.append({
 				'ParentProfile': fProfile,
 				'AccountId': account['Id'],
@@ -951,7 +912,8 @@ def find_cloudtrails(ocredentials, fRegion, fCloudTrailnames=None):
 		return(fullresponse, trailname)
 	else:
 		#  TODO: This doesn't work... Needs to be fixed.
-		for trailname in fCloudTrailnames:  # They've provided a list of trails and want specific info about them
+		# They've provided a list of trails and want specific info about them
+		for trailname in fCloudTrailnames:
 			try:
 				response=client_ct.describe_trails(trailNameList=[trailname])
 				if len(response['trailList']) > 0:
