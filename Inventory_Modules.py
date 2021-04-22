@@ -1022,8 +1022,18 @@ def find_account_instances(ocredentials, fRegion='us-east-1'):
 		- ['Profile'] can hold the profile, instead of the session credentials
 	"""
 	import boto3, logging
+
 	if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
-		session_ec2=boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
+		ProfileAccountNumber = find_account_number(ocredentials['Profile'])
+		logging.info("Profile: %s | Profile Account Number: %s | Account Number passed in: %s" % (ocredentials['Profile'], ProfileAccountNumber, ocredentials['AccountNumber']))
+		if ProfileAccountNumber == ocredentials['AccountNumber']:
+			session_ec2 = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
+		else:
+			session_ec2 = boto3.Session(
+				aws_access_key_id=ocredentials['AccessKeyId'],
+				aws_secret_access_key=ocredentials['SecretAccessKey'],
+				aws_session_token=ocredentials['SessionToken'],
+				region_name=fRegion)
 	else:
 		session_ec2=boto3.Session(
 			aws_access_key_id=ocredentials['AccessKeyId'],
