@@ -214,7 +214,7 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 			fProcessStatus[Step]['ProblemsFound'] = []
 		return (fProcessStatus)
 
-	NumOfSteps = 10
+	NumOfSteps = 11
 
 	#Step 0
 	ProcessStatus = InitDict(NumOfSteps)
@@ -357,7 +357,7 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 		CTtrails2=[]
 		for region in fRegionList:
 			print(ERASE_LINE, "Checking account {} in region {} for CloudTrail trails".format(fChildAccountId, region), end='\r')
-			CTtrails, trailname=Inventory_Modules.find_cloudtrails(account_credentials, region, 'aws-controltower-BaselineCloudTrail')
+			CTtrails, trailname=Inventory_Modules.find_cloudtrails(account_credentials, region, ['aws-controltower-BaselineCloudTrail'])
 			# if 'trailList' in CTtrails.keys():
 			if len(CTtrails['trailList']) > 0:
 				logging.error("Unfortunately, we've found a CloudTrail log named %s in account %s in the %s region, which means we'll have to delete it before this account can be adopted.", trailname, fChildAccountId, region)
