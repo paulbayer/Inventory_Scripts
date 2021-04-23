@@ -494,7 +494,7 @@ def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1',  fRoleLi
 		fChildAccount=str(fChildAccount)
 	sts_session=boto3.Session(profile_name=fRootProfile)
 	sts_client=sts_session.client('sts', region_name=fRegion)
-	account_credentials = {'Profile': None,
+	account_credentials = {'Profile': fRootProfile,
 	                       'AccessKeyId': None,
 	                       'SecretAccessKey': None,
 	                       'SessionToken': None,
