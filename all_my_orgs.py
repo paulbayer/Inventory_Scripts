@@ -219,13 +219,13 @@ if ShowEverything:
 
 	#	 Print results for this profile
 		if RootAcct:
-			print (Fore.RED + fmt % (profile,AcctNum,MasterAcct,OrgId,RootAcct)+Style.RESET_ALL)
+			print(Fore.RED + fmt % (profile,AcctNum,MasterAcct,OrgId,RootAcct)+Style.RESET_ALL)
 		elif rootonly: # If I'm looking for only the root accounts, when I find something that isn't a root account, don't print anything and continue on.
 			print(ERASE_LINE,"{} isn't a root account".format(profile),end="\r")
 		else:
 			print (fmt % (profile,AcctNum,MasterAcct,OrgId,RootAcct))
-
-	print ("-------------------")
+	print()
+	print("-------------------")
 
 	if not shortform:
 		fmt='%-23s %-15s %-6s'

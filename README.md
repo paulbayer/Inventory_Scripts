@@ -58,6 +58,9 @@ Purpose Built Scripts
 - **find_my_LZ_versions.py**
   - I wrote this script because I've noticed that many customers find it difficult to find their own ALZ versions, and some customers have multiple Landing Zones (like me), so it makes it even harder to keep track. This script will take either a single profile, or the keyword "all" and determine whether your profile is the Management Account of a Landing Zone - or in the case of "all", go through all of your profiles and find those accounts which are Landing Zones roots, and tell you the version of the ALZ in that account.  
 
+- **put_s3_public_block.py**
+  - I wrote this script because we all need a way to ensure that we're following Best Security practices, without **too** much actual work. Therefore - this script will take either a profile of an Organization (typical -p format), or just run it with no parameters, and it will find all your Orgs, and all the accounts within your orgs, and lock down all the S3 buckets in all your accounts for you. It runs in "Dry-Run" mode by default, but when you run it with "-n", it will actually make the changes to your S3 config, without prompting for each change, so watch out that you aren't running this in a Production Org where you NEED an S3 bucket to be open (rare).
+
 
   Generic Scripts
   ------------------
