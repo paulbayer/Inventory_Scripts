@@ -115,6 +115,11 @@ parser.add_argument(
 	default=False,
 	dest="RetainStacks")
 parser.add_argument(
+	'-OU',
+	help="This parameter will accept an OU id to consider all accounts within this OU as suspended or closed",
+	default=None,
+	dest="SuspendedOUId")
+parser.add_argument(
 	'-v',
 	help="Be verbose",
 	action="store_const",
@@ -150,6 +155,7 @@ pForce=args.RetainStacks
 pStackfrag=args.pStackfrag
 AccountsToSkip=args.pSkipAccounts
 pCheckAccount=args.AccountCheck
+pSuspendedOUId=args.SuspendedOUId
 verbose=args.loglevel
 pdryrun=args.DryRun
 pstatus=args.pstatus
@@ -355,6 +361,9 @@ if pCheckAccount:
 	for eachaccount in AccountList:
 		my_creds, role_tried = Inventory_Modules.get_child_access2(pProfile, eachaccount)
 		if role_tried.find("failed") > 0:
+			InaccessibleAccounts.append(eachaccount)
+		ParentId = Inventory_Modules.get_parent_id(pProfile, eachaccount)
+		if ParentId == pSuspendedOUId:
 			InaccessibleAccounts.append(eachaccount)
 	# InaccessibleAccounts.extend(ClosedAccounts)
 	logging.info("Found %s accounts that don't belong", len(InaccessibleAccounts)+len(ClosedAccounts))

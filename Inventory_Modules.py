@@ -168,6 +168,16 @@ def get_parent_profiles(fprofiles=None, fSkipProfiles=None):
 			logging.warning("%s is a %s Profile", profile, AcctResult)
 	return(my_profiles2)
 
+def get_parent_id(fProfile, acctnumber):
+
+	import logging
+	import boto3
+
+	logging.info("Finding the parent OU ID of account {}".format(acctnumber))
+	aws_session=boto3.Session(profile_name=fProfile)
+	aws_client=aws_session.client('organizations')
+	parent_id=aws_client.list_parents(ChildId=acctnumber)['Parents'][0]['Id']
+	return(parent_id)
 
 def find_if_org_root(fProfile):
 
