@@ -1488,10 +1488,14 @@ def find_stacksets(fProfile, fRegion, fStackFragment):
 	client_cfn=session_cfn.client('cloudformation')
 	stacksets=client_cfn.list_stack_sets(Status='ACTIVE')
 	stacksetsCopy=[]
+	stacksetsCopy.extend(stacksets['Summaries'])
+	while 'NextToken' in stacksets.keys(): # Get all stacksets
+		stacksets=client_cfn.list_stack_sets(Status='ACTIVE', NextToken=stacksets['NextToken'])
+		stacksetsCopy.extend(stacksets['Summaries'])
 	# if fStackFragment=='all' or fStackFragment=='ALL':
 	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
 		logging.info("Found all the stacksets in Profile: %s in Region: %s with Fragment: %s", fProfile, fRegion, fStackFragment)
-		return(stacksets['Summaries'])
+		return(stacksetsCopy)
 	# elif (fStackFragment=='all' or fStackFragment=='ALL'):
 	# 	for stack in stacksets['Summaries']:
 	# 		if fStatus in stack['Status']:
@@ -1573,8 +1577,7 @@ def find_stack_instances(fProfile, fRegion, fStackSetName, fStatus='CURRENT'):
 	stack_instances_list=stack_instances['Summaries']
 	while 'NextToken' in stack_instances.keys(): # Get all instance names
 		stack_instances=client_cfn.list_stack_instances(StackSetName=fStackSetName, NextToken=stack_instances['NextToken'])
-		for i in range(len(stack_instances)):
-			stack_instances_list.append(stack_instances['Summaries'][i])
+		stack_instances_list.extend(stack_instances['Summaries'])
 	return(stack_instances_list)
 
 
