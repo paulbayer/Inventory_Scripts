@@ -29,6 +29,7 @@ Additional common parameters:
   - -p: to specify the profile which the script will work with. In most cases, this could/ should be a Master Profile, but doesn't always have to be.
   - -r: to specify the region for the script to work in. Most scripts take "all" as a valid parameter. Most scripts also assume "us-east-1" as a default if nothing is specified. Also note - you can specify a fragment here - so you can specify "us-east" and get both "us-east-1" and "us-east-2". Specify "us-" and you'll get all four "us-" regions.
   - -f: string fragment - some scripts (specifically ones dealing with CFN stacks and stacksets) take a parameter that allows you to specify a fragment of the stack name, so you can find that stack you can't quite remember the whole name of.
+  - +delete: I've tried to make it difficult to **accidentally** delete any resources, so that's why it's a "+" instead of a "-"
 
 
 Purpose Built Scripts
