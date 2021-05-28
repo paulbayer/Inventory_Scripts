@@ -123,7 +123,7 @@ for account in AcctList:
 	AccountHistogram[account['AccountId']] = account['AccountStatus']
 	if account['AccountStatus'] == 'SUSPENDED':
 		SuspendedAccounts.append(account['AccountId'])
-
+#TODO Use f-strings to make the logging easier to read
 try:
 	SCresponse = Inventory_Modules.find_sc_products(pProfile, pRegion, "All",10)
 	logging.warning("A list of the SC Products found:")
