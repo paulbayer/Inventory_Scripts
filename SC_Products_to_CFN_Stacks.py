@@ -1,26 +1,9 @@
 #!/usr/bin/env python3
 
-"""
-Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software is furnished to do so.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-"""
-
 import boto3
 import Inventory_Modules
 import argparse
-from colorama import init, Fore, Style
+from colorama import init, Fore
 from botocore.exceptions import ClientError
 
 import logging
@@ -94,6 +77,8 @@ def sort_by_email(elem):
 
 
 ##########################
+
+
 '''
 Significant Variable Explanation:
 	'AcctList' holds a list of accounts within this Org.
@@ -118,14 +103,14 @@ client_cfn = session_aws.client('cloudformation')
 
 AcctList = Inventory_Modules.find_child_accounts2(pProfile)
 AccountHistogram = {}
-SuspendedAccounts=[]
+SuspendedAccounts = []
 for account in AcctList:
 	AccountHistogram[account['AccountId']] = account['AccountStatus']
 	if account['AccountStatus'] == 'SUSPENDED':
 		SuspendedAccounts.append(account['AccountId'])
-#TODO Use f-strings to make the logging easier to read
+# TODO Use f-strings to make the logging easier to read
 try:
-	SCresponse = Inventory_Modules.find_sc_products(pProfile, pRegion, "All",10)
+	SCresponse = Inventory_Modules.find_sc_products(pProfile, pRegion, "All", 10)
 	logging.warning("A list of the SC Products found:")
 	for i in range(len(SCresponse)):
 		logging.warning("SC Product Name %s | SC Product Status %s", SCresponse[i]['Name'], SCresponse[i]['Status'])
@@ -145,7 +130,7 @@ try:
 		print(ERASE_LINE, Fore.RED + "Checking {} of {} products".format(i + 1, len(SCProducts)) + Fore.RESET, end='\r')
 		CFNresponse = Inventory_Modules.find_stacks(pProfile, pRegion, SCProducts[i]['SCPId'])
 		logging.error("There are %s matches for SC Provisioned Product Name %s", len(CFNresponse),
-		              SCProducts[i]['SCPName'])
+					  SCProducts[i]['SCPName'])
 		try:
 			if len(CFNresponse) > 0:
 				stack_info = client_cfn.describe_stacks(
@@ -163,26 +148,27 @@ try:
 				if 'Outputs' in stack_info['Stacks'][0].keys():
 					for y in range(len(stack_info['Stacks'][0]['Outputs'])):
 						logging.error("Output Key %s for stack %s is %s",
-						              stack_info['Stacks'][0]['Outputs'][y]['OutputKey'], CFNresponse[0]['StackName'],
-						              stack_info['Stacks'][0]['Outputs'][y]['OutputValue'])
+									  stack_info['Stacks'][0]['Outputs'][y]['OutputKey'],
+									  CFNresponse[0]['StackName'],
+									  stack_info['Stacks'][0]['Outputs'][y]['OutputValue'])
 						if stack_info['Stacks'][0]['Outputs'][y]['OutputKey'] == 'AccountID':
 							AccountID = stack_info['Stacks'][0]['Outputs'][y]['OutputValue']
 							if AccountID in AccountHistogram.keys():
-								AccountStatus=AccountHistogram[AccountID]
+								AccountStatus = AccountHistogram[AccountID]
 							else:
-								AccountStatus='Closed'
+								AccountStatus = 'Closed'
 							logging.error(Fore.RED + "Found the Account ID: %s" % AccountID + Fore.RESET)
 							if AccountID in SuspendedAccounts:
 								logging.error(Fore.RED + "Account ID %s has been suspended" + Fore.RESET, AccountID)
 							break
 						else:
 							logging.error("Outputs key present, but no account ID")
-							AccountID='None'
-							AccountStatus='None'
+							AccountID = 'None'
+							AccountStatus = 'None'
 				else:
 					logging.error("No Outputs key present")
-					AccountID='None'
-					AccountStatus='None'
+					AccountID = 'None'
+					AccountStatus = 'None'
 				CFNStackName = CFNresponse[0]['StackName']
 				CFNStackStatus = CFNresponse[0]['StackStatus']
 				# AccountEmail should have been assigned in the 'Parameters' if-then above
@@ -223,10 +209,10 @@ try:
 	# TODO: We should list out Suspended accounts in the SCP2Stacks readout at the end - in case any accounts have both a provisioned product, but are also suspended.
 
 	# Do any of the account numbers show up more than once in this list?
-	## We initialize the listing from the full list of accounts in the Org.
-	## TODO: This might not be a good idea, if it misses the stacks which are associated with accounts no longer within the Org.
-	## We add a one to each account which is represented within the Stacks listing. This allows us to catch duplicates and also accounts which do not have a stack associated.
-	## Note it does *not* help us catch stacks associated with an account that's been removed.
+	# We initialize the listing from the full list of accounts in the Org.
+	# TODO: This might not be a good idea, if it misses the stacks which are associated with accounts no longer within the Org.
+	# We add a one to each account which is represented within the Stacks listing. This allows us to catch duplicates and also accounts which do not have a stack associated.
+	# Note it does *not* help us catch stacks associated with an account that's been removed.
 	for i in range(len(SCP2Stacks)):
 		if SCP2Stacks[i]['AccountID'] == 'None':
 			continue
@@ -237,36 +223,36 @@ try:
 				AccountHistogram[SCP2Stacks[i]['AccountID']] = 1
 			else:
 				AccountHistogram[SCP2Stacks[i]['AccountID']] += 1
-	namelength=0
+	namelength = 0
 	for _ in range(len(SCP2Stacks)):
 		if namelength < len(SCP2Stacks[_]['SCProductName']):
-			namelength=len(SCP2Stacks[_]['SCProductName'])
+			namelength = len(SCP2Stacks[_]['SCProductName'])
 		else:
 			pass
 	print()
-	fmt='{0:<15} {1:{namelength}} {2:<8} {3:<35} {4:<10} {5:<18} {6:<10} {7:<20}'
+	fmt = '{0:<15} {1:{namelength}} {2:<8} {3:<35} {4:<10} {5:<18} {6:<10} {7:<20}'
 	print(fmt.format("Account Number",
-                   "SC Product Name", "Version",
-                   "CFN Stack Name",
-                   "SC Status",
-                   "CFN Stack Status",
-                   "Acct Status",
-                   "AccountEmail",
-                   namelength=namelength))
-	print(fmt.format("--------------", "---------------", "-------","--------------", "---------", "----------------", "-----------", "------------",namelength=namelength))
+				   "SC Product Name", "Version",
+				   "CFN Stack Name",
+				   "SC Status",
+				   "CFN Stack Status",
+				   "Acct Status",
+				   "AccountEmail",
+				   namelength=namelength))
+	print(fmt.format("--------------", "---------------", "-------", "--------------", "---------", "----------------", "-----------", "------------", namelength=namelength))
 	for i in range(len(SCP2Stacks)):
 		if SCP2Stacks[i]['SCStatus'] == 'ERROR' or SCP2Stacks[i]['SCStatus'] == 'TAINTED':
 			print(Fore.RED+fmt.format(SCP2Stacks[i]['AccountID'],
-                            SCP2Stacks[i]['SCProductName'],
-                            SCP2Stacks[i]['ProvisioningArtifactName'],
-                            SCP2Stacks[i]['CFNStackName'],
-                            SCP2Stacks[i]['SCStatus'],
-                            SCP2Stacks[i]['CFNStackStatus'],
-                            SCP2Stacks[i]['AccountStatus'],
-                            SCP2Stacks[i]['AccountEmail'],
-                            namelength=namelength)+Fore.RESET)
+							SCP2Stacks[i]['SCProductName'],
+							SCP2Stacks[i]['ProvisioningArtifactName'],
+							SCP2Stacks[i]['CFNStackName'],
+							SCP2Stacks[i]['SCStatus'],
+							SCP2Stacks[i]['CFNStackStatus'],
+							SCP2Stacks[i]['AccountStatus'],
+							SCP2Stacks[i]['AccountEmail'],
+							namelength=namelength)+Fore.RESET)
 		else:
-			print(fmt.format(
+			print(fmt. format(
 				SCP2Stacks[i]['AccountID'],
 				SCP2Stacks[i]['SCProductName'],
 				SCP2Stacks[i]['ProvisioningArtifactName'],
@@ -312,7 +298,7 @@ if ErroredSCPExists:
 		elif (SCP2Stacks[i]['SCStatus'] == 'ERROR') or (SCP2Stacks[i]['CFNStackName'] == 'None') and DeletionRun:
 			print(
 				"Deleting Service Catalog Provisioned Product {} from {} profile".format(SCP2Stacks[i]['SCProductName'],
-				                                                                         pProfile))
+																						 pProfile))
 			StackDelete = client_sc.terminate_provisioned_product(
 				ProvisionedProductId=SCP2Stacks[i]['SCProductId'],
 				IgnoreErrors=True,
@@ -329,6 +315,6 @@ for i in AccountHistogram:
 print("We found {} accounts within the Org".format(len(AcctList)))
 print("We found {} Service Catalog Products".format(len(SCProducts)))
 print("We found {} Suspended accounts".format(len(SuspendedAccounts)))
-print("We found {} Closed Accounts that still have an SC product".format('Some Number'))
-print("We found {} Service Catalog Products with no account attached".format('Some Number'))
+#print("We found {} Closed Accounts that still have an SC product".format('Some Number'))
+#print("We found {} Service Catalog Products with no account attached".format('Some Number'))
 print("Thanks for using this script...")
