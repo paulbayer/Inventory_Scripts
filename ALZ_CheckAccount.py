@@ -17,7 +17,6 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
 	"--explain",
 	dest="pExplain",
-	metavar="profile of Master Organization",
 	const=True,
 	default=False,
 	action="store_const",
@@ -25,7 +24,7 @@ parser.add_argument(
 parser.add_argument(
 	"-p", "--profile",
 	dest="pProfile",
-	metavar="profile of Master Organization",
+	metavar="profile of Management Account within the Organization",
 	default="default",
 	required=True,
 	help="To specify a specific profile, use this parameter. Default will be your default profile.")
@@ -108,9 +107,9 @@ ERASE_LINE = '\x1b[2K'
 
 ExplainMessage = """
 
-0. The Child account MUST allow the Master account access into the Child IAM role called "AWSCloudFormationStackSetExecutionRole"
-0a. There must be an "AWSCloudFormationStackSetExecution" or "AWSControlTowerExecutionRole" role present in the account so that StackSets can assume it and deploy stack instances. This role must trust the Organizations Master account. In LZ the account is created with that role name so stacksets just works. You can add this role manually via CloudFormation in the existing account. [I did this as a step 0]
-0b. STS must be active in all regions. You can check from the Account Settings page in IAM. Since we're using STS to connect to the account from the Master, this requirement is checked by successfully completing step 0.
+0. The Child account MUST allow the Management account access into the Child IAM role called "AWSCloudFormationStackSetExecutionRole"
+0a. There must be an "AWSCloudFormationStackSetExecution" or "AWSControlTowerExecutionRole" role present in the account so that StackSets can assume it and deploy stack instances. This role must trust the Organizations Management account. In LZ the account is created with that role name so stacksets just works. You can add this role manually via CloudFormation in the existing account. [I did this as a step 0]
+0b. STS must be active in all regions. You can check from the Account Settings page in IAM. Since we're using STS to connect to the account from the Management Account, this requirement is checked by successfully completing step 0.
 
 1. The account must not contain any resources/config associated with the Default VPCs in ANY region e.g. security groups cannot exist associated with the Default VPC. Default VPCs will be deleted in the account in all regions, if they contain some dependency (usually a Security Group or an EIP) then deleting the VPC fails and the deployment rolls back. You can either manually delete them all or verify there are no dependencies, in some cases manually deleting them all is faster than roll back.
 
@@ -161,7 +160,7 @@ def _initdict(StepCount):
 
 ProcessStatus = _initdict(6)
 # Step 0 -
-# 0. The Child account MUST allow the Master account access into the Child IAM role called "AWSCloudFormationStackSetExecutionRole"
+# 0. The Child account MUST allow the Management account access into the Child IAM role called "AWSCloudFormationStackSetExecutionRole"
 
 print("This script does 6 things... ")
 print(Fore.BLUE+"  0."+Fore.RESET+" Checks to ensure you have the necessary cross-account role access to the child account.")
@@ -193,7 +192,7 @@ role = 'failed'
 try:
 	account_credentials, role = Inventory_Modules.get_child_access2(pProfile, pChildAccountId)
 	if role.find("failed") > 0:
-		print(Fore.RED, "We weren't able to connect to the Child Account from this Master Account. Please check the role Trust Policy and re-run this script.", Fore.RESET)
+		print(Fore.RED, "We weren't able to connect to the Child Account from this Management Account. Please check the role Trust Policy and re-run this script.", Fore.RESET)
 		print("The following list of roles were tried, but none were allowed access to account {} using the {} profile".format(pChildAccountId, pProfile))
 		print(Fore.RED, account_credentials, Fore.RESET)
 		ProcessStatus['Step0']['Success'] = False

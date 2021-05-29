@@ -120,10 +120,10 @@ def get_profiles2(fSkipProfiles=None, fprofiles=None):
 
 def get_parent_profiles(fprofiles=None, fSkipProfiles=None):
 	"""
-	This function should only return profiles from Master Payer Accounts.
+	This function should only return profiles from Payer Accounts.
 	If they provide a list of profile strings (in fprofiles), then we compare those
 	strings to the full list of profiles we have, and return those profiles that
-	contain the strings AND are Master Payer Accounts.
+	contain the strings AND are Payer Accounts.
 	"""
 	import boto3
 	import logging
@@ -293,24 +293,12 @@ def find_org_attr(fProfile):
 
 	from botocore.exceptions import ClientError, CredentialRetrievalError
 	"""
-	Response is a dict that looks like this:
-	{
-		'Id': 'o-zzzzzzzzzz',
-		'Arn': 'arn:aws:organizations::123456789012:organization/o-zzzzzzzzzz',
-		'FeatureSet': 'ALL',
-		'MasterAccountArn': 'arn:aws:organizations::123456789012:account/o-zzzzzzzzzz/123456789012',
-		'MasterAccountId': '123456789012',
-		'MasterAccountEmail': 'xxxxx@yyyy.com',
-		'AvailablePolicyTypes': [
-			{
-				'Type': 'SERVICE_CONTROL_POLICY',
-				'Status': 'ENABLED'
-			}
-		]
-	}
+	I use the response directly from the AWS SDK. 
+	You can find the output format here: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/organizations.html#Organizations.Client.describe_organization
+
 
 	"""
-	FailResponse = {'MasterAccountId': 'StandAlone', 'Id': 'None'}
+	FailResponse = {'AccountType': 'StandAlone', 'Id': 'None'}
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
 	try:
