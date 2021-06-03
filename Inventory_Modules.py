@@ -435,6 +435,43 @@ def RemoveCoreAccounts(MainList, AccountsToRemove=None):
 	return (NewCA)
 
 
+# def get_child_access(fRootProfile, fRegion, fChildAccount, fRoleList = None):
+# 	"""
+# 	- fRootProfile is a string
+# 	- rRegion expects a string representing one of the AWS regions ('us-east-1', 'eu-west-1', etc.)
+# 	- fChildAccount expects an AWS account number (ostensibly of a Child Account)
+# 	- fRoleList expects a list of roles to try, but defaults to a list of typical roles, in case you don't provide
+#
+# 	The response object is a Session object within boto3
+# 	"""
+# 	import boto3, logging
+# 	from botocore.exceptions import ClientError
+#
+# 	if fRoleList == None:
+# 		fRoleList = ['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution', 'OrganizationAccountAccessRole',
+# 	             'DevAccess']
+# 	sts_session = boto3.Session(profile_name = fRootProfile)
+# 	sts_client = sts_session.client('sts', region_name = fRegion)
+# 	for role in fRoleList:
+# 		try:
+# 			role_arn='arn:aws:iam::'+fChildAccount+':role/'+role
+# 			account_credentials = sts_client.assume_role(
+# 				RoleArn = role_arn,
+# 				RoleSessionName="Find-ChildAccount-Things")['Credentials']
+# 			session_aws = boto3.Session(
+# 				aws_access_key_id = account_credentials['AccessKeyId'],
+# 				aws_secret_access_key = account_credentials['SecretAccessKey'],
+# 				aws_session_token = account_credentials['SessionToken'],
+# 				region_name = fRegion)
+# 			return(session_aws)
+# 		except ClientError as my_Error:
+# 			if my_Error.response['Error']['Code'] == 'ClientError':
+# 				logging.info(my_Error)
+# 			return_string="{} failed. Try Again".format(str(fRoleList))
+# 			continue
+# 	return(return_string)
+
+
 def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleList=None):
 	"""
 	- fRootProfile is a string
@@ -443,7 +480,7 @@ def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleLis
 	- fRoleList expects a list of roles to try, but defaults to a list of typical roles, in case you don't provide
 
 	The first response object is a dict with account_credentials to pass onto other functions
-	The second response object is the rolename (or a string) that worked to gain access to the target account
+	The second response object is the rolename that worked to gain access to the target account
 
 	The format of the account credentials dict is here:
 	account_credentials = {'Profile': fRootProfile,
@@ -458,25 +495,20 @@ def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleLis
 
 	if not isinstance(fChildAccount, str):  # Make sure the passed in account number is a string
 		fChildAccount = str(fChildAccount)
-	org_root = find_if_org_root(fRootProfile)
-	if org_root == 'Root':
+	ParentAccountId = find_account_number(fRootProfile)
+	sts_session = boto3.Session(profile_name=fRootProfile)
+	sts_client = sts_session.client('sts', region_name=fRegion)
+	if fChildAccount == ParentAccountId:
 		explain_string = ("We're trying to get access to either the Root Account (which we already have access "
 		                  "to via the profile)	or we're trying to gain access to a Standalone account. "
 		                  "In either of these cases, we should just use the profile passed in, "
 		                  "instead of trying to do anything fancy.")
 		logging.info(explain_string)
+		# TODO: Wrap this in a try/except loop
 		account_credentials = sts_client.get_session_token()['Credentials']
 		account_credentials['AccountNumber'] = fChildAccount
 		account_credentials['Profile'] = fRootProfile
-		return (account_credentials, 'Root Profile')
-	elif org_root in ['Standalone','Child']:
-		account_credentials =
-	else:
-		ParentAccountId = find_account_number(fRootProfile)
-		sts_session = boto3.Session(profile_name=fRootProfile)
-		sts_client = sts_session.client('sts', region_name=fRegion)
-	if fChildAccount == ParentAccountId:
-		# TODO: Wrap this in a try/except loop
+		return (account_credentials, 'Check Profile')
 	if fRoleList is None:
 		fRoleList = ['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution',
 					 'OrganizationAccountAccessRole', 'AdministratorAccess', 'Owner']
