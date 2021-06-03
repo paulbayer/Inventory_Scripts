@@ -233,10 +233,9 @@ def find_acct_email(fOrgRootProfile, fAccountId):
 def find_account_number(fProfile):
 	import boto3
 	import logging
-
 	from botocore.exceptions import ClientError, CredentialRetrievalError, InvalidConfigError
 
-	response = '123456789012'
+	response = '123456789012'   # This is the Failure response
 	try:
 		session_sts = boto3.Session(profile_name=fProfile)
 		logging.info("Looking for profile %s", fProfile)
@@ -244,20 +243,21 @@ def find_account_number(fProfile):
 		response = client_sts.get_caller_identity()['Account']
 	except ClientError as my_Error:
 		if str(my_Error).find("UnrecognizedClientException") > 0:
-			print("{}: Security Issue".format(fProfile))
+			logging.error("%s: Security Issue", fProfile)
+			pass
 		elif str(my_Error).find("InvalidClientTokenId") > 0:
-			print("{}: Security Token is bad - probably a bad entry in config".format(fProfile))
+			logging.error("%s: Security Token is bad - probably a bad entry in config", fProfile)
 			pass
 	except CredentialRetrievalError as my_Error:
 		if str(my_Error).find("CredentialRetrievalError") > 0:
-			print("{}: Some custom process isn't working".format(fProfile))
+			logging.error("%s: Some custom process isn't working", fProfile)
 			pass
 	except InvalidConfigError as my_Error:
 		if str(my_Error).find("InvalidConfigError") > 0:
-			print("{}: profile is invalid. Probably due to a config profile based on a credential that doesn't work".format(fProfile))
+			logging.error("%s: profile is invalid. Probably due to a config profile based on a credential that doesn't work", fProfile)
 			pass
 	except:
-		print("Other kind of failure for profile {}".format(fProfile))
+		logging.error("Other kind of failure for profile %s", fProfile)
 		# print(my_Error)
 		pass
 	return (response)
@@ -295,8 +295,6 @@ def find_org_attr(fProfile):
 	"""
 	I use the response directly from the AWS SDK. 
 	You can find the output format here: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/organizations.html#Organizations.Client.describe_organization
-
-
 	"""
 	FailResponse = {'AccountType': 'StandAlone', 'Id': 'None', 'MasterAccountId': 'None'}
 	session_org = boto3.Session(profile_name=fProfile)
@@ -323,17 +321,6 @@ def find_org_attr(fProfile):
 	return (FailResponse)
 
 
-def find_org_attr2(fProfile):
-	import boto3
-	# Unused... and renamed
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
-	response = client_org.describe_organization()
-	root_org = response['Organization']['MasterAccountId']
-	org_id = response['Organization']['Id']
-	return (root_org, org_id)
-
-
 def find_child_accounts2(fProfile):
 	"""
 	This is an example of the list response from this call:
@@ -346,37 +333,44 @@ def find_child_accounts2(fProfile):
 	"""
 	import boto3
 	import logging
-
 	from botocore.exceptions import ClientError
-	child_accounts = []
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
-	try:
-		response = client_org.list_accounts()
-	except ClientError as my_Error:
 
-		logging.warning("Profile %s doesn't represent an Org Root account", fProfile)
-		logging.warning("Passing back dictionary for standalone account instead")
-		logging.debug(my_Error)
-		child_accounts.append({'ParentProfile': fProfile,
-							   'AccountId': account['Id'],
-							   'AccountEmail': account['Email'],
-							   'AccountStatus': account['Status']})
-		return ()
-	theresmore = True
-	while theresmore:
-		for account in response['Accounts']:
-			logging.warning("Profile: %s | Account ID: %s | Account Email: %s" % (fProfile, account['Id'], account['Email']))
-			child_accounts.append({'ParentProfile': fProfile,
-								   'AccountId': account['Id'],
-								   'AccountEmail': account['Email'],
-								   'AccountStatus': account['Status']})
-		if 'NextToken' in response:
+	child_accounts = []
+	org_root = find_if_org_root(fProfile)
+	if org_root == 'Root':
+		try:
+			session_org = boto3.Session(profile_name=fProfile)
+			client_org = session_org.client('organizations')
+			response = client_org.list_accounts()
 			theresmore = True
-			response = client_org.list_accounts(NextToken=response['NextToken'])
-		else:
-			theresmore = False
-	return (child_accounts)
+			while theresmore:
+				for account in response['Accounts']:
+					logging.warning("Profile: %s | Account ID: %s | Account Email: %s" % (
+					fProfile, account['Id'], account['Email']))
+					child_accounts.append({'ParentProfile': fProfile, 'AccountId': account['Id'],
+					                       'AccountEmail': account['Email'], 'AccountStatus': account['Status']})
+				if 'NextToken' in response:
+					theresmore = True
+					response = client_org.list_accounts(NextToken=response['NextToken'])
+				else:
+					theresmore = False
+			return (child_accounts)
+		except ClientError as my_Error:
+			logging.warning("Profile %s doesn't represent an Org Root account", fProfile)
+			logging.debug(my_Error)
+			return()
+	elif org_root == 'Standalone' or org_root == 'Child':
+		accountID = find_account_number(fProfile)
+		child_accounts.append({'ParentProfile': fProfile,
+		                       'AccountId': accountID,
+		                       'AccountEmail': 'NotAnOrgRoot@example.com',
+		                       # We know the account is ACTIVE because if it was SUSPENDED, we wouldn't have gotten a valid response from the org_root check
+		                       'AccountStatus': 'ACTIVE'})
+		return (child_accounts)
+	else:
+		logging.warning("Profile %s doesn't represent an Org Root account", fProfile)
+		logging.debug(my_Error)
+		return()
 
 
 def find_child_accounts(fProfile="default"):
@@ -505,9 +499,11 @@ def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleLis
 	sts_session = boto3.Session(profile_name=fRootProfile)
 	sts_client = sts_session.client('sts', region_name=fRegion)
 	if fChildAccount == ParentAccountId:
-		logging.info("We're trying to get access to either the Root Account (which we already have access to via the profile) \
-		             or we're trying to gain access to a Standalone account. In either of these cases, we should just use the \
-		             profile passed in, instead of trying to do anything fancy.")
+		explain_string = ("We're trying to get access to either the Root Account (which we already have access "
+		                  "to via the profile)	or we're trying to gain access to a Standalone account. "
+		                  "In either of these cases, we should just use the profile passed in, "
+		                  "instead of trying to do anything fancy.")
+		logging.info(explain_string)
 		# TODO: Wrap this in a try/except loop
 		account_credentials = sts_client.get_session_token()['Credentials']
 		account_credentials['AccountNumber'] = fChildAccount
@@ -577,8 +573,10 @@ def find_sns_topics(ocredentials, fRegion, fTopicFrag=None):
 	import logging
 	if fTopicFrag is None:
 		fTopicFrag = ['all']
-	session_sns = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
-		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	session_sns = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=fRegion)
 	client_sns = session_sns.client('sns')
 	# TODO: Enable pagination
 	response = client_sns.list_topics()
