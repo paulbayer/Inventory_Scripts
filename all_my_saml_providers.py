@@ -90,8 +90,7 @@ NumofAccounts = len(ChildAccounts)
 IdpsFound = []
 for account in ChildAccounts:
 	try:
-		account_credentials, role_arn = Inventory_Modules.get_child_access2(pProfile, account['AccountId'])
-		logging.info("Role ARN: %s" % role_arn)
+		account_credentials, _ = Inventory_Modules.get_child_access2(pProfile, account['AccountId'])
 		account_credentials['AccountNumber'] = account['AccountId']
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
@@ -132,14 +131,15 @@ print()
 if DeletionRun:
 	logging.warning("Deleting %s Idps", len(IdpsFound))
 	for y in range(len(IdpsFound)):
-		account_credentials, role_arn = Inventory_Modules.get_child_access2(pProfile, IdpsFound[y]['AccountId'])
+		account_credentials, _ = Inventory_Modules.get_child_access2(pProfile, IdpsFound[y]['AccountId'])
 		session_aws = boto3.Session(region_name=IdpsFound[y]['pRegion'],
 									aws_access_key_id=account_credentials['AccessKeyId'],
 									aws_secret_access_key=account_credentials['SecretAccessKey'],
-									aws_session_token=account_credentials['SessionToken']
-		)
+									aws_session_token=account_credentials['SessionToken'])
 		iam_client = session_aws.client('iam')
-		print("Deleting Idp {} from account {} in pRegion {}".format(IdpsFound[y]['IdpName'], IdpsFound[y]['AccountId'], IdpsFound[y]['pRegion']))
+		print("Deleting Idp {} from account {} in pRegion {}".format(IdpsFound[y]['IdpName'],
+		                                                             IdpsFound[y]['AccountId'],
+		                                                             IdpsFound[y]['pRegion']))
 		response = iam_client.delete_saml_provider(SAMLProviderArn=IdpsFound[y]['Arn'])
 
 print()

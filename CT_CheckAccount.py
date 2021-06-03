@@ -50,6 +50,8 @@ parser.add_argument(
 	default=False,
 	action="store_const",
 	help="This will fix the issues found. If default VPCs must be deleted, you'll be asked to confirm.")
+# TODO: There should be an additional parameter here that would take a role name for access into the account,
+#  since it's likely that users won't be able to use the AWSControlTowerExecution role
 parser.add_argument(
 	"+force",
 	dest="pVPCConfirm",
@@ -106,10 +108,10 @@ else:
 
 ERASE_LINE = '\x1b[2K'
 
-print(ERASE_LINE,"Gathering all account data from {} profile".format(pProfile),end="\r")
+print(ERASE_LINE, "Gathering all account data from {} profile".format(pProfile), end="\r")
 logging.info("Confirming that this profile {%s} represents a Management Account", pProfile)
-ProfileIsRoot=Inventory_Modules.find_if_org_root(pProfile)
-logging.info("---%s---",ProfileIsRoot)
+ProfileIsRoot = Inventory_Modules.find_if_org_root(pProfile)
+logging.info("---%s---", ProfileIsRoot)
 if ProfileIsRoot == 'Root':
 	logging.info("Profile represents a Management Account: %s",pProfile)
 	if pChildAccountId == 'all':
@@ -218,10 +220,10 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 
 	#Step 0
 	ProcessStatus = InitDict(NumOfSteps)
-	Step='Step0'
-	CTRoles = ['AWSControlTowerExecution', 'AWSCloudFormationStackSetExecutionRole','Owner']
+	Step = 'Step0'
+	CTRoles = ['AWSControlTowerExecution', 'AWSCloudFormationStackSetExecutionRole', 'Owner']
 	role = CTRoles[0]
-	json_formatted_str_TP=""
+	json_formatted_str_TP = ""
 	print(Fore.BLUE + "{}:".format(Step) + Fore.RESET)
 	print("Confirming we have the necessary cross-account access to account {}".format(fChildAccountId))
 	try:
@@ -229,25 +231,27 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 		if role.find("failed") > 0:
 			print(Fore.RED, "We weren't able to connect to the Child Account from this Management Account. Please check the role Trust Policy and re-run this script.", Fore.RESET)
 			print("The following list of roles were tried, but none were allowed access to account {} using the {} profile".format(fChildAccountId, fProfile))
-			print(Fore.RED, account_credentials, Fore.RESET)
-			ProcessStatus[Step]['Success']=False
+			print(Fore.RED, role, Fore.RESET)
+			ProcessStatus[Step]['Success'] = False
 			sys.exit("Exiting due to cross-account access failure")
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
+			# TODO: This whole section is waiting on an enhancement. Until then, we have to assume that ProServe or someone familiar with Control Tower is running this script
 			print("{}: Authorization Failure for account {}".format(fProfile, fChildAccountId))
-			print("The child account MUST allow access into the IAM role {} from the Organization's Management Account for the rest of this script (and the overall migration) to run.".format(role))
+			print("The child account MUST allow access into the proper IAM role from the Organization's Management Account for the rest of this script (and the overall migration) to run.")
 			print("You must add the following lines to the Trust Policy of that role in the child account")
 			print(json_formatted_str_TP)
 			print(my_Error)
-			ProcessStatus[Step]['Success']=False
+			ProcessStatus[Step]['Success'] = False
 			sys.exit("Exiting due to Authorization Failure...")
 		elif str(my_Error).find("AccessDenied") > 0:
+			# TODO: This whole section is waiting on an enhancement. Until then, we have to assume that ProServe or someone familiar with Control Tower is running this script
 			print("{}: Access Denied Failure for account {}".format(fProfile, fChildAccountId))
-			print("The child account MUST allow access into the IAM role {} from the Organization's Management Account for the rest of this script (and the overall migration) to run.".format(role))
+			print("The child account MUST allow access into the proper IAM role from the Organization's Management Account for the rest of this script (and the overall migration) to run.")
 			print("You must add the following lines to the Trust Policy of that role in the child account")
 			print(json_formatted_str_TP)
 			print(my_Error)
-			ProcessStatus[Step]['Success']=False
+			ProcessStatus[Step]['Success'] = False
 			sys.exit("Exiting due to Access Denied Failure...")
 		else:
 			print("{}: Other kind of failure for account {}".format(fProfile, fChildAccountId))
@@ -255,7 +259,7 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 			ProcessStatus[Step]['Success']=False
 			sys.exit("Exiting for other failure...")
 	
-	account_credentials['AccountNumber']=fChildAccountId
+	account_credentials['AccountNumber'] = fChildAccountId
 	logging.error("Was able to successfully connect using the credentials... ")
 	print()
 	calling_creds=Inventory_Modules.find_calling_identity(fProfile)

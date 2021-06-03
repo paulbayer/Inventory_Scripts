@@ -110,7 +110,7 @@ elif not pProfile == "all":	 # Use case #2 from above
 	logging.warning("Profile is set to %s", pProfile)
 	AcctNum = Inventory_Modules.find_account_number(pProfile)
 	AcctAttr = Inventory_Modules.find_org_attr(pProfile)
-	MnmgtAcct = AcctAttr['AccountType']
+	MnmgtAcct = AcctAttr['MasterAccountId']
 	OrgId = AcctAttr['Id']
 	if AcctNum == MnmgtAcct:
 		logging.warning("This is a root account - showing info only for %s", pProfile)
@@ -118,7 +118,7 @@ elif not pProfile == "all":	 # Use case #2 from above
 		ShowEverything = False
 	else:
 		print()
-		print(Fore.RED + "If you're going to provide a profile, it's supposed to be a Master Billing Account profile!!" + Fore.RESET)
+		print(Fore.RED + "If you're going to provide a profile, it's supposed to be a Management Billing Account profile!!" + Fore.RESET)
 		print("Continuing to run the script - but for all profiles.")
 		ShowEverything = True
 else:  # Use case #3 from above
@@ -144,7 +144,9 @@ else:  # Use case #3 from above
 
 """
 TODO:
-	- If they provide a profile that isn't a root profile, you should find out which org it belongs to, and then show the org for that. This will be difficult, since we don't know which profile that belongs to. Hmmm...
+	If they provide a profile that isn't a root profile, you should find out which org it belongs to, 
+	and then show the org for that. 
+	This will be difficult, since we don't know which profile that belongs to. Hmmm...
 """
 
 if ShowEverything:
@@ -158,6 +160,7 @@ if ShowEverything:
 		OrgId = "o-xxxxxxxxxx"
 		Email = "Email not available"
 		RootId = "r-xxxx"
+		org_root = Inventory_Modules.find_if_org_root(profile)
 		ErrorFlag = False
 		try:
 			AcctNum = Inventory_Modules.find_account_number(profile)
@@ -165,11 +168,19 @@ if ShowEverything:
 			if AcctNum == '123456789012':
 				ErrorFlag = True
 				pass
-			else:   # The Account is deemed to be a Management Account
+			elif org_root == 'Root':   # The Account is deemed to be an Management Account
 				AcctAttr = Inventory_Modules.find_org_attr(profile)
 				MnmgtAcct = AcctAttr['MasterAccountId']
 				Email = AcctAttr['MasterAccountEmail']
 				OrgId = AcctAttr['Id']
+				RootAcct = True
+				RootAccts.append(MnmgtAcct)
+				RootProfiles.append(profile)
+			elif org_root in ['Standalone', 'Child']:
+				AcctAttr = Inventory_Modules.find_org_attr(profile)
+				MnmgtAcct = AcctAttr['MasterAccountId']
+				OrgId = AcctAttr['Id']
+				RootAcct = False
 		except ClientError as my_Error:
 			ErrorFlag = True
 			if str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
@@ -198,13 +209,14 @@ if ShowEverything:
 			else:
 				print("Credentials Error")
 				print(my_Error)
-		if AcctNum == MnmgtAcct and not ErrorFlag:
-			RootAcct = True
-			RootAccts.append(MnmgtAcct)
-			RootProfiles.append(profile)
-			logging.info('Email: %s', Email)
-		else:
-			RootAcct = False
+		# if AcctNum == MnmgtAcct and not ErrorFlag:
+		# if org_root == 'Root' and not ErrorFlag:
+		# 	RootAcct = True
+		# 	RootAccts.append(MnmgtAcct)
+		# 	RootProfiles.append(profile)
+		# 	logging.info('Email: %s', Email)
+		# else:
+		# 	RootAcct = False
 
 		'''
 		If I create a dictionary from the Root Accts and Root Profiles Lists - 
@@ -214,8 +226,6 @@ if ShowEverything:
 		and we keep all output in another dictionary - where we can populate the missing data at the end... 
 		but that takes a long time, since nothing would be sent to the screen in the meantime.
 		'''
-		# dictionary.update(dict(zip(RootAccts, RootProfiles)))
-
 		# Print results for this profile
 		if RootAcct:
 			print(Fore.RED + fmt % (profile, AcctNum, MnmgtAcct, OrgId, RootAcct) + Style.RESET_ALL)

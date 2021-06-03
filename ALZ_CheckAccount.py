@@ -57,6 +57,8 @@ parser.add_argument(
 	default=False,
 	action="store_const",
 	help="This will delete the default VPCs found with NO confirmation. You still have to specify the +fix too")
+# TODO: There should be an additional parameter here that would take a role name for access into the account,
+#  since it's likely that users won't be able to use the AWSControlTowerExecution role
 parser.add_argument(
 	'-v',
 	help="Be verbose",
@@ -137,11 +139,8 @@ if pExplain:
 	print(ExplainMessage)
 	sys.exit("Exiting after Script Explanation...")
 
-# TODO:
-"""
-This is supposed to be the recommended Trust Policy for the cross-account role access, 
-so that we can recommend people add it to their "AWSCloudFormationStackSetExecutionRole"  
-"""
+# TODO: This is supposed to be the recommended Trust Policy for the cross-account role access,
+#  so that we can recommend people add it to their "AWSCloudFormationStackSetExecutionRole"
 json_formatted_str_TP = ""
 
 
@@ -194,11 +193,12 @@ try:
 	if role.find("failed") > 0:
 		print(Fore.RED, "We weren't able to connect to the Child Account from this Management Account. Please check the role Trust Policy and re-run this script.", Fore.RESET)
 		print("The following list of roles were tried, but none were allowed access to account {} using the {} profile".format(pChildAccountId, pProfile))
-		print(Fore.RED, account_credentials, Fore.RESET)
+		print(Fore.RED, role, Fore.RESET)
 		ProcessStatus['Step0']['Success'] = False
 		sys.exit("Exiting due to cross-account Auth Failure")
 except ClientError as my_Error:
 	if str(my_Error).find("AuthFailure") > 0:
+		# TODO: This whole section is waiting on an enhancement. Until then, we have to assume that ProServe or someone familiar with Control Tower is running this script
 		print("{}: Authorization Failure for account {}".format(pProfile, pChildAccountId))
 		print("The child account MUST allow access into the IAM role {} from the Organization's Master Account for the rest of this script (and the overall migration) to run.".format(role))
 		print("You must add the following lines to the Trust Policy of that role in the child account")
@@ -207,6 +207,7 @@ except ClientError as my_Error:
 		ProcessStatus['Step0']['Success'] = False
 		sys.exit("Exiting due to Authorization Failure...")
 	elif str(my_Error).find("AccessDenied") > 0:
+		# TODO: This whole section is waiting on an enhancement. Until then, we have to assume that ProServe or someone familiar with Control Tower is running this script
 		print("{}: Access Denied Failure for account {}".format(pProfile, pChildAccountId))
 		print("The child account MUST allow access into the IAM role {} from the Organization's Master Account for the rest of this script (and the overall migration) to run.".format(role))
 		print("You must add the following lines to the Trust Policy of that role in the child account")
