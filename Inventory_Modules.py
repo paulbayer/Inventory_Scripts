@@ -26,7 +26,7 @@ def get_ec2_regions(fkey, fprofile="default"):
 	import boto3
 	import logging
 
-	session_ec2 = boto3.Session(profile_name=fprofile)
+	session_ec2 = boto3.Session(profile_name=fprofile, region_name='us-east-1')
 	region_info = session_ec2.client('ec2')
 	regions = region_info.describe_regions(Filters=[
 		{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
@@ -298,7 +298,7 @@ def find_org_attr(fProfile):
 
 
 	"""
-	FailResponse = {'AccountType': 'StandAlone', 'Id': 'None'}
+	FailResponse = {'AccountType': 'StandAlone', 'Id': 'None', 'MasterAccountId': 'None'}
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
 	try:
@@ -308,7 +308,7 @@ def find_org_attr(fProfile):
 		if str(my_Error).find("UnrecognizedClientException") > 0:
 			print(fProfile + ": Security Issue")
 		elif str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
-			# TODO: Need to figure out how to provide the account's own number here as MasterAccountId
+			# TODO: Need to figure out how to provide the account's own number here as ManagementAccountId
 			logging.warning("%s: Account isn't a part of an Organization", fProfile)  # Stand-alone account
 		elif str(my_Error).find("InvalidClientTokenId") > 0:
 			print(fProfile + ": Security Token is bad - probably a bad entry in config")
@@ -338,9 +338,9 @@ def find_child_accounts2(fProfile):
 	"""
 	This is an example of the list response from this call:
 		[
-		{'ParentProfile':'LZRoot', 'AccountId': 'xxxxxxxxxxxx', 'AccountEmail': 'EmailAddr1@example.com'},
-		{'ParentProfile':'LZRoot', 'AccountId': 'yyyyyyyyyyyy', 'AccountEmail': 'EmailAddr2@example.com'},
-		{'ParentProfile':'LZRoot', 'AccountId': 'zzzzzzzzzzzz', 'AccountEmail': 'EmailAddr3@example.com'}
+		{'ParentProfile':'LZRoot', 'AccountId': 'xxxxxxxxxxxx', 'AccountEmail': 'EmailAddr1@example.com', 'AccountStatus': 'ACTIVE'},
+		{'ParentProfile':'LZRoot', 'AccountId': 'yyyyyyyyyyyy', 'AccountEmail': 'EmailAddr2@example.com', 'AccountStatus': 'ACTIVE'},
+		{'ParentProfile':'LZRoot', 'AccountId': 'zzzzzzzzzzzz', 'AccountEmail': 'EmailAddr3@example.com', 'AccountStatus': 'SUSPENDED'}
 		]
 	This can be convenient for appending and removing.
 	"""
@@ -348,22 +348,29 @@ def find_child_accounts2(fProfile):
 	import logging
 
 	from botocore.exceptions import ClientError
-	# Renamed since I'm using the one below instead.
 	child_accounts = []
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
 	try:
 		response = client_org.list_accounts()
 	except ClientError as my_Error:
+
 		logging.warning("Profile %s doesn't represent an Org Root account", fProfile)
+		logging.warning("Passing back dictionary for standalone account instead")
 		logging.debug(my_Error)
+		child_accounts.append({'ParentProfile': fProfile,
+							   'AccountId': account['Id'],
+							   'AccountEmail': account['Email'],
+							   'AccountStatus': account['Status']})
 		return ()
 	theresmore = True
 	while theresmore:
 		for account in response['Accounts']:
 			logging.warning("Profile: %s | Account ID: %s | Account Email: %s" % (fProfile, account['Id'], account['Email']))
-			child_accounts.append({'ParentProfile': fProfile, 'AccountId': account['Id'],
-				'AccountEmail': account['Email'], 'AccountStatus': account['Status']})
+			child_accounts.append({'ParentProfile': fProfile,
+								   'AccountId': account['Id'],
+								   'AccountEmail': account['Email'],
+								   'AccountStatus': account['Status']})
 		if 'NextToken' in response:
 			theresmore = True
 			response = client_org.list_accounts(NextToken=response['NextToken'])
@@ -375,7 +382,7 @@ def find_child_accounts2(fProfile):
 def find_child_accounts(fProfile="default"):
 	"""
 	This call returns a dictionary response, unlike the "find_child_accounts2" function (above) which returns a list.
-	Our dictionary call looks like this:
+	Our dictionary call looks like this where the 'xxxxxxxxxxxx' represents the 12 digit Account ID:
 		{'xxxxxxxxxxxx': 'EmailAddr1@example.com',
 		 'yyyyyyyyyyyy': 'EmailAddr2@example.com',
 		 'zzzzzzzzzzzz': 'EmailAddr3@example.com'}
@@ -480,11 +487,32 @@ def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleLis
 
 	The first response object is a dict with account_credentials to pass onto other functions
 	The second response object is the rolename that worked to gain access to the target account
+
+	The format of the account credentials dict is here:
+	account_credentials = {'Profile': fRootProfile,
+							'AccessKeyId': ',
+							'SecretAccessKey': None,
+							'SessionToken': None,
+							'AccountNumber': None}
 	"""
 	import boto3
 	import logging
 	from botocore.exceptions import ClientError
 
+	if not isinstance(fChildAccount, str):  # Make sure the passed in account number is a string
+		fChildAccount = str(fChildAccount)
+	ParentAccountId = find_account_number(fRootProfile)
+	sts_session = boto3.Session(profile_name=fRootProfile)
+	sts_client = sts_session.client('sts', region_name=fRegion)
+	if fChildAccount == ParentAccountId:
+		logging.info("We're trying to get access to either the Root Account (which we already have access to via the profile) \
+		             or we're trying to gain access to a Standalone account. In either of these cases, we should just use the \
+		             profile passed in, instead of trying to do anything fancy.")
+		# TODO: Wrap this in a try/except loop
+		account_credentials = sts_client.get_session_token()['Credentials']
+		account_credentials['AccountNumber'] = fChildAccount
+		account_credentials['Profile'] = fRootProfile
+		return (account_credentials, 'Check Profile')
 	if fRoleList is None:
 		fRoleList = ['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution',
 					 'OrganizationAccountAccessRole', 'AdministratorAccess', 'Owner']
@@ -492,18 +520,19 @@ def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleLis
 	# This way the operator knows that NONE of the roles supplied worked.
 	return_string = "{} failed. Try Again".format(str(fRoleList))
 
-	if not isinstance(fChildAccount, str):  # Make sure the passed in account number is a string
-		fChildAccount = str(fChildAccount)
-	sts_session = boto3.Session(profile_name=fRootProfile)
-	sts_client = sts_session.client('sts', region_name=fRegion)
-	account_credentials = {'Profile': fRootProfile, 'AccessKeyId': None, 'SecretAccessKey': None, 'SessionToken': None,
+	account_credentials = {'Profile': fRootProfile,
+	                       'AccessKeyId': None,
+	                       'SecretAccessKey': None,
+	                       'SessionToken': None,
 						   'AccountNumber': None}
 	for role in fRoleList:
 		try:
 			logging.info("Trying to access account %s using %s profile assuming role: %s", fChildAccount, fRootProfile, role)
 			role_arn = 'arn:aws:iam::' + fChildAccount + ':role/' + role
 			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Find-ChildAccount-Things")['Credentials']
-			# If we were successful up to this point, then we'll short-cut everything and just return the role that worked
+			# If we were successful up to this point, then we'll short-cut everything and just return the credentials that worked
+			account_credentials['Profile'] = fRootProfile
+			account_credentials['AccountNumber'] = fChildAccount
 			return (account_credentials, role)
 		except ClientError as my_Error:
 			if my_Error.response['Error']['Code'] == 'ClientError':
@@ -1328,9 +1357,9 @@ def delete_stack2(ocredentials, fRegion, fStackName, **kwargs):
 		RetainResources = True
 		ResourcesToRetain = kwargs['ResourcesToRetain']
 	session_cfn = boto3.Session(region_name=fRegion,
-	                            aws_access_key_id=ocredentials['AccessKeyId'],
-	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
-	                            aws_session_token=ocredentials['SessionToken'])
+								aws_access_key_id=ocredentials['AccessKeyId'],
+								aws_secret_access_key=ocredentials['SecretAccessKey'],
+								aws_session_token=ocredentials['SessionToken'])
 	client_cfn = session_cfn.client('cloudformation')
 	if RetainResources:
 		logging.warning("Account: %s | Region: %s | StackName: %s", ocredentials['AccountNumber'], fRegion, fStackName)
@@ -1338,9 +1367,9 @@ def delete_stack2(ocredentials, fRegion, fStackName, **kwargs):
 		response = client_cfn.delete_stack(StackName=fStackName, RetainResources=ResourcesToRetain)
 	else:
 		logging.warning("Account: %s | Region: %s | StackName: %s",
-		                ocredentials['AccountNumber'],
-		                fRegion,
-		                fStackName)
+						ocredentials['AccountNumber'],
+						fRegion,
+						fStackName)
 		response = client_cfn.delete_stack(StackName=fStackName)
 	return (response)
 
@@ -1362,9 +1391,9 @@ def find_stacks_in_acct(ocredentials, fRegion, fStackFragment="all", fStatus="ac
 	logging.error("Acct ID #: %s | Region: %s | Fragment: %s | Status: %s", str(
 		ocredentials['AccountNumber']), fRegion, fStackFragment, fStatus)
 	session_cfn = boto3.Session(region_name=fRegion,
-	                            aws_access_key_id=ocredentials['AccessKeyId'],
-	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
-	                            aws_session_token=ocredentials['SessionToken'])
+								aws_access_key_id=ocredentials['AccessKeyId'],
+								aws_secret_access_key=ocredentials['SecretAccessKey'],
+								aws_session_token=ocredentials['SessionToken'])
 	client_cfn = session_cfn.client('cloudformation')
 	stacks = dict()
 	stacksCopy = []
@@ -1387,7 +1416,7 @@ def find_stacks_in_acct(ocredentials, fRegion, fStackFragment="all", fStatus="ac
 		# TODO: Need paging here
 		stacks = client_cfn.list_stacks()
 		logging.error("4-Found %s the stacks in Account: %s in Region: %s",
-		              len(stacks),
+					  len(stacks),
 					  ocredentials['AccessKeyId'],
 					  fRegion)
 		return (stacks['StackSummaries'])
