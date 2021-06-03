@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 
-import os, sys, pprint
-from typing import List, Any
-
-import Inventory_Modules, boto3
+import Inventory_Modules
+import boto3
 import argparse
-from colorama import init, Fore, Back, Style
-from botocore.exceptions import ClientError, NoCredentialsError, EndpointConnectionError
-from urllib3.exceptions import NewConnectionError
+from colorama import init
+from botocore.exceptions import ClientError
 
 import logging
 
@@ -15,7 +12,7 @@ init()
 
 parser = argparse.ArgumentParser(
 	prefix_chars='-+/',
-	description="We're going to find all resources within any of the profiles we have access to.")
+	description="We're going to find all roles within any of the accounts we have access to, given the profile provided.")
 parser.add_argument(
 	"-p", "--profile",
 	dest="pProfile",
@@ -25,7 +22,7 @@ parser.add_argument(
 	"-r", "--role",
 	dest="pRole",
 	metavar="specific role to find",
-	default="",
+	default=None,
 	help="Please specify the role you're searching for")
 parser.add_argument(
 	"+d", "--delete",
@@ -72,16 +69,16 @@ logging.basicConfig(level=args.loglevel,
 
 ##########################
 ERASE_LINE = '\x1b[2K'
-
-
 ##########################
+
 
 def delete_role(fRoleList):
 	iam_session = boto3.Session(
 		aws_access_key_id=fRoleList['aws_access_key_id'],
 		aws_secret_access_key=fRoleList['aws_secret_access_key'],
 		aws_session_token=fRoleList['aws_session_token'],
-		region_name='us-east-1')
+		region_name='us-east-1'
+	)
 	iam_client = iam_session.client('iam')
 	try:
 		attached_role_policies = iam_client.list_attached_role_policies(
@@ -92,9 +89,7 @@ def delete_role(fRoleList):
 				RoleName=fRoleList['RoleName'],
 				PolicyArn=attached_role_policies[i]['PolicyArn']
 			)
-		inline_role_policies = iam_client.list_role_policies(
-			RoleName=fRoleList['RoleName']
-		)['PolicyNames']
+		inline_role_policies = iam_client.list_role_policies(RoleName=fRoleList['RoleName'])['PolicyNames']
 		for i in range(len(inline_role_policies)):
 			response = iam_client.delete_role_policy(
 				RoleName=fRoleList['RoleName'],
@@ -107,12 +102,13 @@ def delete_role(fRoleList):
 	except ClientError as my_Error:
 		print(my_Error)
 		return (False)
+##########################
 
 
 ChildAccounts = Inventory_Modules.find_child_accounts2(pProfile)
 
 print()
-if not (pRole == ""):
+if pRole is not None:
 	print("Looking for a specific role called {}".format(pRole))
 	print()
 fmt = '%-15s %-42s'
@@ -124,14 +120,13 @@ DeletedRoles = 0
 for account in ChildAccounts:
 	try:
 		RoleNum = 0
-		account_credentials, role_arn = Inventory_Modules.get_child_access2(pProfile, account['AccountId'])
-		if role_arn.find("failed") > 0:
+		account_credentials, role = Inventory_Modules.get_child_access2(pProfile, account['AccountId'])
+		if role.find("failed") > 0:
 			logging.error("Access to member account %s failed...", account['AccountId'])
 			continue
-		account_credentials['AccountId'] = account['AccountId']
-		logging.info("Connecting to %s with %s role", account['AccountId'], role_arn)
-		logging.info("Role ARN: %s" % role_arn)
-		print(ERASE_LINE,"Checking Account {}".format(account_credentials['AccountId']), end="")
+		account_credentials['AccountNumber'] = account['AccountId']
+		logging.info("Connecting to %s with %s role", account['AccountId'], role)
+		print(ERASE_LINE, "Checking Account {}".format(account_credentials['AccountNumber']), end="")
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
 			print("{}: Authorization Failure for account {}".format(pProfile, account['AccountId']))
@@ -140,7 +135,8 @@ for account in ChildAccounts:
 		aws_access_key_id=account_credentials['AccessKeyId'],
 		aws_secret_access_key=account_credentials['SecretAccessKey'],
 		aws_session_token=account_credentials['SessionToken'],
-		region_name='us-east-1')
+		region_name='us-east-1'
+	)
 	iam_client = iam_session.client('iam')
 	try:
 		response = iam_client.list_roles()
@@ -149,32 +145,33 @@ for account in ChildAccounts:
 				'aws_access_key_id': account_credentials['AccessKeyId'],
 				'aws_secret_access_key': account_credentials['SecretAccessKey'],
 				'aws_session_token': account_credentials['SessionToken'],
-				'AccountId': account_credentials['AccountId'],
+				'AccountId': account_credentials['AccountNumber'],
 				'RoleName': response['Roles'][i]['RoleName']
 			})
-		RoleNum=len(response['Roles'])
+		RoleNum = len(response['Roles'])
 		while response['IsTruncated']:
 			response = iam_client.list_roles(Marker=response['Marker'])
 			for i in range(len(response['Roles'])):
 				Roles.append({
-					'AccountId': account_credentials['AccountId'],
+					'AccountId': account_credentials['AccountNumber'],
 					'RoleName': response['Roles'][i]['RoleName']
 				})
-				RoleNum+=len(response['Roles'])
+				RoleNum += len(response['Roles'])
 		print(" - Found {} roles".format(RoleNum), end="\r")
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
 			print(pProfile + ": Authorization Failure for account {}".format(account['AccountId']))
 
-RoleNum=0
-if (pRole == ""):
+RoleNum = 0
+if (pRole is None):
 	for i in range(len(Roles)):
 		print(fmt % (Roles[i]['AccountId'], Roles[i]['RoleName']))
 		RoleNum += 1
-elif not (pRole == ""):
+elif pRole is not None:
 	for i in range(len(Roles)):
 		RoleNum += 1
-		if Roles[i]['RoleName'] == pRole:
+		logging.info("In account %s: Found Role %s : Looking for role %s" % (Roles[i]['AccountId'], Roles[i]['RoleName'], pRole))
+		if Roles[i]['RoleName'].find(pRole) >= 0:
 			print(fmt % (Roles[i]['AccountId'], Roles[i]['RoleName']), end="")
 			SpecifiedRoleNum += 1
 			if pDelete:
@@ -184,7 +181,7 @@ elif not (pRole == ""):
 			print()
 
 print()
-if (pRole == ""):
+if (pRole is None):
 	print("Found {} roles across {} accounts".format(RoleNum, len(ChildAccounts)))
 else:
 	print("Found {} in {} of {} accounts".format(pRole, SpecifiedRoleNum, len(ChildAccounts)))
