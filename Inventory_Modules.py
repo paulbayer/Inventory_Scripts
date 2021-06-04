@@ -166,18 +166,20 @@ def find_if_org_root(fProfile):
 	import logging
 
 	logging.info("Finding if %s is an ORG root", fProfile)
-	org_acct_number = find_org_attr(fProfile)
-	logging.info("Profile %s's Org Account Number is %s", fProfile, org_acct_number['MasterAccountId'])
-	acct_number = find_account_number(fProfile)
-	if org_acct_number['MasterAccountId'] == acct_number:
-		logging.info("%s is a Root account", fProfile)
-		return ('Root')
-	elif org_acct_number['MasterAccountId'] == 'StandAlone':
-		logging.info("%s is a Standalone account", fProfile)
-		return ('StandAlone')
-	else:
-		logging.info("%s is a Child account", fProfile)
-		return ('Child')
+	org_acct_number = find_account_attr(fProfile)
+	logging.info(f"Profile {fProfile}'s Account Number is {org_acct_number['AccountNumber']}")
+	logging.info(f"Profile {fProfile}'s Org Account Number is {org_acct_number['MasterAccountId']}")
+	# acct_number = find_account_number(fProfile)
+	return (org_acct_number['AccountType'])
+	# if org_acct_number['MasterAccountId'] == acct_number:
+	# 	logging.info("%s is a Root account", fProfile)
+	# 	return ('Root')
+	# elif org_acct_number['MasterAccountId'] == 'StandAlone':
+	# 	logging.info("%s is a Standalone account", fProfile)
+	# 	return ('StandAlone')
+	# else:
+	# 	logging.info("%s is a Child account", fProfile)
+	# 	return ('Child')
 
 
 def find_if_alz(fProfile):
@@ -287,29 +289,41 @@ def find_calling_identity(fProfile):
 	return (creds)
 
 
-def find_org_attr(fProfile):
+def find_account_attr(fProfile):
 	import boto3
 	import logging
 
 	from botocore.exceptions import ClientError, CredentialRetrievalError
 	"""
-	I use the response directly from the AWS SDK. 
+	In the case of an Org Root or Child account, I use the response directly from the AWS SDK. 
 	You can find the output format here: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/organizations.html#Organizations.Client.describe_organization
 	"""
-	FailResponse = {'AccountType': 'StandAlone', 'Id': 'None', 'MasterAccountId': 'None'}
+	FailResponse = {'AccountType': 'Unknown', 'AccountNumber': 'None', 'Id': 'None', 'MasterAccountId': 'None'}
 	session_org = boto3.Session(profile_name=fProfile)
 	client_org = session_org.client('organizations')
 	try:
 		response = client_org.describe_organization()['Organization']
+		my_acct_number = find_account_number(fProfile)
+		response['Id'] = my_acct_number
+		response['AccountNumber'] = my_acct_number
+		if response['MasterAccountId'] == my_acct_number:
+			response['AccountType'] = 'Root'
+		else:
+			response['AccountType'] = 'Child'
 		return (response)
 	except ClientError as my_Error:
 		if str(my_Error).find("UnrecognizedClientException") > 0:
-			print(fProfile + ": Security Issue")
+			logging.error(f"Security Issue with: {fProfile}")
 		elif str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
-			# TODO: Need to figure out how to provide the account's own number here as ManagementAccountId
-			logging.warning("%s: Account isn't a part of an Organization", fProfile)  # Stand-alone account
+			logging.error(f"{fProfile}: Account isn't a part of an Organization")  # Stand-alone account
+			my_acct_number = find_account_number(fProfile)
+			FailResponse['AccountType'] = 'StandAlone'
+			FailResponse['Id'] = my_acct_number
+			FailResponse['AccountNumber'] = my_acct_number
 		elif str(my_Error).find("InvalidClientTokenId") > 0:
-			print(fProfile + ": Security Token is bad - probably a bad entry in config")
+			logging.error(f"{fProfile}: Security Token is bad - probably a bad entry in config")
+		elif str(my_Error).find("AccessDenied") > 0:
+			logging.error(f"{fProfile}: Access Denied for profile")
 		pass
 	except CredentialRetrievalError as my_Error:
 		print("{}: Failure pulling or updating credentials".format(fProfile))
@@ -369,7 +383,7 @@ def find_child_accounts2(fProfile):
 		return (child_accounts)
 	else:
 		logging.warning("Profile %s doesn't represent an Org Root account", fProfile)
-		logging.debug(my_Error)
+		# logging.debug(my_Error)
 		return()
 
 
@@ -539,6 +553,74 @@ def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleLis
 	return (account_credentials, return_string)
 
 
+def get_child_access3(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleList=None):
+	"""
+	- fRootProfile is a string
+	- fChildAccount expects an AWS account number (ostensibly of a Child Account)
+	- rRegion expects a string representing one of the AWS regions ('us-east-1', 'eu-west-1', etc.)
+	- fRoleList expects a list of roles to try, but defaults to a list of typical roles, in case you don't provide
+
+	The first response object is a dict with account_credentials to pass onto other functions
+	The second response object is the rolename that worked to gain access to the target account
+
+	The format of the account credentials dict is here:
+	account_credentials = {'Profile': fRootProfile,
+							'AccessKeyId': ',
+							'SecretAccessKey': None,
+							'SessionToken': None,
+							'AccountNumber': None}
+	"""
+	import boto3
+	import logging
+	from botocore.exceptions import ClientError
+
+	if not isinstance(fChildAccount, str):  # Make sure the passed in account number is a string
+		fChildAccount = str(fChildAccount)
+	org_status=find_account_attr(fRootProfile)
+	ParentAccountId = find_account_number(fRootProfile)
+	sts_session = boto3.Session(profile_name=fRootProfile)
+	sts_client = sts_session.client('sts', region_name=fRegion)
+	if fChildAccount == ParentAccountId:
+		explain_string = ("We're trying to get access to either the Root Account (which we already have access "
+		                  "to via the profile)	or we're trying to gain access to a Standalone account. "
+		                  "In either of these cases, we should just use the profile passed in, "
+		                  "instead of trying to do anything fancy.")
+		logging.info(explain_string)
+		# TODO: Wrap this in a try/except loop
+		account_credentials = sts_client.get_session_token()['Credentials']
+		account_credentials['AccountNumber'] = fChildAccount
+		account_credentials['Profile'] = fRootProfile
+		return (account_credentials, 'Check Profile')
+	if fRoleList is None:
+		fRoleList = ['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution',
+					 'OrganizationAccountAccessRole', 'AdministratorAccess', 'Owner']
+	# Initializing the "Negative Use Case" string, returning the whole list instead of only the last role it tried.
+	# This way the operator knows that NONE of the roles supplied worked.
+	return_string = "{} failed. Try Again".format(str(fRoleList))
+
+	account_credentials = {'Profile': fRootProfile,
+	                       'AccessKeyId': None,
+	                       'SecretAccessKey': None,
+	                       'SessionToken': None,
+						   'AccountNumber': None}
+	for role in fRoleList:
+		try:
+			logging.info("Trying to access account %s using %s profile assuming role: %s", fChildAccount, fRootProfile, role)
+			role_arn = 'arn:aws:iam::' + fChildAccount + ':role/' + role
+			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Find-ChildAccount-Things")['Credentials']
+			# If we were successful up to this point, then we'll short-cut everything and just return the credentials that worked
+			account_credentials['Profile'] = fRootProfile
+			account_credentials['AccountNumber'] = fChildAccount
+			return (account_credentials, role)
+		except ClientError as my_Error:
+			if my_Error.response['Error']['Code'] == 'ClientError':
+				logging.info(my_Error)
+			continue
+	# Returns a dict object since that's what's expected
+	# It will only get to the part below if the child isn't accessed properly using the roles already defined
+	return (account_credentials, return_string)
+
+
 def enable_drift_on_stacks(ocredentials, fRegion, fStackName):
 	import boto3
 	import logging
@@ -585,7 +667,9 @@ def find_sns_topics(ocredentials, fRegion, fTopicFrag=None):
 		TopicList.append(item['TopicArn'])
 	if 'all' in fTopicFrag:
 		logging.warning("Looking for all SNS Topics in account %s from Region %s",
-						ocredentials['AccountNumber'], fRegion)
+						ocredentials['AccountNumber'],
+						fRegion
+		                )
 		logging.info("Topic Arns Returned: %s", TopicList)
 		logging.warning("We found %s SNS Topics", len(TopicList))
 		return (TopicList)

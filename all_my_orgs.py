@@ -109,7 +109,7 @@ elif not pProfile == "all":	 # Use case #2 from above
 	logging.info("Use Case #2")
 	logging.warning("Profile is set to %s", pProfile)
 	AcctNum = Inventory_Modules.find_account_number(pProfile)
-	AcctAttr = Inventory_Modules.find_org_attr(pProfile)
+	AcctAttr = Inventory_Modules.find_account_attr(pProfile)
 	MnmgtAcct = AcctAttr['MasterAccountId']
 	OrgId = AcctAttr['Id']
 	if AcctNum == MnmgtAcct:
@@ -126,7 +126,7 @@ else:  # Use case #3 from above
 	logging.warning("Multiple profiles have been provided: %s. Going through one at a time...", str(pProfiles))
 	for profile in pProfiles:
 		AcctNum = Inventory_Modules.find_account_number(profile)
-		AcctAttr = Inventory_Modules.find_org_attr(profile)
+		AcctAttr = Inventory_Modules.find_account_attr(profile)
 		MnmgtAcct = AcctAttr['MasterAccountId']
 		OrgId = AcctAttr['Id']
 		if AcctNum == MnmgtAcct:
@@ -154,13 +154,14 @@ if ShowEverything:
 	print("------------------------------------")
 	print(fmt % ("Profile Name", "Account Number", "Master Org Acct", "Org ID", "Root Acct?"))
 	print(fmt % ("------------", "--------------", "---------------", "------", "----------"))
-	for profile in Inventory_Modules.get_profiles2(SkipProfiles, "all"):
+	AllProfiles = Inventory_Modules.get_profiles2(SkipProfiles, "all")
+	for profile in AllProfiles:
 		AcctNum = "Blank Acct"
 		MnmgtAcct = "Blank Root"
 		OrgId = "o-xxxxxxxxxx"
 		Email = "Email not available"
 		RootId = "r-xxxx"
-		org_root = Inventory_Modules.find_if_org_root(profile)
+		acct_type = Inventory_Modules.find_account_attr(profile)
 		ErrorFlag = False
 		try:
 			AcctNum = Inventory_Modules.find_account_number(profile)
@@ -168,16 +169,16 @@ if ShowEverything:
 			if AcctNum == '123456789012':
 				ErrorFlag = True
 				pass
-			elif org_root == 'Root':   # The Account is deemed to be an Management Account
-				AcctAttr = Inventory_Modules.find_org_attr(profile)
+			elif acct_type['AccountType'] == 'Root':   # The Account is deemed to be an Management Account
+				AcctAttr = Inventory_Modules.find_account_attr(profile)
 				MnmgtAcct = AcctAttr['MasterAccountId']
 				Email = AcctAttr['MasterAccountEmail']
 				OrgId = AcctAttr['Id']
 				RootAcct = True
 				RootAccts.append(MnmgtAcct)
 				RootProfiles.append(profile)
-			elif org_root in ['Standalone', 'Child']:
-				AcctAttr = Inventory_Modules.find_org_attr(profile)
+			elif acct_type['AccountType'].lower() in ['standalone', 'child']:
+				AcctAttr = Inventory_Modules.find_account_attr(profile)
 				MnmgtAcct = AcctAttr['MasterAccountId']
 				OrgId = AcctAttr['Id']
 				RootAcct = False
