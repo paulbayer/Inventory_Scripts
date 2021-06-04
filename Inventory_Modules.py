@@ -232,16 +232,15 @@ def find_acct_email(fOrgRootProfile, fAccountId):
 	return (email_addr)
 
 
-def find_account_number(fProfile):
+def find_account_number(fSessionObject):
 	import boto3
 	import logging
 	from botocore.exceptions import ClientError, CredentialRetrievalError, InvalidConfigError
 
 	response = '123456789012'   # This is the Failure response
 	try:
-		session_sts = boto3.Session(profile_name=fProfile)
-		logging.info("Looking for profile %s", fProfile)
-		client_sts = session_sts.client('sts')
+		# logging.info("Looking for profile %s", fProfile)
+		client_sts = fSessionObject.client('sts')
 		response = client_sts.get_caller_identity()['Account']
 	except ClientError as my_Error:
 		if str(my_Error).find("UnrecognizedClientException") > 0:
@@ -289,18 +288,17 @@ def find_calling_identity(fProfile):
 	return (creds)
 
 
-def find_account_attr(fProfile):
+def find_account_attr(fSessionObject):
 	import boto3
 	import logging
-
 	from botocore.exceptions import ClientError, CredentialRetrievalError
+
 	"""
 	In the case of an Org Root or Child account, I use the response directly from the AWS SDK. 
 	You can find the output format here: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/organizations.html#Organizations.Client.describe_organization
 	"""
 	FailResponse = {'AccountType': 'Unknown', 'AccountNumber': 'None', 'Id': 'None', 'MasterAccountId': 'None'}
-	session_org = boto3.Session(profile_name=fProfile)
-	client_org = session_org.client('organizations')
+	client_org = fSessionObject.client('organizations')
 	try:
 		response = client_org.describe_organization()['Organization']
 		my_acct_number = find_account_number(fProfile)

@@ -97,6 +97,7 @@ if pProfile is not None:
 	logging.error("Using the provided profile from the command line")
 	SessionToken = False
 	ProfileSupplied = True
+	aws_session = boto3.Session(profile_name=pProfile)
 	pass
 # They didn't provide a profile parameter
 elif pProfile is None:
@@ -106,6 +107,7 @@ elif pProfile is None:
 		SessionToken = False
 		ProfileSupplied = True
 		logging.error("Using profile from env vars: %s", pProfile)
+		aws_session = boto3.Session(profile_name=EnvVars['Profile'])
 	# They provided the Persistent Access Key and Secret in the Environment Variables
 	elif EnvVars['AccessKey'] is not None and EnvVars['SessionToken'] is None:
 		pProfile = EnvVars['Profile']
@@ -114,6 +116,9 @@ elif pProfile is None:
 		account_credentials['AccessKeyId'] = EnvVars['AccessKey']
 		account_credentials['SecretAccessKey'] = EnvVars['SecretKey']
 		logging.error("Using provided access key: %s", pProfile)
+		aws_session = boto3.Session(aws_access_key_id=EnvVars['AccessKey'],
+		                            aws_secret_access_key=EnvVars['SecretKey']
+		                            )
 	# They provided the ephemeral Access Key and Token in the Environment Variables
 	elif EnvVars['AccessKey'] is not None and EnvVars['SessionToken'] is not None:
 		pProfile = EnvVars['Profile']
@@ -123,12 +128,19 @@ elif pProfile is None:
 		account_credentials['SecretAccessKey'] = EnvVars['SecretKey']
 		account_credentials['SessionToken'] = EnvVars['SessionToken']
 		logging.error("Using provided access key with a session token: %s", pProfile)
+		aws_session = boto3.Session(aws_access_key_id=EnvVars['AccessKey'],
+		                            aws_secret_access_key=EnvVars['SecretKey'],
+		                            aws_session_token=EnvVars['SessionToken']
+		                            )
 # They provided no credentials at all
 else:
 	ProfileSupplied = False
 	print("No authentication mechanisms left!")
 	sys.exit("No authentication mechanisms left")
 ##########################
+
+
+FindOrgStatus = Inventory_Modules.find_account_attr()
 
 
 ERASE_LINE = '\x1b[2K'
