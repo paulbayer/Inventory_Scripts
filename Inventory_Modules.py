@@ -401,27 +401,12 @@ def find_child_accounts(fProfile="default"):
 	from botocore.exceptions import ClientError
 
 	child_accounts = {}
-	session_org = boto3.Session(profile_name=fProfile)
-	theresmore = False
-	try:
-		client_org = session_org.client('organizations')
-		response = client_org.list_accounts()
-		theresmore = True
-	except ClientError as my_Error:
-		logging.warning("Profile %s doesn't represent an Org Root account", fProfile)
-		logging.debug(my_Error)
-		return ()
-	while theresmore:
-		for account in response['Accounts']:
-			# Create a key/value pair with the AccountID:AccountEmail
-			child_accounts[account['Id']] = account['Email']
-		if 'NextToken' in response:
-			theresmore = True
-			response = client_org.list_accounts(NextToken=response['NextToken'])
-		else:
-			theresmore = False
-	return (child_accounts)
-
+	acct_type = find_account_attr(fProfile)
+	if acct_type['AccountType'] == 'Root':
+		session_org = boto3.Session(profile_name=fProfile)
+	elif acct_type['AccountType'].lower() in ['standalone','child']:
+		# Just to be able to save, commit and push.
+		pass
 
 def RemoveCoreAccounts(MainList, AccountsToRemove=None):
 	import logging
