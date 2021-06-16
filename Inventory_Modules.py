@@ -349,7 +349,7 @@ def find_child_accounts2(fProfile):
 
 	child_accounts = []
 	org_root = find_if_org_root(fProfile)
-	if org_root == 'Root':
+	if org_root.lower() == 'root':
 		try:
 			session_org = boto3.Session(profile_name=fProfile)
 			client_org = session_org.client('organizations')
@@ -357,21 +357,22 @@ def find_child_accounts2(fProfile):
 			theresmore = True
 			while theresmore:
 				for account in response['Accounts']:
-					logging.warning("Profile: %s | Account ID: %s | Account Email: %s" % (
-					fProfile, account['Id'], account['Email']))
-					child_accounts.append({'ParentProfile': fProfile, 'AccountId': account['Id'],
-					                       'AccountEmail': account['Email'], 'AccountStatus': account['Status']})
-				if 'NextToken' in response:
+					logging.warning(f"Profile: {fProfile} | Account ID: {account['Id']} | Account Email: {account['Email']}")
+					child_accounts.append({'ParentProfile': fProfile,
+					                       'AccountId': account['Id'],
+					                       'AccountEmail': account['Email'],
+					                       'AccountStatus': account['Status']})
+				if 'NextToken' in response.keys():
 					theresmore = True
 					response = client_org.list_accounts(NextToken=response['NextToken'])
 				else:
 					theresmore = False
 			return (child_accounts)
 		except ClientError as my_Error:
-			logging.warning("Profile %s doesn't represent an Org Root account", fProfile)
+			logging.warning(f"Profile {fProfile} doesn't represent an Org Root account")
 			logging.debug(my_Error)
 			return()
-	elif org_root == 'Standalone' or org_root == 'Child':
+	elif org_root.lower() in ['standalone', 'child']:
 		accountID = find_account_number(fProfile)
 		child_accounts.append({'ParentProfile': fProfile,
 		                       'AccountId': accountID,
@@ -380,7 +381,7 @@ def find_child_accounts2(fProfile):
 		                       'AccountStatus': 'ACTIVE'})
 		return (child_accounts)
 	else:
-		logging.warning("Profile %s doesn't represent an Org Root account", fProfile)
+		logging.warning(f"Profile {fProfile} doesn't represent an Org Root account")
 		# logging.debug(my_Error)
 		return()
 
@@ -406,14 +407,13 @@ def find_child_accounts(fProfile="default"):
 		response = client_org.list_accounts()
 		theresmore = True
 	except ClientError as my_Error:
-		logging.warning("Profile %s doesn't represent an Org Root account", fProfile)
-		logging.debug(my_Error)
+		logging.warning(f"Profile {fProfile} doesn't represent an Org Root account")
 		return ()
 	while theresmore:
 		for account in response['Accounts']:
 			# Create a key/value pair with the AccountID:AccountEmail
 			child_accounts[account['Id']] = account['Email']
-		if 'NextToken' in response:
+		if 'NextToken' in response.keys():
 			theresmore = True
 			response = client_org.list_accounts(NextToken=response['NextToken'])
 		else:
