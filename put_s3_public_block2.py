@@ -162,17 +162,16 @@ def get_child_access2(fRootSessionObject, ParentAccountId, fChildAccount, fRegio
 		                  "In either of these cases, we should just use the profile passed in, "
 		                  "instead of trying to do anything fancy.")
 		logging.info(explain_string)
-		# TODO: Wrap this in a try/except loop
-		# account_credentials = sts_client.get_session_token()['Credentials']
-		account_credentials = {'AccountNumber': fChildAccount, 'ParentAccount': ParentAccountId}
+		session_creds = fRootSessionObject._session.get_credentials()
+		account_credentials = {'ParentAccount': ParentAccountId,
+		                       'AccessKeyId': session_creds['access_key'],
+		                       'SecretAccessKey': session_creds['secret_key'],
+		                       'SessionToken': session_creds['token'],
+		                       'AccountNumber': fChildAccount}
 		return (account_credentials)
 	if fRoleList is None:
 		fRoleList = ['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution',
 					 'OrganizationAccountAccessRole', 'AdministratorAccess', 'Owner']
-	# Initializing the "Negative Use Case" string, returning the whole list instead of only the last role it tried.
-	# This way the operator knows that NONE of the roles supplied worked.
-	return_string = "{} failed. Try Again".format(str(fRoleList))
-
 	account_credentials = {'ParentAccount': ParentAccountId,
 	                       'AccessKeyId': None,
 	                       'SecretAccessKey': None,
@@ -266,7 +265,7 @@ if pFile is not None:
 
 
 AllChildAccountList = find_all_accounts(aws_session)
-print("Found {} accounts to look through".format(len(AllChildAccountList)))
+print(f"Found {len(AllChildAccountList)} accounts to look through")
 for i in range(len(AllChildAccountList)):
 	if AllChildAccountList[i]['AccountStatus'] == 'ACTIVE':
 		print(ERASE_LINE, f"Getting credentials for account {AllChildAccountList[i]['AccountId']}    {i + 1} of {len(AllChildAccountList)}", end="\r")
