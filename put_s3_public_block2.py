@@ -6,7 +6,7 @@ import Inventory_Modules
 import argparse
 import boto3
 from colorama import init, Fore, Back, Style
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, ProfileNotFound
 
 import logging
 
@@ -209,7 +209,7 @@ def check_block_s3_public_access(AcctDict=None):
 			                            aws_session_token=AcctDict['SessionToken'],
 			                            region_name='us-east-1')
 		else:
-			aws_session = boto3.Session(profile_name=AcctDict['ParentAccount'])
+			aws_session = boto3.Session()
 		s3_client = aws_session.client('s3control')
 		logging.info("Checking the public access block on account {}".format(AcctDict['AccountId']))
 		try:
@@ -239,10 +239,14 @@ def enable_block_s3_public_access(AcctDict=None):
 		logging.info("The Account info wasn't passed into the function")
 		return("Skipped")
 	else:
-		aws_session = boto3.Session(aws_access_key_id=AcctDict['AccessKeyId'],
-		                          aws_secret_access_key=AcctDict['SecretAccessKey'],
-		                          aws_session_token=AcctDict['SessionToken'],
-		                          region_name='us-east-1')
+		if 'AccessKeyId' in AcctDict.keys():
+			logging.info("Creating credentials for child account %s ")
+			aws_session = boto3.Session(aws_access_key_id=AcctDict['AccessKeyId'],
+			                            aws_secret_access_key=AcctDict['SecretAccessKey'],
+			                            aws_session_token=AcctDict['SessionToken'],
+			                            region_name='us-east-1')
+		else:
+			aws_session = boto3.Session()
 		s3_client = aws_session.client('s3control')
 		logging.info("Enabling the public access block".format(AcctDict['AccountId']))
 		response = s3_client.put_public_access_block(PublicAccessBlockConfiguration={
@@ -291,16 +295,20 @@ for item in AllChildAccountList:
 	if item['AccountStatus'] == 'SUSPENDED':
 		continue
 	else:
-		Updated = "Skipped"
-		Enabled = check_block_s3_public_access(item)
-		logging.info(f"Checking account #{item['AccountId']} with Parent Account {item['ParentAccount']}")
-		if not Enabled:
-			if pDryRun:
-				Updated = "DryRun"
-				pass
-			else:
-				Updated = enable_block_s3_public_access(item)
-		print(fmt % (item['ParentAccount'], item['AccountId'], Enabled, Updated))
+		try:
+			Updated = "Skipped"
+			Enabled = check_block_s3_public_access(item)
+			logging.info(f"Checking account #{item['AccountId']} with Parent Account {item['ParentAccount']}")
+			if not Enabled:
+				if pDryRun:
+					Updated = "DryRun"
+					pass
+				else:
+					Updated = enable_block_s3_public_access(item)
+			print(fmt % (item['ParentAccount'], item['AccountId'], Enabled, Updated))
+		except ProfileNotFound as myError:
+			logging.info(f"You've tried to update your own management account.")
+
 
 print()
 if pFile is not None:
