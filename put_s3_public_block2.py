@@ -163,9 +163,8 @@ def get_child_access2(fRootSessionObject, ParentAccountId, fChildAccount, fRegio
 		                  "instead of trying to do anything fancy.")
 		logging.info(explain_string)
 		# TODO: Wrap this in a try/except loop
-		account_credentials = sts_client.get_session_token()['Credentials']
-		account_credentials['AccountNumber'] = fChildAccount
-		account_credentials['ParentAccount'] = ParentAccountId
+		# account_credentials = sts_client.get_session_token()['Credentials']
+		account_credentials = {'AccountNumber': fChildAccount, 'ParentAccount': ParentAccountId}
 		return (account_credentials)
 	if fRoleList is None:
 		fRoleList = ['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution',
