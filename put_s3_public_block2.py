@@ -20,7 +20,7 @@ parser.add_argument(
 	dest="pProfile",
 	metavar="profile to use",
 	default=None,
-	help="Preferred to specify a root profile. Default will be all Master profiles")
+	help="Preferred to specify a root profile. Default will be whatever boto3 finds")
 parser.add_argument(
 	"-f", "--file",
 	dest="pFile",
@@ -131,6 +131,7 @@ def find_all_accounts(session_object=None):
 				theresmore = False
 		return (child_accounts)
 	except ClientError as my_Error:
+		print(f"Account {my_account_number} isn't a root account. This script works best with an Org Management account")
 		logging.warning(f"Account {my_account_number} doesn't represent an Org Root account")
 		logging.debug(my_Error)
 		return()
@@ -310,8 +311,8 @@ for item in AllChildAccountList:
 
 print()
 if pFile is not None:
-	print("# of account in file provided: {}".format(len(AccountList)))
+	print(f"# of account in file provided: {len(AccountList)}")
 # print("# of Root Accounts: {}".format(len(RootProfiles)))
-print("# of Child Accounts: {}".format(len(AllChildAccountList)))
+print(f"# of Checked Accounts: {len(AllChildAccountList)}")
 print()
 print("Thank you for using this script.")
