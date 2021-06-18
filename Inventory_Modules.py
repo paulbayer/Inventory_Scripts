@@ -695,14 +695,17 @@ def find_role_names(ocredentials, fRegion, fRoleNameFrag=None):
 
 	Returns:
 		List of Role Names found that match the fragment list sent
-"""
+	"""
+
 	import boto3
 	import logging
 
 	if fRoleNameFrag is None:
 		fRoleNameFrag = ['all']
-	session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
-		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=fRegion)
 	client_iam = session_iam.client('iam')
 	# TODO: Enable pagination
 	response = client_iam.list_roles()['Roles']
@@ -710,14 +713,12 @@ def find_role_names(ocredentials, fRegion, fRoleNameFrag=None):
 	for item in response:
 		RoleNameList.append(item['RoleName'])
 	if 'all' in fRoleNameFrag:
-		logging.warning("Looking for all RoleNames in account %s from Region %s",
-						ocredentials['AccountNumber'], fRegion)
-		logging.info("RoleName Arns Returned: %s", RoleNameList)
-		logging.warning("We found %s RoleNames", len(RoleNameList))
+		logging.warning(f"Looking for all RoleNames in account {ocredentials['AccountNumber']} from Region {fRegion}")
+		logging.info(f"RoleName Arns Returned: {RoleNameList}", )
+		logging.warning(f"We found {len(RoleNameList)} RoleNames")
 		return (RoleNameList)
 	else:
-		logging.warning("Looking for specific RoleNames in account %s from Region %s",
-						ocredentials['AccountNumber'], fRegion)
+		logging.warning(f"Looking for specific RoleNames in account {ocredentials['AccountNumber']} from Region {fRegion}")
 		RoleNameList2 = []
 		for item in fRoleNameFrag:
 			for RoleName in RoleNameList:
