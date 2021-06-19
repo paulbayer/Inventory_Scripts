@@ -94,9 +94,9 @@ for account in ChildAccounts:
 		account_credentials['AccountNumber'] = account['AccountId']
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print(pProfile+": Authorization Failure for account {}".format(account['AccountId']))
+			print(f"{pProfile}: Authorization Failure for account {account['AccountId']}")
 		else:
-			print(pProfile+": Other kind of failure for account {}".format(account['AccountId']))
+			print(f"{pProfile}: Other kind of failure for account {account['AccountId']}")
 			print(my_Error)
 		break
 	# for pRegion in pRegionList:
@@ -104,10 +104,10 @@ for account in ChildAccounts:
 		Idps = Inventory_Modules.find_saml_components_in_acct(account_credentials, pRegion)
 		idpNum = len(Idps)
 		logging.warning("Account: %s | Region: %s | Found %s Idps", account['AccountId'], pRegion, idpNum)
-		logging.warning(ERASE_LINE+Fore.RED+"Account: %s pRegion: %s Found %s Idps. Only %s accounts left to go"+Fore.RESET % (account['AccountId'], pRegion, idpNum, NumofAccounts))
+		logging.warning(f"{ERASE_LINE + Fore.RED}Account: %s pRegion: %s Found %s Idps. Only %s accounts left to go{Fore.RESET % (account['AccountId'], pRegion, idpNum, NumofAccounts)}")
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print(account['AccountId']+": Authorization Failure")
+			print(f"{account['AccountId']}: Authorization Failure")
 		idpNum = 0
 	if idpNum > 0:
 		for y in range(len(Idps)):

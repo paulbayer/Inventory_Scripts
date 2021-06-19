@@ -118,7 +118,7 @@ elif not pProfile == "all":	 # Use case #2 from above
 		ShowEverything = False
 	else:
 		print()
-		print(Fore.RED + "If you're going to provide a profile, it's supposed to be a Management Billing Account profile!!" + Fore.RESET)
+		print(f"{Fore.RED}If you're going to provide a profile, it's supposed to be a Management Billing Account profile!!{Fore.RESET}")
 		print("Continuing to run the script - but for all profiles.")
 		ShowEverything = True
 else:  # Use case #3 from above
@@ -133,14 +133,14 @@ else:  # Use case #3 from above
 			filename = sys.argv[0]
 			logging.info("Running the script again with %s as your profile", profile)
 			ShowEverything = False
-			os.system("python3 "+filename+" -p "+profile)
+			os.system(f"python3 {filename} -p {profile}")
 		else:
 			print()
-			print(Fore.RED + "Provided profile: {} isn't a Master Billing Account profile!!".format(profile) + Fore.RESET)
+			print(f"{Fore.RED}Provided profile: {profile} isn't a Master Billing Account profile!!{Fore.RESET}")
 			print("Skipping...")
 			ShowEverything = False
 			continue
-	sys.exit("Finished %s profiles!" % len(pProfiles))  # Finished the multiple profiles provided.
+	sys.exit(f"Finished {len(pProfiles)} profiles!")  # Finished the multiple profiles provided.
 
 """
 TODO:
@@ -165,7 +165,7 @@ if ShowEverything:
 		ErrorFlag = False
 		try:
 			AcctNum = Inventory_Modules.find_account_number(profile)
-			logging.info("AccountNumber: {}".format(AcctNum))
+			logging.info(f"AccountNumber: {AcctNum}")
 			if AcctNum == '123456789012':
 				ErrorFlag = True
 				pass
@@ -231,7 +231,7 @@ if ShowEverything:
 		if RootAcct:
 			print(Fore.RED + fmt % (profile, AcctNum, MnmgtAcct, OrgId, RootAcct) + Style.RESET_ALL)
 		elif rootonly:  # If I'm looking for only the root accounts, when I find something that isn't a root account, don't print anything and continue on.
-			print(ERASE_LINE, "{} isn't a root account".format(profile), end="\r")
+			print(ERASE_LINE, f"{profile} isn't a root account", end="\r")
 		else:
 			print(fmt % (profile, AcctNum, MnmgtAcct, OrgId, RootAcct))
 	print()
@@ -250,9 +250,9 @@ if ShowEverything:
 			landing_zone = Inventory_Modules.find_if_alz(profile)['ALZ']
 			NumOfAccounts = NumOfAccounts + len(child_accounts)
 			if landing_zone:
-				fmt = '%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL + Fore.RED+'%-6s '+Fore.RESET
+				fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}{Fore.RED}%-6s {Fore.RESET}"
 			else:
-				fmt = '%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+'%-6s'
+				fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}%-6s"
 			print(fmt % (profile, MnmgtAcct, landing_zone))
 			print(child_fmt % ("Child Account Number", "Child Email Address"))
 			for account in sorted(child_accounts):
@@ -273,9 +273,9 @@ elif not ShowEverything:
 	landing_zone = Inventory_Modules.find_if_alz(pProfile)['ALZ']
 	NumOfAccounts = NumOfAccounts + len(child_accounts)
 	if landing_zone:
-		fmt = '%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL + Fore.RED+'%-6s '+Fore.RESET
+		fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}{Fore.RED}%-6s {Fore.RESET}"
 	else:
-		fmt = '%-23s '+Style.BRIGHT+'%-15s '+Style.RESET_ALL+'%-6s'
+		fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}%-6s"
 	print(fmt % (pProfile, MnmgtAcct, landing_zone))
 	print(child_fmt % ("Child Account Number", "Child Email Address"))
 	for account in sorted(child_accounts):

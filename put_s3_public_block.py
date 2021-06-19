@@ -106,19 +106,19 @@ def get_root_profiles():
 	AllProfiles = Inventory_Modules.get_profiles2()
 	try:
 		for profile in AllProfiles:
-			print(ERASE_LINE, "Checking profile {} to see if it's an Org Root profile".format(profile), end="\r")
+			print(ERASE_LINE, f"Checking profile {profile} to see if it's an Org Root profile", end="\r")
 			response = Inventory_Modules.find_if_org_root(profile)
 			if response == 'Root':
 				fRootProfiles.append(profile)
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print("Authorization Failure for profile {}".format(profile))
+			print(f"Authorization Failure for profile {profile}")
 			print(my_Error)
 		elif str(my_Error).find("AccessDenied") > 0:
-			print("Access Denied Failure for profile {}".format(profile))
+			print(f"Access Denied Failure for profile {profile}")
 			print(my_Error)
 		else:
-			print("Other kind of failure for profile {}".format(profile))
+			print(f"Other kind of failure for profile {profile}")
 			print(my_Error)
 	return(fRootProfiles)
 
@@ -126,10 +126,10 @@ def get_root_profiles():
 def find_all_accounts(fRootProfiles):
 	AllChildAccounts = []
 	for profile in fRootProfiles:
-		logging.error("Finding all accounts under Management Profile: %s" % (profile))
+		logging.error(f"Finding all accounts under Management Profile: {profile}")
 		ChildAccounts = Inventory_Modules.find_child_accounts2(profile)
 		AllChildAccounts.extend(ChildAccounts)
-	logging.warning("Found %s accounts" % (len(AllChildAccounts)))
+	logging.warning(f"Found {len(AllChildAccounts)} accounts")
 	return(AllChildAccounts)
 
 
@@ -147,7 +147,7 @@ def check_block_s3_public_access(AcctDict=None):
 		else:
 			aws_session = boto3.Session(profile_name=AcctDict['ParentProfile'])
 		s3_client = aws_session.client('s3control')
-		logging.info("Checking the public access block on account {}".format(AcctDict['AccountId']))
+		logging.info(f"Checking the public access block on account {AcctDict['AccountId']}")
 		try:
 			response = s3_client.get_public_access_block(
 				AccountId=AcctDict['AccountId']
@@ -157,10 +157,10 @@ def check_block_s3_public_access(AcctDict=None):
 				logging.error('No Public Access Block enabled')
 				return(False)
 			elif my_Error.response['Error']['Code'] == 'AccessDenied':
-				logging.error("Bad credentials on account %s" % (AcctDict['AccountId']))
+				logging.error(f"Bad credentials on account {AcctDict['AccountId']}")
 				return("Access Failure")
 			else:
-				logging.error("unexpected error on account #%s: %s" % (AcctDict['AccountId'], my_Error.response))
+				logging.error(f"unexpected error on account #{AcctDict['AccountId']}: {my_Error.response}")
 				return("Access Failure")
 		if response['BlockPublicAcls'] and response['IgnorePublicAcls'] and response['BlockPublicPolicy'] and response['RestrictPublicBuckets']:
 			logging.info("Block was already enabled")
@@ -190,7 +190,7 @@ def enable_block_s3_public_access(AcctDict=None):
 			},
 			AccountId=AcctDict['AccountId']
 		)
-	return(response+"Updated")
+	return(f"{response}Updated")
 ##########################
 
 
@@ -215,14 +215,14 @@ for i in range(len(AllChildAccountList)):
 		print(ERASE_LINE, "Getting credentials for account {}    {} of {}".format(AllChildAccountList[i]['AccountId'], i+1, len(AllChildAccountList)), end="\r")
 		try:
 			credentials, _ = Inventory_Modules.get_child_access2(AllChildAccountList[i]['ParentProfile'], AllChildAccountList[i]['AccountId'])
-			logging.info("Successfully got credentials for account {}".format(AllChildAccountList[i]['AccountId']))
+			logging.info(f"Successfully got credentials for account {AllChildAccountList[i]['AccountId']}")
 			AllChildAccountList[i]['AccessKeyId'] = credentials['AccessKeyId']
 			AllChildAccountList[i]['SecretAccessKey'] = credentials['SecretAccessKey']
 			AllChildAccountList[i]['SessionToken'] = credentials['SessionToken']
 			# AccountList.remove(AllChildAccountList[i]['AccountId'])
 		except Exception as e:
 			print(str(e))
-			print("Failed using root profile {} to get credentials for acct {}".format(AllChildAccountList[i]['ParentProfile'], AllChildAccountList[i]['AccountId']))
+			print(f"Failed using root profile {AllChildAccountList[i]['ParentProfile']} to get credentials for acct {AllChildAccountList[i]['AccountId']}")
 	else:
 		print(ERASE_LINE,
 		      "Skipping account {} since it's SUSPENDED or CLOSED    {} of {}".format(AllChildAccountList[i]['AccountId'], i + 1, len(AllChildAccountList)), end="\r")
@@ -239,7 +239,7 @@ for item in AllChildAccountList:
 	else:
 		Updated = "Skipped"
 		Enabled = check_block_s3_public_access(item)
-		logging.info("Checking account #%s with Parent Profile %s" % (item['AccountId'], item['ParentProfile']))
+		logging.info(f"Checking account #{item['AccountId']} with Parent Profile {item['ParentProfile']}")
 		if not Enabled:
 			if pDryRun:
 				Updated = "DryRun"

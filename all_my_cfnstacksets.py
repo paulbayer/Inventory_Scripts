@@ -90,8 +90,8 @@ sts_session = boto3.Session(profile_name=pProfile)
 sts_client = sts_session.client('sts')
 account_credentials = None      # This shouldn't matter, but makes the IDE checker happy.
 for account in ChildAccounts:
-	role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
-	logging.info("Role ARN: %s" % role_arn)
+	role_arn = f"arn:aws:iam::{account['AccountId']}:role/AWSCloudFormationStackSetExecutionRole"
+	logging.info(f"Role ARN: {role_arn}")
 	try:
 		account_credentials = sts_client.assume_role(
 			RoleArn=role_arn,
@@ -102,11 +102,11 @@ for account in ChildAccounts:
 			continue
 	for region in RegionList:
 		try:
-			print(ERASE_LINE, Fore.RED+"Checking Account: ", account['AccountId'], "Region: ", region+Fore.RESET, end="\r")
+			print(ERASE_LINE, f"{Fore.RED}Checking Account: ", account['AccountId'], "Region: ", region+Fore.RESET, end="\r")
 			StackSets = Inventory_Modules.find_stacksets2(account_credentials, region, account['AccountId'], pstackfrag)
 			logging.warning("Account: %s | Region: %s | Found %s Stacksets", account['AccountId'], region, len(StackSets))
 			if not StackSets == []:
-				print(ERASE_LINE, Fore.RED+"Account: ", account['AccountId'], "Region: ", region, "Found", len(StackSets), "Stacksets"+Fore.RESET, end="\r")
+				print(ERASE_LINE, f"{Fore.RED}Account: ", account['AccountId'], "Region: ", region, "Found", len(StackSets), f"Stacksets{Fore.RESET}", end="\r")
 			for y in range(len(StackSets)):
 				StackName = StackSets[y]['StackSetName']
 				StackStatus = StackSets[y]['Status']
@@ -114,8 +114,8 @@ for account in ChildAccounts:
 				NumStacksFound += 1
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
-				print(account['AccountId']+": Authorization Failure")
+				print(f"{account['AccountId']}: Authorization Failure")
 print(ERASE_LINE)
-print(Fore.RED+"Found", NumStacksFound, "Stacksets across", len(ChildAccounts), "accounts across", len(RegionList), "regions"+Fore.RESET)
+print(f"{Fore.RED}Found", NumStacksFound, "Stacksets across", len(ChildAccounts), "accounts across", len(RegionList), f"regions{Fore.RESET}")
 print()
 print("Thanks for using this script...")

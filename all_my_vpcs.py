@@ -84,8 +84,8 @@ print(fmt % ("-------", "------", "------", "----", "-----------", "--------"))
 RegionList = Inventory_Modules.get_ec2_regions(pRegionList)
 ProfileList = Inventory_Modules.get_profiles(SkipProfiles, pProfiles)
 
-logging.info("# of Regions: %s" % len(RegionList))
-logging.info("# of Profiles: %s" % len(ProfileList))
+logging.info(f"# of Regions: {len(RegionList)}")
+logging.info(f"# of Profiles: {len(ProfileList)}")
 
 Vpcs = {}
 NumProfilesInvestigated = 0
@@ -98,11 +98,11 @@ for region in RegionList:
 			Vpcs = Inventory_Modules.find_profile_vpcs(profile, region, pDefaultOnly)
 			logging.info("Info - Profile %s | Region %s | Found %s vpcs", profile, region, len(Vpcs))
 			VpcNum = len(Vpcs['Vpcs']) if 'Vpcs' in Vpcs else 0
-			print(ERASE_LINE, "Profile: {} | Region: {} | Found {} Vpcs".format(profile, region, VpcNum), end='\r')
+			print(ERASE_LINE, f"Profile: {profile} | Region: {region} | Found {VpcNum} Vpcs", end='\r')
 			# print("Profile: {} | Region: {} | Found {} Vpcs".format(profile,region,VpcNum))
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
-				print("{}: Authorization Failure connecting to {}".format(profile, region))
+				print(f"{profile}: Authorization Failure connecting to {region}")
 			pass
 		except TypeError as my_Error:
 			print(my_Error)

@@ -27,7 +27,7 @@ def wait_with_progress_bar(Message="", Seconds=30):
     for _ in range(Seconds):
         iteration += 1
         progress_string = "." * (iteration % 10)
-        print("\r" + Message + ", please wait {} ".format(progress_string), end=" ")
+        print(f'\r{Message}, please wait {progress_string} ', end=" ")
         time.sleep(1)
 
 
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     accounts = client.list_accounts()
     print('List of accounts in this organization:')
     for account in accounts['Accounts']:
-        print('Account Name: '+account['Name']+' Email: '+account['Email'])
+        print(f"Account Name: {account['Name']} Email: {account['Email']}")
         if (account['Name'].lower().find('logging') >= 0):
             LOGGING_ACCOUNT_NAME=account['Name']
         if account['Name'].lower().find('shared') >= 0:
@@ -137,7 +137,7 @@ if __name__ == "__main__":
     list_of_termination_records = []
     for provisioned_product in provisioned_products:
         if ("StateMachineLambdaRole" not in provisioned_product['UserArn']):
-            print("Terminating provisioned product {}".format(provisioned_product['Name']), end=' ')
+            print(f"Terminating provisioned product {provisioned_product['Name']}", end=' ')
             response = client.terminate_provisioned_product(ProvisionedProductId=provisioned_product['Id'],
                                                             IgnoreErrors=True, TerminateToken=provisioned_product['Id'])
             list_of_termination_records.append(response['RecordDetail']['RecordId'])
@@ -190,7 +190,7 @@ if __name__ == "__main__":
 
         # delete the portfolio (finally)
         for portfolio in portfolios:
-            print('Deleting portfolio {}'.format(portfolio['Id']), end=' ')
+            print(f"Deleting portfolio {portfolio['Id']}", end=' ')
             client.delete_portfolio(Id=portfolio['Id'])
             print('[DONE]')
     else:
@@ -201,7 +201,7 @@ if __name__ == "__main__":
     products = client.search_products_as_admin()['ProductViewDetails']
     if len(products) > 0:
         for product in products:
-            print('Deleting product {}'.format(product['ProductViewSummary']['ProductId']), end=' ')
+            print(f"Deleting product {product['ProductViewSummary']['ProductId']}", end=' ')
             client.delete_product(Id=product['ProductViewSummary']['ProductId'])
             print('[DONE]')
     else:
@@ -220,7 +220,7 @@ if __name__ == "__main__":
     for stack in stacks['StackSummaries']:
         desc = stack.get('TemplateDescription', '')
         if "(SO0045)" in desc and stack['StackStatus'] != 'DELETE_COMPLETE':
-            print("Deleting stack {} - {}".format(stack['StackName'], stack['TemplateDescription']), end=' ')
+            print(f"Deleting stack {stack['StackName']} - {stack['TemplateDescription']}", end=' ')
             client.delete_stack(StackName=stack['StackName'])
             print("[DONE]")
             deleted_something = True
@@ -249,26 +249,26 @@ if __name__ == "__main__":
     deleted_stack_sets = False
     for stack_set in stack_sets['Summaries']:
         deleted_stack_sets = False
-        print('Checking whether {} is a stackset we need to delete'.format(stack_set['StackSetName']))
+        print(f"Checking whether {stack_set['StackSetName']} is a stackset we need to delete")
         print('Verbose Output:')
-        print('     Stack Set Name: {}'.format(stack_set['StackSetName']))
-        print('     Stack Set Status: {}'.format(stack_set['Status']))
-        print('     Delete In Progress: {}'.format(delete_in_progress))
+        print(f"     Stack Set Name: {stack_set['StackSetName']}")
+        print(f"     Stack Set Status: {stack_set['Status']}")
+        print(f'     Delete In Progress: {delete_in_progress}')
 
         if stack_set['StackSetName'] in stack_sets_to_delete and stack_set['Status'] == 'ACTIVE' and not delete_in_progress:
-            print('Deleting stack set {}'.format(stack_set['StackSetName']),end='')
+            print(f"Deleting stack set {stack_set['StackSetName']}",end='')
             client.delete_stack_set(StackSetName=stack_set['StackSetName'])
             deleted_stack_sets = True
             delete_in_progress = True
         elif stack_set['StackSetName'] in stack_sets_to_delete and stack_set['Status'] == 'FAILED' and not delete_in_progress:
-            print('Even though the stack set {} is in a FAILED state, we\'re going to delete it anyway...'.format(stack_set['StackSetName']))
-            print('Deleting stack set {}'.format(stack_set['StackSetName']),end='')
+            print(f"Even though the stack set {stack_set['StackSetName']} is in a FAILED state, we're going to delete it anyway...")
+            print(f"Deleting stack set {stack_set['StackSetName']}",end='')
             client.delete_stack_set(StackSetName=stack_set['StackSetName'])
             print('[DONE]')
             deleted_stack_sets = True
             delete_in_progress = True
         elif not stack_set['StackSetName'] in stack_sets_to_delete:
-            print('It appears that {} isn\'t a stackset we need to delete'.format(stack_set['StackSetName']),end='')
+            print(f"It appears that {stack_set['StackSetName']} isn't a stackset we need to delete",end='')
 
         # wait for those stacks sets to be deleted
         while deleted_stack_sets and delete_in_progress:
@@ -279,11 +279,11 @@ if __name__ == "__main__":
             except:
                 # This means the deletion beat us.
                 pass
-                print("\nError deleting stack set {}. The deletion probably beat us".format(stack_set['StackSetName']))
+                print(f"\nError deleting stack set {stack_set['StackSetName']}. The deletion probably beat us")
             # for stack_set in stack_sets['Summaries']:
             if stack_set_status['Status'] == 'ACTIVE':
                 delete_in_progress = True
-                print("Status of {} stackset is currently {}".format(stack_set['StackSetName'],stack_set_status['Status']))
+                print(f"Status of {stack_set['StackSetName']} stackset is currently {stack_set_status['Status']}")
                 wait_with_progress_bar(Message="\nSecurity Baseline stack sets delete in progress", Seconds=30)
         print('[DONE]')
         ## BUG TO FIX: If the Stackset is in status "Failed" - this will go into a race condition, and never complete.
@@ -329,7 +329,7 @@ if __name__ == "__main__":
         for active_stack_set in active_stack_sets['Summaries']:
             if active_stack_set['StackSetName'] == stack_set_name:
                 stack_set_exists = True
-                print("StackSet {} exists, is ACTIVE and needs to be deleted.".format(active_stack_set['StackSetName']))
+                print(f"StackSet {active_stack_set['StackSetName']} exists, is ACTIVE and needs to be deleted.")
 
         if stack_set_exists:
             instances = client.list_stack_instances(StackSetName=stack_set_name)
@@ -353,11 +353,11 @@ if __name__ == "__main__":
                             exit()
                         print(".",end="")
                         time.sleep(5)
-                        print_debug("Still deleting stackset "+stack_set_name+" in region "+instance['Region']+" in account "+instance['Account'])
+                        print_debug(f"Still deleting stackset {stack_set_name} in region {instance['Region']} in account {instance['Account']}")
                     deleted_instances = True
 
                 if not deleted_instances:
-                    print("No instances to delete for {}".format(stack_set_name))
+                    print(f"No instances to delete for {stack_set_name}")
 
                     # wait for delete operations on this stack set to finish
                 # operations = client.list_stack_set_operations(StackSetName=stack_set_name)
@@ -373,16 +373,16 @@ if __name__ == "__main__":
                 print("[DONE]")
 
             # delete the stack set
-            print("Deleting stack set {}".format(stack_set_name), end=" ")
+            print(f"Deleting stack set {stack_set_name}", end=" ")
             try:
                 client.delete_stack_set(StackSetName=stack_set_name)
                 deleted_stack_set = True
                 print('[DONE]')
             except ClientError as e:
-                print("\nError deleting stack set {} - {}".format(stack_set_name, e))
+                print(f"\nError deleting stack set {stack_set_name} - {e}")
                 input("Please investigate it, delete all relevant resources and press ENTER to continue")
         else:
-            print("Stack set {} not found, skipping it".format(stack_set_name))
+            print(f"Stack set {stack_set_name} not found, skipping it")
 
     # Step 8 - Unlock the member accounts (Skip this step: if the flag 'lock_down_stack_sets_role' is already set to 'No')
     print(
@@ -390,7 +390,7 @@ if __name__ == "__main__":
 
     # Step 9 - Delete the Logging Bucket in the Logging Account. Note - I delete all buckets that include 'aws-landing-zone' string in name
     print("\nStep 9 - cleaning up logging account, since we are emptying S3 buckets one-by-one, this step will take some time. ")
-    provided_account_name = input("Please provide logging account name or press ENTER if it's "+LOGGING_ACCOUNT_NAME+" ")
+    provided_account_name = input(f"Please provide logging account name or press ENTER if it's {LOGGING_ACCOUNT_NAME} ")
     if provided_account_name == "":
         provided_account_name = LOGGING_ACCOUNT_NAME
 
@@ -410,8 +410,8 @@ if __name__ == "__main__":
             else:
                 sts_client = boto3.client('sts', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
             # generate temporary session for the log-archive account
-            role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['Id'])
-            print("Account ID for the log-archive account: {}".format(account['Id']))
+            role_arn = f"arn:aws:iam::{account['Id']}:role/AWSCloudFormationStackSetExecutionRole"
+            print(f"Account ID for the log-archive account: {account['Id']}")
             account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="ALZAddIsengardUserScript")['Credentials']
 
             # create client with temporary credentials
@@ -425,11 +425,11 @@ if __name__ == "__main__":
                     s3 = boto3.resource('s3', region_name=AWS_REGION, aws_access_key_id=account_credentials['AccessKeyId'], aws_secret_access_key=account_credentials['SecretAccessKey'], aws_session_token=account_credentials['SessionToken'])
                     s3_bucket = s3.Bucket(bucket['Name'])
                     if s3_bucket in s3.buckets.all():
-                        print("Emptying bucket (this may take a while, restart script if it crashes here) {}".format(bucket['Name']), end=" ")
+                        print(f"Emptying bucket (this may take a while, restart script if it crashes here) {bucket['Name']}", end=" ")
                         try:
                             s3_bucket.object_versions.all().delete()
                             print('[DONE]')
-                            print('Deleting bucket {}'.format(bucket['Name']), end=" ")
+                            print(f"Deleting bucket {bucket['Name']}", end=" ")
                             s3_bucket.delete()
                             print('[DONE]')
                             deleted_logging_bucket = True
@@ -450,7 +450,7 @@ if __name__ == "__main__":
     # Step 10 - Delete the auto-generated EC2 key-pairs in the Shared Services Account
     print("\nStep 10 - deleting auto-generated EC2 key-pairs")
     provided_account_name = input(
-        "Please provide shared-services account name or press ENTER if it's "+SHARED_SERVICES_ACCOUNT_NAME)
+        f"Please provide shared-services account name or press ENTER if it's {SHARED_SERVICES_ACCOUNT_NAME}")
     if provided_account_name == "":
         provided_account_name = SHARED_SERVICES_ACCOUNT_NAME
 
@@ -469,8 +469,8 @@ if __name__ == "__main__":
             else:
                 sts_client = boto3.client('sts', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
             # generate temporary session for the logging account
-            role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['Id'])
-            print("Account ID for the shared services account: {}".format(account['Id']))
+            role_arn = f"arn:aws:iam::{account['Id']}:role/AWSCloudFormationStackSetExecutionRole"
+            print(f"Account ID for the shared services account: {account['Id']}")
             account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="ALZAddIsengardUserScript")[
                 'Credentials']
 
@@ -479,7 +479,7 @@ if __name__ == "__main__":
             key_pairs = ec2_client.describe_key_pairs()['KeyPairs']
             for key_pair in key_pairs:
                 if key_pair['KeyName'].startswith('lz'):
-                    print("Deleting key pair {}".format(key_pair['KeyName']), end=" ")
+                    print(f"Deleting key pair {key_pair['KeyName']}", end=" ")
                     ec2_client.delete_key_pair(KeyName=key_pair['KeyName'])
                     print("[DONE]")
                     deleted_key_pair = True
@@ -510,23 +510,23 @@ if __name__ == "__main__":
             else:
                 s3 = boto3.resource('s3', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
             bucket_to_delete = s3.Bucket(bucket['Name'])
-            print_debug("Bucket to delete: {}".format(bucket_to_delete))
+            print_debug(f"Bucket to delete: {bucket_to_delete}")
             try:
-                print("Emptying bucket (this may take a while) {}".format(bucket['Name']), end=" ")
+                print(f"Emptying bucket (this may take a while) {bucket['Name']}", end=" ")
                 bucket_to_delete.object_versions.all().delete()
                 print('[DONE]')
             except ClientError as e:
-                print("An error occured - {}".format(e))
+                print(f"An error occured - {e}")
                 input(
                     "This _may_ mean that not all objects were deleted from the bucket, please investigate, empty bucket manually and press ENTER to continue")
 
             try:
-                print('Deleting bucket {}'.format(bucket['Name']), end=" ")
+                print(f"Deleting bucket {bucket['Name']}", end=" ")
                 bucket_to_delete.delete()
                 print('[DONE]')
                 deleted_a_bucket = True
             except ClientError as e:
-                print("An error occured - {}".format(e))
+                print(f"An error occured - {e}")
                 input("Please delete the bucket manually and press ENTER to continue")
 
     if not deleted_a_bucket:
@@ -577,7 +577,7 @@ if __name__ == "__main__":
     deleted_something = False
     for stack in stacks['StackSummaries']:
         if "AWS-Landing-Zone" in stack['StackName'] and stack['StackStatus'] != 'DELETE_COMPLETE':
-            print("Deleting stack {} - {}".format(stack['StackName'], stack['TemplateDescription']), end=' ')
+            print(f"Deleting stack {stack['StackName']} - {stack['TemplateDescription']}", end=' ')
             client.delete_stack(StackName=stack['StackName'])
             print("[DONE]")
             deleted_something = True
@@ -609,11 +609,11 @@ if __name__ == "__main__":
             detectors = client.list_detectors()
             for detector in detectors['DetectorIds']:
                 response = client.delete_detector(DetectorId=detector)
-                print("Deleted GuardDuty detector "+detector+" in region "+region)
+                print(f"Deleted GuardDuty detector {detector} in region {region}")
                 print_debug(response)
         print("\nAssuming security account is called 'security', edit the script otherwise")
         provided_account_name = input(
-            "Please provide security account name or press ENTER if it's "+SECURITY_ACCOUNT_NAME)
+            f"Please provide security account name or press ENTER if it's {SECURITY_ACCOUNT_NAME}")
         if provided_account_name == "":
             provided_account_name = SECURITY_ACCOUNT_NAME
 
@@ -632,8 +632,8 @@ if __name__ == "__main__":
                 else:
                     sts_client = boto3.client('sts', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
                 # generate temporary session for the security account
-                role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['Id'])
-                print("Account ID for the security account: {}".format(account['Id']))
+                role_arn = f"arn:aws:iam::{account['Id']}:role/AWSCloudFormationStackSetExecutionRole"
+                print(f"Account ID for the security account: {account['Id']}")
                 account_credentials = \
                 sts_client.assume_role(RoleArn=role_arn, RoleSessionName="ALZAddIsengardUserScript")[
                     'Credentials']
@@ -648,7 +648,7 @@ if __name__ == "__main__":
                     detectors = client.list_detectors()
                     for detector in detectors['DetectorIds']:
                         response = client.delete_detector(DetectorId=detector)
-                        print("Deleted GuardDuty detector "+detector+" in region "+region)
+                        print(f"Deleted GuardDuty detector {detector} in region {region}")
                         print_debug(response)
 
     # Step 13
@@ -666,9 +666,9 @@ if __name__ == "__main__":
         for stack in stacks['StackSummaries']:
             desc = stack.get('TemplateDescription', '')
             if "(SO0044)" in desc and stack['StackStatus'] != 'DELETE_COMPLETE':
-                print("Updating termination protection in case it's set on stack {}".format(stack['StackName']))
+                print(f"Updating termination protection in case it's set on stack {stack['StackName']}")
                 client.update_termination_protection(EnableTerminationProtection=False, StackName=stack['StackName'])
-                print("Triggering delete of stack {} - {}".format(stack['StackName'], stack['TemplateDescription']), end=' ')
+                print(f"Triggering delete of stack {stack['StackName']} - {stack['TemplateDescription']}", end=' ')
                 client.delete_stack(StackName=stack['StackName'])
                 print("[DONE]")
                 deleted_something = True
@@ -709,7 +709,7 @@ if __name__ == "__main__":
         for ou in ous:
             accounts = client.list_accounts_for_parent(ParentId=ou['Id'])['Accounts']
             for account in accounts:
-                print("Moving account {} to root".format(account['Id']), end=" ")
+                print(f"Moving account {account['Id']} to root", end=" ")
                 client.move_account(AccountId=account['Id'], SourceParentId=ou['Id'], DestinationParentId=root['Id'])
                 print("[DONE]")
 
@@ -718,7 +718,7 @@ if __name__ == "__main__":
     for root in roots:
         ous = client.list_organizational_units_for_parent(ParentId=root['Id'])['OrganizationalUnits']
         for ou in ous:
-            print('Deleting OU {}'.format(ou['Name']), end=" ")
+            print(f"Deleting OU {ou['Name']}", end=" ")
             client.delete_organizational_unit(OrganizationalUnitId=ou['Id'])
             print('[DONE]')
             deleted_something = True
@@ -764,13 +764,13 @@ if __name__ == "__main__":
     ALIAS_NAME = "alias/AwsLandingZoneKMSKey"
     for alias in client.list_aliases()['Aliases']:
         if alias['AliasName'] == ALIAS_NAME:
-            print("Deleting alias {}".format(alias['AliasName']), end=" ")
+            print(f"Deleting alias {alias['AliasName']}", end=" ")
             client.delete_alias(AliasName=ALIAS_NAME)
             deleted_alias = True
             print("[DONE]")
 
     if not deleted_alias:
-        print("Alias {} not found".format(ALIAS_NAME))
+        print(f"Alias {ALIAS_NAME} not found")
 
     print("\nWe're done! All resources from your ALZ accounts are removed!")
-    print("Total removal time {} seconds".format((time.time() - start_time)))
+    print(f"Total removal time {time.time() - start_time} seconds")

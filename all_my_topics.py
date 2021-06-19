@@ -82,8 +82,8 @@ RegionList = Inventory_Modules.get_ec2_regions(pRegionList, pProfile)
 ChildAccounts = Inventory_Modules.find_child_accounts2(pProfile)
 # AdminRole = "AWSCloudFormationStackSetExecutionRole"
 
-logging.info("# of Regions: %s" % len(RegionList))
-logging.info("# of Child Accounts: %s" % len(ChildAccounts))
+logging.info(f"# of Regions: {len(RegionList)}")
+logging.info(f"# of Child Accounts: {len(ChildAccounts)}")
 
 account_credentials = None
 for i in range(len(ChildAccounts)):
@@ -99,12 +99,12 @@ for i in range(len(ChildAccounts)):
 		# account_credentials['AccountNumber'] = ChildAccounts[i]['AccountId']
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print("{}: Authorization Failure for account {}".format(ChildAccounts[i]['ParentProfile'], ChildAccounts[i]['AccountId']))
+			print(f"{ChildAccounts[i]['ParentProfile']}: Authorization Failure for account {ChildAccounts[i]['AccountId']}")
 		elif str(my_Error).find("AccessDenied") > 0:
-			print("{}: Access Denied Failure for account {}".format(ChildAccounts[i]['ParentProfile'], ChildAccounts[i]['AccountId']))
+			print(f"{ChildAccounts[i]['ParentProfile']}: Access Denied Failure for account {ChildAccounts[i]['AccountId']}")
 			print(my_Error)
 		else:
-			print("{}: Other kind of failure for account {}".format(ChildAccounts[i]['ParentProfile'], ChildAccounts[i]['AccountId']))
+			print(f"{ChildAccounts[i]['ParentProfile']}: Other kind of failure for account {ChildAccounts[i]['AccountId']}")
 			print(my_Error)
 			break
 
@@ -113,10 +113,10 @@ for i in range(len(ChildAccounts)):
 			logging.info("Looking for Topics")
 			Topics = Inventory_Modules.find_sns_topics(account_credentials, region, pTopicFrag)
 			TopicNum = len(Topics)
-			print(ERASE_LINE, "Looking in account "+Fore.RED+"{}".format(ChildAccounts[i]['AccountId']), Fore.RESET+"in {} where we found {} Topics".format(region, TopicNum), end='\r')
+			print(ERASE_LINE, f"Looking in account {Fore.RED}{ChildAccounts[i]['AccountId']}", f"{Fore.RESET}in {region} where we found {TopicNum} Topics", end='\r')
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
-				print("{} :Authorization Failure for account: {} in region {}".format(pProfile, ChildAccounts[i]['AccountId'], region))
+				print(f"{pProfile} :Authorization Failure for account: {ChildAccounts[i]['AccountId']} in region {region}")
 		except TypeError as my_Error:
 			print("Error:", my_Error)
 			pass

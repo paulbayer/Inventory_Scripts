@@ -33,36 +33,37 @@ So if we created a class object that represented the account:
 
 class aws_acct_access:
 	"""
-	Docstring that describe the class
-	Class takes a session object as input
+	Class takes a boto3 session object as input
+	Multiple attributes and functions exist within this class to give you information about the account
 	"""
 	def __init__(self, session_object=None):
 		self.session = session_object
-		acct_number = self.acct_num()
-		AccountType = self.find_account_attr()
+		self.acct_number = self.acct_num()
+		self.AccountType = self.find_account_attr()['AccountType']
 
 	def acct_num(self):
+		"""
+		This function returns a string of the account's 12 digit account number
+		"""
 		import logging
 		from botocore.exceptions import ClientError
 
 		try:
 			aws_session = self.session
-			# logging.info(f"Getting creds used within profile {fProfile}")
+			logging.info(f"Accessing session object")
 			client_sts = aws_session.client('sts')
 			response = client_sts.get_caller_identity()
 			creds = response['Account']
-			# creds = {'Arn': response['Arn'], 'AccountId': response['Account'],
-			#          'Short': response['Arn'][response['Arn'].rfind(':') + 1:]}
 		except ClientError as my_Error:
 			if str(my_Error).find("UnrecognizedClientException") > 0:
-				# print("{}: Security Issue".format(fProfile))
+				logging.info(f"Security Issue")
 				pass
 			elif str(my_Error).find("InvalidClientTokenId") > 0:
-				# print("{}: Security Token is bad - probably a bad entry in config".format(fProfile))
+				logging.info(f"Security Token is bad - probably a bad entry in config")
 				pass
 			else:
-				# print("Other kind of failure for profile {}".format(fProfile))
 				print(my_Error)
+				logging.info(f"Other kind of failure for boto3 access")
 				pass
 			creds = "Failure"
 		return (creds)
@@ -109,13 +110,13 @@ class aws_acct_access:
 			pass
 		return (FailResponse)
 
-	def find_child_accounts2(self):
+	def find_child_accounts(self):
 		"""
 		This is an example of the list response from this call:
 			[
-			{'ParentProfile':'LZRoot', 'AccountId': 'xxxxxxxxxxxx', 'AccountEmail': 'EmailAddr1@example.com', 'AccountStatus': 'ACTIVE'},
-			{'ParentProfile':'LZRoot', 'AccountId': 'yyyyyyyyyyyy', 'AccountEmail': 'EmailAddr2@example.com', 'AccountStatus': 'ACTIVE'},
-			{'ParentProfile':'LZRoot', 'AccountId': 'zzzzzzzzzzzz', 'AccountEmail': 'EmailAddr3@example.com', 'AccountStatus': 'SUSPENDED'}
+			{'MgmntAccount':'<12 digit number>', 'AccountId': 'xxxxxxxxxxxx', 'AccountEmail': 'EmailAddr1@example.com', 'AccountStatus': 'ACTIVE'},
+			{'MgmntAccount':'<12 digit number>', 'AccountId': 'yyyyyyyyyyyy', 'AccountEmail': 'EmailAddr2@example.com', 'AccountStatus': 'ACTIVE'},
+			{'MgmntAccount':'<12 digit number>', 'AccountId': 'zzzzzzzzzzzz', 'AccountEmail': 'EmailAddr3@example.com', 'AccountStatus': 'SUSPENDED'}
 			]
 		This can be convenient for appending and removing.
 		"""
@@ -132,7 +133,7 @@ class aws_acct_access:
 				while theresmore:
 					for account in response['Accounts']:
 						logging.info(f"Account ID: {self.acct_num()}")
-						child_accounts.append({'ParentProfile': 'Don\'t know',
+						child_accounts.append({'MgmntAccount': self.acct_num(),
 						                       'AccountId': account['Id'],
 						                       'AccountEmail': account['Email'],
 						                       'AccountStatus': account['Status']})
@@ -147,10 +148,9 @@ class aws_acct_access:
 				logging.debug(my_Error)
 				return ()
 		elif self.find_account_attr()['AccountType'].lower() in ['standalone', 'child']:
-			accountID = self.acct_num()
-			child_accounts.append({'ParentProfile': 'Don\'t know',
-			                       'AccountId': accountID,
-			                       'AccountEmail': 'NotAnOrgRoot@example.com',
+			child_accounts.append({'MgmntAccount': self.acct_num(),
+			                       'AccountId': self.acct_num(),
+			                       'AccountEmail': 'Not an Org Management Account',
 			                       # We know the account is ACTIVE because if it was SUSPENDED, we wouldn't have gotten a valid response from the org_root check
 			                       'AccountStatus': 'ACTIVE'})
 			return (child_accounts)

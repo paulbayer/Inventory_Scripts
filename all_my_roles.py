@@ -109,7 +109,7 @@ ChildAccounts = Inventory_Modules.find_child_accounts2(pProfile)
 
 print()
 if pRole is not None:
-	print("Looking for a specific role called {}".format(pRole))
+	print(f"Looking for a specific role called {pRole}")
 	print()
 fmt = '%-15s %-42s'
 print(fmt % ("Account Number", "Role Name"))
@@ -126,10 +126,10 @@ for account in ChildAccounts:
 			continue
 		account_credentials['AccountNumber'] = account['AccountId']
 		logging.info("Connecting to %s with %s role", account['AccountId'], role)
-		print(ERASE_LINE, "Checking Account {}".format(account_credentials['AccountNumber']), end="")
+		print(ERASE_LINE, f"Checking Account {account_credentials['AccountNumber']}", end="")
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print("{}: Authorization Failure for account {}".format(pProfile, account['AccountId']))
+			print(f"{pProfile}: Authorization Failure for account {account['AccountId']}")
 		continue
 	iam_session = boto3.Session(
 		aws_access_key_id=account_credentials['AccessKeyId'],
@@ -157,10 +157,10 @@ for account in ChildAccounts:
 					'RoleName': response['Roles'][i]['RoleName']
 				})
 				RoleNum += len(response['Roles'])
-		print(" - Found {} roles".format(RoleNum), end="\r")
+		print(f" - Found {RoleNum} roles", end="\r")
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print(pProfile + ": Authorization Failure for account {}".format(account['AccountId']))
+			print(f"{pProfile}: Authorization Failure for account {account['AccountId']}")
 
 RoleNum = 0
 if (pRole is None):
@@ -170,7 +170,7 @@ if (pRole is None):
 elif pRole is not None:
 	for i in range(len(Roles)):
 		RoleNum += 1
-		logging.info("In account %s: Found Role %s : Looking for role %s" % (Roles[i]['AccountId'], Roles[i]['RoleName'], pRole))
+		logging.info(f"In account {Roles[i]['AccountId']}: Found Role {Roles[i]['RoleName']} : Looking for role {pRole}")
 		if Roles[i]['RoleName'].find(pRole) >= 0:
 			print(fmt % (Roles[i]['AccountId'], Roles[i]['RoleName']), end="")
 			SpecifiedRoleNum += 1
@@ -186,7 +186,7 @@ if (pRole is None):
 else:
 	print("Found {} in {} of {} accounts".format(pRole, SpecifiedRoleNum, len(ChildAccounts)))
 	if pDelete:
-		print("     And we deleted it {} times".format(DeletedRoles))
+		print(f"     And we deleted it {DeletedRoles} times")
 print()
 print("Thanks for using this script...")
 print()

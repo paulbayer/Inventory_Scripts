@@ -146,7 +146,7 @@ def get_parent_profiles(fprofiles=None, fSkipProfiles=None):
 	my_profiles2 = []
 	NumOfProfiles = len(my_profiles)
 	for profile in my_profiles:
-		print(ERASE_LINE, "Checking {} Profile - {} more profiles to go".format(profile, NumOfProfiles), end='\r')
+		print(ERASE_LINE, f"Checking {profile} Profile - {NumOfProfiles} more profiles to go", end='\r')
 		logging.warning("Finding whether %s is a root profile", profile)
 		try:
 			AcctResult = find_if_org_root(profile)
@@ -210,7 +210,7 @@ def find_bucket_location(fProfile, fBucketname):
 		response = client_org.get_bucket_location(Bucket=fBucketname)
 	except ClientError as my_Error:
 		if str(my_Error).find("AccessDenied") > 0:
-			logging.error("Authorization Failure for profile {}".format(fProfile))
+			logging.error(f"Authorization Failure for profile {fProfile}")
 		return (None)
 	if response['LocationConstraint'] is None:
 		location = 'us-east-1'
@@ -278,11 +278,11 @@ def find_calling_identity(fProfile):
 				 'Short': response['Arn'][response['Arn'].rfind(':') + 1:]}
 	except ClientError as my_Error:
 		if str(my_Error).find("UnrecognizedClientException") > 0:
-			print("{}: Security Issue".format(fProfile))
+			print(f"{fProfile}: Security Issue")
 		elif str(my_Error).find("InvalidClientTokenId") > 0:
-			print("{}: Security Token is bad - probably a bad entry in config".format(fProfile))
+			print(f"{fProfile}: Security Token is bad - probably a bad entry in config")
 		else:
-			print("Other kind of failure for profile {}".format(fProfile))
+			print(f"Other kind of failure for profile {fProfile}")
 			print(my_Error)
 		creds = "Failure"
 	return (creds)
@@ -324,7 +324,7 @@ def find_account_attr(fSessionObject):
 			logging.error(f"{fProfile}: Access Denied for profile")
 		pass
 	except CredentialRetrievalError as my_Error:
-		print("{}: Failure pulling or updating credentials".format(fProfile))
+		print(f"{fProfile}: Failure pulling or updating credentials")
 		print(my_Error)
 		pass
 	except:
@@ -536,7 +536,7 @@ def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleLis
 	for role in fRoleList:
 		try:
 			logging.info("Trying to access account %s using %s profile assuming role: %s", fChildAccount, fRootProfile, role)
-			role_arn = 'arn:aws:iam::' + fChildAccount + ':role/' + role
+			role_arn = f"arn:aws:iam::{fChildAccount}:role/{role}"
 			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Find-ChildAccount-Things")['Credentials']
 			# If we were successful up to this point, then we'll short-cut everything and just return the credentials that worked
 			account_credentials['Profile'] = fRootProfile
@@ -574,7 +574,7 @@ def get_child_access3(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleLis
 
 	if not isinstance(fChildAccount, str):  # Make sure the passed in account number is a string
 		fChildAccount = str(fChildAccount)
-	org_status=find_account_attr(fRootProfile)
+	org_status = find_account_attr(fRootProfile)
 	ParentAccountId = find_account_number(fRootProfile)
 	sts_session = boto3.Session(profile_name=fRootProfile)
 	sts_client = sts_session.client('sts', region_name=fRegion)
@@ -604,7 +604,7 @@ def get_child_access3(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleLis
 	for role in fRoleList:
 		try:
 			logging.info("Trying to access account %s using %s profile assuming role: %s", fChildAccount, fRootProfile, role)
-			role_arn = 'arn:aws:iam::' + fChildAccount + ':role/' + role
+			role_arn = f"arn:aws:iam::{fChildAccount}:role/{role}"
 			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Find-ChildAccount-Things")['Credentials']
 			# If we were successful up to this point, then we'll short-cut everything and just return the credentials that worked
 			account_credentials['Profile'] = fRootProfile
@@ -980,7 +980,7 @@ def find_cloudtrails(ocredentials, fRegion, fCloudTrailnames=None):
 		except ClientError as my_Error:
 			if str(my_Error).find("InvalidTrailNameException") > 0:
 				logging.error("Bad CloudTrail name provided")
-			fullresponse = trailname + " didn't work. Try Again"
+			fullresponse = f"{trailname} didn't work. Try Again"
 		return(fullresponse, trailname)
 	elif len(fCloudTrailnames) > 0:
 		#  TODO: This doesn't work... Needs to be fixed.
@@ -994,7 +994,7 @@ def find_cloudtrails(ocredentials, fRegion, fCloudTrailnames=None):
 			except ClientError as my_Error:
 				if str(my_Error).find("InvalidTrailNameException") > 0:
 					logging.error("Bad CloudTrail name provided")
-				response = trailname + " didn't work. Try Again"
+				response = f"{trailname} didn't work. Try Again"
 				# TODO: This is also wrong, since it belongs outside this try (remember - this is a list)
 				# TODO: But since the top part is broken, I'm leaving this broken too.
 				return(response, trailname)
@@ -1051,7 +1051,7 @@ def find_gd_invites(ocredentials, fRegion):
 				ocredentials['AccountNumber']))
 		if str(my_Error).find("security token included in the request is invalid") > 0:
 			print("Account #:" + ocredentials[
-				'AccountNumber'] + " - It's likely that the region you're trying ({}) isn\'t enabled for your account".format(fRegion))
+				'AccountNumber'] + f" - It's likely that the region you're trying ({fRegion}) isn't enabled for your account")
 		else:
 			print(my_Error)
 		response = {'Invitations': []}
@@ -1082,9 +1082,9 @@ def delete_gd_invites(ocredentials, fRegion, fAccountId):
 		return (response['Invitations'])
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print(ocredentials['AccountNumber'] + ": Authorization Failure for account {}".format(ocredentials['AccountNumber']))
+			print(f"{ocredentials['AccountNumber']}: Authorization Failure for account {ocredentials['AccountNumber']}")
 		if str(my_Error).find("security token included in the request is invalid") > 0:
-			print("Account #:" + ocredentials['AccountNumber'] + " - It's likely that the region you're trying ({}) isn\'t enabled for your account".format(fRegion))
+			print(f"Account #:{ocredentials['AccountNumber']} - It's likely that the region you're trying ({fRegion}) isn't enabled for your account")
 		else:
 			print(my_Error)
 
@@ -1103,7 +1103,7 @@ def find_account_instances(ocredentials, fRegion='us-east-1'):
 
 	if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
 		ProfileAccountNumber = find_account_number(ocredentials['Profile'])
-		logging.info("Profile: %s | Profile Account Number: %s | Account Number passed in: %s" % (ocredentials['Profile'], ProfileAccountNumber, ocredentials['AccountNumber']))
+		logging.info(f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
 		if ProfileAccountNumber == ocredentials['AccountNumber']:
 			session_ec2 = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
 		else:
@@ -1689,7 +1689,7 @@ def delete_stack_instances(fProfile, fRegion, lAccounts, lRegions, fStackSetName
 	import boto3
 	import logging
 
-	logging.warning("Deleting %s stackset over %s accounts across %s regions" % (fStackSetName, len(lAccounts), len(lRegions)))
+	logging.warning(f"Deleting {fStackSetName} stackset over {len(lAccounts)} accounts across {len(lRegions)} regions")
 	session_cfn = boto3.Session(profile_name=fProfile, region_name=fRegion)
 	client_cfn = session_cfn.client('cloudformation')
 	response = client_cfn.delete_stack_instances(StackSetName=fStackSetName, Accounts=lAccounts, Regions=lRegions, RetainStacks=fRetainStacks, OperationId=fOperationName)
@@ -1741,11 +1741,11 @@ def find_sc_products(fProfile, fRegion, fStatus="ERROR", flimit=100):
 			response = client_sc.search_provisioned_products(PageToken=response['NextPageToken'], PageSize=flimit)
 	else:  # We filter down to only the statuses asked for
 		response = client_sc.search_provisioned_products(PageSize=flimit, Filters={
-			'SearchQuery': ['status:' + fStatus]})
+			'SearchQuery': [f"status:{fStatus}"]})
 		while 'NextPageToken' in response.keys():
 			response2.extend(response['ProvisionedProducts'])
 			response = client_sc.search_provisioned_products(PageSize=flimit, Filters={
-				'SearchQuery': ['status:' + fStatus]}, PageToken=response['NextPageToken'])
+				'SearchQuery': [f"status:{fStatus}"]}, PageToken=response['NextPageToken'])
 	response2.extend(response['ProvisionedProducts'])
 	return (response2)
 

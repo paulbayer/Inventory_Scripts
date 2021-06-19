@@ -69,7 +69,7 @@ EnvVars = {'Profile': os.getenv('AWS_PROFILE'),
           'DefaultRegion': os.getenv('AWS_DEFAULT_REGION')}
 # Get environment variables
 
-logging.warning("EnvVars: %s" % str(EnvVars))
+logging.warning(f"EnvVars: {str(EnvVars)}")
 account_credentials = {'Profile': None,
                       'AccessKeyId': None,
                       'SecretAccessKey': None,
@@ -140,7 +140,7 @@ else:
 ##########################
 
 
-FindOrgStatus = Inventory_Modules.find_account_attr()
+# FindOrgStatus = Inventory_Modules.find_account_attr()
 
 
 ERASE_LINE = '\x1b[2K'
@@ -197,8 +197,8 @@ for i in range(len(AllChildAccounts)):
 	sts_client = aws_session.client('sts')
 	logging.info("Single account record %s:", AllChildAccounts[i])
 	# TODO - figure a way to find out whether this rolename is correct for every account?
-	role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(AllChildAccounts[i]['AccountId'])
-	logging.info("Role ARN: %s" % role_arn)
+	role_arn = f"arn:aws:iam::{AllChildAccounts[i]['AccountId']}:role/AWSCloudFormationStackSetExecutionRole"
+	logging.info(f"Role ARN: {role_arn}")
 	try:
 		# This is a standalone or child account and the profile provided is all we need
 		if len(AllChildAccounts) == 1 and pProfile == AllChildAccounts[i]['ParentProfile']:
@@ -224,10 +224,10 @@ for i in range(len(AllChildAccounts)):
 			Instances = Inventory_Modules.find_account_instances(account_credentials, pRegion)
 			logging.warning("Account %s being looked at now", account_credentials['AccountNumber'])
 			InstanceNum = len(Instances['Reservations'])
-			print(ERASE_LINE+"Org Profile: {} Account: {} Region: {} Found {} instances".format(AllChildAccounts[i]['ParentProfile'], account_credentials['AccountNumber'], pRegion, InstanceNum), end='\r')
+			print(f"{ERASE_LINE}Org Profile: {AllChildAccounts[i]['ParentProfile']} Account: {account_credentials['AccountNumber']} Region: {pRegion} Found {InstanceNum} instances", end='\r')
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
-				logging.error("Authorization Failure using {} parent profile to access {} account in {} region".format(AllChildAccounts[i]['ParentProfile'], AllChildAccounts[i]['AccountId'], pRegion))
+				logging.error(f"Authorization Failure using {AllChildAccounts[i]['ParentProfile']} parent profile to access {AllChildAccounts[i]['AccountId']} account in {pRegion} region")
 				logging.warning("It's possible that the region %s hasn't been opted-into", pRegion)
 				pass
 		if 'Reservations' in Instances.keys():
@@ -247,7 +247,7 @@ for i in range(len(AllChildAccounts)):
 						logging.info(my_Error)
 						pass
 					if State == 'running':
-						fmt = '%-12s %-15s %-10s %-15s %-20s %-20s %-42s '+Fore.RED+'%-12s'+Fore.RESET
+						fmt = f"%-12s %-15s %-10s %-15s %-20s %-20s %-42s {Fore.RED}%-12s{Fore.RESET}"
 					else:
 						fmt = '%-12s %-15s %-10s %-15s %-20s %-20s %-42s %-12s'
 					print(fmt % (AllChildAccounts[i]['ParentProfile'], account_credentials['AccountNumber'], pRegion, InstanceType, Name, InstanceId, PublicDnsName, State))

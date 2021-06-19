@@ -180,7 +180,7 @@ def get_child_access2(fRootSessionObject, ParentAccountId, fChildAccount, fRegio
 	for role in fRoleList:
 		try:
 			logging.info(f"Trying to access account {fChildAccount} from account {ParentAccountId} assuming role: {role}")
-			role_arn = 'arn:aws:iam::' + fChildAccount + ':role/' + role
+			role_arn = f"arn:aws:iam::{fChildAccount}:role/{role}"
 			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Find-ChildAccount-Things")['Credentials']
 			# If we were successful up to this point, then we'll short-cut everything and just return the credentials that worked
 			account_credentials['ParentAccount'] = ParentAccountId
@@ -209,7 +209,7 @@ def check_block_s3_public_access(AcctDict=None):
 		else:
 			aws_session = boto3.Session()
 		s3_client = aws_session.client('s3control')
-		logging.info("Checking the public access block on account {}".format(AcctDict['AccountId']))
+		logging.info(f"Checking the public access block on account {AcctDict['AccountId']}")
 		try:
 			response = s3_client.get_public_access_block(
 				AccountId=AcctDict['AccountId']
@@ -219,10 +219,10 @@ def check_block_s3_public_access(AcctDict=None):
 				logging.error('No Public Access Block enabled')
 				return(False)
 			elif my_Error.response['Error']['Code'] == 'AccessDenied':
-				logging.error("Bad credentials on account %s" % (AcctDict['AccountId']))
+				logging.error(f"Bad credentials on account {AcctDict['AccountId']}")
 				return("Access Failure")
 			else:
-				logging.error("unexpected error on account #%s: %s" % (AcctDict['AccountId'], my_Error.response))
+				logging.error(f"unexpected error on account #{AcctDict['AccountId']}: {my_Error.response}")
 				return("Access Failure")
 		if response['BlockPublicAcls'] and response['IgnorePublicAcls'] and response['BlockPublicPolicy'] and response['RestrictPublicBuckets']:
 			logging.info("Block was already enabled")
@@ -253,7 +253,7 @@ def enable_block_s3_public_access(AcctDict=None):
 													'BlockPublicPolicy': True,
 													'RestrictPublicBuckets': True
 												}, AccountId=AcctDict['AccountId'])
-	return(response+"Updated")
+	return(f"{response}Updated")
 ##########################
 
 
