@@ -30,16 +30,28 @@ So if we created a class object that represented the account:
 		(Could all my inventory items be an attribute of this class?)
 
 """
+import boto3
+
 
 class aws_acct_access:
 	"""
 	Class takes a boto3 session object as input
 	Multiple attributes and functions exist within this class to give you information about the account
 	"""
-	def __init__(self, session_object=None):
-		self.session = session_object
+	def __init__(self, pProfile=None):
+		if pProfile is None:
+			self.session = boto3.Session()
+		else:
+			self.session = boto3.Session(profile_name=pProfile)
 		self.acct_number = self.acct_num()
 		self.AccountType = self.find_account_attr()['AccountType']
+		self.creds = self.session._session._credentials.get_frozen_credentials()
+		if self.AccountType.lower() == 'root':
+			self.ChildAccounts = self.find_child_accounts()
+			# self.creds_dict = None
+			# self.acct_number = '123456789012'
+			# self.AccountType = None
+
 
 	def acct_num(self):
 		"""
@@ -157,3 +169,4 @@ class aws_acct_access:
 		else:
 			logging.warning(f"Account {self.acct_num()} suffered a crisis of identity")
 			return ()
+

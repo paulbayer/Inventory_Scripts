@@ -4,7 +4,8 @@ import os
 import sys
 import boto3
 import Inventory_Modules
-import argparse
+# import argparse
+from ArgumentClass import CommonArguments
 from colorama import init, Fore
 from botocore.exceptions import ClientError
 
@@ -12,7 +13,7 @@ import logging
 
 init()
 
-parser = argparse.ArgumentParser(
+parser = CommonArguments.ArgumentParser(
 	description="We\'re going to find all resources within any of the profiles we have access to.",
 	prefix_chars='-+/')
 parser.add_argument(

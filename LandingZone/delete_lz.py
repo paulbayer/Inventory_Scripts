@@ -27,7 +27,7 @@ def wait_with_progress_bar(Message="", Seconds=30):
     for _ in range(Seconds):
         iteration += 1
         progress_string = "." * (iteration % 10)
-        print(f'\r{Message}, please wait {progress_string} ', end=" ")
+        print('{}, please wait {}'.format(Message, progress_string), end=' ')
         time.sleep(1)
 
 
@@ -53,11 +53,11 @@ if __name__ == "__main__":
     AWS_SESSION_TOKEN_PASSED = False
 
     DEBUG = False
-    if len(sys.argv) == 5 and sys.argv[4] == 'debug:true' :
+    if len(sys.argv) == 5 and sys.argv[4] == 'debug:true':
         DEBUG = True
         print("Debugging enabled and No Session Token passed")
 
-    if len(sys.argv) == 5 and sys.argv[4] != 'debug:true' :
+    if len(sys.argv) == 5 and sys.argv[4] != 'debug:true':
         print("Debugging is NOT enabled and Session Token passed")
         AWS_SESSION_TOKEN = sys.argv[4]
         AWS_SESSION_TOKEN_PASSED = True
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     else:
         client = boto3.client('cloudformation', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
     stacks = client.list_stacks(
-        StackStatusFilter=['CREATE_COMPLETE','ROLLBACK_FAILED','ROLLBACK_COMPLETE','DELETE_FAILED','UPDATE_COMPLETE'])
+        StackStatusFilter=['CREATE_COMPLETE', 'ROLLBACK_FAILED', 'ROLLBACK_COMPLETE', 'DELETE_FAILED', 'UPDATE_COMPLETE'])
     deleted_something = False
     for stack in stacks['StackSummaries']:
         desc = stack.get('TemplateDescription', '')
@@ -233,7 +233,7 @@ if __name__ == "__main__":
     while delete_in_progress:
         delete_in_progress = False
         stacks = client.list_stacks(
-            StackStatusFilter=['CREATE_COMPLETE','ROLLBACK_FAILED','ROLLBACK_COMPLETE','DELETE_FAILED','UPDATE_COMPLETE'])
+            StackStatusFilter=['CREATE_COMPLETE', 'ROLLBACK_FAILED', 'ROLLBACK_COMPLETE', 'DELETE_FAILED', 'UPDATE_COMPLETE'])
         for stack in stacks['StackSummaries']:
             desc = stack.get('TemplateDescription', '')
             if "(SO0045)" in desc and stack['StackStatus'] != 'DELETE_COMPLETE':
@@ -256,24 +256,24 @@ if __name__ == "__main__":
         print(f'     Delete In Progress: {delete_in_progress}')
 
         if stack_set['StackSetName'] in stack_sets_to_delete and stack_set['Status'] == 'ACTIVE' and not delete_in_progress:
-            print(f"Deleting stack set {stack_set['StackSetName']}",end='')
+            print(f"Deleting stack set {stack_set['StackSetName']}", end='')
             client.delete_stack_set(StackSetName=stack_set['StackSetName'])
             deleted_stack_sets = True
             delete_in_progress = True
         elif stack_set['StackSetName'] in stack_sets_to_delete and stack_set['Status'] == 'FAILED' and not delete_in_progress:
             print(f"Even though the stack set {stack_set['StackSetName']} is in a FAILED state, we're going to delete it anyway...")
-            print(f"Deleting stack set {stack_set['StackSetName']}",end='')
+            print(f"Deleting stack set {stack_set['StackSetName']}", end='')
             client.delete_stack_set(StackSetName=stack_set['StackSetName'])
             print('[DONE]')
             deleted_stack_sets = True
             delete_in_progress = True
         elif not stack_set['StackSetName'] in stack_sets_to_delete:
-            print(f"It appears that {stack_set['StackSetName']} isn't a stackset we need to delete",end='')
+            print("It appears that {} isn't a stackset we need to delete".format(stack_set['StackSetName']), end='')
 
         # wait for those stacks sets to be deleted
         while deleted_stack_sets and delete_in_progress:
             delete_in_progress = False
-            stack_set_status = {'Status':'None'}
+            stack_set_status = {'Status': 'None'}
             try:
                 stack_set_status = client.describe_stack_set(StackSetName=stack_set['StackSetName'])['StackSet']['Status']
             except:
@@ -286,7 +286,7 @@ if __name__ == "__main__":
                 print(f"Status of {stack_set['StackSetName']} stackset is currently {stack_set_status['Status']}")
                 wait_with_progress_bar(Message="\nSecurity Baseline stack sets delete in progress", Seconds=30)
         print('[DONE]')
-        ## BUG TO FIX: If the Stackset is in status "Failed" - this will go into a race condition, and never complete.
+        # TODO: If the Stackset is in status "Failed" - this will go into a race condition, and never complete.
     if not deleted_stack_sets:
         print("No more stack sets to delete")
 

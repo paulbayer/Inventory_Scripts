@@ -2,7 +2,8 @@
 
 import Inventory_Modules
 import boto3
-import argparse
+from ArgumentsClass import CommonArguments
+from account_class import aws_acct_access
 from colorama import init
 from botocore.exceptions import ClientError
 
@@ -10,60 +11,33 @@ import logging
 
 init()
 
-parser = argparse.ArgumentParser(
-	prefix_chars='-+/',
-	description="We're going to find all roles within any of the accounts we have access to, given the profile provided.")
-parser.add_argument(
-	"-p", "--profile",
-	dest="pProfile",
-	metavar="profile to use",
-	help="You need to specify a profile that represents the ROOT account.")
-parser.add_argument(
-	"-r", "--role",
-	dest="pRole",
+parser = CommonArguments()
+parser.my_parser.description = ("We're going to find all roles within any of the accounts we have access to, given the profile provided.")
+parser.extendedargs()   # This adds the "DryRun" and "Force" objects
+parser.my_parser.add_argument(
+	"--role",
+	dest="Role",
 	metavar="specific role to find",
 	default=None,
 	help="Please specify the role you're searching for")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"+d", "--delete",
-	dest="pDelete",
+	dest="Delete",
 	action="store_const",
 	const=True,
 	default=False,
 	help="Whether you'd like to delete that specified role.")
-parser.add_argument(
-	'-v',
-	help="Be verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.ERROR,  # args.loglevel = 40
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
-	'-vv', '--verbose',
-	help="Be MORE verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.WARNING,  # args.loglevel = 30
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
-	'-vvv',
-	help="Print debugging statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.INFO,  # args.loglevel = 20
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
-	'-d', '--debug',
-	help="Print LOTS of debugging statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.DEBUG,  # args.loglevel = 10
-	default=logging.CRITICAL)  # args.loglevel = 50
-args = parser.parse_args()
+args = parser.my_parser.parse_args()
 
-pProfile = args.pProfile
-pRole = args.pRole
-pDelete = args.pDelete
+for k, v in args.__dict__.items():
+	# exec(f"{'p'+k} = {v}")      # Assigns each item within the args namespace to a separate variable
+	logging.info(f"Arguments provided:")
+	logging.info(f"{k}: {v}")
+
+pProfile = args.Profile
+pDryRun = args.DryRun
+pRole = args.Role
+pDelete = args.Delete
 logging.basicConfig(level=args.loglevel,
                     format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(""message)s")
 
@@ -104,8 +78,9 @@ def delete_role(fRoleList):
 		return (False)
 ##########################
 
-
-ChildAccounts = Inventory_Modules.find_child_accounts2(pProfile)
+aws_acct = aws_acct_access(pProfile)
+ChildAccounts = aws_acct.ChildAccounts
+# ChildAccounts = Inventory_Modules.find_child_accounts2(pProfile)
 
 print()
 if pRole is not None:
@@ -122,21 +97,26 @@ for account in ChildAccounts:
 		RoleNum = 0
 		account_credentials, role = Inventory_Modules.get_child_access2(pProfile, account['AccountId'])
 		if role.find("failed") > 0:
-			logging.error("Access to member account %s failed...", account['AccountId'])
+			logging.error(f"Access to member account {account['AccountId']} failed...")
 			continue
+		elif role == 'Check Profile':
+			logging.error(f"Access to the Root Account {account['AccountId']}")
+			logging.info(f"Using Root profile provided")
+			iam_session = boto3.Session(profile_name=pProfile, region_name='us-east-1')
+		else:
+			logging.info(f"Using child account's creds")
+			iam_session = boto3.Session(
+				aws_access_key_id=account_credentials['AccessKeyId'],
+				aws_secret_access_key=account_credentials['SecretAccessKey'],
+				aws_session_token=account_credentials['SessionToken'],
+				region_name='us-east-1')
 		account_credentials['AccountNumber'] = account['AccountId']
-		logging.info("Connecting to %s with %s role", account['AccountId'], role)
+		logging.info(f"Connecting to {account['AccountId']} with {role} role")
 		print(ERASE_LINE, f"Checking Account {account_credentials['AccountNumber']}", end="")
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
 			print(f"{pProfile}: Authorization Failure for account {account['AccountId']}")
 		continue
-	iam_session = boto3.Session(
-		aws_access_key_id=account_credentials['AccessKeyId'],
-		aws_secret_access_key=account_credentials['SecretAccessKey'],
-		aws_session_token=account_credentials['SessionToken'],
-		region_name='us-east-1'
-	)
 	iam_client = iam_session.client('iam')
 	try:
 		response = iam_client.list_roles()
@@ -161,13 +141,17 @@ for account in ChildAccounts:
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
 			print(f"{pProfile}: Authorization Failure for account {account['AccountId']}")
+		else:
+			print(f"Error: {my_Error}")
 
 RoleNum = 0
-if (pRole is None):
+if pRole is None:
 	for i in range(len(Roles)):
 		print(fmt % (Roles[i]['AccountId'], Roles[i]['RoleName']))
 		RoleNum += 1
 elif pRole is not None:
+	if pDelete:
+		DeletedRoles = 0
 	for i in range(len(Roles)):
 		RoleNum += 1
 		logging.info(f"In account {Roles[i]['AccountId']}: Found Role {Roles[i]['RoleName']} : Looking for role {pRole}")
@@ -181,10 +165,10 @@ elif pRole is not None:
 			print()
 
 print()
-if (pRole is None):
-	print("Found {} roles across {} accounts".format(RoleNum, len(ChildAccounts)))
+if pRole is None:
+	print(f"Found {SpecifiedRoleNum} roles across {len(ChildAccounts)} accounts")
 else:
-	print("Found {} in {} of {} accounts".format(pRole, SpecifiedRoleNum, len(ChildAccounts)))
+	print(f"Found {SpecifiedRoleNum} instances where role containing '{pRole}' was found across {len(ChildAccounts)} accounts")
 	if pDelete:
 		print(f"     And we deleted it {DeletedRoles} times")
 print()

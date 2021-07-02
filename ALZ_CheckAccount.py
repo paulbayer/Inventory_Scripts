@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 
 import sys
+
+import boto3
+
 import Inventory_Modules
 import vpc_modules
 import argparse
 from colorama import init, Fore
 from botocore.exceptions import ClientError
+from account_class import aws_acct_access
 
 import logging
 
@@ -26,7 +30,6 @@ parser.add_argument(
 	dest="pProfile",
 	metavar="profile of Management Account within the Organization",
 	default="default",
-	required=True,
 	help="To specify a specific profile, use this parameter. Default will be your default profile.")
 parser.add_argument(
 	"-a", "--account",
@@ -188,6 +191,11 @@ print("Since this script is fairly new - All comments or suggestions are enthusi
 print()
 
 role = 'failed'
+if pProfile is None:
+	session_obj = boto3.Session()
+elif pProfile is not None:
+	session_obj = boto3.Session(profile_name=pProfile)
+aws_account = aws_acct_access(session_obj)
 try:
 	account_credentials, role = Inventory_Modules.get_child_access2(pProfile, pChildAccountId)
 	if role.find("failed") > 0:

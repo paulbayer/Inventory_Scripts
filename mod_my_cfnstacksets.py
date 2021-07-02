@@ -20,7 +20,7 @@ TODO:
 			- We should remove the stackset-association with "--RetainStacks=False" and that will remove the child stack in the child account.
 		- The stack exists as an association within the stackset, but has been manually deleted within the child account
 			- If we remove the stackset-association with "--RetainStacks=False", it won't error, even when the stack doesn't exist within the child.
-			- There is a special use case here where the child account has been deleted or suspended. This is a difficult use-case to test.
+			- There is a special use case here where the child account has been deleted or suspended. This is a difficult use-case to test12.
 		- The stack doesn't exist within the stackset association, but DOES exist within the child account (because its association was removed from the stackset)
 			- The only way to remove this is to remove the stack from the child account. This would have to be done after having found the stack within the child account. This will be a ToDo for later...
 		- The stack doesn't exist within the child account, nor within the stack-set

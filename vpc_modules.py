@@ -400,7 +400,7 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 			logging.error("Something failed in the vpc_route_tables deletion script")
 			return(1)  # out of the try
 
-		#5. Iterate through vpc.network_acls.all(), test the NetworkAcl.is_default attribute and call NetworkAcl.delete for non-default acls.
+		#5. Iterate through vpc.network_acls.all(), test12 the NetworkAcl.is_default attribute and call NetworkAcl.delete for non-default acls.
 		logging.info("Deleting vpc network access control lists...")
 		print(".", end='', flush=True)
 		ResultGood = (find_and_delete_vpc_nacls(client_vpc, fVPCId, fRegion) == 0)
