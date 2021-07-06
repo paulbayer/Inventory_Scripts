@@ -14,19 +14,19 @@ UsageMsg = "This script will correlate the Service Catalog products with the CFN
 parser = argparse.ArgumentParser(
 	description="We\'re going to find all resources within any of the profiles we have access to.",
 	prefix_chars='-+/')
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-p", "--profile",
 	dest="pProfile",
 	metavar="profile to use",
 	default="default",
 	help="To specify a specific profile, use this parameter. Default will be your default profile.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-r", "--region",
 	dest="pregion",
 	metavar="region name string",
 	default="us-east-1",
 	help="String fragment of the region(s) you want to check for resources.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"+d", "+delete",
 	dest="DeletionRun",
 	metavar="Deletion of inactive Service Catalog provisioned products",
@@ -34,35 +34,35 @@ parser.add_argument(
 	default=False,
 	action="store_const",
 	help="This will delete the SC Provisioned Products found to be in error, or without active CloudFormation stacks - without any opportunity to confirm. Be careful!!")
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-v',
 	help="Be verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.ERROR,  # args.loglevel = 40
 	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vv', '--verbose',
 	help="Be MORE verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.WARNING,  # args.loglevel = 30
 	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vvv',
 	help="Print INFO level statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,  # args.loglevel = 20
 	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-d', '--debug',
 	help="Print LOTS of debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,  # args.loglevel = 10
 	default=logging.CRITICAL)  # args.loglevel = 50
-args = parser.parse_args()
+args = parser.my_parser.parse_args()
 
 pProfile = args.pProfile
 pRegion = args.pregion

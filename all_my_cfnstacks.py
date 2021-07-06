@@ -14,19 +14,19 @@ init()
 
 parser = CommonArguments()
 parser.extendedargs()   # This adds additional *optional* arguments to the listing
-parser.my_parser.add_argument(
+parser.my_parser.my_parser.add_argument(
 	"-f", "--fragment",
 	dest="stackfrag",
 	metavar="CloudFormation stack fragment",
 	default="all",
 	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
-parser.my_parser.add_argument(
+parser.my_parser.my_parser.add_argument(
 	"-s", "--status",
 	dest="status",
 	metavar="CloudFormation status",
 	default="active",
 	help="String that determines whether we only see 'CREATE_COMPLETE' or 'DELETE_COMPLETE' too")
-parser.my_parser.add_argument(
+parser.my_parser.my_parser.add_argument(
 	"+delete", "+forreal",
 	dest="DeletionRun",
 	action="store_true",

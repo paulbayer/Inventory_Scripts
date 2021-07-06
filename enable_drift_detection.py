@@ -18,67 +18,67 @@ init()
 parser = argparse.ArgumentParser(
 	description="We\'re going to find all resources within any of the profiles we have access to.",
 	prefix_chars='-+/')
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-p", "--profile",
 	dest="pProfile",
 	metavar="profile to use",
 	default="default",
 	help="To specify a specific profile, use this parameter. Default will be your default profile.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-f", "--fragment",
 	dest="pstackfrag",
 	metavar="CloudFormation stack fragment",
 	default="all",
 	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-s", "--status",
 	dest="pstatus",
 	metavar="CloudFormation status",
 	default="active",
 	help="String that determines whether we only see 'CREATE_COMPLETE' or 'DELETE_COMPLETE' too")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-k", "--skip",
 	dest="pSkipAccounts",
 	nargs="*",
 	metavar="Accounts to leave alone",
 	default=[],
 	help="These are the account numbers you don't want to screw with. Likely the core accounts.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-r", "--region",
 	nargs="*",
 	dest="pregion",
 	metavar="region name string",
 	default=["us-east-1"],
 	help="String fragment of the region(s) you want to check for resources.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-d', '--debug',
 	help="Print LOTS of debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,  # args.loglevel = 10
 	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vvv',
 	help="Print INFO level statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,  # args.loglevel = 20
 	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vv', '--verbose',
 	help="Be MORE verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.WARNING,  # args.loglevel = 30
 	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-v',
 	help="Be verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.ERROR,  # args.loglevel = 40
 	default=logging.CRITICAL)  # args.loglevel = 50
-args = parser.parse_args()
+args = parser.my_parser.parse_args()
 
 pProfile = args.pProfile
 pRegionList = args.pregion

@@ -12,21 +12,21 @@ init()
 parser = argparse.ArgumentParser(
 	description="We\'re going to find all vpcs within any of the profiles we have access to.",
 	prefix_chars='-+/')
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-p", "--profile",
 	dest="pProfiles",
 	nargs="*",
 	metavar="profile to use",
 	default=["default"],
 	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-r", "--region",
 	nargs="*",
 	dest="pregion",
 	metavar="region name string",
 	default=["us-east-1"],
 	help="String fragment of the region(s) you want to check for resources.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"--default",
 	dest="pDefaultOnly",
 	metavar="Default Only flag",
@@ -34,35 +34,35 @@ parser.add_argument(
 	const=True,
 	default=False,
 	help="Flag to determine whether default VPCs are included in the output.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-d', '--debug',
 	help="Print LOTS of debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,        # args.loglevel = 10
 	default=logging.CRITICAL)   # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vvv',
 	help="Print INFO level statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,         # args.loglevel = 20
 	default=logging.CRITICAL)   # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vv', '--verbose',
 	help="Be MORE verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.WARNING,      # args.loglevel = 30
 	default=logging.CRITICAL)   # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-v',
 	help="Be verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.ERROR,        # args.loglevel = 40
 	default=logging.CRITICAL)   # args.loglevel = 50
-args = parser.parse_args()
+args = parser.my_parser.parse_args()
 
 pProfiles = args.pProfiles
 pRegionList = args.pregion

@@ -16,48 +16,48 @@ init()
 parser = CommonArguments.ArgumentParser(
 	description="We\'re going to find all resources within any of the profiles we have access to.",
 	prefix_chars='-+/')
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-p", "--profile",
 	dest="pProfile",
 	metavar="profile to use",
 	default=None,
 	help="To specify a specific profile, use this parameter. Default will be to use Environment Variables, including those in ~/.aws/credentials and ~/.aws/config")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-r", "--region",
 	nargs="*",
 	dest="pRegion",
 	metavar="region name string",
 	default=["us-east-1"],
 	help="String fragment of the region(s) you want to check for resources.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-d', '--debug',
 	help="Print debugging statements - only for developers",
 	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,        # args.loglevel = 10
 	default=logging.CRITICAL)   # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vvv',
 	help="Print info statements - mainly for developers",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,         # args.loglevel = 20
 	default=logging.CRITICAL)   # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vv',
 	help="Be MORE verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.WARNING,      # args.loglevel = 30
 	default=logging.CRITICAL)   # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-v', '--verbose',
 	help="Be verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.ERROR,        # args.loglevel = 40
 	default=logging.CRITICAL)   # args.loglevel = 50
-args = parser.parse_args()
+args = parser.my_parser.parse_args()
 
 pProfile = args.pProfile
 pRegionList = args.pRegion

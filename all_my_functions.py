@@ -15,34 +15,34 @@ init()
 parser = argparse.ArgumentParser(
 	description="We\'re going to find all resources within any of the profiles we have access to.",
 	prefix_chars='-+/')
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-p", "--profile",
 	dest="pProfiles",
 	nargs="*",
 	metavar="profile to use",
 	default="all",
 	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-r", "--region",
 	nargs="*",
 	dest="pregion",
 	metavar="region name string",
 	default=["us-east-1"],
 	help="String fragment of the region(s) you want to check for resources.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-d', '--debug',
 	help="Print lots of debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,
 	default=logging.CRITICAL)
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-v', '--verbose',
 	help="Be verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO)
-args = parser.parse_args()
+args = parser.my_parser.parse_args()
 
 pProfiles = args.pProfiles
 pRegionList = args.pregion

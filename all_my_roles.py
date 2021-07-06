@@ -14,13 +14,13 @@ init()
 parser = CommonArguments()
 parser.my_parser.description = ("We're going to find all roles within any of the accounts we have access to, given the profile provided.")
 parser.extendedargs()   # This adds the "DryRun" and "Force" objects
-parser.my_parser.add_argument(
+parser.my_parser.my_parser.add_argument(
 	"--role",
 	dest="Role",
 	metavar="specific role to find",
 	default=None,
 	help="Please specify the role you're searching for")
-parser.my_parser.add_argument(
+parser.my_parser.my_parser.add_argument(
 	"+d", "--delete",
 	dest="Delete",
 	action="store_const",
@@ -35,7 +35,6 @@ for k, v in args.__dict__.items():
 	logging.info(f"{k}: {v}")
 
 pProfile = args.Profile
-pDryRun = args.DryRun
 pRole = args.Role
 pDelete = args.Delete
 logging.basicConfig(level=args.loglevel,

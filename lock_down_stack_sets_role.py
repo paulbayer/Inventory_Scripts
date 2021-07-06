@@ -11,75 +11,75 @@ import logging
 parser = argparse.ArgumentParser(
 	description="We\'re going to ensure the 'AWSCloudFormationStackSetExecutionRole' is locked down properly.",
 	prefix_chars='-+/')
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-p", "--profile",
 	dest="pProfile",
 	required = True,
 	default='default',
 	metavar="profile to use",
 	help="This profile should be for the Management Account - with access into the children.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-R", "--access_rolename",
 	dest="pAccessRole",
 	default='AWSCloudFormationStackSetExecutionRole',
 	metavar="role to use for access to child accounts",
 	help="This parameter specifies the role that will allow this script to have access to the children accounts.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-t", "--target_rolename",
 	dest="pTargetRole",
 	default='AWSCloudFormationStackSetExecutionRole',
 	metavar="role to change",
 	help="This parameter specifies the role to have its Trust Policy changed.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"+f", "--fix", "+fix",
 	dest="pFix",
 	action="store_const",
 	const=True,
 	default=False,
 	help="This parameter determines whether to make any changes in child accounts.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"+l", "--lock", "+lock",
 	dest="pLock",
 	action="store_const",
 	const=True,
 	default=False,
 	help="This parameter determines whether to lock the Trust Policy.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-s", "--safety",
 	dest="pSafety",
 	action="store_const",
 	const=False,
 	default=True,
 	help="Adding this parameter will 'remove the safety' - by not including the principle running this script, which might mean you get locked out of making further changes.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-v',
 	help="Be verbose",
 	action="store_const",
 	default=logging.CRITICAL,  # args.loglevel = 50
 	dest="loglevel",
 	const=logging.ERROR)  # args.loglevel = 40
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vv', '--verbose',
 	help="Be MORE verbose",
 	action="store_const",
 	default=logging.CRITICAL,  # args.loglevel = 50
 	dest="loglevel",
 	const=logging.WARNING)  # args.loglevel = 30
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vvv',
 	help="Print INFO statements",
 	action="store_const",
 	default=logging.CRITICAL,  # args.loglevel = 50
 	dest="loglevel",
 	const=logging.INFO)  # args.loglevel = 20
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-d', '--debug',
 	help="Print debugging statements",
 	action="store_const",
 	default=logging.CRITICAL,  # args.loglevel = 50
 	dest="loglevel",
 	const=logging.DEBUG)  # args.loglevel = 20
-args = parser.parse_args()
+args = parser.my_parser.parse_args()
 
 pProfile = args.pProfile
 pTargetRole = args.pTargetRole

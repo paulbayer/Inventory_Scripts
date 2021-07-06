@@ -10,54 +10,54 @@ from botocore.exceptions import ClientError
 parser = argparse.ArgumentParser(
 	description="Script to empty out and possibly delete an S3 bucket.",
 	prefix_chars='-+/')
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-p", "--profile",
 	dest="pProfile",
 	metavar="profile to use",
 	default="default",
 	help="To specify a profile, use this parameter.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-b", "--bucket",
 	dest="pBucketName",
 	metavar="bucket to empty and delete",
 	required=True,
 	help="To specify a profile, use this parameter.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	'+delete', '+force-delete',
 	help="Whether or not to delete the bucket after it's been emptied",
 	action="store_const",
 	dest="pForceQuit",
 	const=True,
 	default=False)
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-v',
 	help="Be verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.ERROR,  # args.loglevel = 40
 	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vv', '--verbose',
 	help="Be MORE verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.WARNING,  # args.loglevel = 30
 	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vvv',
 	help="Print INFO level statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,  # args.loglevel = 20
 	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-d', '--debug',
 	help="Print LOTS of debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,  # args.loglevel = 10
 	default=logging.CRITICAL)
-args = parser.parse_args()
+args = parser.my_parser.parse_args()
 
 pProfile = args.pProfile
 pBucketDelete = args.pForceQuit

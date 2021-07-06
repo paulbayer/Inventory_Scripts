@@ -5,6 +5,7 @@ import sys
 import Inventory_Modules
 import argparse
 import boto3
+from ArgumentsClass import CommonArguments
 from colorama import init, Fore, Back, Style
 from botocore.exceptions import ClientError, ProfileNotFound
 
@@ -12,63 +13,28 @@ import logging
 
 init()
 
-parser = argparse.ArgumentParser(
-	description="This script enabled the Public S3 block for all accounts within your Org.",
-	prefix_chars='-+/')
-parser.add_argument(
-	"-p", "--profile",
-	dest="pProfile",
-	metavar="profile to use",
-	default=None,
-	help="Preferred to specify a root profile. Default will be whatever boto3 finds")
-parser.add_argument(
+parser = CommonArguments()
+parser.extendedargs()
+parser.my_parser.add_argument(
 	"-f", "--file",
 	dest="pFile",
 	metavar="file of account numbers to read",
 	default=None,
 	help="File should consist of account numbers - 1 per line, with CR/LF as line ending")
-parser.add_argument(
-	"-n", "--dry-run",
+parser.my_parser.add_argument(
+	"+n", "--no-dry-run",
 	dest="pDryRun",
 	metavar="Whether to actually enable the block or just report it.",
-	action="store_const",
-	const=False,
-	default=True,
-	help="Defaults to Dry-Run so it doesn't make any changes.")
-parser.add_argument(
-	'-d', '--debug',
-	help="Print LOTS of debugging statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.DEBUG,        # args.loglevel = 10
-	default=logging.CRITICAL)   # args.loglevel = 50
-parser.add_argument(
-	'-vvv',
-	help="Print INFO level statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.INFO,         # args.loglevel = 20
-	default=logging.CRITICAL)   # args.loglevel = 50
-parser.add_argument(
-	'-vv', '--verbose',
-	help="Be MORE verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.WARNING,      # args.loglevel = 30
-	default=logging.CRITICAL)   # args.loglevel = 50
-parser.add_argument(
-	'-v',
-	help="Be verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.ERROR,        # args.loglevel = 40
-	default=logging.CRITICAL)   # args.loglevel = 50
-args = parser.parse_args()
+	action="store_false",       # Defaults to dry-run, only changes if you specify the parameter
+	help="Defaults to Dry-Run so it doesn't make any changes, unless you specify.")
 
-pProfile = args.pProfile
+args = parser.my_parser.parse_args()
+
+pProfile = args.Profile
+pRegion = args.Region
+verbose = args.loglevel
 pFile = args.pFile
 pDryRun = args.pDryRun
-verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
 
 '''

@@ -59,7 +59,7 @@ def get_service_regions(service, fkey=None):
 
 	s = boto3.Session()
 	regions = s.get_available_regions(service, partition_name='aws', allow_non_regional=False)
-	if fkey is None:
+	if fkey is None or ('all' in fkey or 'All' in fkey or 'ALL' in fkey):
 		return (regions)
 	RegionNames = []
 	for x in fkey:

@@ -14,14 +14,14 @@ import logging
 parser = argparse.ArgumentParser(
 	description="We\'re going to update the member accounts to include a specific role.",
 	prefix_chars='-+/')
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-p", "--profile",
 	dest="pProfile",
 	required = True,
 	default='default',
 	metavar="profile to use",
 	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-a", "--account",
 	dest="pAccount",
 	default=None,
@@ -46,35 +46,35 @@ group.add_argument(
 	metavar="role to remove",
 	default=None,
 	help="Rolename to be removed from a number of accounts")
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-v',
 	help="Be verbose",
 	action="store_const",
 	default=logging.CRITICAL,  # args.loglevel = 50
 	dest="loglevel",
 	const=logging.ERROR)  # args.loglevel = 40
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vv', '--verbose',
 	help="Be MORE verbose",
 	action="store_const",
 	default=logging.CRITICAL,  # args.loglevel = 50
 	dest="loglevel",
 	const=logging.WARNING)  # args.loglevel = 30
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vvv',
 	help="Print INFO statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,  # args.loglevel = 20
 	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-d', '--debug',
 	help="Print debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,  # args.loglevel = 20
 	default=logging.CRITICAL)  # args.loglevel = 50
-args = parser.parse_args()
+args = parser.my_parser.parse_args()
 
 pProfile = args.pProfile
 pAccount = args.pAccount

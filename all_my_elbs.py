@@ -15,46 +15,46 @@ init()
 parser = argparse.ArgumentParser(
 	description="We\'re going to find all resources within any of the profiles we have access to.",
 	prefix_chars='-+/')
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-p", "--profile",
 	dest="pProfiles",
 	nargs="*",
 	metavar="profile to use",
 	default="all",
 	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-f", "--fragment",
 	dest="pstackfrag",
 	metavar="CloudFormation stack fragment",
 	default="all",
 	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-s", "--status",
 	dest="pstatus",
 	metavar="CloudFormation status",
 	default="active",
 	help="String that determines whether we only see 'CREATE_COMPLETE' or 'DELETE_COMPLETE' too")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-r", "--region",
 	nargs="*",
 	dest="pregion",
 	metavar="region name string",
 	default="us-east-1",
 	help="String fragment of the region(s) you want to check for resources.")
-parser.add_argument(
+parser.my_parser.add_argument(
     '-d', '--debug',
     help="Print lots of debugging statements",
     action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,
     default=logging.CRITICAL)
-parser.add_argument(
+parser.my_parser.add_argument(
     '-v', '--verbose',
     help="Be verbose",
     action="store_const",
 	dest="loglevel",
 	const=logging.INFO)
-args = parser.parse_args()
+args = parser.my_parser.parse_args()
 
 pProfiles = args.pProfiles
 pRegionList = args.pregion

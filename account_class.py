@@ -31,7 +31,7 @@ So if we created a class object that represented the account:
 
 """
 import boto3
-
+import logging
 
 class aws_acct_access:
 	"""
@@ -39,15 +39,20 @@ class aws_acct_access:
 	Multiple attributes and functions exist within this class to give you information about the account
 	"""
 	def __init__(self, pProfile=None):
+		print("Capturing Account Information...")
 		if pProfile is None:
 			self.session = boto3.Session()
 		else:
 			self.session = boto3.Session(profile_name=pProfile)
 		self.acct_number = self.acct_num()
+		logging.error(f"Found information for Account {self.acct_number}")
 		self.AccountType = self.find_account_attr()['AccountType']
+		logging.error(f"Account {self.acct_number} is a {self.AccountType} account")
 		self.creds = self.session._session._credentials.get_frozen_credentials()
 		if self.AccountType.lower() == 'root':
+			logging.error("Enumerating all of the child accounts")
 			self.ChildAccounts = self.find_child_accounts()
+			logging.error(f"As acct {self.acct_number} is the root account, we found {len(self.ChildAccounts)} accounts in the Org")
 			# self.creds_dict = None
 			# self.acct_number = '123456789012'
 			# self.AccountType = None

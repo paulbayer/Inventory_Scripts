@@ -49,7 +49,6 @@ class CommonArguments():
 		import argparse
 		self.my_parser = argparse.ArgumentParser(
 			description='Accept common arguments to the Inventory Scripts',
-			prog='python',
 			allow_abbrev=True,
 			prefix_chars='-+/')
 		self.my_parser.add_argument(
@@ -89,11 +88,11 @@ class CommonArguments():
 		# self.args = self.my_parser.parse_args()
 
 	def extendedargs(self):
-		self.my_parser.add_argument(
-			"-n", "--dryrun",
-			help="To report on results without changing anything",
-			action="store_false",
-			dest="DryRun")              # Default to Dry Run (no changes)
+		# self.my_parser.add_argument(
+		# 	"+forreal",
+		# 	help="By default, we report results without changing anything. If you want to remediate or change your environment - include this parameter",
+		# 	action="store_false",
+		# 	dest="DryRun")              # Default to Dry Run (no changes)
 		self.my_parser.add_argument(
 			"--force",
 			help="To force a change - despite indications to the contrary",

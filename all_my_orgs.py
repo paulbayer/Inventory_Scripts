@@ -28,49 +28,49 @@ ProfileGroup.add_argument(
 	nargs="*",
 	default=[],     # Default to nothing
 	help="Which list of profiles do you want to run for?")
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-R', '--root',
 	help="Display only the root accounts found in the profiles",
 	action="store_const",
 	dest="rootonly",
 	const=True,
 	default=False)
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-s', '--q', '--short',
 	help="Display only brief listing of the root accounts, and not the Child Accounts under them",
 	action="store_const",
 	dest="shortform",
 	const=True,
 	default=False)
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-v',
 	help="Be verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.ERROR,        # args.loglevel = 40
 	default=logging.CRITICAL)   # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vv', '--verbose',
 	help="Be MORE verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.WARNING,      # args.loglevel = 30
 	default=logging.CRITICAL)   # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vvv',
 	help="Print debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,         # args.loglevel = 20
 	default=logging.CRITICAL)   # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-d', '--debug',
 	help="Print LOTS of debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,        # args.loglevel = 10
 	default=logging.CRITICAL)   # args.loglevel = 50
-args = parser.parse_args()
+args = parser.my_parser.parse_args()
 
 pProfile = args.pProfile
 pProfiles = args.pProfiles

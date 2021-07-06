@@ -13,61 +13,61 @@ init()
 parser = argparse.ArgumentParser(
 	description="We\'re going to find all saml identity providers within any of the child accounts within the organization.",
 	prefix_chars='-+/')
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-p", "--profile",
 	dest="pProfile",
 	metavar="profile to use",
 	default="default",
 	help="To specify a specific profile, use this parameter. Default will be your default profile.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-k", "--skip",
 	dest="pSkipAccounts",
 	nargs="*",
 	metavar="Accounts to leave alone",
 	default=[],
 	help="These are the account numbers you don't want to screw with. Likely the core accounts. Separate them by a space.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-r", "--pRegion",
 	dest="pRegion",
 	metavar="pRegion name string",
 	default="us-east-1",
 	help="String fragment of the pRegion(s) you want to check for resources.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"+delete", "+forreal",
 	dest="DeletionRun",
 	const=True,
 	default=False,
 	action="store_const",
 	help="This will delete the identity providers found - without any opportunity to confirm. Be careful!!")
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-v',
 	help="Be verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.ERROR,  # args.loglevel = 40
 	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vv', '--verbose',
 	help="Be MORE verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.WARNING,  # args.loglevel = 30
 	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vvv',
 	help="Print INFO level statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,	 # args.loglevel = 20
 	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-d', '--debug',
 	help="Print LOTS of debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,  # args.loglevel = 10
 	default=logging.CRITICAL)  # args.loglevel = 50
-args = parser.parse_args()
+args = parser.my_parser.parse_args()
 
 pProfile = args.pProfile
 pRegion = args.pRegion

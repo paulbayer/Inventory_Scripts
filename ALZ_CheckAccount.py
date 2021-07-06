@@ -18,27 +18,27 @@ init()
 parser = argparse.ArgumentParser(
 	description="We\'re going to determine whether this new account satisfies all the pre-reqs to be adopted by the Landing Zone.",
 	prefix_chars='-+/')
-parser.add_argument(
+parser.my_parser.add_argument(
 	"--explain",
 	dest="pExplain",
 	const=True,
 	default=False,
 	action="store_const",
 	help="This flag prints out the explanation of what this script would do.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-p", "--profile",
 	dest="pProfile",
 	metavar="profile of Management Account within the Organization",
 	default="default",
 	help="To specify a specific profile, use this parameter. Default will be your default profile.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-a", "--account",
 	dest="pChildAccountId",
 	metavar="New Account to be adopted into LZ",
 	default="123456789012",
 	required=True,
 	help="This is the account number of the account you're checking, to see if it can be adopted into the ALZ.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-q", "--quick",
 	dest="Quick",
 	metavar="Shortcut the checking to only a single region",
@@ -46,14 +46,14 @@ parser.add_argument(
 	default=False,
 	action="store_const",
 	help="This flag only checks 'us-east-1', so makes the whole script run really fast.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"+fix", "+delete",
 	dest="FixRun",
 	const=True,
 	default=False,
 	action="store_const",
 	help="This will fix the issues found. If default VPCs must be deleted, you'll be asked to confirm.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"+force",
 	dest="pVPCConfirm",
 	const=True,
@@ -62,35 +62,35 @@ parser.add_argument(
 	help="This will delete the default VPCs found with NO confirmation. You still have to specify the +fix too")
 # TODO: There should be an additional parameter here that would take a role name for access into the account,
 #  since it's likely that users won't be able to use the AWSControlTowerExecution role
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-v',
 	help="Be verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.ERROR,        # args.loglevel = 40
 	default=logging.CRITICAL)   # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vv', '--verbose',
 	help="Be MORE verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.WARNING,      # args.loglevel = 30
 	default=logging.CRITICAL)   # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vvv', '--info',
 	help="Print debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,         # args.loglevel = 20
 	default=logging.CRITICAL)   # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-d', '--debug',
 	help="Print LOTS of debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,        # args.loglevel = 10
 	default=logging.CRITICAL)   # args.loglevel = 50
-args = parser.parse_args()
+args = parser.my_parser.parse_args()
 
 Quick = args.Quick
 pProfile = args.pProfile

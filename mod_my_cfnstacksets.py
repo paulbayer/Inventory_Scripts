@@ -33,99 +33,99 @@ init()
 parser = argparse.ArgumentParser(
 	description="This script removes stacksets entirely, or removes accounts from specific stacksets. This script can also determine if you have included accounts in your stacksets that have been removed (closed or suspended) from your Organization",
 	prefix_chars='-+/')
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-p", "--profile",
 	dest="pProfile",
 	metavar="profile to use",
 	help="You need to specify a specific ROOT profile")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-f", "--fragment",
 	dest="pStackfrag",
 	nargs="*",
 	metavar="CloudFormation stack fragment",
 	default=["all"],
 	help="List containing fragment(s) of the cloudformation stack or stackset(s) you want to check for.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-s", "--status",
 	dest="pstatus",
 	metavar="Stack instance status",
 	default="CURRENT",
 	help="Filter for the status of the stack *instances*")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-k", "--skip",
 	dest="pSkipAccounts",
 	nargs="*",
 	metavar="Accounts to leave alone",
 	default=[],
 	help="These are the account numbers you don't want to screw with. Likely the core accounts.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-r", "--region",
 	dest="pRegion",
 	metavar="region name string",
 	default="us-east-1",
 	help="The Master region you want to check for StackSets. Only one region is checked per script run.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"-A", "--RemoveAccount",
 	dest="pAccountRemove",
 	default="NotProvided",
 	metavar="Account to remove from stacksets",
 	help="The Account number you want removed from ALL of the stacksets and ALL of the regions it's been found.")
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-R', "--RemoveRegion",
 	help="The region you want to remove from all the stacksets.",
 	default="NotProvided",
 	metavar="region-name",
 	dest="pRegionRemove")
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-check',
 	help="Do a comparison of the accounts found in the stacksets to the accounts found in the Organization and list out any that have been closed or suspended, but never removed from the stacksets.",
 	action="store_const",
 	const=True,
 	default=False,
 	dest="AccountCheck")
-parser.add_argument(
+parser.my_parser.add_argument(
 	'+delete',
 	help="[Default] Do a Dry-run; if this parameter is specified, we'll delete stacksets we find, with no additional confirmation.",
 	action="store_const",
 	const=False,
 	default=True,
 	dest="DryRun")
-parser.add_argument(
+parser.my_parser.add_argument(
 	'+force',
 	help="This parameter will remove the account from a stackset - WITHOUT trying to remove the stacks within the child. This is a VERY bad thing to do unless you're absolutely sure.",
 	action="store_const",
 	const=True,
 	default=False,
 	dest="RetainStacks")
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-v',
 	help="Be verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.ERROR,  # args.loglevel = 40
 	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vv', '--verbose',
 	help="Be MORE verbose",
 	action="store_const",
 	dest="loglevel",
 	const=logging.WARNING,  # args.loglevel = 30
 	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-vvv',
 	help="Print INFO level statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.INFO,  # args.loglevel = 20
 	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
+parser.my_parser.add_argument(
 	'-d', '--debug',
 	help="Print debugging statements",
 	action="store_const",
 	dest="loglevel",
 	const=logging.DEBUG,  # args.loglevel = 10
 	default=logging.CRITICAL)  # args.loglevel = 50
-args = parser.parse_args()
+args = parser.my_parser.parse_args()
 
 pProfile = args.pProfile
 pRegion = args.pRegion
