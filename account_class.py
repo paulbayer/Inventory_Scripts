@@ -38,12 +38,15 @@ class aws_acct_access:
 	Class takes a boto3 session object as input
 	Multiple attributes and functions exist within this class to give you information about the account
 	"""
-	def __init__(self, pProfile=None):
+	def __init__(self, fProfile=None, fRegion='us-east-1'):
+		logging.basicConfig(format="[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s")
+
 		print("Capturing Account Information...")
-		if pProfile is None:
-			self.session = boto3.Session()
+		self.region = fRegion.lower()
+		if fProfile is None:
+			self.session = boto3.Session(region_name=self.region)
 		else:
-			self.session = boto3.Session(profile_name=pProfile)
+			self.session = boto3.Session(profile_name=fProfile, region_name=self.region)
 		self.acct_number = self.acct_num()
 		logging.error(f"Found information for Account {self.acct_number}")
 		self.AccountType = self.find_account_attr()['AccountType']

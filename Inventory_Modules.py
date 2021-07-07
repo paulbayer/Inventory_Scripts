@@ -22,18 +22,18 @@ def get_regions(fkey, fprofile="default"):
 	return (RegionNames2)
 
 
-def get_ec2_regions(fkey, fprofile="default"):
+def get_ec2_regions(fkey=['all'], fprofile="default"):
 	import boto3
 	import logging
 
-	session_ec2 = boto3.Session(profile_name=fprofile, region_name='us-east-1')
+	session_ec2 = boto3.Session()
 	region_info = session_ec2.client('ec2')
 	regions = region_info.describe_regions(Filters=[
 		{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
 	RegionNames = []
 	for x in range(len(regions['Regions'])):
 		RegionNames.append(regions['Regions'][x]['RegionName'])
-	if "all" in fkey or "ALL" in fkey:
+	if "all" in fkey or "ALL" in fkey or 'All' in fkey:
 		return (RegionNames)
 	RegionNames2 = []
 	for x in fkey:
@@ -563,15 +563,14 @@ def get_child_access3(fAccountObject, fChildAccount, fRegion='us-east-1', fRoleL
 	- fRoleList expects a list of roles to try, but defaults to a list of typical roles, in case you don't provide
 
 	The first response object is a dict with account_credentials to pass onto other functions
-	The second response object is the rolename that worked to gain access to the target account
 
 	The format of the account credentials dict is here:
 	account_credentials = {'ParentAcctId': ParentAccountId,
-							'OrgType': org_status,
 							'AccessKeyId': ',
 							'SecretAccessKey': None,
 							'SessionToken': None,
-							'AccountNumber': None}
+							'AccountNumber': None,
+							'Role': Role that worked to get in}
 	"""
 	import boto3
 	from account_class import aws_acct_access
@@ -1252,7 +1251,7 @@ def find_private_hosted_zones2(ocredentials, fRegion):
 	return (hosted_zones)
 
 
-def find_load_balancers(fProfile, fRegion, fStackFragment='all', fStatus='all'):
+def find_load_balancers(fSessionObject, fRegion, fStackFragment='all', fStatus='all'):
 	import boto3
 	import logging
 

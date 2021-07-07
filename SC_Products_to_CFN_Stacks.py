@@ -1,74 +1,32 @@
 #!/usr/bin/env python3
 
-import boto3
 import Inventory_Modules
-import argparse
+from account_class import aws_acct_access
+from ArgumentsClass import CommonArguments
 from colorama import init, Fore
 from botocore.exceptions import ClientError
-
 import logging
 
 init()
 
-UsageMsg = "This script will correlate the Service Catalog products with the CFN Stacksets and display the account numbers associated with the SC Products. It will also make recommendations on which SC Products are ok to remove to make Landing Zone troubleshooting simpler and clearer."
-parser = argparse.ArgumentParser(
-	description="We\'re going to find all resources within any of the profiles we have access to.",
-	prefix_chars='-+/')
-parser.my_parser.add_argument(
-	"-p", "--profile",
-	dest="pProfile",
-	metavar="profile to use",
-	default="default",
-	help="To specify a specific profile, use this parameter. Default will be your default profile.")
-parser.my_parser.add_argument(
-	"-r", "--region",
-	dest="pregion",
-	metavar="region name string",
-	default="us-east-1",
-	help="String fragment of the region(s) you want to check for resources.")
+parser = CommonArguments()
+parser.singleprofile()
+parser.singleregion()
+# parser.my_parser.add_argument("+d", "+delete", dest="DeletionRun", metavar="Deletion of inactive Service Catalog provisioned products", action="store_true", help="This will delete the SC Provisioned Products found to be in error, or without active CloudFormation stacks - without any opportunity to confirm. Be careful!!")
 parser.my_parser.add_argument(
 	"+d", "+delete",
 	dest="DeletionRun",
-	metavar="Deletion of inactive Service Catalog provisioned products",
-	const=True,
-	default=False,
-	action="store_const",
+	metavar="CloudFormation stack fragment",
+	# metavar="Deletion of inactive Service Catalog provisioned products",
+	action="store_true",
 	help="This will delete the SC Provisioned Products found to be in error, or without active CloudFormation stacks - without any opportunity to confirm. Be careful!!")
-parser.my_parser.add_argument(
-	'-v',
-	help="Be verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.ERROR,  # args.loglevel = 40
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-vv', '--verbose',
-	help="Be MORE verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.WARNING,  # args.loglevel = 30
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-vvv',
-	help="Print INFO level statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.INFO,  # args.loglevel = 20
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-d', '--debug',
-	help="Print LOTS of debugging statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.DEBUG,  # args.loglevel = 10
-	default=logging.CRITICAL)  # args.loglevel = 50
 args = parser.my_parser.parse_args()
 
-pProfile = args.pProfile
-pRegion = args.pregion
+pProfile = args.Profile
+pRegion = args.Region
 verbose = args.loglevel
 DeletionRun = args.DeletionRun
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 
 ##########################
@@ -92,28 +50,29 @@ Significant Variable Explanation:
 
 ERASE_LINE = '\x1b[2K'
 
+aws_acct = aws_acct_access(fProfile=pProfile, fRegion=pRegion)
+
 print()
 
 SCP2Stacks = []
 SCProducts = []
 ErroredSCPExists = False
-session_aws = boto3.Session(profile_name=pProfile, region_name=pRegion)
+session_aws = aws_acct.session
 client_org = session_aws.client('organizations')
 client_cfn = session_aws.client('cloudformation')
 
-AcctList = Inventory_Modules.find_child_accounts2(pProfile)
+AcctList = aws_acct.ChildAccounts
 AccountHistogram = {}
 SuspendedAccounts = []
 for account in AcctList:
 	AccountHistogram[account['AccountId']] = account['AccountStatus']
 	if account['AccountStatus'] == 'SUSPENDED':
 		SuspendedAccounts.append(account['AccountId'])
-# TODO Use f-strings to make the logging easier to read
 try:
 	SCresponse = Inventory_Modules.find_sc_products(pProfile, pRegion, "All", 10)
 	logging.warning("A list of the SC Products found:")
 	for i in range(len(SCresponse)):
-		logging.warning("SC Product Name %s | SC Product Status %s", SCresponse[i]['Name'], SCresponse[i]['Status'])
+		logging.warning(f"SC Product Name {SCresponse[i]['Name']} | SC Product Status {SCresponse[i]['Status']}")
 		SCProducts.append({
 			'SCPName': SCresponse[i]['Name'],
 			'SCPId': SCresponse[i]['Id'],
@@ -124,13 +83,12 @@ try:
 		if SCresponse[i]['Status'] == 'ERROR' or SCresponse[i]['Status'] == 'TAINTED':
 			ErroredSCPExists = True
 
-	CFNStacks = Inventory_Modules.find_stacks(pProfile, pRegion, f"SC-{Inventory_Modules.find_account_number(pProfile)}")
+	CFNStacks = Inventory_Modules.find_stacks(pProfile, pRegion, f"SC-{aws_acct.acct_number}")
 	SCresponse = None
 	for i in range(len(SCProducts)):
-		print(ERASE_LINE, Fore.RED + "Checking {} of {} products".format(i + 1, len(SCProducts)) + Fore.RESET, end='\r')
+		print(f"{ERASE_LINE}{Fore.RED}Checking {i + 1} of {len(SCProducts)} products{Fore.RESET}", end='\r')
 		CFNresponse = Inventory_Modules.find_stacks(pProfile, pRegion, SCProducts[i]['SCPId'])
-		logging.error("There are %s matches for SC Provisioned Product Name %s", len(CFNresponse),
-					  SCProducts[i]['SCPName'])
+		logging.error(f"There are {len(CFNresponse)} matches for SC Provisioned Product Name {SCProducts[i]['SCPName']}")
 		try:
 			if len(CFNresponse) > 0:
 				stack_info = client_cfn.describe_stacks(
@@ -230,39 +188,51 @@ try:
 		else:
 			pass
 	print()
-	fmt = '{0:<15} {1:{namelength}} {2:<8} {3:<35} {4:<10} {5:<18} {6:<10} {7:<20}'
-	print(fmt.format("Account Number",
-				   "SC Product Name", "Version",
-				   "CFN Stack Name",
-				   "SC Status",
-				   "CFN Stack Status",
-				   "Acct Status",
-				   "AccountEmail",
-				   namelength=namelength))
-	print(fmt.format("--------------", "---------------", "-------", "--------------", "---------", "----------------", "-----------", "------------", namelength=namelength))
+	DisplaySpacing = {'AccountNumber': 15,
+	                  'SCProductName': namelength,
+	                  'ProvisioningArtifactName': 8,
+	                  'CFNStackName': 35,
+	                  'SCStatus': 10,
+	                  'CFNStackStatus': 18,
+	                  'AccountStatus': 10,
+	                  'AccountEmail': 20}
+	print("Account ID".ljust(DisplaySpacing['AccountNumber']),
+	      "SC Product Name".ljust(DisplaySpacing['SCProductName']),
+	      "Version".ljust(DisplaySpacing['ProvisioningArtifactName']),
+	      "CFN StackName".ljust(DisplaySpacing['CFNStackName']),
+	      "SC Status".ljust(DisplaySpacing['SCStatus']),
+	      "CFN Stack Status".ljust(DisplaySpacing['CFNStackStatus']),
+	      "Account Status".ljust(DisplaySpacing['AccountNumber']),
+	      "Account Email".ljust(DisplaySpacing['AccountEmail']))
+	# fmt = f'{"Account Number":15} {"SC Product Name":<{namelength}} {"Version":<8} {"CFN Stack Name":<35} {"SC Status":<10} {"CFN Stack Status":<18} {"Acct Status":<10} {"AccountEmail":<20}'
+	# print(fmt)
+	print("-" * DisplaySpacing['AccountNumber'],
+	      "-" * DisplaySpacing['SCProductName'],
+	      "-" * DisplaySpacing['ProvisioningArtifactName'],
+	      "-" * DisplaySpacing['CFNStackName'],
+	      "-" * DisplaySpacing['SCStatus'],
+	      "-" * DisplaySpacing['CFNStackStatus'],
+	      "-" * DisplaySpacing['AccountNumber'],
+	      "-" * DisplaySpacing['AccountEmail'])
 	for i in range(len(SCP2Stacks)):
 		if SCP2Stacks[i]['SCStatus'] == 'ERROR' or SCP2Stacks[i]['SCStatus'] == 'TAINTED':
-			print(Fore.RED+fmt.format(SCP2Stacks[i]['AccountID'],
-							SCP2Stacks[i]['SCProductName'],
-							SCP2Stacks[i]['ProvisioningArtifactName'],
-							SCP2Stacks[i]['CFNStackName'],
-							SCP2Stacks[i]['SCStatus'],
-							SCP2Stacks[i]['CFNStackStatus'],
-							SCP2Stacks[i]['AccountStatus'],
-							SCP2Stacks[i]['AccountEmail'],
-							namelength=namelength)+Fore.RESET)
+			print(Fore.RED+SCP2Stacks[i]['AccountID'].ljust(DisplaySpacing['AccountNumber']),
+			      SCP2Stacks[i]['SCProductName'].ljust(DisplaySpacing['SCProductName']),
+			      SCP2Stacks[i]['ProvisioningArtifactName'].ljust(DisplaySpacing['ProvisioningArtifactName']),
+			      SCP2Stacks[i]['CFNStackName'].ljust(DisplaySpacing['CFNStackName']),
+			      SCP2Stacks[i]['SCStatus'].ljust(DisplaySpacing['SCStatus']),
+			      SCP2Stacks[i]['CFNStackStatus'].ljust(DisplaySpacing['CFNStackStatus']),
+			      SCP2Stacks[i]['AccountStatus'].ljust(DisplaySpacing['AccountNumber']),
+			      SCP2Stacks[i]['AccountEmail'].ljust(DisplaySpacing['AccountEmail'])+Fore.RESET)
 		else:
-			print(fmt. format(
-				SCP2Stacks[i]['AccountID'],
-				SCP2Stacks[i]['SCProductName'],
-				SCP2Stacks[i]['ProvisioningArtifactName'],
-				SCP2Stacks[i]['CFNStackName'],
-				SCP2Stacks[i]['SCStatus'],
-				SCP2Stacks[i]['CFNStackStatus'],
-				SCP2Stacks[i]['AccountStatus'],
-				SCP2Stacks[i]['AccountEmail'],
-				namelength=namelength))
-
+			print(SCP2Stacks[i]['AccountID'].ljust(DisplaySpacing['AccountNumber']),
+			      SCP2Stacks[i]['SCProductName'].ljust(DisplaySpacing['SCProductName']),
+			      SCP2Stacks[i]['ProvisioningArtifactName'].ljust(DisplaySpacing['ProvisioningArtifactName']),
+			      SCP2Stacks[i]['CFNStackName'].ljust(DisplaySpacing['CFNStackName']),
+			      SCP2Stacks[i]['SCStatus'].ljust(DisplaySpacing['SCStatus']),
+			      SCP2Stacks[i]['CFNStackStatus'].ljust(DisplaySpacing['CFNStackStatus']),
+			      SCP2Stacks[i]['AccountStatus'].ljust(DisplaySpacing['AccountNumber']),
+			      SCP2Stacks[i]['AccountEmail'].ljust(DisplaySpacing['AccountEmail']))
 except ClientError as my_Error:
 	if str(my_Error).find("AuthFailure") > 0:
 		print(f"{pProfile}: Authorization Failure ")
@@ -288,17 +258,15 @@ for acctnum in AccountHistogram.keys():
 if ErroredSCPExists:
 	print()
 	print("You probably want to remove the following SC Products:")
-	session_sc = boto3.Session(profile_name=pProfile, region_name=pRegion)
+	session_sc = aws_acct.session
 	client_sc = session_sc.client('servicecatalog')
 	for i in range(len(SCP2Stacks)):
-		if (SCP2Stacks[i]['SCStatus'] == 'ERROR') or (SCP2Stacks[i]['CFNStackName'] == 'None') and not DeletionRun:
-			print(
-				"aws servicecatalog terminate-provisioned-product --provisioned-product-id {} --profile {} --ignore-errors".format(
-					SCP2Stacks[i]['SCProductId'], pProfile))
+		if (SCP2Stacks[i]['SCStatus'] == 'ERROR') or (SCP2Stacks[i]['CFNStackName'] == 'None') and not DeletionRun and pProfile is None:
+			print(f"aws servicecatalog terminate-provisioned-product --provisioned-product-id {SCP2Stacks[i]['SCProductId']} --ignore-errors")
+		elif (SCP2Stacks[i]['SCStatus'] == 'ERROR') or (SCP2Stacks[i]['CFNStackName'] == 'None') and not DeletionRun and pProfile is not None:
+			print(f"aws servicecatalog terminate-provisioned-product --provisioned-product-id {SCP2Stacks[i]['SCProductId']} --profile {pProfile} --ignore-errors")
 		elif (SCP2Stacks[i]['SCStatus'] == 'ERROR') or (SCP2Stacks[i]['CFNStackName'] == 'None') and DeletionRun:
-			print(
-				"Deleting Service Catalog Provisioned Product {} from {} profile".format(SCP2Stacks[i]['SCProductName'],
-																						 pProfile))
+			print(f"Deleting Service Catalog Provisioned Product {SCP2Stacks[i]['SCProductName']} from account {aws_acct.acct_number}")
 			StackDelete = client_sc.terminate_provisioned_product(
 				ProvisionedProductId=SCP2Stacks[i]['SCProductId'],
 				IgnoreErrors=True,
@@ -315,6 +283,6 @@ for i in AccountHistogram:
 print("We found {} accounts within the Org".format(len(AcctList)))
 print("We found {} Service Catalog Products".format(len(SCProducts)))
 print("We found {} Suspended accounts".format(len(SuspendedAccounts)))
-#print("We found {} Closed Accounts that still have an SC product".format('Some Number'))
-#print("We found {} Service Catalog Products with no account attached".format('Some Number'))
+# print("We found {} Closed Accounts that still have an SC product".format('Some Number'))
+# print("We found {} Service Catalog Products with no account attached".format('Some Number'))
 print("Thanks for using this script...")
