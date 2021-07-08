@@ -244,39 +244,52 @@ try:
 		else:
 			pass
 	print()
-	fmt='{0:<15} {1:{namelength}} {2:<8} {3:<35} {4:<10} {5:<18} {6:<10} {7:<20}'
-	print(fmt.format("Account Number",
-                   "SC Product Name", "Version",
-                   "CFN Stack Name",
-                   "SC Status",
-                   "CFN Stack Status",
-                   "Acct Status",
-                   "AccountEmail",
-                   namelength=namelength))
-	print(fmt.format("--------------", "---------------", "-------","--------------", "---------", "----------------", "-----------", "------------",namelength=namelength))
+	DisplaySpacing = {'AccountNumber': 15,
+	                  'SCProductName': namelength,
+	                  'ProvisioningArtifactName': 8,
+	                  'CFNStackName': 35,
+	                  'SCStatus': 10,
+	                  'CFNStackStatus': 18,
+	                  'AccountStatus': 10,
+	                  'AccountEmail': 20}
+	print("Account ID".ljust(DisplaySpacing['AccountNumber']),
+	      "SC Product Name".ljust(DisplaySpacing['SCProductName']),
+	      "Version".ljust(DisplaySpacing['ProvisioningArtifactName']),
+	      "CFN StackName".ljust(DisplaySpacing['CFNStackName']),
+	      "SC Status".ljust(DisplaySpacing['SCStatus']),
+	      "CFN Stack Status".ljust(DisplaySpacing['CFNStackStatus']),
+	      "Account Status".ljust(DisplaySpacing['AccountNumber']),
+	      "Account Email".ljust(DisplaySpacing['AccountEmail']))
+	# fmt = f'{"Account Number":15} {"SC Product Name":<{namelength}} {"Version":<8} {"CFN Stack Name":<35} {"SC Status":<10} {"CFN Stack Status":<18} {"Acct Status":<10} {"AccountEmail":<20}'
+	# print(fmt)
+	print("-" * DisplaySpacing['AccountNumber'],
+	      "-" * DisplaySpacing['SCProductName'],
+	      "-" * DisplaySpacing['ProvisioningArtifactName'],
+	      "-" * DisplaySpacing['CFNStackName'],
+	      "-" * DisplaySpacing['SCStatus'],
+	      "-" * DisplaySpacing['CFNStackStatus'],
+	      "-" * DisplaySpacing['AccountNumber'],
+	      "-" * DisplaySpacing['AccountEmail'])
 	for i in range(len(SCP2Stacks)):
 		if SCP2Stacks[i]['SCStatus'] == 'ERROR' or SCP2Stacks[i]['SCStatus'] == 'TAINTED':
-			print(Fore.RED+fmt.format(SCP2Stacks[i]['AccountID'],
-                            SCP2Stacks[i]['SCProductName'],
-                            SCP2Stacks[i]['ProvisioningArtifactName'],
-                            SCP2Stacks[i]['CFNStackName'],
-                            SCP2Stacks[i]['SCStatus'],
-                            SCP2Stacks[i]['CFNStackStatus'],
-                            SCP2Stacks[i]['AccountStatus'],
-                            SCP2Stacks[i]['AccountEmail'],
-                            namelength=namelength)+Fore.RESET)
+			print(Fore.RED + SCP2Stacks[i]['AccountID'].ljust(DisplaySpacing['AccountNumber']),
+			      SCP2Stacks[i]['SCProductName'].ljust(DisplaySpacing['SCProductName']),
+			      SCP2Stacks[i]['ProvisioningArtifactName'].ljust(DisplaySpacing['ProvisioningArtifactName']),
+			      SCP2Stacks[i]['CFNStackName'].ljust(DisplaySpacing['CFNStackName']),
+			      SCP2Stacks[i]['SCStatus'].ljust(DisplaySpacing['SCStatus']),
+			      SCP2Stacks[i]['CFNStackStatus'].ljust(DisplaySpacing['CFNStackStatus']),
+			      SCP2Stacks[i]['AccountStatus'].ljust(DisplaySpacing['AccountNumber']),
+			      SCP2Stacks[i]['AccountEmail'].ljust(DisplaySpacing['AccountEmail']) + Fore.RESET)
 		else:
-			print(fmt.format(
-				SCP2Stacks[i]['AccountID'],
-				SCP2Stacks[i]['SCProductName'],
-				SCP2Stacks[i]['ProvisioningArtifactName'],
-				SCP2Stacks[i]['CFNStackName'],
-				SCP2Stacks[i]['SCStatus'],
-				SCP2Stacks[i]['CFNStackStatus'],
-				SCP2Stacks[i]['AccountStatus'],
-				SCP2Stacks[i]['AccountEmail'],
-				namelength=namelength))
-
+			print(
+				SCP2Stacks[i]['AccountID'].ljust(DisplaySpacing['AccountNumber']),
+				SCP2Stacks[i]['SCProductName'].ljust(DisplaySpacing['SCProductName']),
+				SCP2Stacks[i]['ProvisioningArtifactName'].ljust(DisplaySpacing['ProvisioningArtifactName']),
+				SCP2Stacks[i]['CFNStackName'].ljust(DisplaySpacing['CFNStackName']),
+				SCP2Stacks[i]['SCStatus'].ljust(DisplaySpacing['SCStatus']),
+				SCP2Stacks[i]['CFNStackStatus'].ljust(DisplaySpacing['CFNStackStatus']),
+				SCP2Stacks[i]['AccountStatus'].ljust(DisplaySpacing['AccountNumber']),
+				SCP2Stacks[i]['AccountEmail'].ljust(DisplaySpacing['AccountEmail']))
 except ClientError as my_Error:
 	if str(my_Error).find("AuthFailure") > 0:
 		print(pProfile + ": Authorization Failure ")
