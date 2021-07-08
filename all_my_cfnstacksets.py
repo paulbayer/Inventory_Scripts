@@ -4,20 +4,21 @@ import logging
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
-# import boto3
 from colorama import init, Fore
 from botocore.exceptions import ClientError
 
 init()
 parser = CommonArguments()
-parser.extendedargs()   # This adds additional *optional* arguments to the listing
-parser.my_parser.my_parser.add_argument(
+parser.singleprofile()      # Allows for a single profile to be specified
+parser.multiregion()        # Allows for multiple regions to be specified at the command line
+parser.verbosity()          # Allows for the verbosity to be handled.
+parser.my_parser.add_argument(
 	"-f", "--fragment",
 	dest="pstackfrag",
 	metavar="CloudFormation stack fragment",
 	default=["all"],
 	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
-parser.my_parser.my_parser.add_argument(
+parser.my_parser.add_argument(
 	"-s", "--status",
 	dest="pstatus",
 	metavar="CloudFormation status",
@@ -26,10 +27,10 @@ parser.my_parser.my_parser.add_argument(
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
-pRegionList = args.Region
+pRegionList = args.Regions
+verbose = args.loglevel
 pstackfrag = args.pstackfrag
 pstatus = args.pstatus
-verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
 
 SkipProfiles = ["default"]
@@ -50,14 +51,9 @@ sts_session = aws_acct.session
 sts_client = sts_session.client('sts')
 account_credentials = None      # This shouldn't matter, but makes the IDE checker happy.
 for account in ChildAccounts:
-	role_arn = f"arn:aws:iam::{account['AccountId']}:role/AWSCloudFormationStackSetExecutionRole"
-	logging.info(f"Role ARN: {role_arn}")
 	try:
 		account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'])
-		# account_credentials = sts_client.assume_role(
-		# 	RoleArn=role_arn,
-		# 	RoleSessionName="Find-StackSets")['Credentials']
-		account_credentials['AccountNumber'] = account['AccountId']
+
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0 or str(my_Error).find("AccessDenied") > 0:
 			logging.error("%s: Authorization Failure for account %s", pProfile, account['AccountId'])

@@ -292,49 +292,49 @@ def find_calling_identity(fProfile):
 	return (creds)
 
 
-# def find_account_attr(fSessionObject):
-# 	import boto3
-# 	import logging
-# 	from botocore.exceptions import ClientError, CredentialRetrievalError
-#
-# 	"""
-# 	In the case of an Org Root or Child account, I use the response directly from the AWS SDK.
-# 	You can find the output format here: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/organizations.html#Organizations.Client.describe_organization
-# 	"""
-# 	FailResponse = {'AccountType': 'Unknown', 'AccountNumber': 'None', 'Id': 'None', 'MasterAccountId': 'None'}
-# 	client_org = fSessionObject.client('organizations')
-# 	try:
-# 		response = client_org.describe_organization()['Organization']
-# 		my_acct_number = find_account_number(fProfile)
-# 		response['Id'] = my_acct_number
-# 		response['AccountNumber'] = my_acct_number
-# 		if response['MasterAccountId'] == my_acct_number:
-# 			response['AccountType'] = 'Root'
-# 		else:
-# 			response['AccountType'] = 'Child'
-# 		return (response)
-# 	except ClientError as my_Error:
-# 		if str(my_Error).find("UnrecognizedClientException") > 0:
-# 			logging.error(f"Security Issue with: {fProfile}")
-# 		elif str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
-# 			logging.error(f"{fProfile}: Account isn't a part of an Organization")  # Stand-alone account
-# 			my_acct_number = find_account_number(fProfile)
-# 			FailResponse['AccountType'] = 'StandAlone'
-# 			FailResponse['Id'] = my_acct_number
-# 			FailResponse['AccountNumber'] = my_acct_number
-# 		elif str(my_Error).find("InvalidClientTokenId") > 0:
-# 			logging.error(f"{fProfile}: Security Token is bad - probably a bad entry in config")
-# 		elif str(my_Error).find("AccessDenied") > 0:
-# 			logging.error(f"{fProfile}: Access Denied for profile")
-# 		pass
-# 	except CredentialRetrievalError as my_Error:
-# 		print(f"{fProfile}: Failure pulling or updating credentials")
-# 		print(my_Error)
-# 		pass
-# 	except:
-# 		print("Other kind of failure")
-# 		pass
-# 	return (FailResponse)
+def find_account_attr(fSessionObject):
+	import boto3
+	import logging
+	from botocore.exceptions import ClientError, CredentialRetrievalError
+
+	"""
+	In the case of an Org Root or Child account, I use the response directly from the AWS SDK.
+	You can find the output format here: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/organizations.html#Organizations.Client.describe_organization
+	"""
+	FailResponse = {'AccountType': 'Unknown', 'AccountNumber': 'None', 'Id': 'None', 'MasterAccountId': 'None'}
+	client_org = fSessionObject.session.client('organizations')
+	try:
+		response = client_org.describe_organization()['Organization']
+		my_acct_number = find_account_number(fProfile)
+		response['Id'] = my_acct_number
+		response['AccountNumber'] = my_acct_number
+		if response['MasterAccountId'] == my_acct_number:
+			response['AccountType'] = 'Root'
+		else:
+			response['AccountType'] = 'Child'
+		return (response)
+	except ClientError as my_Error:
+		if str(my_Error).find("UnrecognizedClientException") > 0:
+			logging.error(f"Security Issue with: {fProfile}")
+		elif str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
+			logging.error(f"{fProfile}: Account isn't a part of an Organization")  # Stand-alone account
+			my_acct_number = find_account_number(fProfile)
+			FailResponse['AccountType'] = 'StandAlone'
+			FailResponse['Id'] = my_acct_number
+			FailResponse['AccountNumber'] = my_acct_number
+		elif str(my_Error).find("InvalidClientTokenId") > 0:
+			logging.error(f"{fProfile}: Security Token is bad - probably a bad entry in config")
+		elif str(my_Error).find("AccessDenied") > 0:
+			logging.error(f"{fProfile}: Access Denied for profile")
+		pass
+	except CredentialRetrievalError as my_Error:
+		print(f"{fProfile}: Failure pulling or updating credentials")
+		print(my_Error)
+		pass
+	except:
+		print("Other kind of failure")
+		pass
+	return (FailResponse)
 
 
 # def find_child_accounts2(fProfile):

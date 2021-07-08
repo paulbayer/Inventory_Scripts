@@ -12,12 +12,10 @@ init()
 parser = CommonArguments()
 parser.singleprofile()
 parser.singleregion()
-# parser.my_parser.add_argument("+d", "+delete", dest="DeletionRun", metavar="Deletion of inactive Service Catalog provisioned products", action="store_true", help="This will delete the SC Provisioned Products found to be in error, or without active CloudFormation stacks - without any opportunity to confirm. Be careful!!")
+parser.verbosity()
 parser.my_parser.add_argument(
 	"+d", "+delete",
 	dest="DeletionRun",
-	metavar="CloudFormation stack fragment",
-	# metavar="Deletion of inactive Service Catalog provisioned products",
 	action="store_true",
 	help="This will delete the SC Provisioned Products found to be in error, or without active CloudFormation stacks - without any opportunity to confirm. Be careful!!")
 args = parser.my_parser.parse_args()
@@ -96,8 +94,9 @@ try:
 				)
 				# The above command fails if the stack found (by the find_stacks function) has been deleted
 				# The following section determines the NEW Account's AccountEmail and AccountID
-				AccountEmail = 'None'
-				AccountID = 'None'
+				AccountEmail = None
+				AccountID = None
+				AccountStatus = None
 				if 'Parameters' in stack_info['Stacks'][0].keys() and len(stack_info['Stacks'][0]['Parameters']) > 0:
 					for y in range(len(stack_info['Stacks'][0]['Parameters'])):
 						if stack_info['Stacks'][0]['Parameters'][y]['ParameterKey'] == 'AccountEmail':
@@ -121,8 +120,8 @@ try:
 							break
 						else:
 							logging.error("Outputs key present, but no account ID")
-							AccountID = 'None'
-							AccountStatus = 'None'
+							AccountID = None
+							AccountStatus = None
 				else:
 					logging.error("No Outputs key present")
 					AccountID = 'None'
@@ -133,11 +132,11 @@ try:
 				# AccountID should have been assigned in the 'Outputs' if-then above
 				# AccountStatus should have been assigned in the 'Outputs' if-then above
 			else:  # This takes effect when CFNResponse can't find any stacks with the Service Catalog Product ID
-				CFNStackName = 'None'
-				CFNStackStatus = 'None'
-				AccountID = 'None'
-				AccountEmail = 'None'
-				AccountStatus = 'None'
+				CFNStackName = None
+				CFNStackStatus = None
+				AccountID = None
+				AccountEmail = None
+				AccountStatus = None
 			logging.error(f"AccountID: {AccountID} | AccountEmail: {AccountEmail} | CFNStackName: {CFNStackName} | CFNStackStatus: {CFNStackStatus} | SC Product: {SCProducts[i]}")
 			SCProductName = SCProducts[i]['SCPName']
 			SCProductId = SCProducts[i]['SCPId']

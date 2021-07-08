@@ -13,20 +13,23 @@ import logging
 init()
 
 parser = CommonArguments()
-parser.extendedargs()   # This adds additional *optional* arguments to the listing
-parser.my_parser.my_parser.add_argument(
+parser.singleprofile()      # Allows for a single profile to be specified
+parser.multiregion()        # Allows for multiple regions to be specified at the command line
+parser.verbosity()          # Allows for the verbosity to be handled.
+parser.extendedargs()       # Allows for extended arguments like which accounts to skip, and whether Force is enabled.
+parser.my_parser.add_argument(
 	"-f", "--fragment",
 	dest="stackfrag",
 	metavar="CloudFormation stack fragment",
 	default="all",
 	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
-parser.my_parser.my_parser.add_argument(
+parser.my_parser.add_argument(
 	"-s", "--status",
 	dest="status",
 	metavar="CloudFormation status",
 	default="active",
 	help="String that determines whether we only see 'CREATE_COMPLETE' or 'DELETE_COMPLETE' too")
-parser.my_parser.my_parser.add_argument(
+parser.my_parser.add_argument(
 	"+delete", "+forreal",
 	dest="DeletionRun",
 	action="store_true",
@@ -34,18 +37,16 @@ parser.my_parser.my_parser.add_argument(
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
-pRegionList = args.Region
+pRegionList = args.Regions
 AccountsToSkip = args.SkipAccounts
 verbose = args.loglevel
 pstackfrag = args.stackfrag
 pstatus = args.status
 DeletionRun = args.DeletionRun
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)30s() ] %(message)s")
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
 
 ##########################
 ERASE_LINE = '\x1b[2K'
-
-print(args.loglevel)
 
 print()
 if args.loglevel < 21:  # INFO level
@@ -67,14 +68,8 @@ StacksFound = []
 aws_session = aws_acct.session
 sts_client = aws_session.client('sts')
 for account in ChildAccounts:
-	role_arn = f"arn:aws:iam::{account['AccountId']}:role/AWSCloudFormationStackSetExecutionRole"
-	logging.info(f"Role ARN: {role_arn}")
 	try:
 		account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'])
-		# account_credentials = sts_client.assume_role(
-		# 	RoleArn=role_arn,
-		# 	RoleSessionName="Find-Stacks")['Credentials']
-		account_credentials['AccountNumber'] = account['AccountId']
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
 			print(f"{pProfile}: Authorization Failure for account {account['AccountId']}")
@@ -88,8 +83,7 @@ for account in ChildAccounts:
 		Stacks = False
 		try:
 			Stacks = Inventory_Modules.find_stacks_in_acct(account_credentials, region, pstackfrag, pstatus)
-			# pprint.pprint(Stacks)
-			logging.warning("Account: %s | Region: %s | Found %s Stacks", account['AccountId'], region, len(Stacks))
+			logging.warning(f"Account: {account['AccountId']} | Region: {region} | Found {len(Stacks)} Stacks")
 			print(ERASE_LINE, Fore.RED+"Account: {} Region: {} Found {} Stacks".format(account['AccountId'], region, len(Stacks))+Fore.RESET, end='\r')
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:

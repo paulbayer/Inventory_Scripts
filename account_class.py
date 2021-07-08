@@ -33,6 +33,7 @@ So if we created a class object that represented the account:
 import boto3
 import logging
 
+
 class aws_acct_access:
 	"""
 	Class takes a boto3 session object as input
@@ -50,6 +51,8 @@ class aws_acct_access:
 		self.acct_number = self.acct_num()
 		logging.error(f"Found information for Account {self.acct_number}")
 		self.AccountType = self.find_account_attr()['AccountType']
+		self.MgmtAccount = self.find_account_attr()['MasterAccountId']
+		self.OrgID = self.find_account_attr()['OrgId']
 		logging.error(f"Account {self.acct_number} is a {self.AccountType} account")
 		self.creds = self.session._session._credentials.get_frozen_credentials()
 		if self.AccountType.lower() == 'root':
@@ -59,7 +62,6 @@ class aws_acct_access:
 			# self.creds_dict = None
 			# self.acct_number = '123456789012'
 			# self.AccountType = None
-
 
 	def acct_num(self):
 		"""
@@ -96,39 +98,42 @@ class aws_acct_access:
 		In the case of an Org Root or Child account, I use the response directly from the AWS SDK. 
 		You can find the output format here: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/organizations.html#Organizations.Client.describe_organization
 		"""
-		FailResponse = {'AccountType': 'Unknown', 'AccountNumber': 'None', 'Id': 'None', 'MasterAccountId': 'None'}
+		function_response = {'AccountType': 'Unknown', 'AccountNumber': None, 'OrgId': None, 'Id': None, 'MasterAccountId': None}
 		session_org = self.session
 		client_org = session_org.client('organizations')
-		my_acct_number = self.acct_num()
 		try:
 			response = client_org.describe_organization()['Organization']
-			response['Id'] = my_acct_number
-			response['AccountNumber'] = my_acct_number
-			if response['MasterAccountId'] == my_acct_number:
-				response['AccountType'] = 'Root'
+			function_response['OrgId'] = response['Id']
+			function_response['Id'] = self.acct_number
+			function_response['AccountNumber'] = self.acct_number
+			if response['MasterAccountId'] == self.acct_number:
+				function_response['AccountType'] = 'Root'
 			else:
 				response['AccountType'] = 'Child'
-			return (response)
+				self.MgmtAccount = response['MasterAccountId']
+			return (function_response)
 		except ClientError as my_Error:
 			if str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
-				FailResponse['AccountType'] = 'StandAlone'
-				FailResponse['Id'] = my_acct_number
-				FailResponse['AccountNumber'] = my_acct_number
+				function_response['AccountType'] = 'StandAlone'
+				function_response['Id'] = self.acct_number
+				function_response['OrgId'] = None
+				function_response['AccountNumber'] = self.acct_number
+				function_response['MasterAccountId'] = self.acct_number
 			elif str(my_Error).find("UnrecognizedClientException") > 0:
-				logging.error(f"Security Issue with: {my_acct_number}")
+				logging.error(f"Security Issue with: {self.acct_number}")
 			elif str(my_Error).find("InvalidClientTokenId") > 0:
-				logging.error(f"{my_acct_number}: Security Token is bad - probably a bad entry in config")
+				logging.error(f"{self.acct_number}: Security Token is bad - probably a bad entry in config")
 			elif str(my_Error).find("AccessDenied") > 0:
-				logging.error(f"{my_acct_number}: Access Denied for profile")
+				logging.error(f"{self.acct_number}: Access Denied for profile")
 			pass
 		except CredentialRetrievalError as my_Error:
-			logging.error(f"{my_acct_number}: Failure pulling or updating credentials")
+			logging.error(f"{self.acct_number}: Failure pulling or updating credentials")
 			print(my_Error)
 			pass
 		except:
 			print("Other kind of failure")
 			pass
-		return (FailResponse)
+		return (function_response)
 
 	def find_child_accounts(self):
 		"""
@@ -177,4 +182,3 @@ class aws_acct_access:
 		else:
 			logging.warning(f"Account {self.acct_num()} suffered a crisis of identity")
 			return ()
-

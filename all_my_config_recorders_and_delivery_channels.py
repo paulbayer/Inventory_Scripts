@@ -18,6 +18,9 @@ TODO:
 - Enable the deletion of the config recorders / delivery channels from specific accounts (or all?) at the end.
 """
 parser = CommonArguments()
+parser.singleprofile()
+parser.multiregion()
+parser.verbosity()
 parser.extendedargs()   # This adds additional *optional* arguments to the listing
 parser.my_parser.add_argument(
 	"+delete", "+forreal",
@@ -27,7 +30,7 @@ parser.my_parser.add_argument(
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
-pRegions = args.Region
+pRegionList = args.Regions
 AccountsToSkip = args.SkipAccounts
 verbose = args.loglevel
 DeletionRun = args.flagDelete
@@ -44,7 +47,7 @@ ChildAccounts = aws_acct.ChildAccounts
 
 ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, AccountsToSkip)
 
-cf_regions = Inventory_Modules.get_service_regions('config', pRegions)
+cf_regions = Inventory_Modules.get_service_regions('config', pRegionList)
 all_config_recorders = []
 all_config_delivery_channels = []
 print("Searching {} accounts and {} regions".format(len(ChildAccounts), len(cf_regions)))
@@ -54,12 +57,10 @@ for account in ChildAccounts:
 	NumProfilesInvestigated = 0  # I only care about the last run - so I don't get profiles * regions.
 	try:
 		account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'])
-		# account_credentials = sts_client.assume_role(
-		# 	RoleArn=role_arn,
-		# 	RoleSessionName="Find-Configuration-Recorders")['Credentials']
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
 			print(f"Authorization Failure for account {account['AccountId']}")
+		continue
 	for region in cf_regions:
 		NumAccountsInvestigated += 1
 		session_aws = boto3.Session(
