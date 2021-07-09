@@ -1,37 +1,36 @@
 #!/usr/bin/env python3
 
-import sys
-
-import Inventory_Modules
-import argparse
-from ArgumentsClass import CommonArguments
 import boto3
+import Inventory_Modules
+from ArgumentsClass import CommonArguments
+from account_class import aws_acct_access
 from colorama import init, Fore, Back, Style
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, ProfileNotFound
 
 import logging
 
 init()
 
 parser = CommonArguments()
-parser.extendedargs()
-parser.my_parser.my_parser.add_argument(
+parser.multiregion()
+parser.singleprofile()
+parser.verbosity()
+parser.my_parser.add_argument(
 	"-f", "--file",
 	dest="pFile",
 	metavar="file of account numbers to read",
 	default=None,
 	help="File should consist of account numbers - 1 per line, with CR/LF as line ending")
-parser.my_parser.my_parser.add_argument(
+parser.my_parser.add_argument(
 	"+n", "--no-dry-run",
 	dest="pDryRun",
-	metavar="Whether to actually enable the block or just report it.",
-	action="store_false",   # If supplied, it will become false, meaning it will make changes
-	help="Defaults to Dry-Run so it doesn't make any changes.")
+	action="store_false",       # Defaults to dry-run, only changes if you specify the parameter
+	help="Defaults to Dry-Run so it doesn't make any changes, unless you specify.")
+
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
-pRegionList = args.Region
-AccountsToSkip = args.SkipAccounts
+pRegion = args.Regions
 verbose = args.loglevel
 pFile = args.pFile
 pDryRun = args.pDryRun
@@ -55,6 +54,8 @@ Code Flow:
 4. Report that we did what we were supposed to do, and any difficulties we had doing it.  
 '''
 
+aws_acct = aws_acct_access(pProfile)
+
 
 ##########################
 def read_file(filename):
@@ -67,36 +68,92 @@ def read_file(filename):
 	return(account_list)
 
 
-def get_root_profiles():
-	fRootProfiles = []
-	AllProfiles = Inventory_Modules.get_profiles2()
+def find_all_accounts(session_object=None):
+	child_accounts = []
+	sts_client = session_object.client('sts')
+	my_account_number = sts_client.get_caller_identity()['Account']
+	org_client = session_object.client('organizations')
 	try:
-		for profile in AllProfiles:
-			print(ERASE_LINE, f"Checking profile {profile} to see if it's an Org Root profile", end="\r")
-			response = Inventory_Modules.find_if_org_root(profile)
-			if response == 'Root':
-				fRootProfiles.append(profile)
+		response = org_client.list_accounts()
+		theresmore = True
+		while theresmore:
+			for account in response['Accounts']:
+				logging.warning(f"Account ID: {account['Id']} | Account Email: {account['Email']}")
+				child_accounts.append({'ParentAccount': my_account_number,
+				                       'AccountId': account['Id'],
+				                       'AccountEmail': account['Email'],
+				                       'AccountStatus': account['Status']})
+			if 'NextToken' in response.keys():
+				theresmore = True
+				response = org_client.list_accounts(NextToken=response['NextToken'])
+			else:
+				theresmore = False
+		return (child_accounts)
 	except ClientError as my_Error:
-		if str(my_Error).find("AuthFailure") > 0:
-			print(f"Authorization Failure for profile {profile}")
-			print(my_Error)
-		elif str(my_Error).find("AccessDenied") > 0:
-			print(f"Access Denied Failure for profile {profile}")
-			print(my_Error)
-		else:
-			print(f"Other kind of failure for profile {profile}")
-			print(my_Error)
-	return(fRootProfiles)
+		print(f"Account {my_account_number} isn't a root account. This script works best with an Org Management account")
+		logging.warning(f"Account {my_account_number} doesn't represent an Org Root account")
+		logging.debug(my_Error)
+		return()
 
 
-def find_all_accounts(fRootProfiles):
-	AllChildAccounts = []
-	for profile in fRootProfiles:
-		logging.error(f"Finding all accounts under Management Profile: {profile}")
-		ChildAccounts = Inventory_Modules.find_child_accounts2(profile)
-		AllChildAccounts.extend(ChildAccounts)
-	logging.warning(f"Found {len(AllChildAccounts)} accounts")
-	return(AllChildAccounts)
+# def get_child_access2(fRootSessionObject, ParentAccountId, fChildAccount, fRegion='us-east-1', fRoleList=None):
+# 	"""
+# 	- fRootProfile is a string
+# 	- fChildAccount expects an AWS account number (ostensibly of a Child Account)
+# 	- rRegion expects a string representing one of the AWS regions ('us-east-1', 'eu-west-1', etc.)
+# 	- fRoleList expects a list of roles to try, but defaults to a list of typical roles, in case you don't provide
+#
+# 	The first response object is a dict with account_credentials to pass onto other functions
+# 	The second response object is the rolename that worked to gain access to the target account
+#
+# 	The format of the account credentials dict is here:
+# 	account_credentials = {'Profile': fRootProfile,
+# 							'AccessKeyId': ',
+# 							'SecretAccessKey': None,
+# 							'SessionToken': None,
+# 							'AccountNumber': None}
+# 	"""
+#
+# 	if not isinstance(fChildAccount, str):  # Make sure the passed in account number is a string
+# 		fChildAccount = str(fChildAccount)
+# 	sts_client = fRootSessionObject.client('sts', region_name=fRegion)
+# 	if fChildAccount == ParentAccountId:
+# 		explain_string = ("We're trying to get access to either the Root Account (which we already have access "
+# 		                  "to via the profile)	or we're trying to gain access to a Standalone account. "
+# 		                  "In either of these cases, we should just use the profile passed in, "
+# 		                  "instead of trying to do anything fancy.")
+# 		logging.info(explain_string)
+# 		session_creds = fRootSessionObject._session.get_credentials()
+# 		account_credentials = {'ParentAccount': ParentAccountId,
+# 		                       'AccessKeyId': session_creds['access_key'],
+# 		                       'SecretAccessKey': session_creds['secret_key'],
+# 		                       'SessionToken': session_creds['token'],
+# 		                       'AccountNumber': fChildAccount}
+# 		return (account_credentials)
+# 	if fRoleList is None:
+# 		fRoleList = ['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution',
+# 					 'OrganizationAccountAccessRole', 'AdministratorAccess', 'Owner']
+# 	account_credentials = {'ParentAccount': ParentAccountId,
+# 	                       'AccessKeyId': None,
+# 	                       'SecretAccessKey': None,
+# 	                       'SessionToken': None,
+# 						   'AccountNumber': None}
+# 	for role in fRoleList:
+# 		try:
+# 			logging.info(f"Trying to access account {fChildAccount} from account {ParentAccountId} assuming role: {role}")
+# 			role_arn = f"arn:aws:iam::{fChildAccount}:role/{role}"
+# 			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Find-ChildAccount-Things")['Credentials']
+# 			# If we were successful up to this point, then we'll short-cut everything and just return the credentials that worked
+# 			account_credentials['ParentAccount'] = ParentAccountId
+# 			account_credentials['AccountNumber'] = fChildAccount
+# 			return (account_credentials)
+# 		except ClientError as my_Error:
+# 			if my_Error.response['Error']['Code'] == 'ClientError':
+# 				logging.info(my_Error)
+# 			continue
+# 	# Returns a dict object since that's what's expected
+# 	# It will only get to the part below if the child isn't accessed properly using the roles already defined
+# 	return (account_credentials)
 
 
 def check_block_s3_public_access(AcctDict=None):
@@ -111,7 +168,7 @@ def check_block_s3_public_access(AcctDict=None):
 			                            aws_session_token=AcctDict['SessionToken'],
 			                            region_name='us-east-1')
 		else:
-			aws_session = boto3.Session(profile_name=AcctDict['ParentProfile'])
+			aws_session = aws_acct.session
 		s3_client = aws_session.client('s3control')
 		logging.info(f"Checking the public access block on account {AcctDict['AccountId']}")
 		try:
@@ -141,57 +198,57 @@ def enable_block_s3_public_access(AcctDict=None):
 		logging.info("The Account info wasn't passed into the function")
 		return("Skipped")
 	else:
-		aws_session = boto3.Session(aws_access_key_id=AcctDict['AccessKeyId'],
-		                          aws_secret_access_key=AcctDict['SecretAccessKey'],
-		                          aws_session_token=AcctDict['SessionToken'],
-		                          region_name='us-east-1')
+		if 'AccessKeyId' in AcctDict.keys():
+			logging.info("Creating credentials for child account %s ")
+			aws_session = boto3.Session(aws_access_key_id=AcctDict['AccessKeyId'],
+			                            aws_secret_access_key=AcctDict['SecretAccessKey'],
+			                            aws_session_token=AcctDict['SessionToken'],
+			                            region_name='us-east-1')
+		else:
+			aws_session = boto3.Session()
 		s3_client = aws_session.client('s3control')
 		logging.info("Enabling the public access block".format(AcctDict['AccountId']))
-		response = s3_client.put_public_access_block(
-			PublicAccessBlockConfiguration={
-				'BlockPublicAcls': True,
-				'IgnorePublicAcls': True,
-				'BlockPublicPolicy': True,
-				'RestrictPublicBuckets': True
-			},
-			AccountId=AcctDict['AccountId']
-		)
+		response = s3_client.put_public_access_block(PublicAccessBlockConfiguration={
+													'BlockPublicAcls': True,
+													'IgnorePublicAcls': True,
+													'BlockPublicPolicy': True,
+													'RestrictPublicBuckets': True
+												}, AccountId=AcctDict['AccountId'])
 	return(f"{response}Updated")
 ##########################
 
 
 ERASE_LINE = '\x1b[2K'
 
+AccountList = None      # Makes the IDE Checker happy
 # Get the accounts we're going to work on
 if pFile is not None:
 	AccountList = read_file(pFile)
 
-if pProfile is None:
-	# Establish a dictionary of Root Accounts and get credentials for all accounts under the root
-	print("No profile provided, so finding ALL accounts you have access to")
-	RootProfiles = get_root_profiles()
+if aws_acct.AccountType.lower() == 'root':
+	AllChildAccountList = aws_acct.ChildAccounts
 else:
-	# If a profile was provided, limit the work to just that profile
-	RootProfiles = [pProfile]
-AllChildAccountList = find_all_accounts(RootProfiles)
-print("Found {} accounts to look through".format(len(AllChildAccountList)))
+	AllChildAccountList = [{
+		'MgmntAccount': aws_acct.acct_number,
+		'AccountId': aws_acct.acct_number,
+		'AccountEmail': 'Child Account',
+		'AccountStatus': aws_acct.AccountStatus}]
+print(f"Found {len(AllChildAccountList)} accounts to look through")
 for i in range(len(AllChildAccountList)):
 	if AllChildAccountList[i]['AccountStatus'] == 'ACTIVE':
-		# if AllChildAccountList[i]['AccountStatus'] == 'ACTIVE' and AllChildAccountList[i]['AccountId'] in AccountList:
-		print(ERASE_LINE, "Getting credentials for account {}    {} of {}".format(AllChildAccountList[i]['AccountId'], i+1, len(AllChildAccountList)), end="\r")
+		print(ERASE_LINE, f"Getting credentials for account {AllChildAccountList[i]['AccountId']} -- {i + 1} of {len(AllChildAccountList)}", end="\r")
 		try:
-			credentials, _ = Inventory_Modules.get_child_access2(AllChildAccountList[i]['ParentProfile'], AllChildAccountList[i]['AccountId'])
+			credentials = Inventory_Modules.get_child_access3(aws_acct,
+			                                AllChildAccountList[i]['AccountId'])
 			logging.info(f"Successfully got credentials for account {AllChildAccountList[i]['AccountId']}")
 			AllChildAccountList[i]['AccessKeyId'] = credentials['AccessKeyId']
 			AllChildAccountList[i]['SecretAccessKey'] = credentials['SecretAccessKey']
 			AllChildAccountList[i]['SessionToken'] = credentials['SessionToken']
-			# AccountList.remove(AllChildAccountList[i]['AccountId'])
 		except Exception as e:
 			print(str(e))
-			print(f"Failed using root profile {AllChildAccountList[i]['ParentProfile']} to get credentials for acct {AllChildAccountList[i]['AccountId']}")
+			print(f"Failed using root account {AllChildAccountList[i]['MgmntAccount']} to get credentials for acct {AllChildAccountList[i]['AccountId']}")
 	else:
-		print(ERASE_LINE,
-		      "Skipping account {} since it's SUSPENDED or CLOSED    {} of {}".format(AllChildAccountList[i]['AccountId'], i + 1, len(AllChildAccountList)), end="\r")
+		print(ERASE_LINE, f"Skipping account {AllChildAccountList[i]['AccountId']} since it's SUSPENDED or CLOSED    {i + 1} of {len(AllChildAccountList)}", end="\r")
 
 print()
 fmt = '%-20s %-15s %-20s %-15s'
@@ -203,21 +260,23 @@ for item in AllChildAccountList:
 	if item['AccountStatus'] == 'SUSPENDED':
 		continue
 	else:
-		Updated = "Skipped"
-		Enabled = check_block_s3_public_access(item)
-		logging.info(f"Checking account #{item['AccountId']} with Parent Profile {item['ParentProfile']}")
-		if not Enabled:
-			if pDryRun:
-				Updated = "DryRun"
-				pass
-			else:
-				Updated = enable_block_s3_public_access(item)
-		print(fmt % (item['ParentProfile'], item['AccountId'], Enabled, Updated))
+		try:
+			Updated = "Skipped"
+			Enabled = check_block_s3_public_access(item)
+			logging.info(f"Checking account #{item['AccountId']} with Parent Account {item['MgmntAccount']}")
+			if not Enabled:
+				if pDryRun:
+					Updated = "DryRun"
+					pass
+				else:
+					Updated = enable_block_s3_public_access(item)
+			print(fmt % (item['MgmntAccount'], item['AccountId'], Enabled, Updated))
+		except ProfileNotFound as myError:
+			logging.info(f"You've tried to update your own management account.")
 
 print()
 if pFile is not None:
-	print("# of account in file provided: {}".format(len(AccountList)))
-print("# of Root Accounts: {}".format(len(RootProfiles)))
-print("# of Child Accounts: {}".format(len(AllChildAccountList)))
+	print(f"# of account in file provided: {len(AccountList)}")
+print(f"# of Checked Accounts: {len(AllChildAccountList)}")
 print()
 print("Thank you for using this script.")

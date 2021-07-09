@@ -566,14 +566,12 @@ def get_child_access3(fAccountObject, fChildAccount, fRegion='us-east-1', fRoleL
 
 	The format of the account credentials dict is here:
 	account_credentials = {'ParentAcctId': ParentAccountId,
-							'AccessKeyId': ',
+							'AccessKeyId': None,
 							'SecretAccessKey': None,
 							'SessionToken': None,
 							'AccountNumber': None,
 							'Role': Role that worked to get in}
 	"""
-	import boto3
-	from account_class import aws_acct_access
 	import logging
 	from botocore.exceptions import ClientError
 

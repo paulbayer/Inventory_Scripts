@@ -44,10 +44,13 @@ class aws_acct_access:
 
 		print("Capturing Account Information...")
 		self.region = fRegion.lower()
+		self.AccountStatus = 'INACTIVE'
 		if fProfile is None:
 			self.session = boto3.Session(region_name=self.region)
+			self.AccountStatus = 'ACTIVE'
 		else:
 			self.session = boto3.Session(profile_name=fProfile, region_name=self.region)
+			self.AccountStatus = 'ACTIVE'
 		self.acct_number = self.acct_num()
 		logging.error(f"Found information for Account {self.acct_number}")
 		self.AccountType = self.find_account_attr()['AccountType']
