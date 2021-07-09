@@ -93,8 +93,9 @@ class CommonArguments():
 
 	def multiprofile(self):
 		self.my_parser.add_argument(
-			"-ps", "--profiles",
+			"-ps", "-p", "--profiles",
 			dest="Profiles",
+			nargs="*",
 			metavar="Profiles",
 			default=['all'],               # Defaults to all profiles
 			help="Which profiles do you want to run against?")

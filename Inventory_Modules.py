@@ -1249,7 +1249,7 @@ def find_private_hosted_zones2(ocredentials, fRegion):
 	return (hosted_zones)
 
 
-def find_load_balancers(fSessionObject, fRegion, fStackFragment='all', fStatus='all'):
+def find_load_balancers(fProfile, fRegion, fStackFragment='all', fStatus='all'):
 	import boto3
 	import logging
 
