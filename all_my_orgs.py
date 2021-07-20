@@ -3,31 +3,18 @@
 import os
 import sys
 import logging
-import argparse
+from ArgumentsClass import CommonArguments
+from account_class import aws_acct_access
 import Inventory_Modules
-
 from botocore.exceptions import ClientError, NoCredentialsError, InvalidConfigError
 from colorama import init, Fore, Style
 
 init()
 
-parser = argparse.ArgumentParser(
-	description="We\'re going to find all accounts within any of the organizations we have access to.",
-	prefix_chars='-+/')
-ProfileGroup = parser.add_mutually_exclusive_group()
-ProfileGroup.add_argument(
-	"-p", "--profile",
-	dest="pProfile",
-	metavar="Profile",
-	default="all",  # Default to everything
-	help="Which single profile do you want to run for?")
-ProfileGroup.add_argument(
-	"-l", "--listprofiles",
-	dest="pProfiles",
-	metavar="Profiles",
-	nargs="*",
-	default=[],     # Default to nothing
-	help="Which list of profiles do you want to run for?")
+parser = CommonArguments()
+parser.multiprofile()
+parser.verbosity()
+ProfileGroup = parser.my_parser.add_mutually_exclusive_group()
 parser.my_parser.add_argument(
 	'-R', '--root',
 	help="Display only the root accounts found in the profiles",
@@ -42,42 +29,15 @@ parser.my_parser.add_argument(
 	dest="shortform",
 	const=True,
 	default=False)
-parser.my_parser.add_argument(
-	'-v',
-	help="Be verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.ERROR,        # args.loglevel = 40
-	default=logging.CRITICAL)   # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-vv', '--verbose',
-	help="Be MORE verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.WARNING,      # args.loglevel = 30
-	default=logging.CRITICAL)   # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-vvv',
-	help="Print debugging statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.INFO,         # args.loglevel = 20
-	default=logging.CRITICAL)   # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-d', '--debug',
-	help="Print LOTS of debugging statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.DEBUG,        # args.loglevel = 10
-	default=logging.CRITICAL)   # args.loglevel = 50
 args = parser.my_parser.parse_args()
 
-pProfile = args.pProfile
-pProfiles = args.pProfiles
+pProfiles = args.Profiles
+# if len(pProfiles) == 1:
+# 	pProfile = pProfiles[0]
 verbose = args.loglevel
 rootonly = args.rootonly
 shortform = args.shortform
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 SkipProfiles = ["default"]
 ERASE_LINE = '\x1b[2K'
@@ -85,62 +45,54 @@ ERASE_LINE = '\x1b[2K'
 RootAccts = []      # List of the Organization Root's Account Number
 RootProfiles = []   # List of the Organization Root's profiles
 
-"""
-Because there's two ways for the user to provide profiles, we have to consider four scenarios:
-	1. They provided no input
-		* We'll use the pProfile default of "all"
-	2. They provided input using the pProfile parameter of a specific profile
-		* That's the case we already handle
-	3. They provided a list of profiles using the pProfiles parameter
-		* This is the new case, that we'll cycle through
-	4. They provided both the pProfile AND pProfiles parameters.
-		* argparse will stop the user from doing that!
+# logging.info("Profile: %s", pProfile)
+logging.info(f"Profiles: {pProfiles}")
 
-"""
-
-logging.info("Profile: %s", pProfile)
-logging.info("Profiles: %s", str(pProfiles))
-
-if pProfile == "all" and pProfiles == []:  # Use case #1 from above
+if "all" in pProfiles:  # Use case #1 from above
 	logging.info("Use Case #1")
-	logging.warning("Profile is set to all")
+	logging.warning("All available profiles will be shown")
+	ProfileList = Inventory_Modules.get_profiles2(fSkipProfiles=SkipProfiles, fprofiles=pProfiles)
 	ShowEverything = True
-elif not pProfile == "all":	 # Use case #2 from above
+elif 'all' not in pProfiles:	 # Use case #2 from above
 	logging.info("Use Case #2")
-	logging.warning("Profile is set to %s", pProfile)
-	AcctNum = Inventory_Modules.find_account_number(pProfile)
-	AcctAttr = Inventory_Modules.find_account_attr(pProfile)
-	MnmgtAcct = AcctAttr['MasterAccountId']
-	OrgId = AcctAttr['Id']
-	if AcctNum == MnmgtAcct:
-		logging.warning("This is a root account - showing info only for %s", pProfile)
-		RootAcct = True
-		ShowEverything = False
-	else:
-		print()
-		print(f"{Fore.RED}If you're going to provide a profile, it's supposed to be a Management Billing Account profile!!{Fore.RESET}")
-		print("Continuing to run the script - but for all profiles.")
-		ShowEverything = True
-else:  # Use case #3 from above
-	logging.info("Use Case #3")
-	logging.warning("Multiple profiles have been provided: %s. Going through one at a time...", str(pProfiles))
-	for profile in pProfiles:
-		AcctNum = Inventory_Modules.find_account_number(profile)
-		AcctAttr = Inventory_Modules.find_account_attr(profile)
-		MnmgtAcct = AcctAttr['MasterAccountId']
-		OrgId = AcctAttr['Id']
-		if AcctNum == MnmgtAcct:
-			filename = sys.argv[0]
-			logging.info("Running the script again with %s as your profile", profile)
-			ShowEverything = False
-			os.system(f"python3 {filename} -p {profile}")
-		else:
-			print()
-			print(f"{Fore.RED}Provided profile: {profile} isn't a Master Billing Account profile!!{Fore.RESET}")
-			print("Skipping...")
-			ShowEverything = False
-			continue
-	sys.exit(f"Finished {len(pProfiles)} profiles!")  # Finished the multiple profiles provided.
+	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=SkipProfiles, fprofiles=pProfiles)
+	logging.warning(f"ProfileList is set to {ProfileList}")
+#
+# 	aws_acct = aws_acct_access(pProfiles[0])
+# 	AcctNum = aws_acct.acct_num()
+# 	AcctAttr = aws_acct.AccountType
+# 	MnmgtAcct = aws_acct.MgmtAccount
+# 	OrgId = aws_acct.OrgID
+# 	if aws_acct.AccountType.lower() == 'root':
+# 		logging.warning(f"This is a root account - showing info only for {pProfile}")
+# 		RootAcct = True
+# 		ShowEverything = False
+# 	else:
+# 		print()
+# 		print(f"{Fore.RED}If you're going to provide a profile, it's supposed to be a Management Billing Account profile!!{Fore.RESET}")
+# 		print("Continuing to run the script - but for all profiles.")
+# 		ShowEverything = True
+# else:  # Use case #3 from above
+# 	logging.info("Use Case #3")
+# 	logging.warning(f"Multiple profiles have been provided: {str(pProfiles)}. Going through one at a time...")
+# 	for profile in pProfiles:
+# 		aws_acct = aws_acct_access(pProfile)
+# 		AcctNum = aws_acct.acct_num()
+# 		AcctAttr = aws_acct.AccountType
+# 		MnmgtAcct = aws_acct.MgmtAccount
+# 		OrgId = AcctAttr['Id']
+# 		if AcctNum == MnmgtAcct:
+# 			filename = sys.argv[0]
+# 			logging.info(f"Running the script again with {profile} as your profile")
+# 			ShowEverything = False
+# 			os.system(f"python3 {filename} -p {profile}")
+# 		else:
+# 			print()
+# 			print(f"{Fore.RED}Provided profile: {profile} isn't a Master Billing Account profile!!{Fore.RESET}")
+# 			print("Skipping...")
+# 			ShowEverything = False
+# 			continue
+# 	sys.exit(f"Finished {len(pProfiles)} profiles!")  # Finished the multiple profiles provided.
 
 """
 TODO:
@@ -149,41 +101,43 @@ TODO:
 	This will be difficult, since we don't know which profile that belongs to. Hmmm...
 """
 
-if ShowEverything:
+# if ShowEverything:
+if True:
 	fmt = '%-23s %-15s %-27s %-12s %-10s'
 	print("------------------------------------")
 	print(fmt % ("Profile Name", "Account Number", "Master Org Acct", "Org ID", "Root Acct?"))
 	print(fmt % ("------------", "--------------", "---------------", "------", "----------"))
-	AllProfiles = Inventory_Modules.get_profiles2(SkipProfiles, "all")
-	for profile in AllProfiles:
-		AcctNum = "Blank Acct"
-		MnmgtAcct = "Blank Root"
-		OrgId = "o-xxxxxxxxxx"
-		Email = "Email not available"
-		RootId = "r-xxxx"
-		acct_type = Inventory_Modules.find_account_attr(profile)
-		ErrorFlag = False
+	# AllProfiles = Inventory_Modules.get_profiles2(SkipProfiles, "all")
+	NumProfiles = 0
+	FailedProfiles = []
+	for profile in ProfileList:
 		try:
-			AcctNum = Inventory_Modules.find_account_number(profile)
-			logging.info(f"AccountNumber: {AcctNum}")
-			if AcctNum == '123456789012':
+			NumProfiles += 1
+			print(f"{ERASE_LINE}Trying profile {NumProfiles} of {len(ProfileList)}", end='\r')
+			aws_acct = aws_acct_access(profile)
+			ErrorFlag = False
+			RootAcct = False
+			if aws_acct.acct_number in ['123456789012', 'Failure']:
 				ErrorFlag = True
+				logging.info(f"Access to the profile {profile} has failed")
+				FailedProfiles.append(profile)
 				pass
-			elif acct_type['AccountType'] == 'Root':   # The Account is deemed to be an Management Account
-				AcctAttr = Inventory_Modules.find_account_attr(profile)
-				MnmgtAcct = AcctAttr['MasterAccountId']
-				Email = AcctAttr['MasterAccountEmail']
-				OrgId = AcctAttr['Id']
+			elif aws_acct.AccountType.lower() == 'root':   # The Account is deemed to be an Management Account
+				logging.info(f"AccountNumber: {aws_acct.acct_number}")
+				MnmgtAcct = aws_acct.MgmtAccount
+				Email = aws_acct.MgmtEmail
+				OrgId = aws_acct.OrgID
 				RootAcct = True
 				RootAccts.append(MnmgtAcct)
 				RootProfiles.append(profile)
-			elif acct_type['AccountType'].lower() in ['standalone', 'child']:
-				AcctAttr = Inventory_Modules.find_account_attr(profile)
-				MnmgtAcct = AcctAttr['MasterAccountId']
-				OrgId = AcctAttr['Id']
+			elif aws_acct.AccountType.lower() in ['standalone', 'child']:
+				MnmgtAcct = aws_acct.MgmtAccount
+				Email = aws_acct.MgmtEmail
+				OrgId = aws_acct.OrgID
 				RootAcct = False
 		except ClientError as my_Error:
 			ErrorFlag = True
+			FailedProfiles.append(profile)
 			if str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
 				MnmgtAcct = "Not an Org Account"
 			elif str(my_Error).find("AccessDenied") > 0:
@@ -197,6 +151,7 @@ if ShowEverything:
 				print(my_Error)
 		except InvalidConfigError as my_Error:
 			ErrorFlag = True
+			FailedProfiles.append(profile)
 			if str(my_Error).find("does not exist") > 0:
 				ErrorMessage = str(my_Error)[str(my_Error).find(":"):]
 				print(ErrorMessage)
@@ -205,20 +160,12 @@ if ShowEverything:
 				print(my_Error)
 		except NoCredentialsError as my_Error:
 			ErrorFlag = True
+			FailedProfiles.append(profile)
 			if str(my_Error).find("Unable to locate credentials") > 0:
 				MnmgtAcct = "This profile doesn't have credentials."
 			else:
 				print("Credentials Error")
 				print(my_Error)
-		# if AcctNum == MnmgtAcct and not ErrorFlag:
-		# if org_root == 'Root' and not ErrorFlag:
-		# 	RootAcct = True
-		# 	RootAccts.append(MnmgtAcct)
-		# 	RootProfiles.append(profile)
-		# 	logging.info('Email: %s', Email)
-		# else:
-		# 	RootAcct = False
-
 		'''
 		If I create a dictionary from the Root Accts and Root Profiles Lists - 
 		I can use that to determine which profile belongs to the root user of my (child) account.
@@ -229,11 +176,11 @@ if ShowEverything:
 		'''
 		# Print results for this profile
 		if RootAcct:
-			print(Fore.RED + fmt % (profile, AcctNum, MnmgtAcct, OrgId, RootAcct) + Style.RESET_ALL)
+			print(Fore.RED + fmt % (profile, aws_acct.acct_number, aws_acct.MgmtAccount, aws_acct.OrgID, RootAcct) + Style.RESET_ALL)
 		elif rootonly:  # If I'm looking for only the root accounts, when I find something that isn't a root account, don't print anything and continue on.
 			print(ERASE_LINE, f"{profile} isn't a root account", end="\r")
 		else:
-			print(fmt % (profile, AcctNum, MnmgtAcct, OrgId, RootAcct))
+			print(fmt % (profile, aws_acct.acct_number, aws_acct.MgmtAccount, aws_acct.OrgID, RootAcct))
 	print()
 	print("-------------------")
 
@@ -245,40 +192,46 @@ if ShowEverything:
 		print(fmt % ("----------------------", "------------", "---"))
 		NumOfAccounts = 0
 		for profile in RootProfiles:
-			MnmgtAcct = Inventory_Modules.find_account_number(profile)
-			child_accounts = Inventory_Modules.find_child_accounts(profile)
+			aws_acct = aws_acct_access(profile)
+			MnmgtAcct = aws_acct.acct_number
+			child_accounts = aws_acct.ChildAccounts
 			landing_zone = Inventory_Modules.find_if_alz(profile)['ALZ']
-			NumOfAccounts = NumOfAccounts + len(child_accounts)
+			NumOfAccounts += len(child_accounts)
 			if landing_zone:
 				fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}{Fore.RED}%-6s {Fore.RESET}"
 			else:
 				fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}%-6s"
-			print(fmt % (profile, MnmgtAcct, landing_zone))
+			print(fmt % (profile, aws_acct.MgmtAccount, landing_zone))
 			print(child_fmt % ("Child Account Number", "Child Email Address"))
-			for account in sorted(child_accounts):
-				print(child_fmt % (account, child_accounts[account]))
+			# for account in sorted(child_accounts):
+			for account in child_accounts:
+				print(child_fmt % (account['AccountId'], account['AccountEmail']))
 		print()
 		print("Number of Organizations:", len(RootProfiles))
 		print("Number of Organization Accounts:", NumOfAccounts)
-elif not ShowEverything:
-	fmt = '%-23s %-15s %-6s'
-	child_fmt = "\t\t%-20s %-20s"
-	print()
-	print(fmt % ("Organization's Profile", "Root Account", "ALZ"))
-	print(fmt % ("----------------------", "------------", "---"))
-	NumOfAccounts = 0
+		print(f"Number of profiles that failed: {len(FailedProfiles)}")
+		logging.error(f"List of failed profiles: {FailedProfiles}")
 
-	MnmgtAcct = Inventory_Modules.find_account_number(pProfile)
-	child_accounts = Inventory_Modules.find_child_accounts(pProfile)
-	landing_zone = Inventory_Modules.find_if_alz(pProfile)['ALZ']
-	NumOfAccounts = NumOfAccounts + len(child_accounts)
-	if landing_zone:
-		fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}{Fore.RED}%-6s {Fore.RESET}"
-	else:
-		fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}%-6s"
-	print(fmt % (pProfile, MnmgtAcct, landing_zone))
-	print(child_fmt % ("Child Account Number", "Child Email Address"))
-	for account in sorted(child_accounts):
-		print(child_fmt % (account, child_accounts[account]))
-	print()
-	print("Number of Organization Accounts:", NumOfAccounts)
+# elif not ShowEverything:
+# 	fmt = '%-23s %-15s %-6s'
+# 	child_fmt = "\t\t%-20s %-20s"
+# 	print()
+# 	print(fmt % ("Organization's Profile", "Root Account", "ALZ"))
+# 	print(fmt % ("----------------------", "------------", "---"))
+# 	NumOfAccounts = 0
+# 	aws_acct = aws_acct_access(pProfile)
+# 	MnmgtAcct = aws_acct.acct_number
+# 	child_accounts = aws_acct.ChildAccounts
+# 	landing_zone = Inventory_Modules.find_if_alz(pProfile)['ALZ']
+# 	NumOfAccounts += len(child_accounts)
+# 	if landing_zone:
+# 		fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}{Fore.RED}%-6s {Fore.RESET}"
+# 	else:
+# 		fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}%-6s"
+# 	print(fmt % (pProfile, aws_acct.MgmtAccount, landing_zone))
+# 	print(child_fmt % ("Child Account Number", "Child Email Address"))
+# 	for account in sorted(child_accounts, key=lambda k: k['AccountId']):
+# 		print(child_fmt % (account['AccountId'], account['AccountEmail']))
+# 	print()
+# 	print(f"Number of Organization Accounts:{NumOfAccounts}")
+print("Thanks for using this script")
