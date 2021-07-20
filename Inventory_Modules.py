@@ -105,8 +105,8 @@ def get_profiles2(fSkipProfiles=None, fprofiles=None):
 	"""
 	import boto3
 
-	if fSkipProfiles is None:
-		fSkipProfiles = ['default']
+	# if fSkipProfiles is None:
+		# fSkipProfiles = ['default']
 	if fprofiles is None:
 		fprofiles = ['all']
 	my_Session = boto3.Session()
@@ -496,7 +496,7 @@ def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleLis
 	- fRoleList expects a list of roles to try, but defaults to a list of typical roles, in case you don't provide
 
 	The first response object is a dict with account_credentials to pass onto other functions
-	The second response object is the rolename that worked to gain access to the target account
+	The min response object is the rolename that worked to gain access to the target account
 
 	The format of the account credentials dict is here:
 	account_credentials = {'Profile': fRootProfile,
@@ -995,7 +995,7 @@ def find_cloudtrails(ocredentials, fRegion, fCloudTrailnames=None):
 		return(fullresponse, trailname)
 	elif len(fCloudTrailnames) > 0:
 		#  TODO: This doesn't work... Needs to be fixed.
-		#  TODO: The reason this doesn't work is because the user submits a *list* of names, but the function exits after only one match, so the second match is never found.
+		#  TODO: The reason this doesn't work is because the user submits a *list* of names, but the function exits after only one match, so the min match is never found.
 		# They've provided a list of trails and want specific info about them
 		for trailname in fCloudTrailnames:
 			try:
@@ -1304,7 +1304,7 @@ def find_stacks(fProfile, fRegion, fStackFragment="all", fStatus="active"):
 			'minute':
 			'month':
 			'resolution':
-			'second':
+			'min':
 			'tzinfo':
 			'year':
 		}
@@ -1617,7 +1617,7 @@ def find_stacksets(fProfile, fRegion, fStackFragment):
 
 def find_stacksets2(facct_creds, fRegion, faccount, fStackFragment=""):
 	"""
-	facct_creds is an object which contains the credentials for the account
+	facct_creds is a dictionary which contains the credentials for the account
 	fRegion is a string
 	fStackFragment is a string
 	"""
@@ -1688,6 +1688,30 @@ def find_stack_instances(fProfile, fRegion, fStackSetName, fStatus='CURRENT'):
 	return (stack_instances_list)
 
 
+def find_stack_instances2(fAccountObject, fRegion, fStackSetName, fStatus='CURRENT'):
+	"""
+	fSessionObject is a custom class containing the credentials
+	fRegion is a string
+	fStackSetName is a string
+	fStatus is a string, but isn't currently used.
+	TODO: Decide whether to use fStatus, or not
+	"""
+	import boto3
+	import logging
+
+	logging.warning("Account: %s | Region: %s | StackSetName: %s", fAccountObject.acct_number, fRegion, fStackSetName)
+	session_cfn = fAccountObject.session
+	client_cfn = session_cfn.client('cloudformation')
+	stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName)
+	stack_instances_list = stack_instances['Summaries']
+	while 'NextToken' in stack_instances.keys():  # Get all instance names
+		stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName, NextToken=stack_instances[
+			'NextToken'])
+		for i in range(len(stack_instances)):
+			stack_instances_list.append(stack_instances['Summaries'][i])
+	return (stack_instances_list)
+
+
 def delete_stack_instances(fProfile, fRegion, lAccounts, lRegions, fStackSetName, fRetainStacks=False, fOperationName="StackDelete"):
 	"""
 	fProfile is the Root Profile that owns the stackset
@@ -1702,6 +1726,24 @@ def delete_stack_instances(fProfile, fRegion, lAccounts, lRegions, fStackSetName
 
 	logging.warning(f"Deleting {fStackSetName} stackset over {len(lAccounts)} accounts across {len(lRegions)} regions")
 	session_cfn = boto3.Session(profile_name=fProfile, region_name=fRegion)
+	client_cfn = session_cfn.client('cloudformation')
+	response = client_cfn.delete_stack_instances(StackSetName=fStackSetName, Accounts=lAccounts, Regions=lRegions, RetainStacks=fRetainStacks, OperationId=fOperationName)
+	return (response)  # There is no response to send back
+
+
+def delete_stack_instances2(fAccountObject, fRegion, lAccounts, lRegions, fStackSetName, fRetainStacks=False, fOperationName="StackDelete"):
+	"""
+	fProfile is the Root Profile that owns the stackset
+	fRegion is the region where the stackset resides
+	lAccounts is a list of accounts
+	lRegion is a list of regions
+	fStackSetName is a string
+	fOperationName is a string (to identify the operation)
+	"""
+	import logging
+
+	logging.warning(f"Deleting {fStackSetName} stackset over {len(lAccounts)} accounts across {len(lRegions)} regions")
+	session_cfn = fAccountObject.session
 	client_cfn = session_cfn.client('cloudformation')
 	response = client_cfn.delete_stack_instances(StackSetName=fStackSetName, Accounts=lAccounts, Regions=lRegions, RetainStacks=fRetainStacks, OperationId=fOperationName)
 	return (response)  # There is no response to send back

@@ -100,7 +100,6 @@ class CommonArguments():
 			default=['all'],               # Defaults to all profiles
 			help="Which profiles do you want to run against?")
 
-
 	def multiregion(self):
 		self.my_parser.add_argument(
 			"-rs", "--regions",
