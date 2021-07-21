@@ -38,6 +38,15 @@ class aws_acct_access:
 	"""
 	Class takes a boto3 session object as input
 	Multiple attributes and functions exist within this class to give you information about the account
+	Attributes:
+		AccountStatus: Whether the account is Active or Inactive
+		acct_number: The account number of the account
+		AccountType: Whether the account is a "Root", "Child" or "Standalone" account
+		MgmtAccount: If the account is a child, this is its Management Account
+		OrgID: The Organization the account belongs to, if it does
+		MgmtEmail: The email address of the Management Account, if the account is a "Root" or "Child"
+		creds: The credentials used to get into the account
+		ChildAccounts: If the account is a "Root", this is a listing of the child accounts
 	"""
 	def __init__(self, fProfile=None, fRegion='us-east-1'):
 		logging.basicConfig(format="[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s")
