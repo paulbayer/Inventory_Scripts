@@ -614,7 +614,7 @@ def get_child_access3(fAccountObject, fChildAccount, fRegion='us-east-1', fRoleL
 			else:
 				logging.info(f"Trying to access account {fChildAccount} using account number {fAccountObject.acct_number} assuming role: {role}")
 			role_arn = f"arn:aws:iam::{fChildAccount}:role/{role}"
-			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Find-ChildAccount-Things")['Credentials']
+			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Test-ChildAccount-Access")['Credentials']
 			# If we were successful up to this point, then we'll short-cut everything and just return the credentials that worked
 			account_credentials['ParentAcctId'] = ParentAccountId
 			account_credentials['OrgType'] = org_status
@@ -622,8 +622,7 @@ def get_child_access3(fAccountObject, fChildAccount, fRegion='us-east-1', fRoleL
 			account_credentials['Role'] = role
 			return (account_credentials)
 		except ClientError as my_Error:
-			if my_Error.response['Error']['Code'] == 'ClientError':
-				logging.info(my_Error)
+			logging.debug(my_Error)
 			continue
 	# Returns a dict object since that's what's expected
 	# It will only get to the part below if the child isn't accessed properly using the roles already defined
@@ -968,6 +967,7 @@ def find_cloudtrails(ocredentials, fRegion, fCloudTrailnames=None):
 			},
 		]
 	}
+	CTtrails = Inventory_Modules.find_cloudtrails(account_creds, 'us-east-1', ['AWS-Landing-Zone-BaselineCloudTrail'])
 	"""
 	import boto3
 	import logging
@@ -977,40 +977,34 @@ def find_cloudtrails(ocredentials, fRegion, fCloudTrailnames=None):
 		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
 	client_ct = session_ct.client('cloudtrail')
 	logging.info("Looking for CloudTrail trails in account %s from Region %s", ocredentials['AccountNumber'], fRegion)
-	if fCloudTrailnames is None:  # Therefore - they're really looking for a list of trails
-		trailname = "Various"
+	fullresponse = []
+	if fCloudTrailnames is None or len(fCloudTrailnames) == 0:  # Therefore - they're really looking for a list of trails
 		try:
 			response = client_ct.list_trails()
 			fullresponse = response['Trails']
 			if 'NextToken' in response.keys():
 				while 'NextToken' in response.keys():
-					response = client_ct.list_trails()
-					# TODO: Need to change this to an "extend", instead of an "append" and that would negate the need for the for loop
-					for i in range(len(response['Trails'])):
-						fullresponse.append(response['Trails'][i])
+					response = client_ct.list_trails(NextToken=response['NextToken'])
+					fullresponse.extend(response['Trails'])
 		except ClientError as my_Error:
-			if str(my_Error).find("InvalidTrailNameException") > 0:
-				logging.error("Bad CloudTrail name provided")
+			logging.error(my_Error)
 			fullresponse = f"{trailname} didn't work. Try Again"
-		return(fullresponse, trailname)
-	elif len(fCloudTrailnames) > 0:
+		return(fullresponse)
+	else:
 		#  TODO: This doesn't work... Needs to be fixed.
 		#  TODO: The reason this doesn't work is because the user submits a *list* of names, but the function exits after only one match, so the min match is never found.
 		# They've provided a list of trails and want specific info about them
 		for trailname in fCloudTrailnames:
+			response = f"{trailname} didn't work. Try Again"
 			try:
 				response = client_ct.describe_trails(trailNameList=[trailname])
-				if len(response['trailList']) > 0:
-					return (response, trailname)
+				fullresponse.extend(response['trailList'])
 			except ClientError as my_Error:
 				if str(my_Error).find("InvalidTrailNameException") > 0:
 					logging.error("Bad CloudTrail name provided")
-				response = f"{trailname} didn't work. Try Again"
 				# TODO: This is also wrong, since it belongs outside this try (remember - this is a list)
 				# TODO: But since the top part is broken, I'm leaving this broken too.
-				return(response, trailname)
-	else:   # This is the case where the user provided an empty list of CloudTrailnames
-		return('Error', 'Parameter supplied was empty list')
+		return(fullresponse)
 
 
 def del_cloudtrails(ocredentials, fRegion, fCloudTrail):
@@ -1596,15 +1590,9 @@ def find_stacksets(fProfile, fRegion, fStackFragment):
 	client_cfn = session_cfn.client('cloudformation')
 	stacksets = client_cfn.list_stack_sets(Status='ACTIVE')
 	stacksetsCopy = []
-	# if fStackFragment=='all' or fStackFragment=='ALL':
 	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
 		logging.info("Found all the stacksets in Profile: %s in Region: %s with Fragment: %s", fProfile, fRegion, fStackFragment)
 		return (stacksets['Summaries'])
-	# elif (fStackFragment=='all' or fStackFragment=='ALL'):
-	# 	for stack in stacksets['Summaries']:
-	# 		if fStatus in stack['Status']:
-	# 			logging.warning("Found stackset %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackSetName'], fProfile, fRegion, fStackFragment, fStatus)
-	# 			stacksetsCopy.append(stack)
 	else:
 		for stack in stacksets['Summaries']:
 			for stackfrag in fStackFragment:
@@ -1615,37 +1603,30 @@ def find_stacksets(fProfile, fRegion, fStackFragment):
 	return (stacksetsCopy)
 
 
-def find_stacksets2(facct_creds, fRegion, faccount, fStackFragment=""):
+def find_stacksets2(faws_acct, fRegion, fStackFragment=['all']):
 	"""
-	facct_creds is a dictionary which contains the credentials for the account
+	faws_acct is a class containing the account information
 	fRegion is a string
-	fStackFragment is a string
+	fStackFragment is a list of strings
 	"""
-	import boto3
 	import logging
 
-	logging.info("Account: %s | Region: %s | Fragment: %s", faccount, fRegion, fStackFragment)
-	session_aws = boto3.Session(aws_access_key_id=facct_creds['AccessKeyId'], aws_secret_access_key=facct_creds[
-		'SecretAccessKey'], aws_session_token=facct_creds['SessionToken'], region_name=fRegion)
+	logging.info(f"Account: {faws_acct.acct_number} | Region: {fRegion} | Fragment: {fStackFragment}")
+	session_aws = faws_acct.session
 	client_cfn = session_aws.client('cloudformation')
 
 	stacksets = client_cfn.list_stack_sets(Status='ACTIVE')
 	stacksetsCopy = []
-	# if fStackFragment=='all' or fStackFragment=='ALL':
+	# Because fStackFragment is a list, I need to write it this way
 	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
-		logging.info("Found all the stacksets in Profile: %s in Region: %s with Fragment: %s", faccount, fRegion, fStackFragment)
+		logging.info(f"Found all the stacksets in account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragment}")
 		return (stacksets['Summaries'])
-	# elif (fStackFragment=='all' or fStackFragment=='ALL'):
-	# 	for stack in stacksets['Summaries']:
-	# 		if fStatus in stack['Status']:
-	# 			logging.warning("Found stackset %s in Profile: %s in Region: %s with Fragment: %s and Status: %s", stack['StackSetName'], fProfile, fRegion, fStackFragment, fStatus)
-	# 			stacksetsCopy.append(stack)
 	else:
 		for stack in stacksets['Summaries']:
-			if fStackFragment in stack['StackSetName']:
-				logging.warning("Found stackset %s in Account: %s in Region: %s with Fragment: %s",
-								stack['StackSetName'], faccount, fRegion, fStackFragment)
-				stacksetsCopy.append(stack)
+			for fragment in fStackFragment:
+				if fragment in stack['StackSetName']:
+					logging.warning(f"Found stackset {stack['StackSetName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fragment}")
+					stacksetsCopy.append(stack)
 	return (stacksetsCopy)
 
 
@@ -1690,7 +1671,7 @@ def find_stack_instances(fProfile, fRegion, fStackSetName, fStatus='CURRENT'):
 
 def find_stack_instances2(fAccountObject, fRegion, fStackSetName, fStatus='CURRENT'):
 	"""
-	fSessionObject is a custom class containing the credentials
+	faws_acct is a custom class containing the credentials
 	fRegion is a string
 	fStackSetName is a string
 	fStatus is a string, but isn't currently used.
