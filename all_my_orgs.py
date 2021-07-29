@@ -141,7 +141,7 @@ for profile in ProfileList:
 		print(ERASE_LINE, f"{profile} isn't a root account", end="\r")
 	else:
 		print(fmt % (profile, aws_acct.acct_number, aws_acct.MgmtAccount, aws_acct.OrgID, RootAcct))
-print()
+print(ERASE_LINE)
 print("-------------------")
 
 if not shortform:
