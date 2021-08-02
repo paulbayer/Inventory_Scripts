@@ -22,7 +22,7 @@ def get_regions(fkey, fprofile="default"):
 	return (RegionNames2)
 
 
-def get_ec2_regions(fkey=['all'], fprofile="default"):
+def get_ec2_regions(fkey=['all'], fprofile=None):
 	import boto3
 	import logging
 
@@ -34,6 +34,29 @@ def get_ec2_regions(fkey=['all'], fprofile="default"):
 	for x in range(len(regions['Regions'])):
 		RegionNames.append(regions['Regions'][x]['RegionName'])
 	if "all" in fkey or "ALL" in fkey or 'All' in fkey:
+		return (RegionNames)
+	RegionNames2 = []
+	for x in fkey:
+		for y in RegionNames:
+			logging.info('Have %s | Looking for %s', y, x)
+			if y.find(x) >= 0:
+				logging.info('Found %s', y)
+				RegionNames2.append(y)
+	return (RegionNames2)
+
+
+def get_ec2_regions2(fSessionObject, fkey=None):
+	import boto3
+	import logging
+
+	session_ec2 = fSessionObject.session
+	region_info = session_ec2.client('ec2')
+	regions = region_info.describe_regions(Filters=[
+		{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
+	RegionNames = []
+	for x in range(len(regions['Regions'])):
+		RegionNames.append(regions['Regions'][x]['RegionName'])
+	if "all" in fkey or "ALL" in fkey or 'All' in fkey or fkey is None:
 		return (RegionNames)
 	RegionNames2 = []
 	for x in fkey:
