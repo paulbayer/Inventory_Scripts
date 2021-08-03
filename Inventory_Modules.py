@@ -604,16 +604,17 @@ def get_child_access3(fAccountObject, fChildAccount, fRegion='us-east-1', fRoleL
 	ParentAccountId = fAccountObject.acct_number
 	sts_client = fAccountObject.session.client('sts')
 	if fChildAccount == ParentAccountId:
-		explain_string = ("We're trying to get access to either the Root Account (which we already have access "
-		                  "to via the profile)	or we're trying to gain access to a Standalone account. "
-		                  "In either of these cases, we should just use the profile passed in, "
-		                  "instead of trying to do anything fancy.")
+		explain_string = (f"We're trying to get access to either the Root Account (which we already have access "
+		                  f"to via the profile) or we're trying to gain access to a Standalone account. "
+		                  f"In either of these cases, we should just use the profile passed in, "
+		                  f"instead of trying to do anything fancy.")
 		logging.info(explain_string)
-		# TODO: Wrap this in a try/except loop
+		# TODO: Wrap this in a try/except loop on the off-chance that the class doesn't work properly
 		account_credentials = {'AccessKeyId': fAccountObject.creds.access_key,
 		                       'SecretAccessKey': fAccountObject.creds.secret_key,
 		                       'SessionToken': fAccountObject.creds.token,
 		                       'AccountNumber': fChildAccount,
+		                       'AccountId': fChildAccount,
 		                       'ParentAcctId': ParentAccountId,
 		                       'Role': 'Use Profile'}
 		return (account_credentials)
@@ -629,26 +630,30 @@ def get_child_access3(fAccountObject, fChildAccount, fRegion='us-east-1', fRoleL
 	                       'SecretAccessKey': None,
 	                       'SessionToken': None,
 						   'AccountNumber': None,
+						   'AccountId': None,
 						   'Role': None}
 	for role in fRoleList:
 		try:
 			if fAccountObject.session.profile_name:
-				logging.info(f"Trying to access account {fChildAccount} using {fAccountObject.session.profile_name} profile assuming role: {role}")
+				logging.info(f"Trying to access account {fChildAccount} using parent profile: {fAccountObject.session.profile_name} assuming role: {role}")
 			else:
 				logging.info(f"Trying to access account {fChildAccount} using account number {fAccountObject.acct_number} assuming role: {role}")
 			role_arn = f"arn:aws:iam::{fChildAccount}:role/{role}"
 			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Test-ChildAccount-Access")['Credentials']
 			# If we were successful up to this point, then we'll short-cut everything and just return the credentials that worked
+			logging.info(f"The credentials for account {fChildAccount} using parent account {fAccountObject.acct_number} and role name {role} worked for ")
 			account_credentials['ParentAcctId'] = ParentAccountId
 			account_credentials['OrgType'] = org_status
 			account_credentials['AccountNumber'] = fChildAccount
+			account_credentials['AccountId'] = fChildAccount
 			account_credentials['Role'] = role
 			return (account_credentials)
 		except ClientError as my_Error:
-			logging.debug(my_Error)
+			logging.info(my_Error)
 			continue
 	# Returns a dict object since that's what's expected
 	# It will only get to the part below if the child isn't accessed properly using the roles already defined
+	account_credentials['AccessError'] = True
 	return (account_credentials)
 
 
@@ -1585,9 +1590,9 @@ def find_saml_components_in_acct(ocredentials, fRegion):
 	return (saml_providers)
 
 
-def find_stacksets(fProfile, fRegion, fStackFragment):
+def find_stacksets(ocredentials, fRegion, fStackFragment=None, fstatus=None):
 	"""
-	fProfile is a string
+	credentials is a dictionary containing the credentials for a given account
 	fRegion is a string
 	fStackFragment is a list
 
@@ -1608,20 +1613,30 @@ def find_stacksets(fProfile, fRegion, fStackFragment):
 	import boto3
 	import logging
 
-	logging.info("Profile: %s | Region: %s | Fragment: %s", fProfile, fRegion, fStackFragment)
-	session_cfn = boto3.Session(profile_name=fProfile, region_name=fRegion)
-	client_cfn = session_cfn.client('cloudformation')
-	stacksets = client_cfn.list_stack_sets(Status='ACTIVE')
+	logging.info(f"Account ID: {ocredentials['AccountId']} | Region: {fRegion} | Fragment: {fStackFragment} | Status: {fstatus}")
+	session_aws = boto3.Session(region_name=fRegion,
+	                            aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'])
+	client_cfn = session_aws.client('cloudformation')
+	#TODO: Need to enable paging here
+	if fstatus is None or fstatus.lower == 'active':
+		logging.info(f"Looking for stack sets in account {ocredentials['AccountId']} matching fragment {fStackFragment} with status {fstatus}")
+		stacksets = client_cfn.list_stack_sets(Status='ACTIVE')
+	elif fstatus.upper() == 'DELETED':
+		logging.info(f"Looking for stack sets in account {ocredentials['AccountId']} matching fragment {fStackFragment} with status {fstatus}")
+		stacksets = client_cfn.list_stack_sets(Status=fstatus.upper())
+	else:
+		print("We shouldn't get to this point")
 	stacksetsCopy = []
-	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
-		logging.info("Found all the stacksets in Profile: %s in Region: %s with Fragment: %s", fProfile, fRegion, fStackFragment)
+	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment or fStackFragment is None:
+		logging.info(f"Found all the stacksets in Account: {ocredentials['AccountNumber']} in Region: {fRegion} with Fragment: {fStackFragment}")
 		return (stacksets['Summaries'])
 	else:
 		for stack in stacksets['Summaries']:
 			for stackfrag in fStackFragment:
 				if stackfrag in stack['StackSetName']:
-					logging.warning("Found stackset %s in Profile: %s in Region: %s with Fragment: %s",
-									stack['StackSetName'], fProfile, fRegion, stackfrag)
+					logging.warning(f"Found stackset {stack['StackSetName']} in account: {ocredentials['AccountId']} in Region: {fRegion} with Fragment: {stackfrag}")
 					stacksetsCopy.append(stack)
 	return (stacksetsCopy)
 
