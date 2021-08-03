@@ -83,6 +83,8 @@ class aws_acct_access:
 				# self.creds_dict = None
 				# self.acct_number = '123456789012'
 				# self.AccountType = None
+			else:
+				self.ChildAccounts = self.find_child_accounts()
 		else:
 			logging.error(f"Profile {fProfile} failed to successfully access an account")
 			self.AccountType = 'Unknown'
