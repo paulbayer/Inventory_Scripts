@@ -121,20 +121,16 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 	return (ProfileList)
 
 
-def get_profiles2(fSkipProfiles=None, fprofiles=None):
+def get_profiles2(fSkipProfiles=[None], fprofiles=[None]):
 	"""
 	We assume that the user of this function wants all profiles.
 	If they provide a list of profile strings (in fprofiles), then we compare those strings to the full list of profiles we have, and return those profiles that contain the strings they sent.
 	"""
 	import boto3
 
-	# if fSkipProfiles is None:
-		# fSkipProfiles = ['default']
-	if fprofiles is None:
-		fprofiles = ['all']
 	my_Session = boto3.Session()
 	my_profiles = my_Session._session.available_profiles
-	if "all" in fprofiles or "ALL" in fprofiles:
+	if "all" in fprofiles or "ALL" in fprofiles or fprofiles is None:
 		my_profiles = list(set(my_profiles) - set(fSkipProfiles))
 	else:
 		my_profiles = list(set(fprofiles) - set(fSkipProfiles))
@@ -710,17 +706,16 @@ def find_sns_topics(ocredentials, fRegion, fTopicFrag=None):
 		logging.warning("We found %s SNS Topics", len(TopicList))
 		return (TopicList)
 	else:
-		logging.warning("Looking for specific SNS Topics in account %s from Region %s",
-						ocredentials['AccountNumber'], fRegion)
-		TopicList2 = []
+		logging.warning(f"Looking for specific SNS Topics in account {ocredentials['AccountNumber']} from Region {fRegion}")
+		topic_list2 = []
 		for item in fTopicFrag:
-			for Topic in TopicList:
-				logging.info('Have %s | Looking for %s', Topic, item)
-				if Topic.find(item) >= 0:
-					logging.error('Found %s', Topic)
-					TopicList2.append(Topic)
-		logging.warning("We found %s SNS Topics", len(TopicList2))
-		return (TopicList2)
+			for topic in TopicList:
+				logging.info(f"Have {topic} | Looking for {item}")
+				if topic.find(item) >= 0:
+					logging.error(f"Found {topic}")
+					topic_list2.append(topic)
+		logging.warning("We found %s SNS Topics", len(topic_list2))
+		return (topic_list2)
 
 
 def find_role_names(ocredentials, fRegion, fRoleNameFrag=None):
@@ -1001,10 +996,12 @@ def find_cloudtrails(ocredentials, fRegion, fCloudTrailnames=None):
 	import logging
 	from botocore.exceptions import ClientError
 
-	session_ct = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
-		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	session_ct = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                           aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                           aws_session_token=ocredentials['SessionToken'],
+	                           region_name=fRegion)
 	client_ct = session_ct.client('cloudtrail')
-	logging.info("Looking for CloudTrail trails in account %s from Region %s", ocredentials['AccountNumber'], fRegion)
+	logging.info(f"Looking for CloudTrail trails in account {ocredentials['AccountNumber']} from Region {fRegion}")
 	fullresponse = []
 	if fCloudTrailnames is None or len(fCloudTrailnames) == 0:  # Therefore - they're really looking for a list of trails
 		try:

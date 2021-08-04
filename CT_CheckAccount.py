@@ -6,14 +6,17 @@ import argparse
 from colorama import init, Fore
 from botocore.exceptions import ClientError
 from prettytable import PrettyTable
+from ArgumentsClass import CommonArguments
+from account_class import aws_acct_access
 
 import logging
 
 init()
 
-parser = argparse.ArgumentParser(
-	description="We\'re going to determine whether this new account satisfies all the pre-reqs to be adopted by AWS Control Tower.",
-	prefix_chars='-+/')
+parser = CommonArguments()
+parser.verbosity()
+parser.singleprofile()
+parser.multiregion()
 parser.my_parser.add_argument(
 	"--explain",
 	dest="pExplain",
@@ -22,18 +25,10 @@ parser.my_parser.add_argument(
 	action="store_const",
 	help="This flag prints out the explanation of what this script would do.")
 parser.my_parser.add_argument(
-	"-p", "--profile",
-	dest="pProfile",
-	metavar="profile of AWS Organization",
-	default="default",
-	required=True,
-	help="To specify a specific profile, use this parameter. Default will be your default profile.")
-parser.my_parser.add_argument(
 	"-a", "--account",
 	dest="pChildAccountId",
 	metavar="New Account to be adopted into Control Tower",
-	default="123456789012",
-	required=True,
+	default=None,
 	help="This is the account number of the account you're checking, to see if it can be adopted into AWS Control Tower.")
 parser.my_parser.add_argument(
 	"-q", "--quick",
@@ -59,76 +54,50 @@ parser.my_parser.add_argument(
 	default=False,
 	action="store_const",
 	help="This will remediate issues found with NO confirmation. You still have to specify the +fix too")
-parser.my_parser.add_argument(
-	'-v',
-	help="Be verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.ERROR,  # args.loglevel = 40
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-vv', '--verbose',
-	help="Be MORE verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.WARNING,  # args.loglevel = 30
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-vvv',
-	help="Print debugging statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.INFO, 	# args.loglevel = 20
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-d', '--debug',
-	help="Print LOTS of debugging statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.DEBUG, 	# args.loglevel = 10
-	default=logging.CRITICAL)  # args.loglevel = 50
 args = parser.my_parser.parse_args()
 
 Quick = args.Quick
-pProfile = args.pProfile
-pChildAccountId = args.pChildAccountId
+pProfile = args.Profile
+pRegions = args.Regions
 verbose = args.loglevel
+pChildAccountId = args.pChildAccountId
 FixRun = args.FixRun
 pExplain = args.pExplain
 pVPCConfirm = args.pVPCConfirm
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)30s() ] %(message)s")
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
 # This is hard-coded, because this is the listing of regions that are supported by AWS Control Tower.
 if Quick:
 	RegionList = ['us-east-1']
 else:
 	# RegionList=Inventory_Modules.get_ec2_regions('all', pProfile)
 	# ap-northeast-3 doesn't support Config (and therefore doesn't support Control Tower), but is a region that is normally included within EC2. Therefore - this is easier.
-	# Updated as of January 5th, 2020 to the 10 regions supported by AWS Control Tower.
-	RegionList = ['us-east-1', 'us-east-2', 'us-west-2', 'eu-west-1', 'ap-southeast-2', 'ap-southeast-1', 'eu-central-1', 'eu-north-1', 'eu-west-2', 'ca-central-1']
+	# Updated as of August 4th, 2021 to the 10 regions supported by AWS Control Tower.
+	RegionList = ['us-east-1', 'us-east-2', 'us-west-2',
+	              'eu-central-1', 'eu-north-1', 'eu-west-1', 'eu-west-2', 'eu-west-3',
+	              'ap-northeast-1', 'ap-northeast-3', 'ap-south-1', 'ap-southeast-1', 'ap-southeast-2',
+	              'ca-central-1']
+	# TODO: 'ap-east-1' isn't included here, because it's an opt-in region, which we can't include if we haven't opted-in.
+	# TODO: This is a larger problem of Control Tower not publishing its regions via an API like other services do.
 
 ERASE_LINE = '\x1b[2K'
+aws_acct = aws_acct_access(pProfile)
 
-print(ERASE_LINE, f"Gathering all account data from {pProfile} profile", end="\r")
-logging.info("Confirming that this profile {%s} represents a Management Account", pProfile)
-ProfileIsRoot = Inventory_Modules.find_if_org_root(pProfile)
-logging.info("---%s---", ProfileIsRoot)
-if ProfileIsRoot == 'Root':
-	logging.info("Profile represents a Management Account: %s", pProfile)
-	if pChildAccountId == 'all':
-		ChildAccounts = Inventory_Modules.find_child_accounts2(pProfile)
-	else:
-		ChildAccounts = [{'ParentProfile': pProfile, 'AccountId': pChildAccountId, 'AccountEmail': 'NotImportant@Right.Now'}]
-	# ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
-elif ProfileIsRoot == 'StandAlone':
-	logging.info("Profile represents a Standalone account: %s", pProfile)
-	MyAcctNumber = Inventory_Modules.find_account_number(pProfile)
-	ChildAccounts = []
-elif ProfileIsRoot == 'Child':
-	logging.info("Profile name: %s is a child account", pProfile)
-	MyAcctNumber = Inventory_Modules.find_account_number(pProfile)
-	ChildAccounts = []
+print(f"Gathering all account data from {pProfile} profile")
+logging.info(f"Confirming that this profile {pProfile} represents a Management Account")
+# ProfileIsRoot = Inventory_Modules.find_if_org_root(pProfile)
+# logging.info("---%s---", ProfileIsRoot)
 
-ERASE_LINE = '\x1b[2K'
+if aws_acct.AccountType.lower() == 'root' and pChildAccountId is None:
+	# Creates a list of the account numbers in the Org.
+	ChildAccountList = [d['AccountId'] for d in aws_acct.ChildAccounts]
+	print(f"Since you didn't specify a specific account, we'll check all {len(aws_acct.ChildAccounts)} accounts in the Org.")
+elif pChildAccountId is None:
+	sys.exit(f"Account {aws_acct.acct_number} is a {aws_acct.AccountType} account.\n"
+	         f" This script should be run with Management Account credentials.")
+else:
+	print(f"Account {aws_acct.acct_number} is a {aws_acct.AccountType} account.\n"
+	      f"We're checking to validate that account {pChildAccountId} can be adopted into the Landing Zone")
+	ChildAccountList = [pChildAccountId]
 
 print()
 ExplainMessage = """
@@ -200,7 +169,7 @@ if args.loglevel < 50:
 	print("Since this script is fairly new - All comments or suggestions are enthusiastically encouraged")
 	print()
 
-def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
+def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 
 	def InitDict(StepCount):
 		fProcessStatus = {}
@@ -227,17 +196,17 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 	print(f"{Fore.BLUE}{Step}:{Fore.RESET}")
 	print(f"Confirming we have the necessary cross-account access to account {fChildAccountId}")
 	try:
-		account_credentials, role = Inventory_Modules.get_child_access2(fProfile, fChildAccountId, 'us-east-1', CTRoles)
-		if role.find("failed") > 0:
-			print(Fore.RED, "We weren't able to connect to the Child Account from this Management Account. Please check the role Trust Policy and re-run this script.", Fore.RESET)
-			print(f"The following list of roles were tried, but none were allowed access to account {fChildAccountId} using the {fProfile} profile")
-			print(Fore.RED, role, Fore.RESET)
+		account_credentials = Inventory_Modules.get_child_access3(aws_account, fChildAccountId, 'us-east-1', CTRoles)
+		if 'AccessError' in account_credentials.keys():
+			print(f"{Fore.RED}We weren't able to connect to the Child Account from this Management Account. Please check the role Trust Policy and re-run this script.{Fore.RESET}")
+			print(f"The following list of roles were tried, but none were allowed access to account {fChildAccountId} using the {aws_account.acct_number} profile")
+			print(Fore.RED, CTRoles, Fore.RESET)
 			ProcessStatus[Step]['Success'] = False
 			sys.exit("Exiting due to cross-account access failure")
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
 			# TODO: This whole section is waiting on an enhancement. Until then, we have to assume that ProServe or someone familiar with Control Tower is running this script
-			print(f"{fProfile}: Authorization Failure for account {fChildAccountId}")
+			print(f"{aws_account.acct_number}: Authorization Failure for account {fChildAccountId}")
 			print("The child account MUST allow access into the proper IAM role from the Organization's Management Account for the rest of this script (and the overall migration) to run.")
 			print("You must add the following lines to the Trust Policy of that role in the child account")
 			print(json_formatted_str_TP)
@@ -246,7 +215,7 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 			sys.exit("Exiting due to Authorization Failure...")
 		elif str(my_Error).find("AccessDenied") > 0:
 			# TODO: This whole section is waiting on an enhancement. Until then, we have to assume that ProServe or someone familiar with Control Tower is running this script
-			print(f"{fProfile}: Access Denied Failure for account {fChildAccountId}")
+			print(f"{aws_account.acct_number}: Access Denied Failure for account {fChildAccountId}")
 			print("The child account MUST allow access into the proper IAM role from the Organization's Management Account for the rest of this script (and the overall migration) to run.")
 			print("You must add the following lines to the Trust Policy of that role in the child account")
 			print(json_formatted_str_TP)
@@ -254,16 +223,16 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 			ProcessStatus[Step]['Success'] = False
 			sys.exit("Exiting due to Access Denied Failure...")
 		else:
-			print(f"{fProfile}: Other kind of failure for account {fChildAccountId}")
+			print(f"{aws_account.acct_number}: Other kind of failure for account {fChildAccountId}")
 			print(my_Error)
 			ProcessStatus[Step]['Success'] = False
 			sys.exit("Exiting for other failure...")
 	
-	account_credentials['AccountNumber'] = fChildAccountId
-	logging.error("Was able to successfully connect using the credentials... ")
+	logging.info("Was able to successfully connect using the credentials... ")
 	print()
-	calling_creds = Inventory_Modules.find_calling_identity(fProfile)
-	print(f"Confirmed the role {Fore.GREEN}{role}{Fore.RESET} exists in account {Fore.GREEN}{fChildAccountId}{Fore.RESET} and trusts {Fore.GREEN}{calling_creds['Short']}{Fore.RESET} within the Management Account")
+	print(f"Confirmed the role {Fore.GREEN}{account_credentials['Role']}{Fore.RESET}"
+	      f" exists in account {Fore.GREEN}{fChildAccountId}{Fore.RESET}"
+	      f" and trusts {Fore.GREEN}our role{Fore.RESET} within the Management Account")
 	print(f"{Fore.GREEN}** Step 0 completed without issues{Fore.RESET}")
 	print()
 	
@@ -293,7 +262,6 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 		for region in fRegionList:
 			print(ERASE_LINE, f"Checking account {fChildAccountId} in region {region} for Config Recorder", end='\r')
 			logging.info("Looking for Config Recorders in account %s from Region %s", fChildAccountId, region)
-			# ConfigRecorder=client_cfg.describe_configuration_recorders()
 			ConfigRecorder = Inventory_Modules.find_config_recorders(account_credentials, region)
 			logging.debug("Tried to capture Config Recorder")
 			if len(ConfigRecorder['ConfigurationRecorders']) > 0:
@@ -303,7 +271,7 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 					'AccountID': fChildAccountId,
 					'Region': region
 				})
-			print(ERASE_LINE, f"Checking account {fChildAccountId} in region {region} for Delivery Channel", end='\r')
+			print(f"{ERASE_LINE}Checking account {fChildAccountId} in region {region} for Delivery Channel", end='\r')
 			DeliveryChannel = Inventory_Modules.find_delivery_channels(account_credentials, region)
 			logging.debug("Tried to capture Delivery Channel")
 			if len(DeliveryChannel['DeliveryChannels']) > 0:
@@ -312,7 +280,7 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 					'AccountID': fChildAccountId,
 					'Region': region
 				})
-		logging.error("Checked account %s in %s regions. Found %s issues with Config Recorders and Delivery Channels", fChildAccountId, len(fRegionList), len(ConfigList)+len(DeliveryChanList))
+		logging.error(f"Checked account {fChildAccountId} in {len(fRegionList)} regions. Found {len(ConfigList)+len(DeliveryChanList)} issues with Config Recorders and Delivery Channels")
 	except ClientError as my_Error:
 		logging.warning("Failed to capture Config Recorder and Delivery Channels")
 		ProcessStatus[Step]['Success'] = False
@@ -361,18 +329,18 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 		CTtrails2 = []
 		for region in fRegionList:
 			print(ERASE_LINE, f"Checking account {fChildAccountId} in region {region} for CloudTrail trails", end='\r')
-			CTtrails, trailname = Inventory_Modules.find_cloudtrails(account_credentials, region, ['aws-controltower-BaselineCloudTrail'])
-			# if 'trailList' in CTtrails.keys():
-			if len(CTtrails['trailList']) > 0:
-				logging.error("Unfortunately, we've found a CloudTrail log named %s in account %s in the %s region, which means we'll have to delete it before this account can be adopted.", trailname, fChildAccountId, region)
-				CTtrails2.append(CTtrails['trailList'][0])
+			CTtrails = Inventory_Modules.find_cloudtrails(account_credentials, region, ['aws-controltower-BaselineCloudTrail'])
+			if len(CTtrails) > 0:
+				logging.error(f"Unfortunately, we've found a CloudTrail log named {CTtrails[0]['Name']} in account {fChildAccountId} "
+				              f"in the {region} region, which means we'll have to delete it before this account can be adopted.")
+				CTtrails2.append(CTtrails[0])
 				ProcessStatus[Step]['Success'] = False
 	except ClientError as my_Error:
 		print(my_Error)
 		ProcessStatus[Step]['Success'] = False
 	
 	for i in range(len(CTtrails2)):
-		logging.error(f"{Fore.RED}Found a CloudTrail trail for account %s in region %s named %s ", fChildAccountId, CTtrails2[i]['HomeRegion'], trailname+Fore.RESET)
+		logging.error(f"{Fore.RED}Found a CloudTrail trail for account {fChildAccountId} in region {CTtrails2[i]['HomeRegion']} named {CTtrails2[i]['Name']}{Fore.RESET}")
 		ProcessStatus[Step]['IssuesFound'] += 1
 		ProcessStatus[Step]['ProblemsFound'].append(CTtrails2[i])
 		if fFixRun:
@@ -465,10 +433,7 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 	Step = 'Step5'
 	print(f"{Fore.BLUE}{Step}:{Fore.RESET}")
 	print(" Checking that the account is part of the AWS Organization.")
-	OrgAccounts = Inventory_Modules.find_child_accounts2(fProfile)
-	OrgAccountList = []
-	for y in range(len(OrgAccounts)):
-		OrgAccountList.append(OrgAccounts[y]['AccountId'])
+	OrgAccountList  = [d['AccountId'] for d in aws_account.ChildAccounts]
 	if not (fChildAccountId in OrgAccountList):
 		print()
 		print(f"Account # {fChildAccountId} is not a part of the Organization. This account needs to be moved into the Organization to be adopted into the Landing Zone tool")
@@ -631,18 +596,18 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 		print(f"Checking account {fChildAccountId} to make sure there are no duplicate CloudWatch Log Groups")
 		LogGroupNames2 = []
 		for region in fRegionList:
-			logging.error("Checking account %s for", f"{fChildAccountId + Fore.RED} duplicate CloudWatch Log Group names{Fore.RESET}")
+			logging.error(f"Checking account {fChildAccountId} for {Fore.RED}duplicate CloudWatch Log Group names{Fore.RESET}")
 			LogGroupNames = Inventory_Modules.find_cw_log_group_names(account_credentials, region, ['controltower', 'ControlTower'])
 			if len(LogGroupNames) > 0:
-				logging.info("Unfortunately, account %s contains %s log groups with reserved names, which means we'll have to delete them before this account can be adopted.",
-					fChildAccountId, len(LogGroupNames))
-				for x in range(len(LogGroupNames)):
-					logging.warning("Log Group Name: %s", str(LogGroupNames[x]))
+				logging.info(f"Unfortunately, account {fChildAccountId} contains {len(LogGroupNames)} log groups with reserved names,"
+				             f" which means we'll have to delete them before this account can be adopted.")
+				for _ in range(len(LogGroupNames)):
+					logging.warning(f"Log Group Name: {str(LogGroupNames[_])}")
 					ProcessStatus[Step]['Success'] = False
 					ProcessStatus[Step]['IssuesFound'] += 1
 					LogGroupNames2.append({
 						'AccountId': fChildAccountId,
-						'LogGroupName': LogGroupNames[x]
+						'LogGroupName': LogGroupNames[_]
 					})
 					ProcessStatus[Step]['ProblemsFound'].append(LogGroupNames2)
 	except ClientError as my_Error:
@@ -652,14 +617,10 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 	if ProcessStatus[Step]['Success']:
 		print(f"{ERASE_LINE + Fore.GREEN}** {Step} completed with no issues{Fore.RESET}")
 	elif ProcessStatus[Step]['IssuesFound'] - ProcessStatus[Step]['IssuesFixed'] == 0:
-		print(
-			ERASE_LINE + Fore.GREEN + "** {} found {} issues, but we were able to remove the offending IAM roles".format(
-				Step, ProcessStatus[Step]['IssuesFound']) + Fore.RESET)
+		print(f"{ERASE_LINE}{Fore.GREEN}** {Step} found {ProcessStatus[Step]['IssuesFound']} issues, but we were able to remove the offending CW Log groups{Fore.RESET}")
 		ProcessStatus[Step]['Success'] = True
 	elif ProcessStatus[Step]['IssuesFound'] > ProcessStatus[Step]['IssuesFixed']:
-		print(
-			ERASE_LINE + Fore.RED + "** {} completed, but there were {} blockers found that remain to be fixed".format(
-				Step, ProcessStatus[Step]['IssuesFound'] - ProcessStatus[Step]['IssuesFixed']) + Fore.RESET)
+		print(f"{ERASE_LINE}{Fore.RED}** {Step} completed, but there were {ProcessStatus[Step]['IssuesFound'] - ProcessStatus[Step]['IssuesFixed']} blockers found that remain to be fixed {Fore.RESET}")
 	else:
 		print(f"{ERASE_LINE + Fore.RED}** {Step} completed with blockers found{Fore.RESET}")
 	print()
@@ -685,11 +646,11 @@ def DoSteps(fChildAccountId, fProfile, fFixRun, fRegionList):
 
 Results = []
 OrgResults = []
-for MemberAccount in ChildAccounts:
-	Results = DoSteps(MemberAccount['AccountId'], pProfile, FixRun, RegionList)
+for MemberAccount in aws_acct.ChildAccounts:
+	Results = DoSteps(MemberAccount['AccountId'], aws_acct, FixRun, RegionList)
 	OrgResults.append(Results.copy())
 print()
-print("Checked {} account(s) and the results are:".format(len(ChildAccounts)))
+print(f"Checked {len(aws_acct.ChildAccounts)} account(s) and the results are:")
 for account in OrgResults:
 	# ChildAccountIsReady = True
 	# NumberOfIssues = 0
@@ -728,8 +689,7 @@ for i in OrgResults:
 		i['Step7']['IssuesFound'] - i['Step7']['IssuesFixed'],
 		i['Step8']['IssuesFound'] - i['Step8']['IssuesFixed'],
 		i['Step9']['IssuesFound'] - i['Step9']['IssuesFixed'],
-		i['Step10']['IssuesFound'] - i['Step10']['IssuesFixed'],
-		'None Yet',
+		'Not ready yet',
 		i['Step0']['Success'] and i['Step2']['Success'] and i['Step3']['Success'] and i['Step4']['Success'] and i['Step5']['Success'] and i['Step6']['Success'] and i['Step7']['Success'] and i['Step8']['Success'] and i['Step9']['Success'] and i['Step10']['Success']
 	])
 print("The following table represents the accounts looked at, and whether they are ready to be incorporated into a Control Tower environment.")
