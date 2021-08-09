@@ -729,10 +729,8 @@ def find_role_names(ocredentials, fRegion, fRoleNameFrag=None):
 	Returns:
 		List of Role Names found that match the fragment list sent
 	"""
-
 	import boto3
 	import logging
-
 	if fRoleNameFrag is None:
 		fRoleNameFrag = ['all']
 	session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
@@ -757,7 +755,7 @@ def find_role_names(ocredentials, fRegion, fRoleNameFrag=None):
 			for RoleName in RoleNameList:
 				logging.info('Have %s | Looking for %s', RoleName, item)
 				if RoleName.find(item) >= 0:
-					logging.error('Found %s', RoleName)
+					logging.warning('Found %s', RoleName)
 					RoleNameList2.append(RoleName)
 		logging.warning("We found %s Roles", len(RoleNameList2))
 		return (RoleNameList2)
@@ -776,7 +774,6 @@ def find_cw_log_group_names(ocredentials, fRegion, fCWLogGroupFrag=None):
 """
 	import boto3
 	import logging
-
 	if fCWLogGroupFrag is None:
 		fCWLogGroupFrag = ['all']
 	session_cw = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
@@ -797,19 +794,18 @@ def find_cw_log_group_names(ocredentials, fRegion, fCWLogGroupFrag=None):
 		logging.warning("Looking for all Log Group names in account %s from Region %s",
 						ocredentials['AccountNumber'], fRegion)
 		logging.info("Log Group Names Returned: %s", CWLogGroupList)
-		logging.warning("We found %s Log Group names", len(CWLogGroupList))
+		logging.warning(f"We found {len(CWLogGroupList)} Log Group names")
 		return (CWLogGroupList)
 	else:
-		logging.warning("Looking for specific Log Group names in account %s from Region %s",
-						ocredentials['AccountNumber'], fRegion)
+		logging.warning(f"Looking for specific Log Group names in account {ocredentials['AccountNumber']} from Region {fRegion}")
 		CWLogGroupList2 = []
 		for item in fCWLogGroupFrag:
 			for logGroupName in CWLogGroupList:
-				logging.info('Have %s | Looking for %s', logGroupName, item)
+				logging.info(f"Have {logGroupName} | Looking for {item}")
 				if logGroupName.find(item) >= 0:
-					logging.error('Found %s', logGroupName)
+					logging.warning(f"Found {logGroupName}")
 					CWLogGroupList2.append(logGroupName)
-		logging.warning("We found %s Log Groups", len(CWLogGroupList2))
+		logging.warning(f"We found {len(CWLogGroupList2)} Log Groups")
 		return (CWLogGroupList2)
 
 
@@ -1175,37 +1171,13 @@ def find_users(ocredentials):
 
 def find_profile_vpcs(fProfile, fRegion, fDefaultOnly):
 	import boto3
-
 	session_ec2 = boto3.Session(profile_name=fProfile, region_name=fRegion)
 	vpc_info = session_ec2.client('ec2')
 	if fDefaultOnly:
 		vpcs = vpc_info.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
 	else:
 		vpcs = vpc_info.describe_vpcs()
-	# if len(vpcs['Vpcs']) == 1 and vpcs['Vpcs'][0]['IsDefault'] == True and not ('Tags' in vpcs['Vpcs'][0]):
-	# 	return()
-	# else:
 	return (vpcs)
-
-
-#
-# def find_gd_detectors(fProfile, fRegion):
-# 	import boto3
-#
-# 	session = boto3.Session(profile_name = fProfile, region_name = fRegion)
-# 	object_info = session.client('guardduty')
-# 	object = object_info.list_detectors()
-# 	return(object)
-# 	# return(vpcs)
-#
-#
-# def del_gd_detectors(fProfile, fRegion, fDetectorId):
-# 	import boto3
-#
-# 	session = boto3.Session(profile_name = fProfile, region_name = fRegion)
-# 	object_info = session.client('guardduty')
-# 	object = object_info.delete_detector(DetectorId = fDetectorId)
-# 	return(object)
 
 
 def find_profile_functions(fProfile, fRegion):
@@ -1226,8 +1198,8 @@ def find_lambda_functions(ocredentials, fRegion, fSearchStrings):
 	fRegion is a string
 	fSearchString is a list of strings
 	"""
-
 	import boto3
+	import logging
 	session_lambda = boto3.Session(region_name=fRegion, aws_access_key_id=ocredentials[
 		'AccessKeyId'], aws_secret_access_key=ocredentials['SecretAccessKey'], aws_session_token=ocredentials[
 		'SessionToken'])
@@ -1237,6 +1209,7 @@ def find_lambda_functions(ocredentials, fRegion, fSearchStrings):
 	for i in range(len(functions)):
 		for searchitem in fSearchStrings:
 			if searchitem in functions[i]['FunctionName']:
+				logging.warning(f"Found function {functions[i]['FunctionName']}")
 				functions2.append({'FunctionName': functions[i]['FunctionName'],
 								   'FunctionArn': functions[i]['FunctionArn'], 'Role': functions[i]['Role']})
 	return (functions2)
