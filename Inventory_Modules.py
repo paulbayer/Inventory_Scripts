@@ -606,12 +606,13 @@ def get_child_access3(fAccountObject, fChildAccount, fRegion='us-east-1', fRoleL
 		                  f"instead of trying to do anything fancy.")
 		logging.info(explain_string)
 		# TODO: Wrap this in a try/except loop on the off-chance that the class doesn't work properly
-		account_credentials = {'AccessKeyId': fAccountObject.creds.access_key,
+		account_credentials = {'ParentAcctId': ParentAccountId,
+		                       'OrgType': org_status,
+		                       'AccessKeyId': fAccountObject.creds.access_key,
 		                       'SecretAccessKey': fAccountObject.creds.secret_key,
 		                       'SessionToken': fAccountObject.creds.token,
 		                       'AccountNumber': fChildAccount,
 		                       'AccountId': fChildAccount,
-		                       'ParentAcctId': ParentAccountId,
 		                       'Role': 'Use Profile'}
 		return (account_credentials)
 	if fRoleList is None:

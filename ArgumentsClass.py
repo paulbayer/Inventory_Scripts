@@ -43,28 +43,28 @@ class CommonArguments():
 		import logging
 		self.my_parser.add_argument(
 			'-v',
-			help="Be verbose",
+			help="Be verbose (Error Statements)",
 			action="store_const",
 			dest="loglevel",
 			const=logging.ERROR,        # args.loglevel = 40
 			default=logging.CRITICAL)   # args.loglevel = 50
 		self.my_parser.add_argument(
 			'-vv', '--verbose',
-			help="Be MORE verbose",
+			help="Be MORE verbose (Warning statements)",
 			action="store_const",
 			dest="loglevel",
 			const=logging.WARNING,      # args.loglevel = 30
 			default=logging.CRITICAL)   # args.loglevel = 50
 		self.my_parser.add_argument(
 			'-vvv',
-			help="Print debugging statements",
+			help="Print INFO statements",
 			action="store_const",
 			dest="loglevel",
 			const=logging.INFO,         # args.loglevel = 20
 			default=logging.CRITICAL)   # args.loglevel = 50
 		self.my_parser.add_argument(
 			'-d', '--debug',
-			help="Print LOTS of debugging statements",
+			help="Print debugging statements",
 			action="store_const",
 			dest="loglevel",
 			const=logging.DEBUG,        # args.loglevel = 10
@@ -97,7 +97,7 @@ class CommonArguments():
 			dest="Profiles",
 			nargs="*",
 			metavar="Profiles",
-			default=['all'],               # Defaults to all profiles
+			default=None,               # Defaults to default profile, but can support multiple profiles
 			help="Which profiles do you want to run against?")
 
 	def multiregion(self):
