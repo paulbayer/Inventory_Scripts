@@ -26,6 +26,10 @@ verbose = args.loglevel
 DeletionRun = args.DeletionRun
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
+from pprint import pprint
+
+pprint(args)
+
 
 ##########################
 def sort_by_email(elem):
@@ -259,11 +263,14 @@ if ErroredSCPExists:
 	session_sc = aws_acct.session
 	client_sc = session_sc.client('servicecatalog')
 	for i in range(len(SCP2Stacks)):
-		if (SCP2Stacks[i]['SCStatus'] == 'ERROR') or (SCP2Stacks[i]['CFNStackName'] == 'None') and not DeletionRun and pProfile is None:
-			print(f"aws servicecatalog terminate-provisioned-product --provisioned-product-id {SCP2Stacks[i]['SCProductId']} --ignore-errors")
-		elif (SCP2Stacks[i]['SCStatus'] == 'ERROR') or (SCP2Stacks[i]['CFNStackName'] == 'None') and not DeletionRun and pProfile is not None:
-			print(f"aws servicecatalog terminate-provisioned-product --provisioned-product-id {SCP2Stacks[i]['SCProductId']} --profile {pProfile} --ignore-errors")
-		elif (SCP2Stacks[i]['SCStatus'] == 'ERROR') or (SCP2Stacks[i]['CFNStackName'] == 'None') and DeletionRun:
+		if ((SCP2Stacks[i]['SCStatus'] == 'ERROR') or (SCP2Stacks[i]['CFNStackName'] == 'None')) and not DeletionRun:
+			print(f"aws servicecatalog terminate-provisioned-product --provisioned-product-id {SCP2Stacks[i]['SCProductId']} --ignore-errors", end='\r')
+			# Finishes the line for display, based on whether they used a profile or not to run this command
+			if pProfile is None:
+				print()
+			elif pProfile is not None:
+				print(f" --profile {pProfile}")
+		elif ((SCP2Stacks[i]['SCStatus'] == 'ERROR') or (SCP2Stacks[i]['CFNStackName'] == 'None')) and DeletionRun:
 			print(f"Deleting Service Catalog Provisioned Product {SCP2Stacks[i]['SCProductName']} from account {aws_acct.acct_number}")
 			StackDelete = client_sc.terminate_provisioned_product(
 				ProvisionedProductId=SCP2Stacks[i]['SCProductId'],
