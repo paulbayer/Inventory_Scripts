@@ -186,7 +186,7 @@ def _delete_stack_instances(fProfile, fRegion, fAccountList, fAccountRemove, fAc
 	logging.warning("Removing instances from %s StackSet" % (fStackSet['StackSetName']))
 	try:
 		StackSetOpId='Delete-'+randomString(5)
-		response=Inventory_Modules.delete_stack_instances(fProfile, fRegion, fAccountList, fRegionList, fStackSet['StackSetName'], fForce, StackSetOpId)
+		response=Inventory_Modules.delete_stack_instances(fProfile, [fRegion], fAccountList, fRegionList, fStackSet['StackSetName'], fForce, StackSetOpId)
 		# pprint.pprint(response)
 	except Exception as e:
 		if e.response['Error']['Code'] == 'StackSetNotFoundException':
