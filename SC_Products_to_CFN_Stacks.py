@@ -26,10 +26,6 @@ verbose = args.loglevel
 DeletionRun = args.DeletionRun
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
-from pprint import pprint
-
-pprint(args)
-
 
 ##########################
 def sort_by_email(elem):
@@ -108,7 +104,7 @@ try:
 	for i in range(len(SCProducts)):
 		print(f"{ERASE_LINE}{Fore.RED}Checking {i + 1} of {len(SCProducts)} products{Fore.RESET}", end='\r')
 		CFNresponse = Inventory_Modules.find_stacks(pProfile, pRegion, SCProducts[i]['SCPId'])
-		logging.error(f"There are {len(CFNresponse)} matches for SC Provisioned Product Name {SCProducts[i]['SCPName']}")
+		logging.info(f"There are {len(CFNresponse)} matches for SC Provisioned Product Name {SCProducts[i]['SCPName']}")
 		try:
 			if len(CFNresponse) > 0:
 				stack_info = client_cfn.describe_stacks(

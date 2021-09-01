@@ -638,7 +638,7 @@ def get_child_access3(fAccountObject, fChildAccount, fRegion='us-east-1', fRoleL
 			role_arn = f"arn:aws:iam::{fChildAccount}:role/{role}"
 			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Test-ChildAccount-Access")['Credentials']
 			# If we were successful up to this point, then we'll short-cut everything and just return the credentials that worked
-			logging.info(f"The credentials for account {fChildAccount} using parent account {fAccountObject.acct_number} and role name {role} worked for ")
+			logging.info(f"The credentials for account {fChildAccount} using parent account {fAccountObject.acct_number} and role name {role} worked")
 			account_credentials['ParentAcctId'] = ParentAccountId
 			account_credentials['OrgType'] = org_status
 			account_credentials['AccountNumber'] = fChildAccount
@@ -1612,7 +1612,7 @@ def find_stacksets(ocredentials, fRegion, fStackFragment=None, fstatus=None):
 	return (stacksetsCopy)
 
 
-def find_stacksets2(faws_acct, fRegion, fStackFragment=['all']):
+def find_stacksets2(faws_acct, fRegion='us-east-1', fStackFragment=['all']):
 	"""
 	faws_acct is a class containing the account information
 	fRegion is a string
@@ -1624,14 +1624,19 @@ def find_stacksets2(faws_acct, fRegion, fStackFragment=['all']):
 	session_aws = faws_acct.session
 	client_cfn = session_aws.client('cloudformation')
 
-	stacksets = client_cfn.list_stack_sets(Status='ACTIVE')
+	stacksets_prelim = client_cfn.list_stack_sets(Status='ACTIVE')
+	stacksets = stacksets_prelim['Summaries']
+	while 'NextToken' in stacksets_prelim.keys():  # Get all instance names
+		stacksets_prelim = client_cfn.list_stack_sets(Status='ACTIVE', NextToken=stacksets_prelim['NextToken'])
+		stacksets.extend(stacksets_prelim['Summaries'])
+
 	stacksetsCopy = []
 	# Because fStackFragment is a list, I need to write it this way
 	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
 		logging.info(f"Found all the stacksets in account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragment}")
-		return (stacksets['Summaries'])
+		return (stacksets)
 	else:
-		for stack in stacksets['Summaries']:
+		for stack in stacksets:
 			for fragment in fStackFragment:
 				if fragment in stack['StackSetName']:
 					logging.warning(f"Found stackset {stack['StackSetName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fragment}")
@@ -1671,10 +1676,9 @@ def find_stack_instances(fProfile, fRegion, fStackSetName, fStatus='CURRENT'):
 	stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName)
 	stack_instances_list = stack_instances['Summaries']
 	while 'NextToken' in stack_instances.keys():  # Get all instance names
-		stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName, NextToken=stack_instances[
-			'NextToken'])
-		for i in range(len(stack_instances)):
-			stack_instances_list.append(stack_instances['Summaries'][i])
+		stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName,
+		                                                  NextToken=stack_instances['NextToken'])
+		stack_instances_list.extend(stack_instances['Summaries'])
 	return (stack_instances_list)
 
 
@@ -1689,16 +1693,15 @@ def find_stack_instances2(fAccountObject, fRegion, fStackSetName, fStatus='CURRE
 	import boto3
 	import logging
 
-	logging.warning("Account: %s | Region: %s | StackSetName: %s", fAccountObject.acct_number, fRegion, fStackSetName)
+	logging.warning(f"Account: {fAccountObject.acct_number} | Region: {fRegion} | StackSetName: {fStackSetName}")
 	session_cfn = fAccountObject.session
 	client_cfn = session_cfn.client('cloudformation')
 	stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName)
 	stack_instances_list = stack_instances['Summaries']
 	while 'NextToken' in stack_instances.keys():  # Get all instance names
-		stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName, NextToken=stack_instances[
-			'NextToken'])
-		for i in range(len(stack_instances)):
-			stack_instances_list.append(stack_instances['Summaries'][i])
+		stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName,
+		                                                  NextToken=stack_instances['NextToken'])
+		stack_instances_list.extend(stack_instances['Summaries'])
 	return (stack_instances_list)
 
 
@@ -1735,8 +1738,17 @@ def delete_stack_instances2(fAccountObject, fRegion, lAccounts, lRegions, fStack
 	logging.warning(f"Deleting {fStackSetName} stackset over {len(lAccounts)} accounts across {len(lRegions)} regions")
 	session_cfn = fAccountObject.session
 	client_cfn = session_cfn.client('cloudformation')
-	response = client_cfn.delete_stack_instances(StackSetName=fStackSetName, Accounts=lAccounts, Regions=lRegions, RetainStacks=fRetainStacks, OperationId=fOperationName)
-	return (response)  # There is no response to send back
+	response = client_cfn.delete_stack_instances(StackSetName=fStackSetName,
+	                                             Accounts=lAccounts,
+	                                             Regions=lRegions,
+	                                             RetainStacks=fRetainStacks,
+	                                             OperationPreferences={
+		                                             'RegionConcurrencyType'     : 'PARALLEL',
+		                                             'FailureTolerancePercentage': 100,
+		                                             'MaxConcurrentPercentage'   : 100
+		                                             },
+	                                             OperationId=fOperationName)
+	return (response)  # The response will be the Operation ID of the delete operation
 
 
 def find_sc_products(fProfile, fRegion, fStatus="ERROR", flimit=100):
