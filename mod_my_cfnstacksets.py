@@ -257,14 +257,16 @@ AccountList = []
 ApplicableStackSetsList = []
 RegionList = []
 
-if pAccountRemoveList is None:  # Means we want to skip this account when removing
-	ApplicableStackSetsList = [AllInstances[_]['StackSetName'] for _ in range(len(AllInstances))]
-	AccountList = [AllInstances[_]['ChildAccount'] for _ in range(len(AllInstances))]
-	RegionList = [AllInstances[_]['ChildRegion'] for _ in range(len(AllInstances))]
-elif pAccountRemoveList is not None:
-	ApplicableStackSetsList = [(AllInstances[_]['StackSetName'] for _ in range(len(AllInstances)) if AllInstances[_]['ChildAccount'] in pAccountRemoveList)]
-	AccountList = [(AllInstances[_]['ChildAccount'] for _ in range(len(AllInstances)) if AllInstances[_]['ChildAccount'] in pAccountRemoveList)]
-	RegionList = [(AllInstances[_]['ChildRegion'] for _ in range(len(AllInstances)) if AllInstances[_]['ChildAccount'] in pAccountRemoveList)]
+for _ in range(len(AllInstances)):
+	if pAccountRemoveList is None:  # Means we want to skip this account when removing
+		ApplicableStackSetsList.append(AllInstances[_]['StackSetName'])
+		AccountList.append(AllInstances[_]['ChildAccount'])
+		RegionList.append(AllInstances[_]['ChildRegion'])
+	elif pAccountRemoveList is not None:
+		if AllInstances[_]['ChildAccount'] in pAccountRemoveList:
+			ApplicableStackSetsList.append(AllInstances[_]['StackSetName'])
+			AccountList.append(AllInstances[_]['ChildAccount'])
+			RegionList.append(AllInstances[_]['ChildRegion'])
 
 AccountList = sorted(list(set(AccountList)))
 ApplicableStackSetsList = sorted(list(set(ApplicableStackSetsList)))
@@ -338,14 +340,10 @@ if pdryrun and pAccountRemoveList is None:
 			print()
 elif pdryrun:
 	print()
-	print(f"Out of {len(StackSetNames)} StackSets that matched, these accounts {pAccountRemoveList} show up in {len(AllInstances)} instances")
-	if args.loglevel < 50:
-		print(f"We found that account {pAccountRemoveList} shows up in these stacksets in these regions:")
-		for i in range(len(AllInstances)):
-			if AllInstances[i]['ChildAccount'] in pAccountRemoveList:
-				print(f"\t{AllInstances[i]['StackSetName']} \t {AllInstances[i]['ChildRegion']} \t {AllInstances[i]['ChildAccount']}")
-	else:
-		print("For specific information on which stacks and regions, please enable verbose output")
+	print(f"We found that account {pAccountRemoveList} shows up in these stacksets in these regions:")
+	for i in range(len(AllInstances)):
+		if AllInstances[i]['ChildAccount'] in pAccountRemoveList:
+			print(f"\t{AllInstances[i]['StackSetName']} \t {AllInstances[i]['ChildRegion']} \t {AllInstances[i]['ChildAccount']}")
 elif not pdryrun:
 	print()
 	print(f"Removing {len(AllInstances)} stack instances from the {len(StackSetNames)} StackSets found")
@@ -374,7 +372,7 @@ elif not pdryrun:
 				elif pForce is True and result == 'Failed-ForceIt':
 					print(f"{ERASE_LINE}Some other problem happened on the retry.")
 				elif result == 'Failed-Other':
-					print(f"{ERASE_LINE}Something else failed on the retry... Who knows?")
+					print(f"{ERASE_LINE}Something else failed on the retry... Please report the error received?")
 		elif result == 'Failed-Other':
 			print("Something else failed... Please report the error received")
 
