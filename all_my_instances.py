@@ -36,7 +36,7 @@ logging.info(f"Profiles: {pProfiles}")
 def check_accounts_for_instances(faws_acct, fRegionList=[]):
 	# for profile in ProfileList:
 	ChildAccounts = faws_acct.ChildAccounts
-	AllInstances=[]
+	AllInstances = []
 	for account in ChildAccounts:
 		logging.info(f"Connecting to account {account['AccountId']}")
 		try:
@@ -88,6 +88,7 @@ def check_accounts_for_instances(faws_acct, fRegionList=[]):
 		AllInstances.extend(Instances['Reservations'])
 	return(AllInstances)
 ##################
+
 
 print()
 print(f"Checking for instances... ")
