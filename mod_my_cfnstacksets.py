@@ -357,10 +357,10 @@ elif not pdryrun:
 		if pAccountRemoveList is None:  # Remove all instances from the stackset
 			logging.error(f"About to remove ALL stack instances from stackset {StackSetName}")
 			AllAccounts = [accountid['AccountId'] for accountid in aws_acct.ChildAccounts]
-			result = _delete_stack_instances(aws_acct, pRegion, AccountList, AllAccounts, AccountsToSkip, RegionList, StackSetName, pForce)
+			result = _delete_stack_instances(aws_acct, pRegion, AccountList, RegionList, StackSetName, pForce)
 		else:
 			logging.error(f"About to remove account {pAccountRemoveList} from stackset {StackSetName} in regions {str(RegionList)}")
-			result = _delete_stack_instances(aws_acct, pRegion, AccountList, pAccountRemoveList, AccountsToSkip, RegionList, StackSetName, pForce)
+			result = _delete_stack_instances(aws_acct, pRegion, AccountList, RegionList, StackSetName, pForce)
 		if result == 'Success':
 			print(f"{ERASE_LINE}Successfully removed accounts {AccountList} from StackSet {StackSetName}")
 		elif result == 'Failed-ForceIt' and pForce:
@@ -368,7 +368,7 @@ elif not pdryrun:
 		elif result == 'Failed-ForceIt' and not pForce:
 			Decision = (input("Deletion of Stack Instances failed, but might work if we force it. Shall we force it? (y/n): ") in ['y', 'Y'])
 			if Decision:
-				result = _delete_stack_instances(aws_acct, pRegion, AccountList, pAccountRemoveList, AccountsToSkip, RegionList, StackSetName, True) 	# Try it again, forcing it this time
+				result = _delete_stack_instances(aws_acct, pRegion, AccountList, RegionList, StackSetName, True) 	# Try it again, forcing it this time
 				if result == 'Success':
 					print(f"{ERASE_LINE}Successfully retried StackSet {StackSetName}")
 				elif pForce is True and result == 'Failed-ForceIt':
