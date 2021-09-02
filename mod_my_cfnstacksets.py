@@ -120,75 +120,25 @@ def _delete_stack_instances(faws_acct, fRegion, fAccountList, fRegionList, fStac
 	"""
 	logging.warning(f"Removing instances from {fStackSetName} StackSet")
 	StackSetOpId = f"DeleteInstances-{random_string(5)}"
+	if fAccountList is None or fRegionList is None:
+		logging.error(f"AccountList and RegionList cannot be null")
+		logging.warning(f"AccountList: {fAccountList}")
+		logging.warning(f"RegionList: {fRegionList}")
+		return("Failed - Account List or Region List was null")
 	try:
 		response = Inventory_Modules.delete_stack_instances2(faws_acct, fRegion, fAccountList, fRegionList, fStackSetName, fForce, StackSetOpId)
 		return("Success")
 	except Exception as my_Error:
 		if my_Error.response['Error']['Code'] == 'StackSetNotFoundException':
 			logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
+			return("Failed - StackSet not found")
 		else:
 			print("Failure to run: ", my_Error)
 			return("Failed-Other")
-	"""
-	session_cfn = faws_acct.session
-	client_cfn = session_cfn.client('cloudformation')
-	timewaited = 10
-	while StackOperationsRunning:
-		InstancesToSkip = 0
-		SpecificInstancesLeft = 0
-		logging.debug("Got into the While Loop")
-		logging.warning(f"Began working on stackset: {fStackSetName['StackSetName']}")
-		try:
-			time.sleep(3)
-			Status = client_cfn.list_stack_set_operation_results(StackSetName=fStackSetName['StackSetName'], OperationId=response['OperationId'])
-			logging.info(f"StackSet Operation state is {Status['Summaries']}")
-			if Status['Summaries'][0]['Status'] in ['CANCELLED', 'FAILED']:
-				time.sleep(2)
-				Reason = client_cfn.list_stack_set_operation_results(StackSetName=fStackSetName['StackSetName'], OperationId=StackSetOpId)
-				for k in range(len(Reason)):
-					logging.info("Reason: %s", Reason['Summaries'][k]['StatusReason'])
-					if Reason['Summaries'][k]['Status'] == 'FAILED' and Reason['Summaries'][k]['StatusReason'].find("role with trust relationship to Role") > 0:
-						logging.info(f"StackSet Operation status reason is: {Reason['Summaries'][k]['StatusReason']}")
-						print(f"Error removing account(s) {fAccountList} from the StackSet {fStackSetName['StackSetName']}. We should try to delete the stack instance with '--retain-stacks' enabled...")
-						return("Failed-ForceIt")
-			response2 = client_cfn.list_stack_instances(StackSetName=fStackSetName['StackSetName'])['Summaries']
-			for _ in range(len(response2)):
-				if response2[_]['Account'] in fAccountsToSkip:
-					InstancesToSkip += 1
-				elif response2[_]['Account'] in fAccountRemoveList:
-					SpecificInstancesLeft += 1
-			if fAccountRemoveList is None:
-				InstancesLeft = len(response2)-InstancesToSkip
-				logging.info(f"There are still {InstancesLeft} instances left in the stackset")
-			else:  # A specific account was provided to remove from all stacksets
-				InstancesLeft = SpecificInstancesLeft
-				logging.info(f"There are still {SpecificInstancesLeft} instances of account {fAccountRemoveList} left in the stackset")
-			StackOperationsRunning = (Status['Summaries'][0]['Status'] in ['RUNNING', 'PENDING'])
-			logging.info(f"StackOperationsRunning is {StackOperationsRunning}")
-			if StackOperationsRunning:
-				print(f"{ERASE_LINE}Waiting {timewaited} seconds for {fStackSetName['StackSetName']} to be fully deleted. There's still {InstancesLeft} instances left.", end='\r')
-				time.sleep(10)
-				timewaited += 10
-			elif Status['Summaries'][0]['Status'] == 'SUCCEEDED':
-				logging.info(f"Successfully removed {fAccountRemoveList} instances from stackset {fStackSetName['StackSetName']}")
-				return("Success")
-			else:
-				logging.info("Something else failed")
-				return("Failed-Other")
-
-		except Exception as my_Error:
-			# if my_Error.response['Error']['Code'] == 'StackSetNotFoundException':
-			# 	logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
-			# 	StackOperationsRunning=True
-			# 	pass
-			# else:
-			print("Last Error: ", my_Error)
-			break
-			return("Failed-Unsure")
-	return("Success")
-	"""
 
 ##########################
+
+
 ERASE_LINE = '\x1b[2K'
 
 AllInstances = []
