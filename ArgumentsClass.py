@@ -78,7 +78,7 @@ class CommonArguments():
 		# 	action="store_false",
 		# 	dest="DryRun")              # Default to Dry Run (no changes)
 		self.my_parser.add_argument(
-			"--force",
+			"--force", "+force",
 			help="To force a change - despite indications to the contrary",
 			action="store_true",
 			dest="Force")              # Default to Dry Run (no changes)
@@ -102,7 +102,7 @@ class CommonArguments():
 
 	def multiregion(self):
 		self.my_parser.add_argument(
-			"-rs", "--regions",
+			"-rs", "--regions", "-r",
 			nargs="*",
 			dest="Regions",
 			metavar="region name string",

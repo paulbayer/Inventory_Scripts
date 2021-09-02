@@ -9,8 +9,6 @@ from colorama import init
 
 '''
 TODO:
-	- Enable this script to accept a Session Token to allow for Federated users
-	- Figure a way to report on which stacksets an account that doesn't belong in the Organization was found in
 	- Pythonize the whole thing
 	- More Commenting throughout script
 
@@ -26,14 +24,12 @@ TODO:
 			- Nothing to do here
 '''
 
-
 init()
 
 parser = CommonArguments()
 parser.verbosity()
 parser.singleprofile()
 parser.singleregion()
-parser.extendedargs()
 parser.my_parser.add_argument(
 	"-f", "--fragment",
 	dest="pStackfrag",
@@ -86,7 +82,6 @@ args = parser.my_parser.parse_args()
 pProfile = args.Profile
 pRegion = args.Region
 verbose = args.loglevel
-AccountsToSkip = args.SkipAccounts
 pStackfrag = args.pStackfrag
 pCheckAccount = args.AccountCheck
 pdryrun = args.DryRun
@@ -169,33 +164,38 @@ logging.error(f"Found {len(StackSetNames)} StackSetNames that matched your fragm
 
 # Now go through those stacksets and determine the instances, made up of accounts and regions
 for i in range(len(StackSetNames)):
-	print(f"{ERASE_LINE}Looking through {i} of {len(StackSetNames)} stacksets found with {pStackfrag} string in them", end='\r')
+	print(f"{ERASE_LINE}Looking through {i+1} of {len(StackSetNames)} stacksets found with {pStackfrag} string in them", end='\r')
 	StackInstances = Inventory_Modules.find_stack_instances2(aws_acct, pRegion, StackSetNames[i]['StackSetName'])
 	logging.warning(f"Found {len(StackInstances)} Stack Instances within the StackSet {StackSetNames[i]['StackSetName']}")
-	for j in range(len(StackInstances)):
-		if 'StackId' not in StackInstances[j].keys():
-			logging.info("The stack instance found doesn't have a stackid associated. Which means it's never been deployed and probably OUTDATED")
+	for StackInstance in StackInstances:
+		if 'StackId' not in StackInstance.keys():
+			logging.info(f"The stack instance found {StackInstance} doesn't have a stackid associated. Which means it's never been deployed and probably OUTDATED")
 			pass
-		if pAccountRemoveList is None:
-			pass
-		elif not (StackInstances[j]['Account'] in pAccountRemoveList):
+		if pAccountRemoveList is None or StackInstance['Account'] in pAccountRemoveList:
+			# This stack instance will be reported if it matches the account they provided,
+			# or reported on if they didn't provide an account list at all.
+			# OR - it will be removed if they also provided the "+delete" parameter...
+			logging.debug(f"This is Instance #: {str(StackInstance)}")
+			logging.debug(f"This is instance status: {str(StackInstance['Status'])}")
+			logging.debug(f"This is ChildAccount: {StackInstance['Account']}")
+			logging.debug(f"This is ChildRegion: {StackInstance['Region']}")
+			# logging.debug("This is StackId: %s", str(StackInstance['StackId']))
+			AllInstances.append({
+				'ParentAccountNumber': aws_acct.acct_number,
+				'ChildAccount'       : StackInstance['Account'],
+				'ChildRegion'        : StackInstance['Region'],
+				# This next line finds the value of the Child StackName (which includes a random GUID) and assigns it within our dict
+				# 'StackName': StackInstance['StackId'][StackInstance['StackId'].find('/')+1:StackInstance['StackId'].find('/', StackInstance['StackId'].find('/')+1)],
+				'StackStatus'        : StackInstance['Status'],
+				'StackSetName'       : StackInstance['StackSetId'][:StackInstance['StackSetId'].find(':')]
+				})
+		elif not (StackInstance['Account'] in pAccountRemoveList):
+			# If the user only wants to remove the stack instances associated with specific accounts,
+			# then we only want to capture those stack instances where the account number shows up.
+			# The following code captures
 			logging.info(f"Found a stack instance, but the account didn't match {pAccountRemoveList}... exiting")
 			continue
-		logging.debug(f"This is Instance #: {str(j)}")
-		# logging.debug("This is StackId: %s", str(StackInstances[j]['StackId']))
-		logging.debug(f"This is instance status: {str(StackInstances[j]['Status'])}")
-		logging.debug(f"This is ChildAccount: {StackInstances[j]['Account']}")
-		logging.debug(f"This is ChildRegion: {StackInstances[j]['Region']}")
-		AllInstances.append({
-			'ParentAccountNumber': aws_acct.acct_number,
-			'ChildAccount': StackInstances[j]['Account'],
-			'ChildRegion': StackInstances[j]['Region'],
-			# This next line finds the value of the Child StackName (which includes a random GUID) and assigns it within our dict
-			# 'StackName': StackInstances[j]['StackId'][StackInstances[j]['StackId'].find('/')+1:StackInstances[j]['StackId'].find('/', StackInstances[j]['StackId'].find('/')+1)],
-			'StackStatus': StackInstances[j]['Status'],
-			'StackSetName': StackInstances[j]['StackSetId'][:StackInstances[j]['StackSetId'].find(':')]
-			})
-		# print(".", end='')
+
 
 print(ERASE_LINE)
 logging.error(f"Found {len(AllInstances)} stack instances.")
@@ -290,7 +290,7 @@ if pdryrun and pAccountRemoveList is None:
 			print()
 elif pdryrun:
 	print()
-	print(f"We found that account {pAccountRemoveList} shows up in these stacksets in these regions:")
+	print(f"We found that stacks that match these accounts {pAccountRemoveList} show up in these regions:")
 	for i in range(len(AllInstances)):
 		if AllInstances[i]['ChildAccount'] in pAccountRemoveList:
 			print(f"\t{AllInstances[i]['StackSetName']} \t {AllInstances[i]['ChildRegion']} \t {AllInstances[i]['ChildAccount']}")
