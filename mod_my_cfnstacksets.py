@@ -171,7 +171,6 @@ if isinstance(StackSetNames, str):
 logging.error(f"Found {len(StackSetNames)} StackSetNames that matched your fragment")
 
 # Now go through those stacksets and determine the instances, made up of accounts and regions
-# If RemoveRegion parameter is set, only add stacksets from that region
 for i in range(len(StackSetNames)):
 	print(f"{ERASE_LINE}Looking through {i+1} of {len(StackSetNames)} stacksets found with {pStackfrag} string in them", end='\r')
 	StackInstances = Inventory_Modules.find_stack_instances2(aws_acct, pRegion, StackSetNames[i]['StackSetName'])
