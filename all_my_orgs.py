@@ -31,8 +31,6 @@ parser.my_parser.add_argument(
 args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
-# if len(pProfiles) == 1:
-# 	pProfile = pProfiles[0]
 verbose = args.loglevel
 rootonly = args.rootonly
 shortform = args.shortform
@@ -44,11 +42,11 @@ ERASE_LINE = '\x1b[2K'
 RootAccts = []      # List of the Organization Root's Account Number
 RootProfiles = []   # List of the Organization Root's profiles
 
-# logging.info("Profile: %s", pProfile)
 logging.info(f"Profiles: {pProfiles}")
 
-if "all" in pProfiles:  # Use case #1 from above
-	logging.info("Use Case #1")
+if pProfiles is None:  # Use case #1 from above
+	pProfiles = ['all']
+	logging.info("Use Case #1 - Setting profile list to 'all'")
 	logging.warning("All available profiles will be shown")
 	ProfileList = Inventory_Modules.get_profiles2(fSkipProfiles=SkipProfiles, fprofiles=pProfiles)
 	ShowEverything = True
