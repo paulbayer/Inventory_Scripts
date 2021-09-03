@@ -147,10 +147,14 @@ if pdryrun:
 	print("You asked me to find (but not delete) stacksets that match the following:")
 else:
 	print("You asked me to find (and delete) stacksets that match the following:")
+
 print(f"\t\tIn the {aws_acct.AccountType} account {aws_acct.acct_number}")
 print(f"\t\tIn this Region: {pRegion}")
+if pRegionRemove is not None:
+	print(f"\t\tLimiting targets to Region: {pRegion}") 
 print(f"\t\tFor stacksets that contain these fragments: {pStackfrag}")
 # print("		For stack instances that match this status: {}".format(pstatus))
+
 if pAccountRemoveList is None:
 	pass
 else:
@@ -187,7 +191,6 @@ for i in range(len(StackSetNames)):
 			# logging.debug("This is StackId: %s", str(StackInstance['StackId']))
 
 			if  pRegionRemove is None or (StackInstance['Region'] == pRegionRemove):
-				print(f"Adding   {str(StackInstance)} as it is target region ")
 				AllInstances.append({
 					'ParentAccountNumber': aws_acct.acct_number,
 					'ChildAccount'       : StackInstance['Account'],
