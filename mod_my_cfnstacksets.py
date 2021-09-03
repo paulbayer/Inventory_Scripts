@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import logging
-import time
+import sys
+# import time
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
@@ -122,7 +123,7 @@ def _delete_stack_instances(faws_acct, fRegion, fAccountList, fRegionList, fStac
 		return("Failed - Account List or Region List was null")
 	try:
 		response = Inventory_Modules.delete_stack_instances2(faws_acct, fRegion, fAccountList, fRegionList, fStackSetName, fForce, StackSetOpId)
-		return("Success")
+		return(f"Success - OpId: {response}")
 	except Exception as my_Error:
 		if my_Error.response['Error']['Code'] == 'StackSetNotFoundException':
 			logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
@@ -160,6 +161,9 @@ print()
 
 # Get the StackSet names from the Management Account
 StackSetNames = Inventory_Modules.find_stacksets2(aws_acct, pRegion, pStackfrag)
+if isinstance(StackSetNames, str):
+	logging.error("Something went wrong with the AWS connection. Please check the parameters supplied and try again.")
+	sys.exit("Failure to connect to AWS")
 logging.error(f"Found {len(StackSetNames)} StackSetNames that matched your fragment")
 
 # Now go through those stacksets and determine the instances, made up of accounts and regions
