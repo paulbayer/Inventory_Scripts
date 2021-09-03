@@ -116,6 +116,7 @@ else:
 	for profile in ProfileList:
 		aws_acct = aws_acct_access(profile)
 		logging.info(f"Looking at {profile} account now... ")
+		RegionList = Inventory_Modules.get_regions2(aws_acct, pRegionList)
 		InstancesFound.extend(check_accounts_for_instances(aws_acct, RegionList))
 		AllChildAccounts.extend(aws_acct.ChildAccounts)
 
