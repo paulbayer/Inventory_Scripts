@@ -112,10 +112,10 @@ def get_service_regions(service, fkey=None):
 	return (RegionNames)
 
 
-def validate_region(fSessionObject, fRegion=None):
+def validate_region(faws_acct, fRegion=None):
 	import logging
 
-	session_region = fSessionObject.session
+	session_region = faws_acct.session
 	client_region = session_region.client('ec2')
 	if fRegion is None:
 		logging.info(f"No region supplied. Defaulting to 'us-east-1'")
@@ -1785,7 +1785,7 @@ def delete_stack_instances(fProfile, fRegion, lAccounts, lRegions, fStackSetName
 	return (response)  # There is no response to send back
 
 
-def delete_stack_instances2(fAccountObject, fRegion, lAccounts, lRegions, fStackSetName, fRetainStacks=False, fOperationName="StackDelete"):
+def delete_stack_instances2(faws_acct, fRegion, lAccounts, lRegions, fStackSetName, fRetainStacks=False, fOperationName="StackDelete"):
 	"""
 	fProfile is the Root Profile that owns the stackset
 	fRegion is the region where the stackset resides
@@ -1803,8 +1803,8 @@ def delete_stack_instances2(fAccountObject, fRegion, lAccounts, lRegions, fStack
 		logging.info(result['Message'])
 
 	logging.warning(f"Deleting {fStackSetName} stackset over {len(lAccounts)} accounts across {len(lRegions)} regions")
-	session_cfn = fAccountObject.session
-	client_cfn = session_cfn.client('cloudformation')
+	session_cfn = faws_acct.session
+	client_cfn = session_cfn.client('cloudformation', region_name=fRegion)
 	response = client_cfn.delete_stack_instances(StackSetName=fStackSetName,
 	                                             Accounts=lAccounts,
 	                                             Regions=lRegions,

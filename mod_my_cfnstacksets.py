@@ -50,11 +50,12 @@ parser.my_parser.add_argument(
 	default=None,
 	nargs="*",
 	metavar="Account to remove from stacksets",
-	help="The Account number you want removed from ALL of the stacksets and ALL of the regions it's been found.")
+	help="The Account(s) number you want removed from ALL of the stacksets and ALL of the regions it's been found.")
 parser.my_parser.add_argument(
 	'-R', "--RemoveRegion",
-	help="The region you want to remove from all the stacksets.",
+	help="The region(s) you want to remove from all the stacksets.",
 	default=None,
+	nargs="*",
 	metavar="region-name",
 	dest="pRegionRemove")
 parser.my_parser.add_argument(
@@ -82,12 +83,12 @@ args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
 pRegion = args.Region
-pRegionRemove = args.pRegionRemove
 verbose = args.loglevel
 pStackfrag = args.pStackfrag
 pCheckAccount = args.AccountCheck
 pdryrun = args.DryRun
 # pstatus = args.pstatus
+pRegionRemove = args.pRegionRemove
 pAccountRemoveList = args.pAccountRemoveList
 pForce = args.RetainStacks
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
@@ -125,6 +126,7 @@ def _delete_stack_instances(faws_acct, fRegion, fAccountList, fRegionList, fStac
 		response = Inventory_Modules.delete_stack_instances2(faws_acct, fRegion, fAccountList, fRegionList, fStackSetName, fForce, StackSetOpId)
 		return(f"Success - OpId: {response}")
 	except Exception as my_Error:
+		print(my_Error)
 		if my_Error.response['Error']['Code'] == 'StackSetNotFoundException':
 			logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
 			return("Failed - StackSet not found")
@@ -151,7 +153,7 @@ else:
 print(f"\t\tIn the {aws_acct.AccountType} account {aws_acct.acct_number}")
 print(f"\t\tIn this Region: {pRegion}")
 if pRegionRemove is not None:
-	print(f"\t\tLimiting targets to Region: {pRegion}") 
+	print(f"\t\tLimiting targets to Region: {pRegionRemove}")
 print(f"\t\tFor stacksets that contain these fragments: {pStackfrag}")
 # print("		For stack instances that match this status: {}".format(pstatus))
 
@@ -189,7 +191,7 @@ for i in range(len(StackSetNames)):
 			logging.debug(f"This is ChildRegion: {StackInstance['Region']}")
 			# logging.debug("This is StackId: %s", str(StackInstance['StackId']))
 
-			if  pRegionRemove is None or (StackInstance['Region'] == pRegionRemove):
+			if  pRegionRemove is None or (StackInstance['Region'] in pRegionRemove):
 				AllInstances.append({
 					'ParentAccountNumber': aws_acct.acct_number,
 					'ChildAccount'       : StackInstance['Account'],
@@ -313,8 +315,10 @@ elif not pdryrun:
 			print(f"There appear to be no stack instances for this stack-set")
 			continue
 		if pAccountRemoveList is None:  # Remove all instances from the stackset
-			logging.error(f"About to remove ALL stack instances from stackset {StackSetName}")
-			AllAccounts = [accountid['AccountId'] for accountid in aws_acct.ChildAccounts]
+			if pRegionRemove is not None:
+				logging.error(f"About to update stackset {StackSetName} to remove all accounts within {str(RegionList)}")
+			else:
+				logging.error(f"About to update stackset {StackSetName} to remove ALL accounts from all regions")
 			result = _delete_stack_instances(aws_acct, pRegion, AccountList, RegionList, StackSetName, pForce)
 		else:
 			logging.error(f"About to remove account {pAccountRemoveList} from stackset {StackSetName} in regions {str(RegionList)}")
