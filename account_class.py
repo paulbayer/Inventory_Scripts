@@ -228,3 +228,9 @@ class aws_acct_access:
 		else:
 			logging.warning(f"Account {self.acct_num()} suffered a crisis of identity")
 			return ()
+
+	def __str__(self):
+		return(f"Account #{self.acct_number} is a {self.AccountType} account with {len(self.ChildAccounts)} child accounts")
+
+	def __repr__(self):
+		return(f"Account #{self.acct_number} is a {self.AccountType} account with {len(self.ChildAccounts)} child accounts")

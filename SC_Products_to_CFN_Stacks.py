@@ -260,7 +260,7 @@ if ErroredSCPExists:
 	client_sc = session_sc.client('servicecatalog')
 	for i in range(len(SCP2Stacks)):
 		if ((SCP2Stacks[i]['SCStatus'] == 'ERROR') or (SCP2Stacks[i]['CFNStackName'] == 'None')) and not DeletionRun:
-			print(f"aws servicecatalog terminate-provisioned-product --provisioned-product-id {SCP2Stacks[i]['SCProductId']} --ignore-errors", end='\r')
+			print(f"aws servicecatalog terminate-provisioned-product --provisioned-product-id {SCP2Stacks[i]['SCProductId']} --ignore-errors", end='')
 			# Finishes the line for display, based on whether they used a profile or not to run this command
 			if pProfile is None:
 				print()
