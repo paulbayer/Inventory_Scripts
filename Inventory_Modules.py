@@ -21,6 +21,24 @@ def get_regions(fkey, fprofile="default"):
 				RegionNames2.append(y)
 	return (RegionNames2)
 
+def get_regions2(faws_acct, fregion_list=None):
+	import logging
+
+	session_ec2 = faws_acct.session
+	region_info = session_ec2.client('ec2')
+	regions = region_info.describe_regions()
+	RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
+	if  fregion_list is None or "all" in fregion_list or "ALL" in fregion_list or "All" in fregion_list:
+		return (RegionNames)
+	RegionNames2 = []
+	for x in fregion_list:
+		for y in RegionNames:
+			logging.info(f"Have {y} | Looking for {x}")
+			if y.find(x) >= 0:
+				logging.info(f"Found {y}")
+				RegionNames2.append(y)
+	return (RegionNames2)
+
 
 def get_ec2_regions(fkey=['all'], fprofile=None):
 	import boto3
@@ -92,6 +110,27 @@ def get_service_regions(service, fkey=None):
 				logging.info('Found %s', y)
 				RegionNames.append(y)
 	return (RegionNames)
+
+
+def validate_region(fSessionObject, fRegion=None):
+	import logging
+
+	session_region = fSessionObject.session
+	client_region = session_region.client('ec2')
+	if fRegion is None:
+		logging.info(f"No region supplied. Defaulting to 'us-east-1'")
+		fRegion = 'us-east-1'
+	region_info = client_region.describe_regions(Filters=[{'Name': 'region-name', 'Values': [fRegion]}])['Regions']
+	if len(region_info) == 0:
+		message = f"'{fRegion}' is not a valid region name for this account"
+		logging.error(message)
+		result = {'Result': False, 'Message': message}
+		return(result)
+	else:
+		message = f"'{fRegion}' is a valid region name for this account"
+		logging.error(message)
+		result = {'Result': True, 'Message': message}
+		return(result)
 
 
 def get_profiles(fSkipProfiles=None, fprofiles=None):
@@ -1619,12 +1658,30 @@ def find_stacksets2(faws_acct, fRegion='us-east-1', fStackFragment=['all']):
 	fStackFragment is a list of strings
 	"""
 	import logging
+	from urllib3.exceptions import NewConnectionError
+	from botocore.exceptions import EndpointConnectionError
 
+	# Logging Settings
+	LOGGER = logging.getLogger()
+	logging.getLogger("boto3").setLevel(logging.CRITICAL)
+	logging.getLogger("botocore").setLevel(logging.CRITICAL)
+	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
+	# Set Log Level
+
+	result = validate_region(faws_acct, fRegion)
+	if not result['Result']:
+		return(result['Message'])
+	else:
+		logging.info(result['Message'])
 	logging.info(f"Account: {faws_acct.acct_number} | Region: {fRegion} | Fragment: {fStackFragment}")
 	session_aws = faws_acct.session
-	client_cfn = session_aws.client('cloudformation')
+	client_cfn = session_aws.client('cloudformation', region_name=fRegion)
 
-	stacksets_prelim = client_cfn.list_stack_sets(Status='ACTIVE')
+	try:
+		stacksets_prelim = client_cfn.list_stack_sets(Status='ACTIVE')
+	except EndpointConnectionError as my_error:
+		logging.info(f"Likely that the region passed in wasn't correct. Please check and try again.")
+		return("Region Endpoint Failure")
 	stacksets = stacksets_prelim['Summaries']
 	while 'NextToken' in stacksets_prelim.keys():  # Get all instance names
 		stacksets_prelim = client_cfn.list_stack_sets(Status='ACTIVE', NextToken=stacksets_prelim['NextToken'])
@@ -1652,6 +1709,7 @@ def delete_stackset(fProfile, fRegion, fStackSetName):
 	"""
 	import boto3
 	import logging
+
 	session_cfn = boto3.Session(profile_name=fProfile, region_name=fRegion)
 	client_cfn = session_cfn.client('cloudformation')
 	logging.warning("Profile: %s | Region: %s | StackSetName: %s", fProfile, fRegion, fStackSetName)
@@ -1682,7 +1740,7 @@ def find_stack_instances(fProfile, fRegion, fStackSetName, fStatus='CURRENT'):
 	return (stack_instances_list)
 
 
-def find_stack_instances2(fAccountObject, fRegion, fStackSetName, fStatus='CURRENT'):
+def find_stack_instances2(faws_acct, fRegion, fStackSetName, fStatus='CURRENT'):
 	"""
 	faws_acct is a custom class containing the credentials
 	fRegion is a string
@@ -1693,9 +1751,12 @@ def find_stack_instances2(fAccountObject, fRegion, fStackSetName, fStatus='CURRE
 	import boto3
 	import logging
 
-	logging.warning(f"Account: {fAccountObject.acct_number} | Region: {fRegion} | StackSetName: {fStackSetName}")
-	session_cfn = fAccountObject.session
-	client_cfn = session_cfn.client('cloudformation')
+	logging.warning(f"Account: {faws_acct.acct_number} | Region: {fRegion} | StackSetName: {fStackSetName}")
+	session_cfn = faws_acct.session
+	result = validate_region(faws_acct, fRegion)
+	if not result['Result']:
+		return(result['Message'])
+	client_cfn = session_cfn.client('cloudformation', region_name=fRegion)
 	stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName)
 	stack_instances_list = stack_instances['Summaries']
 	while 'NextToken' in stack_instances.keys():  # Get all instance names
@@ -1735,6 +1796,12 @@ def delete_stack_instances2(fAccountObject, fRegion, lAccounts, lRegions, fStack
 	"""
 	import logging
 
+	result = validate_region(faws_acct, fRegion)
+	if not result['Result']:
+		return(result['Message'])
+	else:
+		logging.info(result['Message'])
+
 	logging.warning(f"Deleting {fStackSetName} stackset over {len(lAccounts)} accounts across {len(lRegions)} regions")
 	session_cfn = fAccountObject.session
 	client_cfn = session_cfn.client('cloudformation')
@@ -1748,7 +1815,7 @@ def delete_stack_instances2(fAccountObject, fRegion, lAccounts, lRegions, fStack
 		                                             'MaxConcurrentPercentage'   : 100
 		                                             },
 	                                             OperationId=fOperationName)
-	return (response)  # The response will be the Operation ID of the delete operation
+	return(response)  # The response will be the Operation ID of the delete operation
 
 
 def find_sc_products(fProfile, fRegion, fStatus="ERROR", flimit=100):
