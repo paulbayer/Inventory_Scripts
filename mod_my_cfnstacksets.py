@@ -286,7 +286,7 @@ if pdryrun and pAccountRemoveList is None:
 			print(f"|{accountid}", end=' ')
 			JustThisRegion = []
 			for _ in range(len(AllInstances)):
-				if AllInstances[p]['ChildAccount'] == accountid:
+				if AllInstances[_]['ChildAccount'] == accountid:
 					JustThisRegion.append(AllInstances[_]['ChildRegion'])
 			JustThisRegion = list(set(JustThisRegion))
 			for _ in JustThisRegion:
