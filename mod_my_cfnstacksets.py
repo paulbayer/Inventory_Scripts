@@ -51,12 +51,12 @@ parser.my_parser.add_argument(
 	nargs="*",
 	metavar="Account to remove from stacksets",
 	help="The Account number you want removed from ALL of the stacksets and ALL of the regions it's been found.")
-# parser.my_parser.add_argument(
-# 	'-R', "--RemoveRegion",
-# 	help="The region you want to remove from all the stacksets.",
-# 	default=None,
-# 	metavar="region-name",
-# 	dest="pRegionRemove")
+parser.my_parser.add_argument(
+	'-R', "--RemoveRegion",
+	help="The region you want to remove from all the stacksets.",
+	default=None,
+	metavar="region-name",
+	dest="pRegionRemove")
 parser.my_parser.add_argument(
 	'-check',
 	help="Do a comparison of the accounts found in the stacksets to the accounts found in the Organization and list out any that have been closed or suspended, but never removed from the stacksets.",
@@ -82,13 +82,13 @@ args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
 pRegion = args.Region
+pRegionRemove = args.pRegionRemove
 verbose = args.loglevel
 pStackfrag = args.pStackfrag
 pCheckAccount = args.AccountCheck
 pdryrun = args.DryRun
 # pstatus = args.pstatus
 pAccountRemoveList = args.pAccountRemoveList
-# pRegionRemove = args.pRegionRemove
 pForce = args.RetainStacks
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
@@ -167,6 +167,7 @@ if isinstance(StackSetNames, str):
 logging.error(f"Found {len(StackSetNames)} StackSetNames that matched your fragment")
 
 # Now go through those stacksets and determine the instances, made up of accounts and regions
+# If RemoveRegion parameter is set, only add stacksets from that region
 for i in range(len(StackSetNames)):
 	print(f"{ERASE_LINE}Looking through {i+1} of {len(StackSetNames)} stacksets found with {pStackfrag} string in them", end='\r')
 	StackInstances = Inventory_Modules.find_stack_instances2(aws_acct, pRegion, StackSetNames[i]['StackSetName'])
@@ -184,15 +185,18 @@ for i in range(len(StackSetNames)):
 			logging.debug(f"This is ChildAccount: {StackInstance['Account']}")
 			logging.debug(f"This is ChildRegion: {StackInstance['Region']}")
 			# logging.debug("This is StackId: %s", str(StackInstance['StackId']))
-			AllInstances.append({
-				'ParentAccountNumber': aws_acct.acct_number,
-				'ChildAccount'       : StackInstance['Account'],
-				'ChildRegion'        : StackInstance['Region'],
-				# This next line finds the value of the Child StackName (which includes a random GUID) and assigns it within our dict
-				# 'StackName': StackInstance['StackId'][StackInstance['StackId'].find('/')+1:StackInstance['StackId'].find('/', StackInstance['StackId'].find('/')+1)],
-				'StackStatus'        : StackInstance['Status'],
-				'StackSetName'       : StackInstance['StackSetId'][:StackInstance['StackSetId'].find(':')]
-				})
+
+			if  pRegionRemove is None or (StackInstance['Region'] == pRegionRemove):
+				print(f"Adding   {str(StackInstance)} as it is target region ")
+				AllInstances.append({
+					'ParentAccountNumber': aws_acct.acct_number,
+					'ChildAccount'       : StackInstance['Account'],
+					'ChildRegion'        : StackInstance['Region'],
+					# This next line finds the value of the Child StackName (which includes a random GUID) and assigns it within our dict
+					# 'StackName': StackInstance['StackId'][StackInstance['StackId'].find('/')+1:StackInstance['StackId'].find('/', StackInstance['StackId'].find('/')+1)],
+					'StackStatus'        : StackInstance['Status'],
+					'StackSetName'       : StackInstance['StackSetId'][:StackInstance['StackSetId'].find(':')]
+					})
 		elif not (StackInstance['Account'] in pAccountRemoveList):
 			# If the user only wants to remove the stack instances associated with specific accounts,
 			# then we only want to capture those stack instances where the account number shows up.
