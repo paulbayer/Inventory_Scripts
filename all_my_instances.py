@@ -34,7 +34,6 @@ logging.info(f"Profiles: {pProfiles}")
 
 ##################
 def check_accounts_for_instances(faws_acct, fRegionList=[]):
-	# for profile in ProfileList:
 	ChildAccounts = faws_acct.ChildAccounts
 	AllInstances = []
 	for account in ChildAccounts:
@@ -71,7 +70,6 @@ def check_accounts_for_instances(faws_acct, fRegionList=[]):
 						InstanceId = Instances['Reservations'][y]['Instances'][z]['InstanceId']
 						PublicDnsName = Instances['Reservations'][y]['Instances'][z]['PublicDnsName']
 						State = Instances['Reservations'][y]['Instances'][z]['State']['Name']
-						# print("Length:", len(Instances['Reservations'][y]['Instances'][z]['Tags']))
 						Name = "No Name Tag"
 						try:
 							for x in range(len(Instances['Reservations'][y]['Instances'][z]['Tags'])):
@@ -99,7 +97,6 @@ fmt = '%-12s %-12s %-10s %-15s %-20s %-20s %-42s %-12s'
 print(fmt % ("Root Acct #", "Account #", "Region", "InstanceType", "Name", "Instance ID", "Public DNS Name", "State"))
 print(fmt % ("-----------", "---------", "------", "------------", "----", "-----------", "---------------", "-----"))
 
-RegionList = Inventory_Modules.get_regions(pRegionList)
 
 InstancesFound = []
 AllChildAccounts = []
@@ -107,6 +104,7 @@ AllChildAccounts = []
 if pProfiles is None:   # Default use case from the classes
 	logging.info("Using whatever the default profile is")
 	aws_acct = aws_acct_access()
+	RegionList = Inventory_Modules.get_regions2(aws_acct, pRegionList)
 	logging.warning(f"Default profile will be used")
 	InstancesFound.extend(check_accounts_for_instances(aws_acct, RegionList))
 	AllChildAccounts.extend(aws_acct.ChildAccounts)
