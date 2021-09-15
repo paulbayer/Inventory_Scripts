@@ -32,6 +32,44 @@ So if we created a class object that represented the account:
 """
 import boto3
 import logging
+# from Inventory_Modules import validate_region
+from botocore.exceptions import ProfileNotFound
+
+
+def validate_region(faws_prelim_session, fRegion=None):
+	import logging
+
+	client_region = faws_prelim_session.client('ec2')
+	all_regions_list = [region_name['RegionName'] for region_name in client_region.describe_regions(AllRegions=True)['Regions']]
+	if fRegion is None:  # Why are you trying to validate a region, and then didn't supply a region?
+		logging.info(f"No region supplied to check. Defaulting to 'us-east-1'")
+		fRegion = 'us-east-1'
+	if fRegion in all_regions_list:
+		logging.info(f"{fRegion} is a valid region within AWS")
+		valid_region = True
+	else:
+		logging.info(f"{fRegion} is not a valid region within AWS. Maybe check the spelling?")
+		valid_region = False
+	region_info = client_region.describe_regions(Filters=[{'Name': 'region-name', 'Values': [fRegion]}])['Regions']
+	if len(region_info) == 0:
+		if valid_region:
+			message = f"While '{fRegion}' is a valid AWS region, this account has not opted into this region"
+		else:
+			message = f"'{fRegion}' is not a valid AWS region name"
+		logging.error(message)
+		result = {
+			'Result': False,
+			'Message': message,
+			'Region': fRegion}
+		return (result)
+	else:
+		message = f"'{fRegion}' is a valid region for this account"
+		logging.error(message)
+		result = {
+			'Result': True,
+			'Message': message,
+			'Region': fRegion}
+		return (result)
 
 
 class aws_acct_access:
@@ -46,28 +84,39 @@ class aws_acct_access:
 		OrgID: The Organization the account belongs to, if it does
 		MgmtEmail: The email address of the Management Account, if the account is a "Root" or "Child"
 		creds: The credentials used to get into the account
+		Region: The region used to authenticate into this account. Important to find out if certain regions are allowed (opted-in).
 		ChildAccounts: If the account is a "Root", this is a listing of the child accounts
 	"""
 	def __init__(self, fProfile=None, fRegion='us-east-1'):
 		logging.basicConfig(format="[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s")
+		# First thing's first: We need to validate that the region they sent us to use is valid for this account.
+		# Otherwise, all hell will break if it's not.
+		try:
+			prelim_session = boto3.Session(profile_name=fProfile, region_name='us-east-1')
+			result = validate_region(prelim_session, fRegion)
+			if result['Result'] is True:
+				self.session = boto3.Session(profile_name=fProfile, region_name=result['Region'])
+				account_access_successful = True
+				self.AccountStatus = 'ACTIVE'
+			else:
+				logging.error(
+					f"The region supplied '{fRegion}' to this function is not a valid region for this account")
+				account_access_successful = False
+				self.AccountStatus = 'INACTIVE'
+		except ProfileNotFound as my_Error:
+			logging.error(f"Profile {fProfile} not found. Please ensure this profile is valid within your system.")
+			logging.info(f"Error: {my_Error}")
+			account_access_successful = False
 
 		logging.info(f"Capturing Account Information for profile {fProfile}...")
-		self.region = fRegion.lower()
-		self.AccountStatus = 'INACTIVE'
-		if fProfile is None:
-			self.session = boto3.Session(region_name=self.region)
-			self.AccountStatus = 'ACTIVE'
-		else:
-			self.session = boto3.Session(profile_name=fProfile, region_name=self.region)
-			self.AccountStatus = 'ACTIVE'
-		self.acct_number = self.acct_num()
-		if self.acct_number == 'Failure':
+		if not account_access_successful:
 			logging.error(f"Didn't find information for profile {fProfile} as something failed")
 			account_access_successful = False
 		else:
-			logging.info(f"Found information for Account {self.acct_number} in profile {fProfile}")
+			logging.info(f"Successfully validated access to account in region {fRegion}")
 			account_access_successful = True
 		if account_access_successful:
+			self.acct_number = self.acct_num()
 			self._AccountAttributes = self.find_account_attr()
 			logging.info(f"Found {len(self._AccountAttributes)} attributes in this account")
 			self.AccountType = self._AccountAttributes['AccountType']
@@ -80,9 +129,7 @@ class aws_acct_access:
 				logging.info("Enumerating all of the child accounts")
 				self.ChildAccounts = self.find_child_accounts()
 				logging.debug(f"As acct {self.acct_number} is the root account, we found {len(self.ChildAccounts)} accounts in the Org")
-				# self.creds_dict = None
-				# self.acct_number = '123456789012'
-				# self.AccountType = None
+
 			else:
 				self.ChildAccounts = self.find_child_accounts()
 		else:
@@ -151,6 +198,7 @@ class aws_acct_access:
 			function_response['Id'] = self.acct_number
 			function_response['AccountNumber'] = self.acct_number
 			function_response['MasterAccountId'] = response['MasterAccountId']
+			function_response['MgmntAccountId'] = response['MasterAccountId']
 			function_response['ManagementEmail'] = response['MasterAccountEmail']
 			if response['MasterAccountId'] == self.acct_number:
 				function_response['AccountType'] = 'Root'
@@ -165,6 +213,7 @@ class aws_acct_access:
 				function_response['ManagementEmail'] = 'Email not available'
 				function_response['AccountNumber'] = self.acct_number
 				function_response['MasterAccountId'] = self.acct_number
+				function_response['MgmntAccountId'] = self.acct_number
 			elif str(my_Error).find("UnrecognizedClientException") > 0:
 				logging.error(f"Security Issue with account {self.acct_number}")
 			elif str(my_Error).find("InvalidClientTokenId") > 0:
@@ -176,8 +225,9 @@ class aws_acct_access:
 			logging.error(f"Failure pulling or updating credentials for {self.acct_number}")
 			print(my_Error)
 			pass
-		except:
+		except Exception as my_Error:
 			print("Other kind of failure")
+			print(my_Error)
 			pass
 		return (function_response)
 
