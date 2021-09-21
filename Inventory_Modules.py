@@ -21,6 +21,7 @@ def get_regions(fkey, fprofile="default"):
 				RegionNames2.append(y)
 	return (RegionNames2)
 
+
 def get_regions2(faws_acct, fregion_list=None):
 	import logging
 
@@ -28,7 +29,7 @@ def get_regions2(faws_acct, fregion_list=None):
 	region_info = session_ec2.client('ec2')
 	regions = region_info.describe_regions()
 	RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
-	if  fregion_list is None or "all" in fregion_list or "ALL" in fregion_list or "All" in fregion_list:
+	if fregion_list is None or "all" in fregion_list or "ALL" in fregion_list or "All" in fregion_list:
 		return (RegionNames)
 	RegionNames2 = []
 	for x in fregion_list:
@@ -44,7 +45,7 @@ def get_ec2_regions(fkey=['all'], fprofile=None):
 	import boto3
 	import logging
 
-	session_ec2 = boto3.Session()
+	session_ec2 = boto3.Session(profile_name=fprofile)
 	region_info = session_ec2.client('ec2')
 	regions = region_info.describe_regions(Filters=[
 		{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
@@ -141,14 +142,14 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 	import boto3
 	import logging
 
-	# TODO: We don't actually use this anywhere in the script. We should.
+	# TODO: We don't actually use this anywhere in the script. We should remove it.
 	if fSkipProfiles is None:
 		fSkipProfiles = ['default']
 	if fprofiles is None:
 		fprofiles = ['all']
 	my_Session = boto3.Session()
 	my_profiles = my_Session._session.available_profiles
-	if "all" in fprofiles or "ALL" in fprofiles:
+	if "all" in fprofiles or "ALL" in fprofiles or "All" in fprofiles:
 		return (my_profiles)
 	ProfileList = []
 	for x in fprofiles:
@@ -160,16 +161,18 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 	return (ProfileList)
 
 
-def get_profiles2(fSkipProfiles=[None], fprofiles=[None]):
+def get_profiles2(fSkipProfiles=[None], fprofiles=None):
 	"""
 	We assume that the user of this function wants all profiles.
-	If they provide a list of profile strings (in fprofiles), then we compare those strings to the full list of profiles we have, and return those profiles that contain the strings they sent.
+	If they provide a list of profile strings (in fprofiles),
+	then we compare those strings to the full list of profiles we have,
+	and return those profiles that contain the strings they sent.
 	"""
 	import boto3
 
 	my_Session = boto3.Session()
 	my_profiles = my_Session._session.available_profiles
-	if "all" in fprofiles or "ALL" in fprofiles or fprofiles is None:
+	if "all" in fprofiles or "ALL" in fprofiles or "All" in fprofiles or fprofiles is None:
 		my_profiles = list(set(my_profiles) - set(fSkipProfiles))
 	else:
 		my_profiles = list(set(fprofiles) - set(fSkipProfiles))
@@ -613,7 +616,7 @@ def get_child_access2(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleLis
 	return (account_credentials, return_string)
 
 
-def get_child_access3(fAccountObject, fChildAccount, fRegion='us-east-1', fRoleList=None):
+def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=None):
 	"""
 	- fAccountObject is a custom class (account_class.aws_acct_access)
 	- fChildAccount expects an AWS account number (ostensibly of a Child Account)
@@ -628,6 +631,7 @@ def get_child_access3(fAccountObject, fChildAccount, fRegion='us-east-1', fRoleL
 							'SecretAccessKey': None,
 							'SessionToken': None,
 							'AccountNumber': None,
+							'Region': fRegion,
 							'Role': Role that worked to get in}
 	"""
 	import logging
@@ -635,9 +639,9 @@ def get_child_access3(fAccountObject, fChildAccount, fRegion='us-east-1', fRoleL
 
 	if not isinstance(fChildAccount, str):  # Make sure the passed in account number is a string
 		fChildAccount = str(fChildAccount)
-	org_status = fAccountObject.AccountType
-	ParentAccountId = fAccountObject.acct_number
-	sts_client = fAccountObject.session.client('sts')
+	org_status = faws_acct.AccountType
+	ParentAccountId = faws_acct.acct_number
+	sts_client = faws_acct.session.client('sts', region_name=fRegion)
 	if fChildAccount == ParentAccountId:
 		explain_string = (f"We're trying to get access to either the Root Account (which we already have access "
 		                  f"to via the profile) or we're trying to gain access to a Standalone account. "
@@ -647,11 +651,12 @@ def get_child_access3(fAccountObject, fChildAccount, fRegion='us-east-1', fRoleL
 		# TODO: Wrap this in a try/except loop on the off-chance that the class doesn't work properly
 		account_credentials = {'ParentAcctId': ParentAccountId,
 		                       'OrgType': org_status,
-		                       'AccessKeyId': fAccountObject.creds.access_key,
-		                       'SecretAccessKey': fAccountObject.creds.secret_key,
-		                       'SessionToken': fAccountObject.creds.token,
+		                       'AccessKeyId': faws_acct.creds.access_key,
+		                       'SecretAccessKey': faws_acct.creds.secret_key,
+		                       'SessionToken': faws_acct.creds.token,
 		                       'AccountNumber': fChildAccount,
 		                       'AccountId': fChildAccount,
+		                       'Region': fRegion,
 		                       'Role': 'Use Profile'}
 		return (account_credentials)
 	if fRoleList is None:
@@ -659,7 +664,7 @@ def get_child_access3(fAccountObject, fChildAccount, fRegion='us-east-1', fRoleL
 					 'OrganizationAccountAccessRole', 'AdministratorAccess', 'Owner']
 	# Initializing the "Negative Use Case" string, returning the whole list instead of only the last role it tried.
 	# This way the operator knows that NONE of the roles supplied worked.
-	return_string = "{} failed. Try Again".format(str(fRoleList))
+	return_string = f"{str(fRoleList)} failed. Try Again"
 	account_credentials = {'ParentAcctId': ParentAccountId,
 	                       'OrgType': org_status,
 	                       'AccessKeyId': None,
@@ -667,21 +672,23 @@ def get_child_access3(fAccountObject, fChildAccount, fRegion='us-east-1', fRoleL
 	                       'SessionToken': None,
 						   'AccountNumber': None,
 						   'AccountId': None,
+	                       'Region': fRegion,
 						   'Role': None}
 	for role in fRoleList:
 		try:
-			if fAccountObject.session.profile_name:
-				logging.info(f"Trying to access account {fChildAccount} using parent profile: {fAccountObject.session.profile_name} assuming role: {role}")
+			if faws_acct.session.profile_name:
+				logging.info(f"Trying to access account {fChildAccount} using parent profile: {faws_acct.session.profile_name} assuming role: {role}")
 			else:
-				logging.info(f"Trying to access account {fChildAccount} using account number {fAccountObject.acct_number} assuming role: {role}")
+				logging.info(f"Trying to access account {fChildAccount} using account number {faws_acct.acct_number} assuming role: {role}")
 			role_arn = f"arn:aws:iam::{fChildAccount}:role/{role}"
 			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Test-ChildAccount-Access")['Credentials']
 			# If we were successful up to this point, then we'll short-cut everything and just return the credentials that worked
-			logging.info(f"The credentials for account {fChildAccount} using parent account {fAccountObject.acct_number} and role name {role} worked")
+			logging.info(f"The credentials for account {fChildAccount} using parent account {faws_acct.acct_number} and role name {role} worked")
 			account_credentials['ParentAcctId'] = ParentAccountId
 			account_credentials['OrgType'] = org_status
 			account_credentials['AccountNumber'] = fChildAccount
 			account_credentials['AccountId'] = fChildAccount
+			account_credentials['Region'] = role
 			account_credentials['Role'] = role
 			return (account_credentials)
 		except ClientError as my_Error:

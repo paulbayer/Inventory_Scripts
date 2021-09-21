@@ -30,6 +30,15 @@ class CommonArguments():
 			prefix_chars='-+/')
 
 
+	def version(self):
+		self.my_parser.add_argument(
+			"--version",
+			dest="Version",
+			const=True,
+			default=False,		# Defaults to False, so the script would continue to run
+			help="Version #")
+
+
 	def singleprofile(self):
 		self.my_parser.add_argument(
 			"-p", "--profile",
@@ -100,6 +109,7 @@ class CommonArguments():
 			default=None,               # Defaults to default profile, but can support multiple profiles
 			help="Which profiles do you want to run against?")
 
+
 	def multiregion(self):
 		self.my_parser.add_argument(
 			"-rs", "--regions", "-r",
@@ -107,6 +117,16 @@ class CommonArguments():
 			dest="Regions",
 			metavar="region name string",
 			default=["us-east-1"],
+			help="String fragment of the region(s) you want to check for resources. You can supply multiple fragments.")
+
+
+	def multiregion_nodefault(self):
+		self.my_parser.add_argument(
+			"-rs", "--regions", "-r",
+			nargs="*",
+			dest="Regions",
+			metavar="region name string",
+			default=None,
 			help="String fragment of the region(s) you want to check for resources. You can supply multiple fragments.")
 
 
