@@ -104,7 +104,7 @@ def find_all_accounts(session_object=None):
 # 	- fRoleList expects a list of roles to try, but defaults to a list of typical roles, in case you don't provide
 #
 # 	The first response object is a dict with account_credentials to pass onto other functions
-# 	The second response object is the rolename that worked to gain access to the target account
+# 	The min response object is the rolename that worked to gain access to the target account
 #
 # 	The format of the account credentials dict is here:
 # 	account_credentials = {'Profile': fRootProfile,
