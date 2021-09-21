@@ -1,110 +1,67 @@
 #!/usr/bin/env python3
 
 import sys
-import pprint
 import Inventory_Modules
 import boto3
-import argparse
+from ArgumentsClass import CommonArguments
+from account_class import aws_acct_access
 from colorama import init, Fore
 from botocore.exceptions import ClientError
-
-
 import logging
 
 init()
 
-# UsageMsg="You can provide a level to determine whether this script considers only the 'credentials' file, the 'config' file, or both."
-parser = argparse.ArgumentParser(
-	description="We\'re going to find all resources within any of the profiles we have access to.",
-	prefix_chars='-+/')
-parser.my_parser.add_argument(
-	"-p", "--profile",
-	dest="pProfile",
-	metavar="profile to use",
-	help="You need to specify a profile that represents the ROOT account.")
-parser.my_parser.add_argument(
-	"-k", "--skip",
-	dest="pSkipAccounts",
-	nargs="*",
-	metavar="Accounts to leave alone",
-	default=[],
-	help="These are the account numbers you don't want to screw with. Likely the core accounts.")
+parser = CommonArguments()
+parser.singleprofile()
+parser.multiregion_nodefault()
+parser.verbosity()
 parser.my_parser.add_argument(
 	"+delete", "+forreal",
 	dest="flagDelete",
-	default=False,
-	action="store_const",
-	const=True,
+	action="store_true",
 	help="Whether to delete the detectors it finds.")
 parser.my_parser.add_argument(
-	'+f', '--force',
+	'+f',
 	help="force deletion without asking first",
-	action="store_const",
-	dest="ForceDelete",
-	const=True,
-	default=False)
-parser.my_parser.add_argument(
-	'-v',
-	help="Be verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.ERROR,  # args.loglevel = 40
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-vv', '--verbose',
-	help="Be MORE verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.WARNING,  # args.loglevel = 30
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-vvv',
-	help="Print INFO level statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.INFO,  # args.loglevel = 20
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-d', '--debug',
-	help="Print LOTS of debugging statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.DEBUG,  # args.loglevel = 10
-	default=logging.CRITICAL)  # args.loglevel = 50
+	action="store_true",
+	dest="ForceDelete")
 args = parser.my_parser.parse_args()
 
-pProfile = args.pProfile
+pProfile = args.Profile
+# AccountsToSkip = args.SkipAccounts
+pRegions = args.Regions
+verbose = args.loglevel
 DeletionRun = args.flagDelete
 ForceDelete = args.ForceDelete
-AccountsToSkip = args.pSkipAccounts
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s")
 
 ##########################
 ERASE_LINE = '\x1b[2K'
 
+aws_acct = aws_acct_access(pProfile)
+
 NumObjectsFound = 0
 NumAccountsInvestigated = 0
-ChildAccounts = Inventory_Modules.find_child_accounts2(pProfile)
-ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, AccountsToSkip)
+ChildAccounts = aws_acct.ChildAccounts
 
-session_gd = boto3.Session(profile_name=pProfile)
-gd_regions = session_gd.get_available_regions(service_name='guardduty')
-# gd_regions=['us-east-1','us-west-2']
+session_gd = aws_acct.session
+# This check ensures that we're checking only those regions where GuardDuty is enabled.
+if pRegions is None:
+	gd_regions = session_gd.get_available_regions(service_name='guardduty')
+else:
+	gd_regions = Inventory_Modules.get_regions2(session_gd, pRegions)
 all_gd_detectors = []
 all_gd_invites = []
 print("Searching {} accounts and {} regions".format(len(ChildAccounts), len(gd_regions)))
 
-sts_session = boto3.Session(profile_name=pProfile)
+sts_session = aws_acct.session
 sts_client = sts_session.client('sts')
+places_to_try = len(ChildAccounts) * len(gd_regions)
 for account in ChildAccounts:
-	logging.info(f"Checking Account: {account}")
+	logging.info(f"Checking Account: {account['AccountId']}")
 	NumProfilesInvestigated = 0  # I only care about the last run - so I don't get profiles * regions.
-	role_arn = f"arn:aws:iam::{account['AccountId']}:role/AWSCloudFormationStackSetExecutionRole"
-	logging.info(f"Role ARN: {role_arn}")
 	try:
-		account_credentials = sts_client.assume_role(
-			RoleArn=role_arn,
-			RoleSessionName="Find-GuardDuty-Detectors")['Credentials']
+		account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'])
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
 			print(f"Authorization Failure for account {account['AccountId']}")
@@ -112,28 +69,29 @@ for account in ChildAccounts:
 	for region in gd_regions:
 		logging.info(f"Checking Region: {region}")
 		NumAccountsInvestigated += 1
-		session_aws = boto3.Session(
-			aws_access_key_id=account_credentials['AccessKeyId'],
-			aws_secret_access_key=account_credentials['SecretAccessKey'],
-			aws_session_token=account_credentials['SessionToken'],
-			region_name=region)
-		client_aws = session_aws.client('guardduty')
-		logging.info(f"Token Info {account_credentials}")
-		# List Invitations
+		places_to_try -= 1
 		try:
-			logging.info(f"About to List invites for account: {account} in region {region}")
+			session_aws = boto3.Session(
+				aws_access_key_id=account_credentials['AccessKeyId'],
+				aws_secret_access_key=account_credentials['SecretAccessKey'],
+				aws_session_token=account_credentials['SessionToken'],
+				region_name=region)
+			client_aws = session_aws.client('guardduty')
+			logging.debug(f"Token Info: {account_credentials} in region {region}")
+			# List Invitations
+			logging.info(f"Finding any invites for account: {account} in region {region}")
 			response = client_aws.list_invitations()
-			logging.info(f"Finished listing invites for account: {account} in region {region}")
+			logging.debug(f"Finished listing invites for account: {account} in region {region}")
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(f"{account['AccountId']}: Authorization Failure for account {account['AccountId']}")
+				continue
 			if str(my_Error).find("security token included in the request is invalid") > 0:
-				print(f"Account #:{account['AccountId']} - It's likely that the region you're trying ({region}) isn't enabled for your account")
+				logging.error(f"Account #:{account['AccountId']} - The region you're trying ({region}) isn't enabled for your account")
 				continue
-			else:
-				print(my_Error)
-				continue
-		# if len(response['Invitations']) > 0:
+		except Exception as my_Error:
+			print(my_Error)
+			continue
 		if 'Invitations' in response.keys():
 			for i in range(len(response['Invitations'])):
 				all_gd_invites.append({
@@ -145,7 +103,7 @@ for account in ChildAccounts:
 					'SessionToken': account_credentials['SessionToken']
 				})
 		try:
-			print(ERASE_LINE, f"Trying account {account['AccountId']} in region {region}", end='\r')
+			print(ERASE_LINE, f"Trying account {account['AccountId']} in region {region} -- {places_to_try} of {len(ChildAccounts) * len(gd_regions)}", end='\r')
 			response = client_aws.list_detectors()
 			if len(response['DetectorIds']) > 0:
 				NumObjectsFound = NumObjectsFound + len(response['DetectorIds'])
@@ -157,10 +115,10 @@ for account in ChildAccounts:
 					'SecretAccessKey': account_credentials['SecretAccessKey'],
 					'SessionToken': account_credentials['SessionToken']
 				})
-				print("Found another detector {} in account {} in region {} bringing the total found to {} ".format(str(response['DetectorIds'][0]), account['AccountId'], region, str(NumObjectsFound)))
+				logging.warning(f"Found another detector {str(response['DetectorIds'][0])} in account {account['AccountId']} in region {region} bringing the total found to {str(NumObjectsFound)}")
 				# logging.info("Found another detector ("+str(response['DetectorIds'][0])+") in account "+account['AccountId']+" in region "+account['AccountId']+" bringing the total found to "+str(NumObjectsFound))
 			else:
-				print(ERASE_LINE, f"{Fore.RED}No luck in account: {account['AccountId']}{Fore.RESET}", end='\r')
+				print(ERASE_LINE, f"{Fore.RED}No luck in account: {account['AccountId']} in region {region}{Fore.RESET} -- {places_to_try} of {len(ChildAccounts) * len(gd_regions)}", end='\r')
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(f"Authorization Failure for account {account['AccountId']}")
@@ -206,12 +164,13 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 				pass
 			else:
 				print("Caught unexpected error regarding deleting invites")
-				pprint.pprint(e)
+				print(e)
 				sys.exit(9)
 	print("Removed {} GuardDuty Invites".format(len(all_gd_invites)))
+	num_of_gd_detectors = len(all_gd_detectors)
 	for y in range(len(all_gd_detectors)):
 		logging.info(f"Deleting detector-id: {all_gd_detectors[y]['DetectorIds']} from account {all_gd_detectors[y]['AccountId']} in region {all_gd_detectors[y]['Region']}")
-		print(f"Deleting detector in account {all_gd_detectors[y]['AccountId']} in region {all_gd_detectors[y]['Region']}")
+		print(f"Deleting detector in account {all_gd_detectors[y]['AccountId']} in region {all_gd_detectors[y]['Region']}. {num_of_gd_detectors}/{len(all_gd_detectors)}")
 		session_gd_child = boto3.Session(
 			aws_access_key_id=all_gd_detectors[y]['AccessKeyId'],
 			aws_secret_access_key=all_gd_detectors[y]['SecretAccessKey'],
@@ -223,7 +182,6 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 			DetectorId=str(all_gd_detectors[y]['DetectorIds'][0]), OnlyAssociated='FALSE')['Members']
 		for i in range(len(Member_Dict)):
 			MemberList.append(Member_Dict[i]['AccountId'])
-		# MemberList.append('704627748197')
 		try:
 			Output = 0
 			client_gd_child.disassociate_from_master_account(
@@ -250,6 +208,7 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 		else:
 			response=Inventory_Modules.delete_stack(StacksFound[y][0],StacksFound[y][1],StacksFound[y][2])
 		"""
+		num_of_gd_detectors -= 1
 
 print()
 print("Thank you for using this tool")
