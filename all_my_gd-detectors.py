@@ -52,7 +52,7 @@ else:
 	gd_regions = Inventory_Modules.get_regions2(session_gd, pRegions)
 all_gd_detectors = []
 all_gd_invites = []
-print("Searching {} accounts and {} regions".format(len(ChildAccounts), len(gd_regions)))
+print(f"Searching {len(ChildAccounts)} accounts and {len(gd_regions)} regions")
 
 sts_session = aws_acct.session
 sts_client = sts_session.client('sts')
@@ -103,7 +103,7 @@ for account in ChildAccounts:
 					'SessionToken': account_credentials['SessionToken']
 				})
 		try:
-			print(ERASE_LINE, f"Trying account {account['AccountId']} in region {region} -- {places_to_try} of {len(ChildAccounts) * len(gd_regions)}", end='\r')
+			print(f"{ERASE_LINE}Trying account {account['AccountId']} in region {region} -- {places_to_try} of {len(ChildAccounts) * len(gd_regions)}", end='\r')
 			response = client_aws.list_detectors()
 			if len(response['DetectorIds']) > 0:
 				NumObjectsFound = NumObjectsFound + len(response['DetectorIds'])
