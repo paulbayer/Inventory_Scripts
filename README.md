@@ -2,9 +2,11 @@ Project Overview
 ================
 Inventory_Scripts is a git repository to aggregate a number of scripts I've written, with the intent to make it easier to keep track of what's created and/ or running in any one of your (possibly) many AWS accounts... The scripts in this repo are discussed below.
 
+***Note***: *I'm trying to figure out the right way to support all types of customers with the same basic syntax for these scripts. Some scripts make sense to only run in one account. Some make sense to run across multiple accounts (possibly the whole Org) and some make sense to run across a subset of accounts within the org. Trying to come up with consistent parameter syntax for these different use-cases has been difficult. Any suggestions are appreciated.*  
+
 ***Note***:  *The tools I've written here have grown organically. They're presented below in an order I thought made sense, but they were definitely not created all at once, nor all kept up to the same level of perfection. I started this journey back in 2017 when there was no such thing as the Landing Zone, and Federation wasn't as prevalent a thing, so I assumed everyone would have profiles for every account they managed. Fast-forward to 2019 and we realize that most admin is done by authenticating to one account and using cross-account roles to authorize to other Child accounts. Hence - some of these files still work by profile, but I'm slowly moving everything over to being able to work with a Federated model. I still haven't baked in MFA token stuff, but I think I might just rely on the OS for that in the short term.*
 
-***Note***: *I've tried to make the "verbose" and "debugging" options consistent across all of the scripts. Apologies if they're not.*
+***Note***: *I've tried to make the "verbose" and "debugging" options consistent across all the scripts. Apologies if they're not.*
 
 ***Note***: *I've also made this repo available at https://github.com/paulbayer/Inventory_Scripts for customers.*
 
