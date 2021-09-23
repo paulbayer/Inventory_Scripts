@@ -280,7 +280,7 @@ class aws_acct_access:
 			return ()
 
 	def __str__(self):
-		return(f"Account #{self.acct_number} is a {self.AccountType} account with {len(self.ChildAccounts)} child accounts")
+		return(f"Account #{self.acct_number} is a {self.AccountType} account with {len(self.ChildAccounts)-1} child accounts")
 
 	def __repr__(self):
-		return(f"Account #{self.acct_number} is a {self.AccountType} account with {len(self.ChildAccounts)} child accounts")
+		return(f"Account #{self.acct_number} is a {self.AccountType} account with {len(self.ChildAccounts)-1} child accounts")

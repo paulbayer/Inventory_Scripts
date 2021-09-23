@@ -1,6 +1,16 @@
 
 
-def get_regions(fkey, fprofile="default"):
+def get_regions_old(fkey, fprofile="default"):
+	"""
+	This library is DEPRECATED.
+
+	This is a library function to get the AWS region names that correspond to the
+	fragments that may have been provided via the command line.
+
+	For instance
+		- if the user provides 'us-east', this function will return ['us-east-1','us-east-2'].
+		- if the user provides 'west', this function will return ['us-west-1', 'us-west-2', 'eu-west-1', etc.]
+	"""
 	import boto3
 	import logging
 
@@ -22,12 +32,24 @@ def get_regions(fkey, fprofile="default"):
 	return (RegionNames2)
 
 
-def get_regions2(faws_acct, fregion_list=None):
+def get_regions(faws_acct, fregion_list=None):
+	"""
+	This is a library function to get the AWS region names that correspond to the
+	fragments that may have been provided via the command line.
+
+	For instance
+		- if the user provides 'us-east', this function will return ['us-east-1','us-east-2'].
+		- if the user provides 'west', this function will return ['us-west-1', 'us-west-2', 'eu-west-1', etc.]
+
+	Thr first parameter to this library must provide a valid account object that includes a boto3 session,
+	so that regions can be looked up.
+	"""
 	import logging
 
 	session_ec2 = faws_acct.session
 	region_info = session_ec2.client('ec2')
-	regions = region_info.describe_regions()
+	regions = region_info.describe_regions(Filters=[
+		{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
 	RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
 	if fregion_list is None or "all" in fregion_list or "ALL" in fregion_list or "All" in fregion_list:
 		return (RegionNames)
@@ -41,7 +63,20 @@ def get_regions2(faws_acct, fregion_list=None):
 	return (RegionNames2)
 
 
-def get_ec2_regions(fkey=['all'], fprofile=None):
+def get_ec2_regions(fprofile=None, fregion_list=None):
+	"""
+	WILL BE DEPRECATED in favor of "get_regions"
+
+	This is a library function to get the AWS region names that correspond to the
+	fragments that may have been provided via the command line.
+
+	For instance
+		- if the user provides 'us-east', this function will return ['us-east-1','us-east-2'].
+		- if the user provides 'west', this function will return ['us-west-1', 'us-west-2', 'eu-west-1', etc.]
+
+	Thr first parameter to this library must provide a valid profile, which is used to instantiate a boto3 session,
+	so that regions can be looked up.
+	"""
 	import boto3
 	import logging
 
@@ -49,17 +84,15 @@ def get_ec2_regions(fkey=['all'], fprofile=None):
 	region_info = session_ec2.client('ec2')
 	regions = region_info.describe_regions(Filters=[
 		{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
-	RegionNames = []
-	for x in range(len(regions['Regions'])):
-		RegionNames.append(regions['Regions'][x]['RegionName'])
-	if "all" in fkey or "ALL" in fkey or 'All' in fkey:
+	RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
+	if fregion_list is None or "all" in fregion_list or "ALL" in fregion_list or 'All' in fregion_list:
 		return (RegionNames)
 	RegionNames2 = []
-	for x in fkey:
+	for x in fregion_list:
 		for y in RegionNames:
-			logging.info('Have %s | Looking for %s', y, x)
+			logging.info(f"Have {y} | Looking for {x}")
 			if y.find(x) >= 0:
-				logging.info('Found %s', y)
+				logging.info(f"Found {y}")
 				RegionNames2.append(y)
 	return (RegionNames2)
 
@@ -137,7 +170,9 @@ def validate_region(faws_acct, fRegion=None):
 def get_profiles(fSkipProfiles=None, fprofiles=None):
 	"""
 	We assume that the user of this function wants all profiles.
-	If they provide a list of profile strings (in fprofiles), then we compare those strings to the full list of profiles we have, and return those profiles that contain the strings they sent.
+	If they provide a list of profile strings (in fprofiles),
+	then we compare those strings to the full list of profiles we have,
+	and return those profiles that contain the strings they sent.
 	"""
 	import boto3
 	import logging
@@ -154,15 +189,17 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 	ProfileList = []
 	for x in fprofiles:
 		for y in my_profiles:
-			logging.info('Have %s| Looking for %s', y, x)
+			logging.info(f"Have {y}| Looking for {x}")
 			if y.find(x) >= 0:
-				logging.info('Found profile %s', y)
+				logging.info(f"Found profile {y}")
 				ProfileList.append(y)
 	return (ProfileList)
 
 
 def get_profiles2(fSkipProfiles=[None], fprofiles=None):
 	"""
+	***Deprecated Version***
+
 	We assume that the user of this function wants all profiles.
 	If they provide a list of profile strings (in fprofiles),
 	then we compare those strings to the full list of profiles we have,
@@ -1271,6 +1308,11 @@ def get_lambda_code_url(fprofile, fregion, fFunctionName):
 
 
 def find_private_hosted_zones(fProfile, fRegion):
+	"""
+	SOON TO BE DEPRECATED
+
+	This library script returns the hosted zones within an account and a region
+	"""
 	import boto3
 	session_r53 = boto3.Session(profile_name=fProfile, region_name=fRegion)
 	phz_info = session_r53.client('route53')
@@ -1278,12 +1320,21 @@ def find_private_hosted_zones(fProfile, fRegion):
 	return (hosted_zones)
 
 
-def find_private_hosted_zones2(ocredentials, fRegion):
-	import boto3
-	session_r53 = boto3.Session(region_name=fRegion, aws_access_key_id=ocredentials[
-		'AccessKeyId'], aws_secret_access_key=ocredentials['SecretAccessKey'], aws_session_token=ocredentials[
-		'SessionToken'])
-	phz_info = session_r53.client('route53')
+def find_private_hosted_zones2(faws_acct, fRegion=None):
+	"""
+	This library script returns the hosted zones within an account and a region
+	"""
+	import logging
+
+	if fRegion is None:
+		fRegion = faws_acct.session.region_name
+	logging.info(f"Finding the private hosted zones within account {faws_acct.acct_number} and region {fRegion}")
+	session_r53 = faws_acct.session
+	# session_r53 = boto3.Session(region_name=fRegion,
+	# 							aws_access_key_id=ocredentials['AccessKeyId'],
+	# 							aws_secret_access_key=ocredentials['SecretAccessKey'],
+	# 							aws_session_token=ocredentials['SessionToken'])
+	phz_info = session_r53.client('route53', region_name=fRegion)
 	hosted_zones = phz_info.list_hosted_zones()
 	return (hosted_zones)
 
