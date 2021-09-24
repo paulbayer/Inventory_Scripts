@@ -1339,12 +1339,41 @@ def find_private_hosted_zones2(faws_acct, fRegion=None):
 	return (hosted_zones)
 
 
-def find_load_balancers(fProfile, fRegion, fStackFragment='all', fStatus='all'):
+def find_load_balancers_old(fProfile, fRegion, fStackFragment='all', fStatus='all'):
 	import boto3
 	import logging
 
 	logging.warning("Profile: %s | Region: %s | Fragment: %s | Status: %s", fProfile, fRegion, fStackFragment, fStatus)
 	session_cfn = boto3.Session(profile_name=fProfile, region_name=fRegion)
+	lb_info = session_cfn.client('elbv2')
+	load_balancers = lb_info.describe_load_balancers()
+	load_balancers_Copy = []
+	if fStackFragment.lower() == 'all' and (fStatus.lower() == 'active' or fStatus.lower() == 'all'):
+		logging.warning("Found all the lbs in Profile: %s in Region: %s with Fragment: %s and Status: %s", fProfile, fRegion, fStackFragment, fStatus)
+		return (load_balancers['LoadBalancers'])
+	elif (fStackFragment.lower() == 'all'):
+		for load_balancer in load_balancers['LoadBalancers']:
+			if fStatus in load_balancer['State']['Code']:
+				logging.warning("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s",
+								load_balancers['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
+				load_balancers_Copy.append(load_balancer)
+	elif fStatus.lower() == 'active':
+		for load_balancer in load_balancers['LoadBalancers']:
+			if fStackFragment in load_balancer['LoadBalancerName']:
+				logging.warning("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s",
+								load_balancers['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
+				load_balancers_Copy.append(load_balancer)
+	return (load_balancers_Copy)
+
+
+def find_load_balancers(faws_acct, fRegion='us-east-1', fStackFragment='all', fStatus='all'):
+	"""
+	This library script returns the load balancers within an account and a region
+	"""
+	import logging
+
+	logging.info(f"Profile: %s | Region: %s | Fragment: %s | Status: %s", fProfile, fRegion, fStackFragment, fStatus)
+	session_cfn = faws_acct.session
 	lb_info = session_cfn.client('elbv2')
 	load_balancers = lb_info.describe_load_balancers()
 	load_balancers_Copy = []
@@ -1649,10 +1678,11 @@ def find_saml_components_in_acct(ocredentials, fRegion):
 	"""
 	import boto3
 	import logging
-	logging.error("Acct ID #: %s | Region: %s ", str(ocredentials['AccountNumber']), fRegion)
-	session_aws = boto3.Session(region_name=fRegion, aws_access_key_id=ocredentials[
-		'AccessKeyId'], aws_secret_access_key=ocredentials['SecretAccessKey'], aws_session_token=ocredentials[
-		'SessionToken'])
+	logging.info(f"Acct ID #: {str(ocredentials['AccountNumber'])} | Region: {fRegion}")
+	session_aws = boto3.Session(region_name=fRegion,
+								aws_access_key_id=ocredentials['AccessKeyId'],
+								aws_secret_access_key=ocredentials['SecretAccessKey'],
+								aws_session_token=ocredentials['SessionToken'])
 	iam_info = session_aws.client('iam')
 	saml_providers = iam_info.list_saml_providers()['SAMLProviderList']
 	return (saml_providers)

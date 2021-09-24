@@ -11,7 +11,7 @@ How to use:
 	args = parser.my_parser.parse_args()
 
 	pProfile = args.Profile
-	pRegionList = args.Region
+	pRegionList = args.Regions
 	verbose = args.loglevel
 
 """
@@ -37,15 +37,6 @@ class CommonArguments():
 			const=True,
 			default=False,		# Defaults to False, so the script would continue to run
 			help="Version #")
-
-
-	def singleprofile(self):
-		self.my_parser.add_argument(
-			"-p", "--profile",
-			dest="Profile",
-			metavar="Profile",
-			default=None,               # Default to boto3 defaults
-			help="Which single profile do you want to run against?")
 
 
 	def verbosity(self):
@@ -98,6 +89,15 @@ class CommonArguments():
 			metavar="Accounts to leave alone",
 			default=[],
 			help="These are the account numbers you don't want to screw with. Likely the core accounts.")
+
+
+	def singleprofile(self):
+		self.my_parser.add_argument(
+			"-p", "--profile",
+			dest="Profile",
+			metavar="Profile",
+			default=None,               # Default to boto3 defaults
+			help="Which single profile do you want to run against?")
 
 
 	def multiprofile(self):
