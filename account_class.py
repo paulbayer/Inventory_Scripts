@@ -33,14 +33,23 @@ So if we created a class object that represented the account:
 import boto3
 import logging
 # from Inventory_Modules import validate_region
-from botocore.exceptions import ProfileNotFound
+from botocore.exceptions import ProfileNotFound, ClientError
 
 
 def validate_region(faws_prelim_session, fRegion=None):
 	import logging
 
 	client_region = faws_prelim_session.client('ec2')
-	all_regions_list = [region_name['RegionName'] for region_name in client_region.describe_regions(AllRegions=True)['Regions']]
+	try:
+		all_regions_list = [region_name['RegionName'] for region_name in client_region.describe_regions(AllRegions=True)['Regions']]
+	except ClientError as myError:
+		message = (f"Access using these credentials didn't work. "
+		           f"Error Message: {myError}")
+		result = {
+			'Result': False,
+			'Message': message,
+			'Region': fRegion}
+		return (result)
 	if fRegion is None:  # Why are you trying to validate a region, and then didn't supply a region?
 		logging.info(f"No region supplied to check. Defaulting to 'us-east-1'")
 		fRegion = 'us-east-1'
@@ -87,20 +96,43 @@ class aws_acct_access:
 		Region: The region used to authenticate into this account. Important to find out if certain regions are allowed (opted-in).
 		ChildAccounts: If the account is a "Root", this is a listing of the child accounts
 	"""
-	def __init__(self, fProfile=None, fRegion='us-east-1'):
+	def __init__(self, fProfile=None, fRegion='us-east-1', account_key=None, account_secret=None, session_token=None):
 		logging.basicConfig(format="[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s")
 		# First thing's first: We need to validate that the region they sent us to use is valid for this account.
 		# Otherwise, all hell will break if it's not.
-		try:
+		UsingKeys = False
+		UsingSessionToken = False
+		if account_key is not None and account_secret is not None:
+			# Trying to instantiate a class, based on passed in credentials
+			UsingKeys = True
+			UsingSessionToken = False
+			if session_token is not None:
+				# Using a token-based role
+				UsingSessionToken = True
+				prelim_session = boto3.Session(aws_access_key_id=account_key, aws_secret_access_key=account_secret,
+				                               aws_session_token=session_token, region_name='us-east-1')
+			else:
+				# Not using a token-based role
+				prelim_session = boto3.Session(aws_access_key_id=account_key, aws_secret_access_key=account_secret,
+				                               region_name='us-east-1')
+		else:
+			# Not trying to use account_key_credentials
 			prelim_session = boto3.Session(profile_name=fProfile, region_name='us-east-1')
+		try:
 			result = validate_region(prelim_session, fRegion)
 			if result['Result'] is True:
-				self.session = boto3.Session(profile_name=fProfile, region_name=result['Region'])
+				if UsingSessionToken:
+					self.session = boto3.Session(aws_access_key_id=account_key, aws_secret_access_key=account_secret,
+					                             aws_session_token=session_token, region_name=result['Region'])
+				elif UsingKeys:
+					self.session = boto3.Session(aws_access_key_id=account_key, aws_secret_access_key=account_secret,
+					                             region_name=result['Region'])
+				else:
+					self.session = boto3.Session(profile_name=fProfile, region_name=result['Region'])
 				account_access_successful = True
 				self.AccountStatus = 'ACTIVE'
 			else:
-				logging.error(
-					f"The region supplied '{fRegion}' to this function is not a valid region for this account")
+				logging.error(result['Message'])
 				account_access_successful = False
 				self.AccountStatus = 'INACTIVE'
 		except ProfileNotFound as my_Error:
