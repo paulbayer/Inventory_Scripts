@@ -717,6 +717,7 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 				logging.info(f"Trying to access account {fChildAccount} using parent profile: {faws_acct.session.profile_name} assuming role: {role}")
 			else:
 				logging.info(f"Trying to access account {fChildAccount} using account number {faws_acct.acct_number} assuming role: {role}")
+			logging.debug("Try this")
 			role_arn = f"arn:aws:iam::{fChildAccount}:role/{role}"
 			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Test-ChildAccount-Access")['Credentials']
 			# If we were successful up to this point, then we'll short-cut everything and just return the credentials that worked
@@ -727,12 +728,21 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 			account_credentials['AccountId'] = fChildAccount
 			account_credentials['Region'] = role
 			account_credentials['Role'] = role
+			account_credentials['AccessError'] = False
 			return (account_credentials)
 		except ClientError as my_Error:
 			logging.info(my_Error)
 			continue
+		except Exception as my_Error:
+			logging.info(my_Error)
+			continue
+		except:
+			raise Exception
 	# Returns a dict object since that's what's expected
 	# It will only get to the part below if the child isn't accessed properly using the roles already defined
+	logging.debug(f"Failure:"
+	              f"{fRoleList}"
+	              f"{account_credentials}")
 	account_credentials['AccessError'] = True
 	return (account_credentials)
 
@@ -1800,7 +1810,7 @@ def delete_stackset(fProfile, fRegion, fStackSetName):
 
 	session_cfn = boto3.Session(profile_name=fProfile, region_name=fRegion)
 	client_cfn = session_cfn.client('cloudformation')
-	logging.warning("Profile: %s | Region: %s | StackSetName: %s", fProfile, fRegion, fStackSetName)
+	logging.warning(f"Profile: {fProfile} | Region: {fRegion} | StackSetName: {fStackSetName}")
 	response = client_cfn.delete_stack_set(StackSetName=fStackSetName)
 	return (response)
 

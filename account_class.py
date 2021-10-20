@@ -32,7 +32,6 @@ So if we created a class object that represented the account:
 """
 import boto3
 import logging
-# from Inventory_Modules import validate_region
 from botocore.exceptions import ProfileNotFound, ClientError
 
 
@@ -96,24 +95,27 @@ class aws_acct_access:
 		Region: The region used to authenticate into this account. Important to find out if certain regions are allowed (opted-in).
 		ChildAccounts: If the account is a "Root", this is a listing of the child accounts
 	"""
-	def __init__(self, fProfile=None, fRegion='us-east-1', account_key=None, account_secret=None, session_token=None):
+	def __init__(self, fProfile=None, fRegion='us-east-1', ocredentials=None):
 		logging.basicConfig(format="[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s")
 		# First thing's first: We need to validate that the region they sent us to use is valid for this account.
 		# Otherwise, all hell will break if it's not.
 		UsingKeys = False
 		UsingSessionToken = False
-		if account_key is not None and account_secret is not None:
+		if ocredentials is not None:
 			# Trying to instantiate a class, based on passed in credentials
 			UsingKeys = True
 			UsingSessionToken = False
-			if session_token is not None:
+			if ocredentials['SessionToken'] is not None:
 				# Using a token-based role
 				UsingSessionToken = True
-				prelim_session = boto3.Session(aws_access_key_id=account_key, aws_secret_access_key=account_secret,
-				                               aws_session_token=session_token, region_name='us-east-1')
+				prelim_session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+				                               aws_secret_access_key=ocredentials['SecretAccessKey'],
+				                               aws_session_token=ocredentials['SessionToken'],
+				                               region_name='us-east-1')
 			else:
 				# Not using a token-based role
-				prelim_session = boto3.Session(aws_access_key_id=account_key, aws_secret_access_key=account_secret,
+				prelim_session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+				                               aws_secret_access_key=ocredentials['SecretAccessKey'],
 				                               region_name='us-east-1')
 		else:
 			# Not trying to use account_key_credentials
@@ -122,11 +124,14 @@ class aws_acct_access:
 			result = validate_region(prelim_session, fRegion)
 			if result['Result'] is True:
 				if UsingSessionToken:
-					self.session = boto3.Session(aws_access_key_id=account_key, aws_secret_access_key=account_secret,
-					                             aws_session_token=session_token, region_name=result['Region'])
+					self.session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+					                             aws_secret_access_key=ocredentials['SecretAccessKey'],
+					                             aws_session_token=ocredentials['SessionToken'],
+					                             region_name='us-east-1')
 				elif UsingKeys:
-					self.session = boto3.Session(aws_access_key_id=account_key, aws_secret_access_key=account_secret,
-					                             region_name=result['Region'])
+					self.session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+					                             aws_secret_access_key=ocredentials['SecretAccessKey'],
+					                             region_name='us-east-1')
 				else:
 					self.session = boto3.Session(profile_name=fProfile, region_name=result['Region'])
 				account_access_successful = True

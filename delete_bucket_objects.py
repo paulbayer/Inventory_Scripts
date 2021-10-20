@@ -5,17 +5,14 @@ import sys
 import logging
 import pprint
 import argparse
+from ArgumentsClass import CommonArguments
+from account_class import aws_acct_access
 from botocore.exceptions import ClientError
 
-parser = argparse.ArgumentParser(
-	description="Script to empty out and possibly delete an S3 bucket.",
-	prefix_chars='-+/')
-parser.my_parser.add_argument(
-	"-p", "--profile",
-	dest="pProfile",
-	metavar="profile to use",
-	default="default",
-	help="To specify a profile, use this parameter.")
+parser = CommonArguments()
+parser.singleprofile()
+parser.singleregion()
+parser.verbosity()
 parser.my_parser.add_argument(
 	"-b", "--bucket",
 	dest="pBucketName",
@@ -29,44 +26,18 @@ parser.my_parser.add_argument(
 	dest="pForceQuit",
 	const=True,
 	default=False)
-parser.my_parser.add_argument(
-	'-v',
-	help="Be verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.ERROR,  # args.loglevel = 40
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-vv', '--verbose',
-	help="Be MORE verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.WARNING,  # args.loglevel = 30
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-vvv',
-	help="Print INFO level statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.INFO,  # args.loglevel = 20
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-d', '--debug',
-	help="Print LOTS of debugging statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.DEBUG,  # args.loglevel = 10
-	default=logging.CRITICAL)
 args = parser.my_parser.parse_args()
 
-pProfile = args.pProfile
+pProfile = args.Profile
+pRegion = args.Region
 pBucketDelete = args.pForceQuit
 pBucketName = args.pBucketName
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
+verbose = args.loglevel
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 
-session = boto3.Session(profile_name=pProfile)
-s3 = session.resource(service_name='s3')
+aws_acct = aws_acct_access(pProfile)
+s3 = aws_acct.session.resource(service_name='s3')
 
 print()
 print(f"This script is about to delete all versions of all objects from bucket {pBucketName}")
