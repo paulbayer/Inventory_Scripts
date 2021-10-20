@@ -5,8 +5,9 @@ import sys
 import pprint
 import datetime
 import Inventory_Modules
-import argparse
+from ArgumentsClass import CommonArguments
 import boto3
+from account_class import aws_acct_access
 from colorama import init, Fore, Back, Style
 from botocore.exceptions import ClientError, NoCredentialsError
 
@@ -14,15 +15,10 @@ import logging
 
 init()
 
-parser = argparse.ArgumentParser(
-	description="This script finds vpcs (or only default vpcs) in all accounts within our Organization.",
-	prefix_chars='-+/')
-parser.my_parser.add_argument(
-	"-p", "--profile",
-	dest="pProfile",
-	metavar="profile to use",
-	default="default",
-	help="Preferred to specify a root profile. Default will be all Master profiles")
+parser = CommonArguments()
+parser.multiprofile()
+parser.multiregion()
+parser.verbosity()
 parser.my_parser.add_argument(
 	"--default",
 	dest="pDefault",
@@ -31,48 +27,13 @@ parser.my_parser.add_argument(
 	default=False,
 	const=True,
 	help="Flag to determine whether we're looking for default VPCs only.")
-parser.my_parser.add_argument(
-	"-r", "--region",
-	nargs="*",
-	dest="pRegion",
-	metavar="region name string",
-	default=["us-east-1"],
-	help="String fragment of the region(s) you want to check for resources.")
-parser.my_parser.add_argument(
-	'-d', '--debug',
-	help="Print LOTS of debugging statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.DEBUG,  # args.loglevel = 10
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-vvv',
-	help="Print INFO level statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.INFO,  # args.loglevel = 20
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-vv', '--verbose',
-	help="Be MORE verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.WARNING,  # args.loglevel = 30
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-	'-v',
-	help="Be verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.ERROR,  # args.loglevel = 40
-	default=logging.CRITICAL)  # args.loglevel = 50
 args = parser.my_parser.parse_args()
 
-pProfile = args.pProfile
-pRegionList = args.pRegion
+pProfiles = args.Profiles
+pRegionList = args.Regions
 pDefault = args.pDefault
 verbose = args.loglevel
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)30s() ] %(message)s")
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
 
 ##########################
 ERASE_LINE = '\x1b[2K'
@@ -84,9 +45,9 @@ print()
 fmt = '%-20s %-15s %-21s %-20s %-12s %-10s'
 print(fmt % ("Account", "Region", "Vpc ID", "CIDR", "Is Default?", "Vpc Name"))
 print(fmt % ("-------", "------", "------", "----", "-----------", "--------"))
-RegionList = Inventory_Modules.get_ec2_regions(pRegionList, pProfile)
+# RegionList = Inventory_Modules.get_ec2_regions(pRegionList, pProfiles)
 SoughtAllProfiles = False
-AllChildAccounts = []
+AllChildAccounts = list()
 AdminRole = "AWSCloudFormationStackSetExecutionRole"
 if pDefault:
 	vpctype = "default"
@@ -95,78 +56,80 @@ else:
 	# Totally cosmetic, but I'm an idiot that spends an hour to figure out how best to do this.
 	vpctype = "\b"
 
-if pProfile in ['all', 'ALL', 'All']:
-	# print(Fore.RED+"Doesn't yet work to specify 'all' profiles, since it takes a long time to go through and find only those profiles that either Org Masters, or stand-alone accounts",Fore.RESET)
-	# sys.exit(1)
-	SoughtAllProfiles = True
-	print("Since you specified 'all' profiles, we going to look through ALL of your profiles. Then we go through and determine which profiles represent the Master of an Organization and which are stand-alone accounts. This will enable us to go through all accounts you have access to for inventorying.")
-	logging.error("Time: %s", datetime.datetime.now())
-	ProfileList = Inventory_Modules.get_parent_profiles('all', SkipProfiles)
-	logging.error("Time: %s", datetime.datetime.now())
-	logging.error("Found %s root profiles", len(ProfileList))
-	# logging.info("Profiles Returned from function get_parent_profiles: %s",pProfile)
-else:
-	ProfileList = [pProfile]
+# if pProfiles in ['all', 'ALL', 'All']:
+# 	# print(Fore.RED+"Doesn't yet work to specify 'all' profiles, since it takes a long time to go through and find only those profiles that either Org Masters, or stand-alone accounts",Fore.RESET)
+# 	# sys.exit(1)
+# 	SoughtAllProfiles = True
+# 	print("Since you specified 'all' profiles, we going to look through ALL of your profiles. Then we go through and determine which profiles represent the Master of an Organization and which are stand-alone accounts. This will enable us to go through all accounts you have access to for inventorying.")
+# 	logging.error("Time: %s", datetime.datetime.now())
+# 	ProfileList = Inventory_Modules.get_parent_profiles('all', SkipProfiles)
+# 	logging.error("Time: %s", datetime.datetime.now())
+# 	logging.error("Found %s root profiles", len(ProfileList))
+# 	# logging.info("Profiles Returned from function get_parent_profiles: %s",pProfile)
+# else:
+# 	ProfileList = [pProfiles]
 
-for profile in ProfileList:
+for profile in pProfiles:
+	aws_acct = aws_acct_access(profile)
 	print(ERASE_LINE, f"Gathering all account data from {profile} profile", end="\r")
 	# if not SoughtAllProfiles:
 	logging.info("Checking to see which profiles are root profiles")
-	ProfileIsRoot = Inventory_Modules.find_if_org_root(profile)
-	logging.info("---%s---", ProfileIsRoot)
+	ProfileIsRoot = aws_acct.AccountType
+	logging.info(f"---{ProfileIsRoot}---")
 	if ProfileIsRoot == 'Root':
-		logging.info("Parent Profile name: %s", profile)
-		ChildAccounts = Inventory_Modules.find_child_accounts2(profile)
+		logging.info(f"Parent Profile name: {profile}")
+		ChildAccounts = aws_acct.ChildAccounts
 		# ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
-		AllChildAccounts = AllChildAccounts+ChildAccounts
+		AllChildAccounts.extend(ChildAccounts)
 	elif ProfileIsRoot == 'StandAlone':
-		logging.info("Parent Profile name: %s", profile)
-		MyAcctNumber = Inventory_Modules.find_account_number(profile)
-		Accounts = [{'ParentProfile': profile, 'AccountId': MyAcctNumber, 'AccountEmail': 'noonecares@doesntmatter.com'}]
-		AllChildAccounts = AllChildAccounts+Accounts
+		logging.info(f"Parent Profile name: {profile}")
+		MyAcctNumber = aws_acct.acct_number
+		Accounts = [{'ParentProfile': profile,
+		             'AccountId': MyAcctNumber,
+		             'AccountEmail': 'noonecares@doesntmatter.com'}]
+		AllChildAccounts.extend(Accounts)
 	elif ProfileIsRoot == 'Child':
-		logging.info("Profile name: %s is a child profile", profile)
-		MyAcctNumber = Inventory_Modules.find_account_number(profile)
-		Accounts = [{'ParentProfile': profile, 'AccountId': MyAcctNumber, 'AccountEmail': 'noonecares@doesntmatter.com'}]
-		AllChildAccounts = Accounts
+		logging.info(f"Profile name: {profile} is a child profile")
+		MyAcctNumber = aws_acct.acct_number
+		Accounts = [{'ParentProfile': profile,
+		             'AccountId': MyAcctNumber,
+		             'AccountEmail': 'noonecares@doesntmatter.com'}]
+		AllChildAccounts.extend(Accounts)
 
-logging.info(f"# of Regions: {len(RegionList)}")
-logging.info(f"# of Master Accounts: {len(ProfileList)}")
+logging.info(f"# of Regions: {len(pRegionList)}")
+logging.info(f"# of Master Accounts: {len(pProfiles)}")
 logging.info(f"# of Child Accounts: {len(AllChildAccounts)}")
 
 
 for i in range(len(AllChildAccounts)):
-	aws_session = boto3.Session(profile_name=AllChildAccounts[i]['ParentProfile'])
-	sts_client = aws_session.client('sts')
-	logging.info("Connecting to account %s using Parent Profile %s:", AllChildAccounts[i]['AccountId'], AllChildAccounts[i]['ParentProfile'])
-	role_arn = f"arn:aws:iam::{AllChildAccounts[i]['AccountId']}:role/{AdminRole}"
+	# aws_acct = aws_acct_access(AllChildAccounts[i]['ParentProfile'])
+	# sts_client = aws_acct.session.client('sts')
+	# logging.info(f"Connecting to account {aws_acct.acct_number} using Parent Profile %s:", AllChildAccounts[i]['AccountId'], AllChildAccounts[i]['ParentProfile'])
 	try:
-		account_credentials = sts_client.assume_role(
-			RoleArn=role_arn,
-			RoleSessionName="Find-Instances")['Credentials']
-		account_credentials['AccountNumber'] = AllChildAccounts[i]['AccountId']
+		account_credentials = Inventory_Modules.get_child_access3(aws_acct, AllChildAccounts[i]['AccountId'])
+		aws_acct_child = aws_acct_access(ocredentials=account_credentials)
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print(f"{AllChildAccounts[i]['ParentProfile']}: Authorization Failure for account {AllChildAccounts[i]['AccountId']}")
+			print(f"Authorization Failure for account {AllChildAccounts[i]['AccountId']}")
 		elif str(my_Error).find("AccessDenied") > 0:
-			print(f"{AllChildAccounts[i]['ParentProfile']}: Access Denied Failure for account {AllChildAccounts[i]['AccountId']}")
+			print(f"Access Denied Failure for account {AllChildAccounts[i]['AccountId']}")
 			print(my_Error)
 		else:
-			print(f"{AllChildAccounts[i]['ParentProfile']}: Other kind of failure for account {AllChildAccounts[i]['AccountId']}")
+			print(f"Other kind of failure for account {AllChildAccounts[i]['AccountId']}")
 			print(my_Error)
 			break
 
 	# NumRegions += 1
 	# NumProfilesInvestigated = 0	# I only care about the last run - so I don't get profiles * regions.
-	for region in RegionList:
+	for region in pRegionList:
 		# NumProfilesInvestigated += 1
 		try:
-			Vpcs = Inventory_Modules.find_account_vpcs(account_credentials, region, pDefault)
+			Vpcs = Inventory_Modules.find_account_vpcs2(aws_acct_child, region, pDefault)
 			VpcNum = len(Vpcs['Vpcs']) if Vpcs['Vpcs'] == [] else 0
 			print(ERASE_LINE, f"Looking in account {Fore.RED}{AllChildAccounts[i]['AccountId']}", f"{Fore.RESET}in {region} where we found {VpcNum} {vpctype} Vpcs", end='\r')
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
-				print(ERASE_LINE, f"{profile} :Authorization Failure for account: {AllChildAccounts[i]['AccountId']} in region {region}")
+				print(ERASE_LINE, f"Authorization Failure for account: {AllChildAccounts[i]['AccountId']} in region {region}")
 		except TypeError as my_Error:
 			print(my_Error)
 			pass
@@ -187,6 +150,6 @@ for i in range(len(AllChildAccounts)):
 			continue
 
 print(ERASE_LINE)
-print("Found {} {} Vpcs across {} accounts across {} regions".format(NumVpcsFound, vpctype, len(AllChildAccounts), len(RegionList)))
+print("Found {} {} Vpcs across {} accounts across {} regions".format(NumVpcsFound, vpctype, len(AllChildAccounts), len(pRegionList)))
 print()
 print("Thank you for using this script.")

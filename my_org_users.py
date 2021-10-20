@@ -42,7 +42,7 @@ args = parser.my_parser.parse_args()
 	# 1: credentials file only
 	# 2: config file only
 	# 3: credentials and config files
-pProfile = args.pProfile
+pProfile = args.pProfiles
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel)
 # RegionList=[]

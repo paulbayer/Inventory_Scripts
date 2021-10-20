@@ -930,6 +930,26 @@ def find_account_vpcs(ocredentials, fRegion, defaultOnly=False):
 	return (response)
 
 
+def find_account_vpcs2(faws_acct, fRegion, defaultOnly=False):
+	"""
+	faws_acct uses the account_class object
+	"""
+	import logging
+
+	client_vpc = faws_acct.session.client('ec2')
+	if defaultOnly:
+		logging.warning("Looking for default VPCs in account %s from Region %s", ocredentials['AccountNumber'], fRegion)
+		logging.info("defaultOnly: %s", str(defaultOnly))
+		response = client_vpc.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
+	else:
+		logging.warning(f"Looking for all VPCs in account {faws_acct.acct_num} from Region {fRegion}")
+		logging.info("defaultOnly: %s", str(defaultOnly))
+		response = client_vpc.describe_vpcs()
+	# TODO: Enable pagination
+	logging.warning("We found %s VPCs", len(response['Vpcs']))
+	return (response)
+
+
 def find_config_recorders(ocredentials, fRegion):
 	"""
 	ocredentials is an object with the following structure:

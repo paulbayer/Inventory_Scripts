@@ -76,7 +76,7 @@ parser.my_parser.add_argument(
 	default=logging.CRITICAL)  # args.loglevel = 50
 args = parser.my_parser.parse_args()
 
-pProfile = args.pProfile
+pProfile = args.pProfiles
 pAccount = args.pAccount
 pRoleNameToAdd = args.pRoleNameToAdd
 pRoleNameToRemove = args.pRoleNameToRemove

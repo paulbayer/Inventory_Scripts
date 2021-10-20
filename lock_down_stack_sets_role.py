@@ -81,7 +81,7 @@ parser.my_parser.add_argument(
 	const=logging.DEBUG)  # args.loglevel = 20
 args = parser.my_parser.parse_args()
 
-pProfile = args.pProfile
+pProfile = args.pProfiles
 pTargetRole = args.pTargetRole
 pAccessRole = args.pAccessRole
 pLock = args.pLock

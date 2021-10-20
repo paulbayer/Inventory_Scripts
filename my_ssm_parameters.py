@@ -79,7 +79,7 @@ parser.my_parser.add_argument(
 	default=logging.CRITICAL)  # args.loglevel = 50
 args = parser.my_parser.parse_args()
 
-pProfile = args.pProfile
+pProfile = args.pProfiles
 pRegion = args.pRegion
 ALZParam = args.ALZParam
 DeletionRun = args.DeletionRun
