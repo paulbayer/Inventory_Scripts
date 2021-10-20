@@ -63,6 +63,11 @@ group.add_argument(
 	default=None,
 	help="Rolename to be removed from a number of accounts")
 parser.add_argument(
+	'-u', '--RoleFragmentToUse',
+	metavar="Role Fragment to Use",
+	help="Role to look for to use",
+	dest="pAccessRole")
+parser.add_argument(
 	'-v',
 	help="Be verbose",
 	action="store_const",
@@ -97,6 +102,7 @@ pAccount=args.pAccount
 pRoleNameToAdd=args.pRoleNameToAdd
 pRoleNameToRemove=args.pRoleNameToRemove
 pRoleNameToCheck=args.pRoleNameToCheck
+pAccessRole=args.pAccessRole
 verbose=args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
 
@@ -235,15 +241,29 @@ def roleexists(ocredentials, frole):
 	return(False)
 
 
+##########################
 print()
 RootAccountNumber = Inventory_Modules.find_account_number(pProfile)
-sts_session = boto3.Session(profile_name=pProfile)
-sts_client = sts_session.client('sts')
+aws_session = boto3.Session(profile_name=pProfile)
+sts_client = aws_session.client('sts')
 UpdatedAccounts=0
 Results=[]
 for account in ChildAccounts:
 	ConnectionSuccess = False
-	rolenames=['AWSCloudFormationStackSetExecutionRole', 'OrganizationalFullAccess', 'OrganizationAccountAccessRole', 'AWSControlTowerExecution', 'Owner', 'admin-crossAccount','AdministratorAccess']
+	Check_account_credentials = sts_client.assume_role(
+			RoleArn=f"arn:aws:iam::{account['AccountId']}:role/account_roles",
+			RoleSessionName="RegistrationScript")['Credentials']
+	Check_account_credentials['Account'] = account['AccountId']
+	iam_session = boto3.Session(aws_access_key_id=Check_account_credentials['AccessKeyId'],
+	                            aws_secret_access_key=Check_account_credentials['SecretAccessKey'],
+	                            aws_session_token=Check_account_credentials['SessionToken'])
+	iam_client = iam_session.client('iam')
+	AvailableRoles = iam_client.list_roles()['Roles']
+	for role in AvailableRoles:
+		if role['RoleName'].find(pAccessRole) >= 0:
+			RoleToUse = role
+	rolenames = [RoleToUse]
+	# rolenames=['AWSCloudFormationStackSetExecutionRole', 'OrganizationalFullAccess', 'OrganizationAccountAccessRole', 'AWSControlTowerExecution', 'Owner', 'admin-crossAccount','AdministratorAccess']
 	'''
 	The comment below exists just to show the structure of the ARN that we build via code.
 	'''
