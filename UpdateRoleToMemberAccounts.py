@@ -262,7 +262,7 @@ Results = []
 for account in ChildAccounts:
     ConnectionSuccess = False
     Check_account_credentials = sts_client.assume_role(
-        RoleArn=f"arn:aws:iam::{account['AccountId']}:role/new_role",
+        RoleArn=f"arn:aws:iam::{account['AccountId']}:role/account_roles",
         RoleSessionName="RegistrationScript")['Credentials']
     Check_account_credentials['Account'] = account['AccountId']
     iam_session = boto3.Session(aws_access_key_id=Check_account_credentials['AccessKeyId'],
