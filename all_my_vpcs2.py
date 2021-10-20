@@ -107,6 +107,8 @@ for i in range(len(AllChildAccounts)):
 	# logging.info(f"Connecting to account {aws_acct.acct_number} using Parent Profile %s:", AllChildAccounts[i]['AccountId'], AllChildAccounts[i]['ParentProfile'])
 	try:
 		account_credentials = Inventory_Modules.get_child_access3(aws_acct, AllChildAccounts[i]['AccountId'])
+		if account_credentials['AccessError']:
+			print(f"Accessing account {AllChildAccounts[i]['AccountId']} with {aws_acct.acct_number} failed...")
 		aws_acct_child = aws_acct_access(ocredentials=account_credentials)
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
