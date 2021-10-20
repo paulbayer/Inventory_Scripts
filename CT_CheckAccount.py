@@ -80,26 +80,7 @@ else:
 	# TODO: This is a larger problem of Control Tower not publishing its regions via an API like other services do.
 
 ERASE_LINE = '\x1b[2K'
-aws_acct = aws_acct_access(pProfile)
 
-print(f"Gathering all account data from {pProfile} profile")
-logging.info(f"Confirming that this profile {pProfile} represents a Management Account")
-# ProfileIsRoot = Inventory_Modules.find_if_org_root(pProfile)
-# logging.info("---%s---", ProfileIsRoot)
-
-if aws_acct.AccountType.lower() == 'root' and pChildAccountId is None:
-	# Creates a list of the account numbers in the Org.
-	ChildAccountList = [d['AccountId'] for d in aws_acct.ChildAccounts]
-	print(f"Since you didn't specify a specific account, we'll check all {len(aws_acct.ChildAccounts)} accounts in the Org.")
-elif aws_acct.AccountType.lower() == 'root' and pChildAccountId is not None:
-	print(f"Account {aws_acct.acct_number} is a {aws_acct.AccountType} account.\n"
-	      f"We're specifically checking to validate that account {pChildAccountId} can be adopted into the Landing Zone")
-	ChildAccountList = [pChildAccountId]
-else:
-	sys.exit(f"Account {aws_acct.acct_number} is a {aws_acct.AccountType} account.\n"
-	         f" This script should be run with Management Account credentials.")
-
-print()
 ExplainMessage = """
 Objective: This script aims to identify issues and make it easier to "adopt" an existing account into a Control Tower environment.
 
@@ -139,6 +120,28 @@ SNS topic created for AWS Config -- not yet implemented
 if pExplain:
 	print(ExplainMessage)
 	sys.exit("Exiting after Script Explanation...")
+
+
+aws_acct = aws_acct_access(pProfile)
+
+print(f"Gathering all account data from {pProfile} profile")
+logging.info(f"Confirming that this profile {pProfile} represents a Management Account")
+# ProfileIsRoot = Inventory_Modules.find_if_org_root(pProfile)
+# logging.info("---%s---", ProfileIsRoot)
+
+if aws_acct.AccountType.lower() == 'root' and pChildAccountId is None:
+	# Creates a list of the account numbers in the Org.
+	ChildAccountList = [d['AccountId'] for d in aws_acct.ChildAccounts]
+	print(f"Since you didn't specify a specific account, we'll check all {len(aws_acct.ChildAccounts)} accounts in the Org.")
+elif aws_acct.AccountType.lower() == 'root' and pChildAccountId is not None:
+	print(f"Account {aws_acct.acct_number} is a {aws_acct.AccountType} account.\n"
+	      f"We're specifically checking to validate that account {pChildAccountId} can be adopted into the Landing Zone")
+	ChildAccountList = [pChildAccountId]
+else:
+	sys.exit(f"Account {aws_acct.acct_number} is a {aws_acct.AccountType} account.\n"
+	         f" This script should be run with Management Account credentials.")
+
+print()
 
 # Step 0 -
 # 0. The Child account MUST allow the Management account access into the Child IAM role called "AWSControlTowerExecution"
