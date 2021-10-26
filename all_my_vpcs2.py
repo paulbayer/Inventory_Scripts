@@ -122,7 +122,7 @@ else:
 	ProfileList=[pProfile]
 
 for profile in ProfileList:
-	print(ERASE_LINE,"Gathering all account data from {} profile".format(profile),end="\r")
+	print(ERASE_LINE,"Gathering all account data from {} profile".format(profile), end="\r")
 	# if not SoughtAllProfiles:
 	logging.info("Checking to see which profiles are root profiles")
 	ProfileIsRoot=Inventory_Modules.find_if_org_root(profile)
