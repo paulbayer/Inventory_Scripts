@@ -1834,6 +1834,19 @@ def delete_stackset(fProfile, fRegion, fStackSetName):
 	response = client_cfn.delete_stack_set(StackSetName=fStackSetName)
 	return (response)
 
+def delete_stackset2(faws_acct, fRegion, fStackSetName):
+	"""
+	faws_acct is an object representing the account we're working in
+	fRegion is a string
+	fStackSetName is a string
+	"""
+	import logging
+
+	client_cfn = faws_acct.session.client('cloudformation')
+	logging.warning(f"Acct Number: {faws_acct.acct_number} | Region: {fRegion} | StackSetName: {fStackSetName}")
+	response = client_cfn.delete_stack_set(StackSetName=fStackSetName)
+	return (response)
+
 
 def find_stack_instances(fProfile, fRegion, fStackSetName, fStatus='CURRENT'):
 	"""

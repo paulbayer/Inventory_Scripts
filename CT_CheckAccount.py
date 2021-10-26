@@ -201,12 +201,6 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 	print(f"Confirming we have the necessary cross-account access to account {fChildAccountId}")
 	try:
 		account_credentials = Inventory_Modules.get_child_access3(aws_account, fChildAccountId, 'us-east-1', CTRoles)
-		if 'AccessError' in account_credentials.keys():
-			print(f"{Fore.RED}We weren't able to connect to the Child Account from this Management Account. Please check the role Trust Policy and re-run this script.{Fore.RESET}")
-			print(f"The following list of roles were tried, but none were allowed access to account {fChildAccountId} using the {aws_account.acct_number} profile")
-			print(Fore.RED, CTRoles, Fore.RESET)
-			ProcessStatus[Step]['Success'] = False
-			sys.exit("Exiting due to cross-account access failure")
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
 			# TODO: This whole section is waiting on an enhancement. Until then, we have to assume that ProServe or someone familiar with Control Tower is running this script
@@ -231,7 +225,15 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 			print(my_Error)
 			ProcessStatus[Step]['Success'] = False
 			sys.exit("Exiting for other failure...")
-	
+	finally:
+		if account_credentials['AccessError']:
+			print(f"{Fore.RED}We weren't able to connect to the Child Account from this Management Account. Please check the role Trust Policy and re-run this script.{Fore.RESET}")
+			print(f"The following list of roles were tried, but none were allowed access to account {fChildAccountId} using the {aws_account.acct_number} profile")
+			print(Fore.RED, CTRoles, Fore.RESET)
+			logging.debug(account_credentials)
+			ProcessStatus[Step]['Success'] = False
+			sys.exit("Exiting due to cross-account access failure")
+
 	logging.info("Was able to successfully connect using the credentials... ")
 	print()
 	print(f"Confirmed the role {Fore.GREEN}{account_credentials['Role']}{Fore.RESET}"

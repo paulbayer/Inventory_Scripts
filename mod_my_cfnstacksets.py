@@ -175,8 +175,20 @@ logging.error(f"Found {len(StackSetNames)} StackSetNames that matched your fragm
 # Now go through those stacksets and determine the instances, made up of accounts and regions
 for i in range(len(StackSetNames)):
 	print(f"{ERASE_LINE}Looking through {i+1} of {len(StackSetNames)} stacksets found with {pStackfrag} string in them", end='\r')
+	# TODO: Creating the list to delete this way prohibits this script from including stacksets that are already empty. This should be fixed.
 	StackInstances = Inventory_Modules.find_stack_instances2(aws_acct, pRegion, StackSetNames[i]['StackSetName'])
 	logging.warning(f"Found {len(StackInstances)} Stack Instances within the StackSet {StackSetNames[i]['StackSetName']}")
+	if len(StackInstances) == 0 and not pdryrun and pAccountRemoveList is None and pRegionRemove is None:
+		logging.warning(f"While we didn't find any stack instances within {StackSetNames[i]['StackSetName']}, we assume you want to delete it, even when it's empty")
+		AllInstances.append({
+			'ParentAccountNumber': aws_acct.acct_number,
+			'ChildAccount'       : None,
+			'ChildRegion'        : None,
+			# This next line finds the value of the Child StackName (which includes a random GUID) and assigns it within our dict
+			# 'StackName': StackInstance['StackId'][StackInstance['StackId'].find('/')+1:StackInstance['StackId'].find('/', StackInstance['StackId'].find('/')+1)],
+			'StackStatus'        : None,
+			'StackSetName'       : StackSetNames[i]['StackSetName']
+			})
 	for StackInstance in StackInstances:
 		if 'StackId' not in StackInstance.keys():
 			logging.info(f"The stack instance found {StackInstance} doesn't have a stackid associated. Which means it's never been deployed and probably OUTDATED")
@@ -191,7 +203,7 @@ for i in range(len(StackSetNames)):
 			logging.debug(f"This is ChildRegion: {StackInstance['Region']}")
 			# logging.debug("This is StackId: %s", str(StackInstance['StackId']))
 
-			if  pRegionRemove is None or (StackInstance['Region'] in pRegionRemove):
+			if pRegionRemove is None or (StackInstance['Region'] in pRegionRemove):
 				AllInstances.append({
 					'ParentAccountNumber': aws_acct.acct_number,
 					'ChildAccount'       : StackInstance['Account'],
@@ -199,12 +211,12 @@ for i in range(len(StackSetNames)):
 					# This next line finds the value of the Child StackName (which includes a random GUID) and assigns it within our dict
 					# 'StackName': StackInstance['StackId'][StackInstance['StackId'].find('/')+1:StackInstance['StackId'].find('/', StackInstance['StackId'].find('/')+1)],
 					'StackStatus'        : StackInstance['Status'],
-					'StackSetName'       : StackInstance['StackSetId'][:StackInstance['StackSetId'].find(':')]
+					'StackSetName'       : StackSetNames[i]['StackSetName']
 					})
 		elif not (StackInstance['Account'] in pAccountRemoveList):
 			# If the user only wants to remove the stack instances associated with specific accounts,
 			# then we only want to capture those stack instances where the account number shows up.
-			# The following code captures
+			# The following code captures this scenario
 			logging.info(f"Found a stack instance, but the account didn't match {pAccountRemoveList}... exiting")
 			continue
 
@@ -339,6 +351,7 @@ elif not pdryrun:
 					print(f"{ERASE_LINE}Something else failed on the retry... Please report the error received?")
 		elif result == 'Failed-Other':
 			print("Something else failed... Please report the error received")
+	
 
 print()
 print("Thanks for using this script...")
