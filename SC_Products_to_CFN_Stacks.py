@@ -50,6 +50,8 @@ def define_pretty_headings(fSCP2Stacks):
 		'AccountEmail'            : 20}
 	return(fDisplaySpacing)
 ##########################
+
+
 '''
 TODO: 
 - Need to add a parameter that allows the user to close / terminate the SC products for only the closed / suspended accounts (very safe)
