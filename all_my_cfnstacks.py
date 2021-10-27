@@ -47,6 +47,19 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(fu
 
 ##########################
 ERASE_LINE = '\x1b[2K'
+aws_acct = aws_acct_access(pProfile)
+ChildAccounts = aws_acct.ChildAccounts
+RegionList = Inventory_Modules.get_service_regions('cloudformation', pRegionList)
+ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, AccountsToSkip)
+
+print(f"You asked to find stacks with this fragment '{pstackfrag}'")
+print(f"in these accounts:\n{ChildAccounts}")
+print(f"in these regions:\n{RegionList}")
+if len(AccountsToSkip) > 0:
+	print(f"While skipping these accounts:\n{AccountsToSkip}")
+if DeletionRun:
+	print()
+	print("And delete the stacks that are found...")
 
 print()
 if args.loglevel < 21:  # INFO level
@@ -57,12 +70,6 @@ else:
 	fmt = '%-20s %-15s %-15s %-50s'
 	print(fmt % ("Account", "Region", "Stack Status", "Stack Name"))
 	print(fmt % ("-------", "------", "------------", "----------"))
-
-aws_acct = aws_acct_access(pProfile)
-ChildAccounts = aws_acct.ChildAccounts
-
-RegionList = Inventory_Modules.get_service_regions('cloudformation', pRegionList)
-ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, AccountsToSkip)
 
 StacksFound = []
 aws_session = aws_acct.session
@@ -120,6 +127,7 @@ if args.loglevel < 21:  # INFO level
 if DeletionRun and ('GuardDuty' in pstackfrag):
 	logging.warning("Deleting %s stacks", len(StacksFound))
 	for y in range(len(StacksFound)):
+		# TODO: Change this to use the "get_child_access3" library instead of doing it here.
 		role_arn = f"arn:aws:iam::{StacksFound[y]['Account']}:role/AWSCloudFormationStackSetExecutionRole"
 		cfn_client = aws_session.client('cloudformation')
 		account_credentials = sts_client.assume_role(
@@ -136,6 +144,7 @@ if DeletionRun and ('GuardDuty' in pstackfrag):
 elif DeletionRun:
 	logging.warning("Deleting %s stacks", len(StacksFound))
 	for y in range(len(StacksFound)):
+		# TODO: Change this to use the "get_child_access3" library instead of doing it here.
 		role_arn = f"arn:aws:iam::{StacksFound[y]['Account']}:role/AWSCloudFormationStackSetExecutionRole"
 		cfn_client = aws_session.client('cloudformation')
 		account_credentials = sts_client.assume_role(

@@ -38,6 +38,13 @@ class CommonArguments():
 			default=False,		# Defaults to False, so the script would continue to run
 			help="Version #")
 
+	def rootOnly(self):
+		self.my_parser.add_argument(
+			"--rootonly",
+			dest="RootOnly",
+			action="store_true",		# Defaults to False, so the script would continue to run
+			help="Only run this code for the root account, not the children")
+
 
 	def verbosity(self):
 		import logging
