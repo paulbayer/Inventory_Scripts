@@ -15,19 +15,19 @@ parser = CommonArguments()
 parser.multiprofile()
 parser.verbosity()
 parser.my_parser.add_argument(
-	'-R', '--root',
-	help="Display only the root accounts found in the profiles",
-	action="store_const",
-	dest="rootonly",
-	const=True,
-	default=False)
+		'-R', '--root',
+		help="Display only the root accounts found in the profiles",
+		action="store_const",
+		dest="rootonly",
+		const=True,
+		default=False)
 parser.my_parser.add_argument(
-	'-s', '--q', '--short',
-	help="Display only brief listing of the root accounts, and not the Child Accounts under them",
-	action="store_const",
-	dest="shortform",
-	const=True,
-	default=False)
+		'-s', '--q', '--short',
+		help="Display only brief listing of the root accounts, and not the Child Accounts under them",
+		action="store_const",
+		dest="shortform",
+		const=True,
+		default=False)
 args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
@@ -39,8 +39,8 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(fu
 SkipProfiles = ["default"]
 ERASE_LINE = '\x1b[2K'
 
-RootAccts = []      # List of the Organization Root's Account Number
-RootProfiles = []   # List of the Organization Root's profiles
+RootAccts = []  # List of the Organization Root's Account Number
+RootProfiles = []  # List of the Organization Root's profiles
 
 logging.info(f"Profiles: {pProfiles}")
 
@@ -50,7 +50,7 @@ if pProfiles is None:  # Use case #1 from above
 	logging.warning("All available profiles will be shown")
 	ProfileList = Inventory_Modules.get_profiles2(fSkipProfiles=SkipProfiles, fprofiles=pProfiles)
 	ShowEverything = True
-elif 'all' not in pProfiles:	 # Use case #2 from above
+elif 'all' not in pProfiles:  # Use case #2 from above
 	logging.info("Use Case #2")
 	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=SkipProfiles, fprofiles=pProfiles)
 	logging.warning(f"ProfileList is set to {ProfileList}")
@@ -80,7 +80,7 @@ for profile in ProfileList:
 			logging.info(f"Access to the profile {profile} has failed")
 			FailedProfiles.append(profile)
 			pass
-		elif aws_acct.AccountType.lower() == 'root':   # The Account is deemed to be an Management Account
+		elif aws_acct.AccountType.lower() == 'root':  # The Account is deemed to be an Management Account
 			logging.info(f"AccountNumber: {aws_acct.acct_number}")
 			MnmgtAcct = aws_acct.MgmtAccount
 			Email = aws_acct.MgmtEmail
@@ -134,7 +134,8 @@ for profile in ProfileList:
 	'''
 	# Print results for this profile
 	if RootAcct:
-		print(Fore.RED + fmt % (profile, aws_acct.acct_number, aws_acct.MgmtAccount, aws_acct.OrgID, RootAcct) + Style.RESET_ALL)
+		print(Fore.RED + fmt % (
+		profile, aws_acct.acct_number, aws_acct.MgmtAccount, aws_acct.OrgID, RootAcct) + Style.RESET_ALL)
 	elif rootonly:  # If I'm looking for only the root accounts, when I find something that isn't a root account, don't print anything and continue on.
 		print(ERASE_LINE, f"{profile} isn't a root account", end="\r")
 	else:

@@ -16,16 +16,16 @@ parser.multiregion()
 parser.singleprofile()
 parser.verbosity()
 parser.my_parser.add_argument(
-	"-f", "--file",
-	dest="pFile",
-	metavar="file of account numbers to read",
-	default=None,
-	help="File should consist of account numbers - 1 per line, with CR/LF as line ending")
+		"-f", "--file",
+		dest="pFile",
+		metavar="file of account numbers to read",
+		default=None,
+		help="File should consist of account numbers - 1 per line, with CR/LF as line ending")
 parser.my_parser.add_argument(
-	"+n", "--no-dry-run",
-	dest="pDryRun",
-	action="store_false",       # Defaults to dry-run, only changes if you specify the parameter
-	help="Defaults to Dry-Run so it doesn't make any changes, unless you specify.")
+		"+n", "--no-dry-run",
+		dest="pDryRun",
+		action="store_false",  # Defaults to dry-run, only changes if you specify the parameter
+		help="Defaults to Dry-Run so it doesn't make any changes, unless you specify.")
 
 args = parser.my_parser.parse_args()
 
@@ -65,7 +65,7 @@ def read_file(filename):
 		while line:
 			account_list.append(line)
 			line = f.readline().rstrip()
-	return(account_list)
+	return (account_list)
 
 
 def find_all_accounts(session_object=None):
@@ -80,8 +80,8 @@ def find_all_accounts(session_object=None):
 			for account in response['Accounts']:
 				logging.warning(f"Account ID: {account['Id']} | Account Email: {account['Email']}")
 				child_accounts.append({'ParentAccount': my_account_number,
-				                       'AccountId': account['Id'],
-				                       'AccountEmail': account['Email'],
+				                       'AccountId'    : account['Id'],
+				                       'AccountEmail' : account['Email'],
 				                       'AccountStatus': account['Status']})
 			if 'NextToken' in response.keys():
 				theresmore = True
@@ -90,10 +90,11 @@ def find_all_accounts(session_object=None):
 				theresmore = False
 		return (child_accounts)
 	except ClientError as my_Error:
-		print(f"Account {my_account_number} isn't a root account. This script works best with an Org Management account")
+		print(
+			f"Account {my_account_number} isn't a root account. This script works best with an Org Management account")
 		logging.warning(f"Account {my_account_number} doesn't represent an Org Root account")
 		logging.debug(my_Error)
-		return()
+		return ()
 
 
 # def get_child_access2(fRootSessionObject, ParentAccountId, fChildAccount, fRegion='us-east-1', fRoleList=None):
@@ -173,30 +174,31 @@ def check_block_s3_public_access(AcctDict=None):
 		logging.info(f"Checking the public access block on account {AcctDict['AccountId']}")
 		try:
 			response = s3_client.get_public_access_block(
-				AccountId=AcctDict['AccountId']
-			)['PublicAccessBlockConfiguration']
+					AccountId=AcctDict['AccountId']
+					)['PublicAccessBlockConfiguration']
 		except ClientError as my_Error:
 			if my_Error.response['Error']['Code'] == 'NoSuchPublicAccessBlockConfiguration':
 				logging.error('No Public Access Block enabled')
-				return(False)
+				return (False)
 			elif my_Error.response['Error']['Code'] == 'AccessDenied':
 				logging.error(f"Bad credentials on account {AcctDict['AccountId']}")
-				return("Access Failure")
+				return ("Access Failure")
 			else:
 				logging.error(f"unexpected error on account #{AcctDict['AccountId']}: {my_Error.response}")
-				return("Access Failure")
-		if response['BlockPublicAcls'] and response['IgnorePublicAcls'] and response['BlockPublicPolicy'] and response['RestrictPublicBuckets']:
+				return ("Access Failure")
+		if response['BlockPublicAcls'] and response['IgnorePublicAcls'] and response['BlockPublicPolicy'] and response[
+			'RestrictPublicBuckets']:
 			logging.info("Block was already enabled")
-			return(True)
+			return (True)
 		else:
 			logging.info("Block is not already enabled")
-			return(False)
+			return (False)
 
 
 def enable_block_s3_public_access(AcctDict=None):
 	if AcctDict is None:
 		logging.info("The Account info wasn't passed into the function")
-		return("Skipped")
+		return ("Skipped")
 	else:
 		if 'AccessKeyId' in AcctDict.keys():
 			logging.info("Creating credentials for child account %s ")
@@ -209,18 +211,20 @@ def enable_block_s3_public_access(AcctDict=None):
 		s3_client = aws_session.client('s3control')
 		logging.info("Enabling the public access block".format(AcctDict['AccountId']))
 		response = s3_client.put_public_access_block(PublicAccessBlockConfiguration={
-													'BlockPublicAcls': True,
-													'IgnorePublicAcls': True,
-													'BlockPublicPolicy': True,
-													'RestrictPublicBuckets': True
-												}, AccountId=AcctDict['AccountId'])
-	return(f"{response}Updated")
+			'BlockPublicAcls'      : True,
+			'IgnorePublicAcls'     : True,
+			'BlockPublicPolicy'    : True,
+			'RestrictPublicBuckets': True
+			}, AccountId=AcctDict['AccountId'])
+	return (f"{response}Updated")
+
+
 ##########################
 
 
 ERASE_LINE = '\x1b[2K'
 
-AccountList = None      # Makes the IDE Checker happy
+AccountList = None  # Makes the IDE Checker happy
 # Get the accounts we're going to work on
 if pFile is not None:
 	AccountList = read_file(pFile)
@@ -229,26 +233,31 @@ if aws_acct.AccountType.lower() == 'root':
 	AllChildAccountList = aws_acct.ChildAccounts
 else:
 	AllChildAccountList = [{
-		'MgmntAccount': aws_acct.acct_number,
-		'AccountId': aws_acct.acct_number,
-		'AccountEmail': 'Child Account',
+		'MgmntAccount' : aws_acct.acct_number,
+		'AccountId'    : aws_acct.acct_number,
+		'AccountEmail' : 'Child Account',
 		'AccountStatus': aws_acct.AccountStatus}]
 print(f"Found {len(AllChildAccountList)} accounts to look through")
 for i in range(len(AllChildAccountList)):
 	if AllChildAccountList[i]['AccountStatus'] == 'ACTIVE':
-		print(ERASE_LINE, f"Getting credentials for account {AllChildAccountList[i]['AccountId']} -- {i + 1} of {len(AllChildAccountList)}", end="\r")
+		print(ERASE_LINE,
+		      f"Getting credentials for account {AllChildAccountList[i]['AccountId']} -- {i + 1} of {len(AllChildAccountList)}",
+		      end="\r")
 		try:
 			credentials = Inventory_Modules.get_child_access3(aws_acct,
-			                                AllChildAccountList[i]['AccountId'])
+			                                                  AllChildAccountList[i]['AccountId'])
 			logging.info(f"Successfully got credentials for account {AllChildAccountList[i]['AccountId']}")
 			AllChildAccountList[i]['AccessKeyId'] = credentials['AccessKeyId']
 			AllChildAccountList[i]['SecretAccessKey'] = credentials['SecretAccessKey']
 			AllChildAccountList[i]['SessionToken'] = credentials['SessionToken']
 		except Exception as e:
 			print(str(e))
-			print(f"Failed using root account {AllChildAccountList[i]['MgmntAccount']} to get credentials for acct {AllChildAccountList[i]['AccountId']}")
+			print(
+				f"Failed using root account {AllChildAccountList[i]['MgmntAccount']} to get credentials for acct {AllChildAccountList[i]['AccountId']}")
 	else:
-		print(ERASE_LINE, f"Skipping account {AllChildAccountList[i]['AccountId']} since it's SUSPENDED or CLOSED    {i + 1} of {len(AllChildAccountList)}", end="\r")
+		print(ERASE_LINE,
+		      f"Skipping account {AllChildAccountList[i]['AccountId']} since it's SUSPENDED or CLOSED    {i + 1} of {len(AllChildAccountList)}",
+		      end="\r")
 
 print()
 fmt = '%-20s %-15s %-20s %-15s'

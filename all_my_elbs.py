@@ -13,47 +13,47 @@ import logging
 init()
 
 parser = argparse.ArgumentParser(
-	description="We\'re going to find all resources within any of the profiles we have access to.",
-	prefix_chars='-+/')
+		description="We\'re going to find all resources within any of the profiles we have access to.",
+		prefix_chars='-+/')
 parser.my_parser.add_argument(
-	"-p", "--profile",
-	dest="pProfiles",
-	nargs="*",
-	metavar="profile to use",
-	default="all",
-	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
+		"-p", "--profile",
+		dest="pProfiles",
+		nargs="*",
+		metavar="profile to use",
+		default="all",
+		help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
 parser.my_parser.add_argument(
-	"-f", "--fragment",
-	dest="pstackfrag",
-	metavar="CloudFormation stack fragment",
-	default="all",
-	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
+		"-f", "--fragment",
+		dest="pstackfrag",
+		metavar="CloudFormation stack fragment",
+		default="all",
+		help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
 parser.my_parser.add_argument(
-	"-s", "--status",
-	dest="pstatus",
-	metavar="CloudFormation status",
-	default="active",
-	help="String that determines whether we only see 'CREATE_COMPLETE' or 'DELETE_COMPLETE' too")
+		"-s", "--status",
+		dest="pstatus",
+		metavar="CloudFormation status",
+		default="active",
+		help="String that determines whether we only see 'CREATE_COMPLETE' or 'DELETE_COMPLETE' too")
 parser.my_parser.add_argument(
-	"-r", "--region",
-	nargs="*",
-	dest="pregion",
-	metavar="region name string",
-	default="us-east-1",
-	help="String fragment of the region(s) you want to check for resources.")
+		"-r", "--region",
+		nargs="*",
+		dest="pregion",
+		metavar="region name string",
+		default="us-east-1",
+		help="String fragment of the region(s) you want to check for resources.")
 parser.my_parser.add_argument(
-    '-d', '--debug',
-    help="Print lots of debugging statements",
-    action="store_const",
-	dest="loglevel",
-	const=logging.DEBUG,
-    default=logging.CRITICAL)
+		'-d', '--debug',
+		help="Print lots of debugging statements",
+		action="store_const",
+		dest="loglevel",
+		const=logging.DEBUG,
+		default=logging.CRITICAL)
 parser.my_parser.add_argument(
-    '-v', '--verbose',
-    help="Be verbose",
-    action="store_const",
-	dest="loglevel",
-	const=logging.INFO)
+		'-v', '--verbose',
+		help="Be verbose",
+		action="store_const",
+		dest="loglevel",
+		const=logging.INFO)
 args = parser.my_parser.parse_args()
 
 pProfiles = args.pProfiles
@@ -86,7 +86,8 @@ for pregion in RegionList:
 			LoadBalancers = Inventory_Modules.find_load_balancers(profile, pregion, pstackfrag, pstatus)
 			LBNum = len(LoadBalancers)
 			logging.info("Profile: %-15s | Region: %-15s | Found %2d Load Balancers", profile, pregion, LBNum)
-			print(ERASE_LINE, Fore.RED+"Profile: %-15s Region: %-15s Found %2d Load Balancers" % (profile, pregion, LBNum)+Fore.RESET, end='\r')
+			print(ERASE_LINE, Fore.RED + "Profile: %-15s Region: %-15s Found %2d Load Balancers" % (
+				profile, pregion, LBNum) + Fore.RESET, end='\r')
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(f"{profile}: Authorization Failure")
@@ -98,5 +99,6 @@ for pregion in RegionList:
 				print(fmt % (profile, pregion, LBName, LBStatus, LBDNSName))
 				NumLBsFound += 1
 print(ERASE_LINE)
-print(f"{Fore.RED}Found", NumLBsFound, "Load Balancers across", NumProfilesInvestigated, "profiles across", NumRegions, f"regions{Fore.RESET}")
+print(f"{Fore.RED}Found", NumLBsFound, "Load Balancers across", NumProfilesInvestigated, "profiles across", NumRegions,
+      f"regions{Fore.RESET}")
 print()
