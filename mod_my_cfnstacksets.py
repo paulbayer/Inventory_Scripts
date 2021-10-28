@@ -176,7 +176,7 @@ logging.error(f"Found {len(StackSetNames)} StackSetNames that matched your fragm
 for i in range(len(StackSetNames)):
 	print(f"{ERASE_LINE}Looking through {i+1} of {len(StackSetNames)} stacksets found with {pStackfrag} string in them", end='\r')
 	# TODO: Creating the list to delete this way prohibits this script from including stacksets that are already empty. This should be fixed.
-	StackInstances = Inventory_Modules.find_stack_instances2(aws_acct, pRegion, StackSetNames[i]['StackSetName'])
+	StackInstances = Inventory_Modules.find_stack_instances3(aws_acct, pRegion, StackSetNames[i]['StackSetName'])
 	logging.warning(f"Found {len(StackInstances)} Stack Instances within the StackSet {StackSetNames[i]['StackSetName']}")
 	if len(StackInstances) == 0 and not pdryrun and pAccountRemoveList is None and pRegionRemove is None:
 		logging.warning(f"While we didn't find any stack instances within {StackSetNames[i]['StackSetName']}, we assume you want to delete it, even when it's empty")
@@ -242,11 +242,14 @@ for _ in range(len(AllInstances)):
 			AccountList.append(AllInstances[_]['ChildAccount'])
 			RegionList.append(AllInstances[_]['ChildRegion'])
 
-AccountList = sorted(list(set(AccountList)))
-ApplicableStackSetsList = sorted(list(set(ApplicableStackSetsList)))
+# I had to add this list comprehension to filter out the "None" types that happen when there are no stack-instances within a stack-set
+AccountList = sorted(list(set([item for item in AccountList if item is not None])))
 # RegionList isn't specific per account, as the deletion API doesn't need it to be, and it's easier to keep a single list of all regions, instead of per StackSet
+# TODO: Since we allow this now, should we revisit this?
 # If we update this script to allow the removal of individual regions as well as individual accounts, then we'll do that.
-RegionList = sorted(list(set(RegionList)))
+RegionList = sorted(list(set([item for item in RegionList if item is not None])))
+
+ApplicableStackSetsList = sorted(list(set(ApplicableStackSetsList)))
 
 if pCheckAccount:
 	OrgAccounts = aws_acct.ChildAccounts
@@ -321,7 +324,10 @@ elif pdryrun:
 elif not pdryrun:
 	print()
 	print(f"Removing {len(AllInstances)} stack instances from the {len(StackSetNames)} StackSets found")
+	StackInstanceItem = 0
 	for StackSetName in ApplicableStackSetsList:
+		StackInstanceItem += 1
+		print(f"Now deleting stackset {StackSetName}. {StackInstanceItem} of {len(ApplicableStackSetsList)} done", end='\r')
 		# TODO: This needs to be wrapped in a try...except
 		if RegionList is None:
 			print(f"There appear to be no stack instances for this stack-set")
@@ -329,29 +335,36 @@ elif not pdryrun:
 		if pAccountRemoveList is None:  # Remove all instances from the stackset
 			if pRegionRemove is not None:
 				logging.error(f"About to update stackset {StackSetName} to remove all accounts within {str(RegionList)}")
+				RemoveStackSet = False
 			else:
 				logging.error(f"About to update stackset {StackSetName} to remove ALL accounts from all regions")
-			result = _delete_stack_instances(aws_acct, pRegion, AccountList, RegionList, StackSetName, pForce)
+				RemoveStackSet = True
+			StackInstanceResult = _delete_stack_instances(aws_acct, pRegion, AccountList, RegionList, StackSetName, pForce)
 		else:
 			logging.error(f"About to remove account {pAccountRemoveList} from stackset {StackSetName} in regions {str(RegionList)}")
-			result = _delete_stack_instances(aws_acct, pRegion, AccountList, RegionList, StackSetName, pForce)
-		if result == 'Success':
-			print(f"{ERASE_LINE}Successfully removed accounts {AccountList} from StackSet {StackSetName}")
-		elif result == 'Failed-ForceIt' and pForce:
+			RemoveStackSet = False
+			StackInstanceResult = _delete_stack_instances(aws_acct, pRegion, AccountList, RegionList, StackSetName, pForce)
+		if StackInstanceResult == 'Success':
+			print(f"{ERASE_LINE}Successfully removed instances from StackSet {StackSetName}")
+		elif StackInstanceResult == 'Failed-ForceIt' and pForce:
 			print("We tried to force the deletion, but some other problem happened.")
-		elif result == 'Failed-ForceIt' and not pForce:
+		elif StackInstanceResult == 'Failed-ForceIt' and not pForce:
 			Decision = (input("Deletion of Stack Instances failed, but might work if we force it. Shall we force it? (y/n): ") in ['y', 'Y'])
 			if Decision:
-				result = _delete_stack_instances(aws_acct, pRegion, AccountList, RegionList, StackSetName, True) 	# Try it again, forcing it this time
-				if result == 'Success':
+				StackInstanceResult = _delete_stack_instances(aws_acct, pRegion, AccountList, RegionList, StackSetName, True) 	# Try it again, forcing it this time
+				if StackInstanceResult == 'Success':
 					print(f"{ERASE_LINE}Successfully retried StackSet {StackSetName}")
-				elif pForce is True and result == 'Failed-ForceIt':
+				elif pForce is True and StackInstanceResult == 'Failed-ForceIt':
 					print(f"{ERASE_LINE}Some other problem happened on the retry.")
-				elif result == 'Failed-Other':
+				elif StackInstanceResult == 'Failed-Other':
 					print(f"{ERASE_LINE}Something else failed on the retry... Please report the error received?")
-		elif result == 'Failed-Other':
+		elif StackInstanceResult == 'Failed-Other':
 			print("Something else failed... Please report the error received")
-	
+		# TODO: We need to update this to add logic to delete the stack-set itself, once the instances are deleted.x
+		if RemoveStackSet:
+			logging.info(f"Now that all instances are gone, removing the stackset too")
+			StackSetResult = Inventory_Modules.delete_stackset2(aws_acct, pRegion, StackSetName)
+			print(f"Removed stackset {StackSetName}")
 
 print()
 print("Thanks for using this script...")
