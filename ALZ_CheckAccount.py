@@ -128,7 +128,7 @@ def _initdict(StepCount, faccountList):
 		fProcessStatus[account] = {'ChildIsReady': False, 'IssuesFound': 0, 'IssuesFixed': 0}
 		for _ in range(StepCount):
 			Step = f"Step{str(_)}"
-			fProcessStatus[account][Step] = {}
+			fProcessStatus[account][Step] = dict()
 			fProcessStatus[account][Step]['Success'] = False
 			fProcessStatus[account][Step]['IssuesFound'] = 0
 			fProcessStatus[account][Step]['IssuesFixed'] = 0

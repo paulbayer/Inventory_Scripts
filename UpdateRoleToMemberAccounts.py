@@ -245,7 +245,7 @@ for account in ChildAccounts:
 			account_credentials['Account'] = account['AccountId']
 			logging.warning(f"Successfully accessed account {account['AccountId']} using rolename {rolename}")
 			ConnectionSuccess = True
-			if not pRoleNameToCheck == None:
+			if pRoleNameToCheck is not None:
 				logging.warning("Checking to see if role %s exists in account %s", pRoleNameToCheck, account['AccountId'])
 				if roleexists(account_credentials, pRoleNameToCheck):
 					Results.append({
@@ -260,10 +260,10 @@ for account in ChildAccounts:
 						'Role': pRoleNameToCheck,
 						'Result': 'Nonexistent Role'
 					})
-			elif pRoleNameToRemove == None and roleexists(account_credentials, pRoleNameToAdd):
+			elif pRoleNameToRemove is not None and roleexists(account_credentials, pRoleNameToAdd):
 				logging.warning("Role %s already exists", pRoleNameToAdd)
 				break
-			elif not (pRoleNameToRemove == None) and roleexists(account_credentials, pRoleNameToRemove):
+			elif not (pRoleNameToRemove is None) and roleexists(account_credentials, pRoleNameToRemove):
 				logging.warning("Removing role %s from account %s", pRoleNameToRemove, account['AccountId'])
 				removerole(account_credentials, pRoleNameToRemove)
 				Results.append({
@@ -272,7 +272,7 @@ for account in ChildAccounts:
 					'Result': 'Role Removed'
 				})
 				UpdatedAccounts += 1
-			elif not (pRoleNameToAdd == None) and not (rolename == pRoleNameToAdd):
+			elif not (pRoleNameToAdd is None) and not (rolename == pRoleNameToAdd):
 				createrole(account_credentials, RootAccountNumber, pRoleNameToAdd)
 				Results.append({
 					'AccountId': account['AccountId'],
@@ -305,9 +305,9 @@ if verbose < 40:    # Warning, Info and Debug - skips ERROR
 		AccountList.append(i['AccountId'])
 	logging.warning("We checked the following accounts: %s", str(AccountList))
 
-if not (pRoleNameToCheck == None):
+if not (pRoleNameToCheck is None):
 	print(f"We found {UpdatedAccounts} accounts that included the {pRoleNameToCheck} role")
-elif not (pRoleNameToAdd == None):
+elif not (pRoleNameToAdd is None):
 	print(f"We updated {UpdatedAccounts} accounts to include the {pRoleNameToAdd} role")
-elif not (pRoleNameToRemove == None):
+elif not (pRoleNameToRemove is None):
 	print(f"We updated {UpdatedAccounts} accounts to remove the {pRoleNameToRemove} role")

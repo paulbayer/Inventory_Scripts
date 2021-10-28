@@ -630,7 +630,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		print(f"{ERASE_LINE + Fore.RED}** {Step} completed with blockers found{Fore.RESET}")
 	print()
 
-	##### Function Summary #############
+	""" Function Summary """
 	TotalIssuesFound = 0
 	TotalIssuesFixed = 0
 	MemberReady = True
