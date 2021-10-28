@@ -51,12 +51,13 @@ aws_acct = aws_acct_access(pProfile)
 ChildAccounts = aws_acct.ChildAccounts
 RegionList = Inventory_Modules.get_service_regions('cloudformation', pRegionList)
 ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, AccountsToSkip)
+AccountList = [account['AccountId'] for account in ChildAccounts]
 
-print(f"You asked to find stacks with this fragment '{pstackfrag}'")
-print(f"in these accounts:\n{ChildAccounts}")
-print(f"in these regions:\n{RegionList}")
+print(f"You asked to find stacks with this fragment {Fore.RED}'{pstackfrag}'{Fore.RESET}")
+print(f"in these accounts:\n{Fore.RED}{AccountList}{Fore.RESET}")
+print(f"in these regions:\n{Fore.RED}{RegionList}{Fore.RESET}")
 if len(AccountsToSkip) > 0:
-	print(f"While skipping these accounts:\n{AccountsToSkip}")
+	print(f"While skipping these accounts:\n{Fore.RED}{AccountsToSkip}{Fore.RESET}")
 if DeletionRun:
 	print()
 	print("And delete the stacks that are found...")
@@ -74,38 +75,40 @@ else:
 StacksFound = []
 aws_session = aws_acct.session
 sts_client = aws_session.client('sts')
-for account in ChildAccounts:
+item_counter = 0
+for account_number in AccountList:
 	try:
-		account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'])
+		account_credentials = Inventory_Modules.get_child_access3(aws_acct, account_number)
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print(f"{pProfile}: Authorization Failure for account {account['AccountId']}")
+			print(f"{pProfile}: Authorization Failure for account {account_number}")
 		elif str(my_Error).find("AccessDenied") > 0:
-			print(f"{pProfile}: Access Denied Failure for account {account['AccountId']}")
+			print(f"{pProfile}: Access Denied Failure for account {account_number}")
 		else:
-			print(f"{pProfile}: Other kind of failure for account {account['AccountId']}")
+			print(f"{pProfile}: Other kind of failure for account {account_number}")
 			print(my_Error)
 		continue
 	for region in RegionList:
+		item_counter += 1
 		Stacks = False
 		try:
 			Stacks = Inventory_Modules.find_stacks_in_acct(account_credentials, region, pstackfrag, pstatus)
-			logging.warning(f"Account: {account['AccountId']} | Region: {region} | Found {len(Stacks)} Stacks")
-			print(ERASE_LINE, Fore.RED+"Account: {} Region: {} Found {} Stacks".format(account['AccountId'], region, len(Stacks))+Fore.RESET, end='\r')
+			logging.warning(f"Account: {account_number} | Region: {region} | Found {len(Stacks)} Stacks")
+			print(f"{ERASE_LINE}{Fore.RED}Account: {account_number} Region: {region} Found {len(Stacks)} Stacks{Fore.RESET} ({item_counter} of {len(AccountList) * len(RegionList)})", end='\r')
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
-				print(f"{account['AccountId']}: Authorization Failure")
+				print(f"{account_number}: Authorization Failure")
 		if Stacks and len(Stacks) > 0:
 			for y in range(len(Stacks)):
 				StackName = Stacks[y]['StackName']
 				StackStatus = Stacks[y]['StackStatus']
 				StackID = Stacks[y]['StackId']
 				if args.loglevel < 21:  # INFO level
-					print(fmt % (account['AccountId'], region, StackStatus, StackName, StackID))
+					print(fmt % (account_number, region, StackStatus, StackName, StackID))
 				else:
-					print(fmt % (account['AccountId'], region, StackStatus, StackName))
+					print(fmt % (account_number, region, StackStatus, StackName))
 				StacksFound.append({
-					'Account': account['AccountId'],
+					'Account': account_number,
 					'Region': region,
 					'StackName': StackName,
 					'StackStatus': StackStatus,
@@ -134,7 +137,8 @@ if DeletionRun and ('GuardDuty' in pstackfrag):
 			RoleArn=role_arn,
 			RoleSessionName="Delete-Stacks")['Credentials']
 		account_credentials['AccountNumber'] = StacksFound[y]['Account']
-		print(f"Deleting stack {StacksFound[y]['StackName']} from Account {StacksFound[y]['Account']} in region {StacksFound[y]['Region']} with status: {StacksFound[y]['StackStatus']}")
+		print(f"Deleting stack {StacksFound[y]['StackName']} from Account {StacksFound[y]['Account']} in region {StacksFound[y]['Region']}")
+		# TODO: Fix the below
 		""" This next line is BAD because it's hard-coded for GuardDuty, but we'll fix that eventually """
 		if StacksFound[y]['StackStatus'] == 'DELETE_FAILED':
 			# This deletion generally fails because the Master Detector doesn't properly delete (and it's usually already deleted due to some other script) - so we just need to delete the stack anyway - and ignore the actual resource.
@@ -152,8 +156,9 @@ elif DeletionRun:
 			RoleSessionName="Delete-Stacks")['Credentials']
 		account_credentials['AccountNumber'] = StacksFound[y]['Account']
 		print(f"Deleting stack {StacksFound[y]['StackName']} from account {StacksFound[y]['Account']} in region {StacksFound[y]['Region']} with status: {StacksFound[y]['StackStatus']}")
+		print(f"Finished {y+1} of {len(StacksFound)}")
 		response = Inventory_Modules.delete_stack2(account_credentials, StacksFound[y]['Region'], StacksFound[y]['StackName'])
-		pprint(response)
+		# pprint(response)
 
 print()
 print("Thanks for using this script...")
