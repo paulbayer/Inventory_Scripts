@@ -156,12 +156,12 @@ def validate_region(faws_acct, fRegion=None):
 	if len(region_info) == 0:
 		message = f"'{fRegion}' is not a valid region name for this account"
 		logging.error(message)
-		result = {'Result': False, 'Message': message}
+		result = {'Success': False, 'Message': message}
 		return (result)
 	else:
 		message = f"'{fRegion}' is a valid region name for this account"
 		logging.error(message)
-		result = {'Result': True, 'Message': message}
+		result = {'Success': True, 'Message': message}
 		return (result)
 
 
@@ -355,13 +355,10 @@ def find_account_number(fProfile=None):
 			pass
 	except InvalidConfigError as my_Error:
 		if str(my_Error).find("InvalidConfigError") > 0:
-			logging.error(
-					"%s: profile is invalid. Probably due to a config profile based on a credential that doesn't work",
-					fProfile)
+			logging.error(f"{fProfile}: profile is invalid. Probably due to a config profile based on a credential that doesn't work")
 			pass
-	except:
-		logging.error("Other kind of failure for profile %s", fProfile)
-		# print(my_Error)
+	except Exception as my_Error:
+		logging.error(f"Other kind of failure for profile {fProfile}: {my_Error}")
 		pass
 	return (response)
 
@@ -429,8 +426,8 @@ def find_account_attr(fSessionObject):
 		print(f"{fProfile}: Failure pulling or updating credentials")
 		print(my_Error)
 		pass
-	except:
-		print("Other kind of failure")
+	except Exception as myError:
+		logging.error(f"Other kind of failure for profile {fProfile}: {myError}")
 		pass
 	return (FailResponse)
 
@@ -1801,6 +1798,8 @@ def find_stacksets2(faws_acct, fRegion='us-east-1', fStackFragment=['all']):
 	faws_acct is a class containing the account information
 	fRegion is a string
 	fStackFragment is a list of strings
+
+	returns a dict object with the list of stacksets if successful.
 	"""
 	import logging
 	from urllib3.exceptions import NewConnectionError
@@ -1814,8 +1813,8 @@ def find_stacksets2(faws_acct, fRegion='us-east-1', fStackFragment=['all']):
 	# Set Log Level
 
 	result = validate_region(faws_acct, fRegion)
-	if not result['Result']:
-		return (result['Message'])
+	if not result['Success']:       # Region failed to validate
+		return (result['Message'])  # Region was validated
 	else:
 		logging.info(result['Message'])
 	logging.info(f"Account: {faws_acct.acct_number} | Region: {fRegion} | Fragment: {fStackFragment}")
@@ -1824,9 +1823,10 @@ def find_stacksets2(faws_acct, fRegion='us-east-1', fStackFragment=['all']):
 
 	try:
 		stacksets_prelim = client_cfn.list_stack_sets(Status='ACTIVE')
-	except EndpointConnectionError as my_error:
-		logging.info(f"Likely that the region passed in wasn't correct. Please check and try again.")
-		return ("Region Endpoint Failure")
+	except EndpointConnectionError as myError:
+		logging.info(f"Likely that the region passed in wasn't correct. Please check and try again: {myError}")
+		return_response = {'Success': False, 'ErrorMessage': "Region Endpoint Failure"}
+		return (return_response)
 	stacksets = stacksets_prelim['Summaries']
 	while 'NextToken' in stacksets_prelim.keys():  # Get all instance names
 		stacksets_prelim = client_cfn.list_stack_sets(Status='ACTIVE', NextToken=stacksets_prelim['NextToken'])
@@ -1837,7 +1837,8 @@ def find_stacksets2(faws_acct, fRegion='us-east-1', fStackFragment=['all']):
 	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
 		logging.info(
 				f"Found all the stacksets in account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragment}")
-		return (stacksets)
+		return_response = {'Success': True, 'StackSets': stacksets}
+		return (return_response)
 	else:
 		for stack in stacksets:
 			for fragment in fStackFragment:
@@ -1845,7 +1846,8 @@ def find_stacksets2(faws_acct, fRegion='us-east-1', fStackFragment=['all']):
 					logging.warning(
 							f"Found stackset {stack['StackSetName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fragment}")
 					stacksetsCopy.append(stack)
-	return (stacksetsCopy)
+		return_response = {'Success': True, 'StackSets': stacksetsCopy}
+	return (return_response)
 
 
 def delete_stackset(fProfile, fRegion, fStackSetName):
@@ -2045,6 +2047,69 @@ def delete_stack_instances2(faws_acct, fRegion, lAccounts, lRegions, fStackSetNa
 		logging.error(f"Other problem: {myError}")
 		return_response['Success'] = False
 	return (return_response)  # The response will be the Operation ID of the delete operation
+
+
+def check_stack_set_status(faws_acct, fStack_set_name, fOperationId=None):
+	"""
+	response = client.describe_stack_set_operation(
+	    StackSetName='string',
+	    OperationId='string',
+	    CallAs='SELF'|'DELEGATED_ADMIN'
+	)
+	"""
+	import logging
+
+	client_cfn = faws_acct.session.client('cloudformation')
+	return_response = dict()
+	# If the calling process couldn't supply the OpId, then we have to find it, based on the name of the stackset
+	if fOperationId is None:
+		# If there is no OperationId, they've called us after creating the stack-set itself,
+		# so we need to check the status of the stack-set creation, and not the operations that happen to the stackset
+		try:
+			response = client_cfn.describe_stack_set(StackSetName=fStack_set_name,
+			                                         CallAs='SELF')['StackSet']
+			return_response['StackSetStatus'] = response['Status']
+			return_response['Success'] = True
+			return (return_response)
+		except client_cfn.exceptions.StackSetNotFoundException as myError:
+			logging.error(f"Stack Set {fStack_set_name} Not Found: {myError}")
+			return_response['Success'] = False
+			return (return_response)
+	try:
+		response = client_cfn.describe_stack_set_operation(StackSetName=fStack_set_name,
+		                                                   OperationId=fOperationId,
+		                                                   CallAs='SELF')['StackSetOperation']
+		return_response['StackSetStatus'] = response['Status']
+		return_response['Success'] = True
+	except client_cfn.exceptions.StackSetNotFoundException as myError:
+		print(f"StackSet Not Found: {myError}")
+		return_response['Success'] = False
+	except client_cfn.exceptions.OperationNotFoundException as myError:
+		print(f"Operation Not Found: {myError}")
+		return_response['Success'] = False
+	return (return_response)
+
+
+def find_if_stack_set_exists(faws_acct, fStack_set_name):
+	"""
+	response = client.describe_stack_set(
+	    StackSetName='string',
+	    CallAs='SELF'|'DELEGATED_ADMIN'
+	)
+	"""
+	import logging
+
+	logging.info(f"Verifying whether the stackset {fStack_set_name} in account {faws_acct.acct_number} exists")
+	client_cfn = faws_acct.session.client('cloudformation')
+	return_response = dict()
+	try:
+		response = client_cfn.describe_stack_set(StackSetName=fStack_set_name, CallAs='SELF')['StackSet']
+		return_response = {'Payload': response, 'Success': True}
+	except client_cfn.exceptions.StackSetNotFoundException as myError:
+		logging.info(f"StackSet {fStack_set_name} not found in this account.")
+		logging.debug(f"{myError}")
+		return_response['Success'] = False
+	return (return_response)
 
 
 def find_sc_products(fProfile, fRegion, fStatus="ERROR", flimit=100):
