@@ -19,7 +19,7 @@ parser.my_parser.add_argument(
 	nargs='*',
 	metavar="CloudFormation stack fragment",
 	default=["all"],
-	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
+	help="List of fragments of the cloudformation stackset(s) you want to check for.")
 parser.my_parser.add_argument(
 	"-i", "--instances",
 	dest="pinstancecount",

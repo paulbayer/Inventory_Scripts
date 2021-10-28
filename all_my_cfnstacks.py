@@ -98,6 +98,7 @@ for account_number in AccountList:
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(f"{account_number}: Authorization Failure")
+		# TODO: Currently we're using this "Stacks" list as a boolean if it's populated. We should change this.
 		if Stacks and len(Stacks) > 0:
 			for y in range(len(Stacks)):
 				StackName = Stacks[y]['StackName']
@@ -146,7 +147,7 @@ if DeletionRun and ('GuardDuty' in pstackfrag):
 		else:
 			response = Inventory_Modules.delete_stack2(account_credentials, StacksFound[y]['Region'], StacksFound[y]['StackName'])
 elif DeletionRun:
-	logging.warning("Deleting %s stacks", len(StacksFound))
+	logging.warning(f"Deleting {len(StacksFound)} stacks")
 	for y in range(len(StacksFound)):
 		# TODO: Change this to use the "get_child_access3" library instead of doing it here.
 		role_arn = f"arn:aws:iam::{StacksFound[y]['Account']}:role/AWSCloudFormationStackSetExecutionRole"

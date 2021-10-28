@@ -1658,21 +1658,15 @@ def find_stacks_in_acct(ocredentials, fRegion, fStackFragment="all", fStatus="ac
 		for stack in stacks['StackSummaries']:
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match
-				logging.error("1-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s",
-				              stack['StackName'],
-				              ocredentials['AccountNumber'],
-				              fRegion,
-				              fStackFragment,
-				              fStatus)
+				logging.warning(f"1-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
+				                f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 				stacksCopy.append(stack)
 	elif fStackFragment.lower() == 'all' and fStatus.lower() == 'all':
 		# Send back all stacks.
 		# TODO: Need paging here
 		stacks = client_cfn.list_stacks()
-		logging.error("4-Found %s the stacks in Account: %s in Region: %s",
-		              len(stacks),
-		              ocredentials['AccessKeyId'],
-		              fRegion)
+		logging.warning(f"4-Found {len(stacks)} the stacks in Account: {ocredentials['AccountNumber']} in "
+		                f"Region: {fRegion}")
 		return (stacks['StackSummaries'])
 	elif fStackFragment.lower() == 'all' and fStatus.lower() == 'active':
 		# Send back all stacks regardless of fragment, check the status further down.
@@ -1680,32 +1674,23 @@ def find_stacks_in_acct(ocredentials, fRegion, fStackFragment="all", fStatus="ac
 		stacks = client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE", "UPDATE_COMPLETE",
 		                                                   "UPDATE_ROLLBACK_COMPLETE"])
 		for stack in stacks['StackSummaries']:
-			logging.error("2-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s",
-			              stack['StackName'],
-			              ocredentials['AccountNumber'],
-			              fRegion,
-			              fStackFragment,
-			              fStatus)
-			stacksCopy.append(
-					stack)  # logging.warning("StackStatus: %s | My status: %s", stack['StackStatus'], fStatus)
+			logging.warning(f"2-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
+			                f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+			stacksCopy.append(stack)
 	elif not fStatus.lower() == 'active':
 		# Send back stacks that match the single status, check the fragment further down.
 		try:
-			logging.warning("Looking for Status: %s", fStatus)
+			logging.warning(f"Looking for Status: {fStatus}")
 			# TODO: Need paging here
 			stacks = client_cfn.list_stacks(StackStatusFilter=[fStatus])
-		except Exception as e:
-			print(e)
+		except Exception as my_Error:
+			print(my_Error)
 		if 'StackSummaries' in stacks.keys():
 			for stack in stacks['StackSummaries']:
 				if fStackFragment in stack['StackName'] and fStatus in stack['StackStatus']:
 					# Check the fragment now - only send back those that match
-					logging.error("5-Found stack %s in Account: %s in Region: %s with Fragment: %s and Status: %s",
-					              stack['StackName'],
-					              ocredentials['AccountNumber'],
-					              fRegion,
-					              fStackFragment,
-					              fStatus)
+					logging.warning(f"5-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']}"
+					                f" in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 					stacksCopy.append(stack)
 	return (stacksCopy)
 
@@ -1958,7 +1943,7 @@ def find_stack_instances3(faws_acct, fRegion, fStackSetName, fStatus='CURRENT'):
 	logging.warning(f"Account: {faws_acct.acct_number} | Region: {fRegion} | StackSetName: {fStackSetName}")
 	session_cfn = faws_acct.session
 	result = validate_region(faws_acct, fRegion)
-	if not result['Result']:
+	if not result['Success']:
 		return (result['Message'])
 	client_cfn = session_cfn.client('cloudformation', region_name=fRegion)
 	stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName)
@@ -2006,7 +1991,7 @@ def delete_stack_instances2(faws_acct, fRegion, lAccounts, lRegions, fStackSetNa
 	from string import ascii_letters
 
 	result = validate_region(faws_acct, fRegion)
-	if not result['Result']:
+	if not result['Success']:
 		return (result['Message'])
 	else:
 		logging.info(result['Message'])
@@ -2014,7 +1999,6 @@ def delete_stack_instances2(faws_acct, fRegion, lAccounts, lRegions, fStackSetNa
 		fOperationName = f"StackDelete-{choices(ascii_letters, k=6)}"
 	logging.warning(f"Deleting {fStackSetName} stackset over {len(lAccounts)} accounts across {len(lRegions)} regions")
 	client_cfn = faws_acct.session.client('cloudformation', region_name=fRegion)
-	return_response = dict()
 	try:
 		response = client_cfn.delete_stack_instances(StackSetName=fStackSetName,
 		                                             Accounts=lAccounts,
@@ -2026,30 +2010,29 @@ def delete_stack_instances2(faws_acct, fRegion, lAccounts, lRegions, fStackSetNa
 			                                             'MaxConcurrentPercentage'   : 100
 			                                             },
 		                                             OperationId=fOperationName)
-		return_response['OperationId'] = response['OperationId']
-		return_response['Success'] = True
+		return_response = {'Success': True, 'OperationId': response['OperationId']}
 	except client_cfn.exceptions.StackSetNotFoundException as myError:
 		logging.error(f"StackSet not found: {myError}")
-		return_response['Success'] = False
+		return_response = {'Success': False, 'ErrorMessage': myError}
 	except client_cfn.exceptions.OperationInProgressException as myError:
 		logging.error(f"Operation in progress: {myError}")
-		return_response['Success'] = False
+		return_response = {'Success': False, 'ErrorMessage': myError}
 	except client_cfn.exceptions.OperationIdAlreadyExistsException as myError:
 		logging.error(f"Operation Id already exists: {myError}")
-		return_response['Success'] = False
+		return_response = {'Success': False, 'ErrorMessage': myError}
 	except client_cfn.exceptions.StaleRequestException as myError:
 		logging.error(f"Stale Request: {myError}")
-		return_response['Success'] = False
+		return_response = {'Success': False, 'ErrorMessage': myError}
 	except client_cfn.exceptions.InvalidOperationException as myError:
 		logging.error(f"Invalid Operation: {myError}")
-		return_response['Success'] = False
+		return_response = {'Success': False, 'ErrorMessage': myError}
 	except Exception as myError:
 		logging.error(f"Other problem: {myError}")
-		return_response['Success'] = False
-	return (return_response)  # The response will be the Operation ID of the delete operation
+		return_response = {'Success': False, 'ErrorMessage': myError}
+	return (return_response)  # The response will be the Operation ID of the delete operation or an Error Message
 
 
-def check_stack_set_status(faws_acct, fStack_set_name, fOperationId=None):
+def check_stack_set_status3(faws_acct, fStack_set_name, fOperationId=None):
 	"""
 	response = client.describe_stack_set_operation(
 	    StackSetName='string',
