@@ -194,7 +194,7 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 	return (ProfileList)
 
 
-def get_profiles2(fSkipProfiles=[None], fprofiles=None):
+def get_profiles2(fSkipProfiles=None, fprofiles=None):
 	"""
 	***Deprecated Version***
 
@@ -207,6 +207,8 @@ def get_profiles2(fSkipProfiles=[None], fprofiles=None):
 
 	my_Session = boto3.Session()
 	my_profiles = my_Session._session.available_profiles
+	if fSkipProfiles is None:
+		fSkipProfiles = ['default']
 	if "all" in fprofiles or "ALL" in fprofiles or "All" in fprofiles or fprofiles is None:
 		my_profiles = list(set(my_profiles) - set(fSkipProfiles))
 	else:
@@ -214,48 +216,49 @@ def get_profiles2(fSkipProfiles=[None], fprofiles=None):
 	return (my_profiles)
 
 
-def get_parent_profiles(fprofiles=None, fSkipProfiles=None):
-	"""
-	This function should only return profiles from Payer Accounts.
-	If they provide a list of profile strings (in fprofiles), then we compare those
-	strings to the full list of profiles we have, and return those profiles that
-	contain the strings AND are Payer Accounts.
-	"""
-	import boto3
-	import logging
-
-	from botocore.exceptions import ClientError
-
-	ERASE_LINE = '\x1b[2K'
-	if fSkipProfiles is None:
-		fSkipProfiles = ['default']
-	if fprofiles is None:
-		fprofiles = ['all']
-	my_Session = boto3.Session()
-	my_profiles = my_Session._session.available_profiles
-	logging.info("Profile string sent: %s", fprofiles)
-	if "all" in fprofiles or "ALL" in fprofiles or "All" in fprofiles:
-		my_profiles = list(set(my_profiles) - set(fSkipProfiles))
-		logging.info("my_profiles %s:", my_profiles)
-	else:
-		my_profiles = list(set(fprofiles) - set(fSkipProfiles))
-	my_profiles2 = []
-	NumOfProfiles = len(my_profiles)
-	for profile in my_profiles:
-		print(ERASE_LINE, f"Checking {profile} Profile - {NumOfProfiles} more profiles to go", end='\r')
-		logging.warning("Finding whether %s is a root profile", profile)
-		try:
-			AcctResult = find_if_org_root(profile)
-		except ClientError as my_Error:
-			print(my_Error)
-			continue
-		NumOfProfiles -= 1
-		if AcctResult in ['Root', 'StandAlone']:
-			logging.warning("%s is a %s Profile", profile, AcctResult)
-			my_profiles2.append(profile)
-		else:
-			logging.warning("%s is a %s Profile", profile, AcctResult)
-	return (my_profiles2)
+# def get_parent_profiles(fprofiles=None, fSkipProfiles=None):
+# 	"""
+#
+# 	This function relies on "find_if_org_root" which is also deprecated
+#
+# 	This function should only return profiles from Payer Accounts.
+# 	If they provide a list of profile strings (in fprofiles), then we compare those
+# 	strings to the full list of profiles we have, and return those profiles that
+# 	contain the strings AND are Payer Accounts.
+# 	"""
+# 	import boto3
+# 	import logging
+#
+# 	from botocore.exceptions import ClientError
+#
+# 	ERASE_LINE = '\x1b[2K'
+# 	if fSkipProfiles is None:
+# 		fSkipProfiles = ['default']
+# 	if fprofiles is None:
+# 		fprofiles = ['all']
+# 	my_Session = boto3.Session()
+# 	my_profiles = my_Session._session.available_profiles
+# 	logging.info("Profile string sent: %s", fprofiles)
+# 	if "all" in fprofiles or "ALL" in fprofiles or "All" in fprofiles:
+# 		my_profiles = list(set(my_profiles) - set(fSkipProfiles))
+# 		logging.info("my_profiles %s:", my_profiles)
+# 	else:
+# 		my_profiles = list(set(fprofiles) - set(fSkipProfiles))
+# 	my_profiles2 = []
+# 	NumOfProfiles = len(my_profiles)
+# 	for profile in my_profiles:
+# 		logging.warning(f"{ERASE_LINE} Checking {profile} Profile - {NumOfProfiles} more profiles to go", end='\r')
+# 		logging.warning(f"Finding whether {profile} is a root profile")
+# 		try:
+# 			AcctResult = find_if_org_root(profile)
+# 			logging.warning(f"{profile} is a {AcctResult} Profile")
+# 			if AcctResult in ['Root', 'StandAlone']:
+# 				my_profiles2.append(profile)
+# 		except ClientError as my_Error:
+# 			logging.error(my_Error)
+# 			continue
+# 		NumOfProfiles -= 1
+# 	return (my_profiles2)
 
 
 # def find_if_org_root(fProfile):
@@ -694,7 +697,9 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 		                       'AccountId'      : fChildAccount,
 		                       'Region'         : fRegion,
 		                       'Role'           : 'Use Profile',
-		                       'AccessError'    : False}
+		                       'AccessError'    : False,
+		                       'Success'        : True,
+		                       'ErrorMessage'   : None}
 		return (account_credentials)
 	if fRoleList is None:
 		fRoleList = ['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution',
@@ -711,7 +716,9 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 	                       'AccountId'      : None,
 	                       'Region'         : fRegion,
 	                       'Role'           : None,
-	                       'AccessError'    : False}
+	                       'AccessError'    : False,
+	                       'Success'        : False,
+	                       'ErrorMessage'   : None}
 	for role in fRoleList:
 		try:
 			if faws_acct.session.profile_name:
@@ -720,20 +727,20 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 			else:
 				logging.info(
 						f"Trying to access account {fChildAccount} using account number {faws_acct.acct_number} assuming role: {role}")
-			logging.debug("Try this")
 			role_arn = f"arn:aws:iam::{fChildAccount}:role/{role}"
 			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Test-ChildAccount-Access")[
 				'Credentials']
 			# If we were successful up to this point, then we'll short-cut everything and just return the credentials that worked
-			logging.info(
-					f"The credentials for account {fChildAccount} using parent account {faws_acct.acct_number} and role name {role} worked")
+			logging.info(f"The credentials for account {fChildAccount} using parent account "
+			             f"{faws_acct.acct_number} and role name {role} worked")
 			account_credentials['ParentAcctId'] = ParentAccountId
 			account_credentials['OrgType'] = org_status
 			account_credentials['AccountNumber'] = fChildAccount
 			account_credentials['AccountId'] = fChildAccount
-			account_credentials['Region'] = role
+			account_credentials['Region'] = fRegion
 			account_credentials['Role'] = role
 			account_credentials['AccessError'] = False
+			account_credentials['Success'] = True
 			return (account_credentials)
 		except ClientError as my_Error:
 			logging.info(my_Error)
@@ -741,14 +748,12 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 		except Exception as my_Error:
 			logging.info(my_Error)
 			continue
-		except:
-			raise Exception
 	# Returns a dict object since that's what's expected
 	# It will only get to the part below if the child isn't accessed properly using the roles already defined
-	logging.debug(f"Failure:"
-	              f"{fRoleList}"
-	              f"{account_credentials}")
-	account_credentials['AccessError'] = True
+	logging.debug(f"Failure:\n"
+	              f"Role list: {fRoleList}\n"
+	              f"account credentials: {account_credentials}")
+	account_credentials = {'AccessError': True, 'Success': False, 'ErrorMessage': "Access Failed"}
 	return (account_credentials)
 
 
@@ -1640,6 +1645,7 @@ def find_stacks_in_acct(ocredentials, fRegion, fStackFragment="all", fStatus="ac
 	fStackFragment is a string - default to "all"
 	fStatus is a string - default to "active"
 	"""
+
 	import boto3
 	import logging
 	logging.error("Acct ID #: %s | Region: %s | Fragment: %s | Status: %s", str(

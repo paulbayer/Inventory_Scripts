@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from pprint import pprint
 import sys
 import Inventory_Modules
@@ -124,10 +125,7 @@ if pExplain:
 
 aws_acct = aws_acct_access(pProfile)
 
-print(f"Gathering all account data from {pProfile} profile")
 logging.info(f"Confirming that this profile {pProfile} represents a Management Account")
-# ProfileIsRoot = Inventory_Modules.find_if_org_root(pProfile)
-# logging.info("---%s---", ProfileIsRoot)
 
 if aws_acct.AccountType.lower() == 'root' and pChildAccountId is None:
 	# Creates a list of the account numbers in the Org.
@@ -146,7 +144,7 @@ print()
 # Step 0 -
 # 0. The Child account MUST allow the Management account access into the Child IAM role called "AWSControlTowerExecution"
 
-if args.loglevel < 50:
+if verbose < 50:
 	print("This script does the following... ")
 	print(f"{Fore.BLUE}  0.{Fore.RESET} Checks to ensure you have the necessary cross-account role access to the child account.")
 	print(f"{Fore.BLUE}  1.{Fore.RESET} This check previously checked for default VPCs, but has since been removed.")

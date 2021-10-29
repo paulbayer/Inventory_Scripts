@@ -377,7 +377,7 @@ elif not pdryrun:
 			logging.debug(f"The operation id {RemoveStackInstanceResult['OperationId']} is {StackInstancesAreGone['StackSetStatus']}")
 			intervals_waited = 1
 			while StackInstancesAreGone['StackSetStatus'] in ['RUNNING']:
-				print(f"Waiting {sleep_interval} seconds for operation ID {RemoveStackInstanceResult['OperationId']} to finish",
+				print(f"Waiting for operation ID {RemoveStackInstanceResult['OperationId']} to finish",
 				      f"." * intervals_waited,
 				      f"{sleep_interval * intervals_waited} seconds waited so far", end='\r')
 				sleep(sleep_interval)
