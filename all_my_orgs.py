@@ -59,6 +59,7 @@ print(fmt % ("Profile Name", "Account Number", "Payer Org Acct", "Org ID", "Root
 print(fmt % ("------------", "--------------", "--------------", "------", "----------"))
 NumProfiles = 0
 FailedProfiles = []
+RootAcct = False
 for profile in ProfileList:
 	try:
 		NumProfiles += 1
@@ -135,8 +136,7 @@ for profile in ProfileList:
 	if ErrorFlag:
 		continue
 	elif RootAcct:
-		print(Fore.RED + fmt % (
-		profile, aws_acct.acct_number, aws_acct.MgmtAccount, aws_acct.OrgID, RootAcct) + Style.RESET_ALL)
+		print(Fore.RED + fmt % (profile, aws_acct.acct_number, aws_acct.MgmtAccount, aws_acct.OrgID, RootAcct) + Style.RESET_ALL)
 	# If I'm looking for only the root accounts, when I find something that isn't a root account, don't print anything and continue on.
 	elif rootonly:
 		print(ERASE_LINE, f"{profile} isn't a root account", end="\r")
