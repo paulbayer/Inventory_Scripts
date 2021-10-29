@@ -42,18 +42,9 @@ ERASE_LINE = '\x1b[2K'
 RootAccts = []  # List of the Organization Root's Account Number
 RootProfiles = []  # List of the Organization Root's profiles
 
-logging.info(f"Profiles: {pProfiles}")
-
-if pProfiles is None:  # Use case #1 from above
-	pProfiles = ['all']
-	logging.info("Use Case #1 - Setting profile list to 'all'")
-	logging.warning("All available profiles will be shown")
-	ProfileList = Inventory_Modules.get_profiles2(fSkipProfiles=SkipProfiles, fprofiles=pProfiles)
-	ShowEverything = True
-elif 'all' not in pProfiles:  # Use case #2 from above
-	logging.info("Use Case #2")
-	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=SkipProfiles, fprofiles=pProfiles)
-	logging.warning(f"ProfileList is set to {ProfileList}")
+logging.warning("All available profiles will be shown")
+ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=SkipProfiles, fprofiles=pProfiles)
+# ShowEverything = True
 
 """
 TODO:
@@ -64,8 +55,8 @@ TODO:
 
 fmt = '%-23s %-15s %-27s %-12s %-10s'
 print("------------------------------------")
-print(fmt % ("Profile Name", "Account Number", "Master Org Acct", "Org ID", "Root Acct?"))
-print(fmt % ("------------", "--------------", "---------------", "------", "----------"))
+print(fmt % ("Profile Name", "Account Number", "Payer Org Acct", "Org ID", "Root Acct?"))
+print(fmt % ("------------", "--------------", "--------------", "------", "----------"))
 NumProfiles = 0
 FailedProfiles = []
 for profile in ProfileList:
@@ -124,6 +115,14 @@ for profile in ProfileList:
 		else:
 			print("Credentials Error")
 			print(my_Error)
+	except AttributeError as my_Error:
+		ErrorFlag = True
+		FailedProfiles.append(profile)
+		if str(my_Error).find("object has no attribute") > 0:
+			MnmgtAcct = "This profile's credentials don't work."
+		else:
+			print("Credentials Error")
+			print(my_Error)
 	'''
 	If I create a dictionary from the Root Accts and Root Profiles Lists - 
 	I can use that to determine which profile belongs to the root user of my (child) account.
@@ -133,10 +132,13 @@ for profile in ProfileList:
 	but that takes a long time, since nothing would be sent to the screen in the meantime.
 	'''
 	# Print results for this profile
-	if RootAcct:
+	if ErrorFlag:
+		continue
+	elif RootAcct:
 		print(Fore.RED + fmt % (
 		profile, aws_acct.acct_number, aws_acct.MgmtAccount, aws_acct.OrgID, RootAcct) + Style.RESET_ALL)
-	elif rootonly:  # If I'm looking for only the root accounts, when I find something that isn't a root account, don't print anything and continue on.
+	# If I'm looking for only the root accounts, when I find something that isn't a root account, don't print anything and continue on.
+	elif rootonly:
 		print(ERASE_LINE, f"{profile} isn't a root account", end="\r")
 	else:
 		print(fmt % (profile, aws_acct.acct_number, aws_acct.MgmtAccount, aws_acct.OrgID, RootAcct))

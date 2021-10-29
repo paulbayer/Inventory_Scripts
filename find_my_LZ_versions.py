@@ -60,7 +60,7 @@ SkipProfiles = ['default']
 if pProfile in ['all', 'All', 'ALL']:
 	logging.info("%s was provided as the profile, so we're going to check ALL of their profiles to find all of the management accounts, and list out all of their ALZ versions.", pProfile)
 	print("You've specified multiple profiles, so we've got to find them, determine which profiles represent Management Accounts, and then parse through those. This will take a few moments.")
-	AllProfiles = Inventory_Modules.get_profiles2()
+	AllProfiles = Inventory_Modules.get_profiles()
 else:
 	AllProfiles = [pProfile]
 

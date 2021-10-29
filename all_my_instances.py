@@ -110,7 +110,7 @@ if pProfiles is None:   # Default use case from the classes
 	AllChildAccounts.extend(aws_acct.ChildAccounts)
 else:
 	logging.info("The following profiles are being checked.")
-	ProfileList = Inventory_Modules.get_profiles2(fprofiles=pProfiles)
+	ProfileList = Inventory_Modules.get_profiles(fprofiles=pProfiles)
 	logging.info(pProfiles)
 	logging.warning("All available profiles will be shown")
 	for profile in ProfileList:
