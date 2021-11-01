@@ -1857,7 +1857,7 @@ def delete_stackset(fProfile, fRegion, fStackSetName):
 	return (response)
 
 
-def delete_stackset2(faws_acct, fRegion, fStackSetName):
+def delete_stackset3(faws_acct, fRegion, fStackSetName):
 	"""
 	faws_acct is an object representing the account we're working in
 	fRegion is a string
