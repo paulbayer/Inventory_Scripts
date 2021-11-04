@@ -104,7 +104,7 @@ class CommonArguments():
 
 	def multiprofile(self):
 		self.my_parser.add_argument(
-				"-ps", "-p", "--profiles",
+				"-p", "-ps", "--profiles",
 				dest="Profiles",
 				nargs="*",
 				metavar="Profiles",
@@ -122,7 +122,7 @@ class CommonArguments():
 
 	def multiregion_nodefault(self):
 		self.my_parser.add_argument(
-				"-rs", "--regions", "-r",
+				"-r", "-rs", "--regions",
 				nargs="*",
 				dest="Regions",
 				metavar="region name string",
