@@ -1,5 +1,16 @@
 
 def del_vpc(ocredentials, fVPCId, fRegion):
+	"""
+	ocredentials looks like this:
+		session_vpc = boto3.Session(
+			aws_access_key_id = ocredentials['AccessKeyId'],
+			aws_secret_access_key = ocredentials['SecretAccessKey'],
+			aws_session_token = ocredentials['SessionToken'],
+			region_name=fRegion)
+	fVPCId is a string with the VPC ID in it
+	fRegion is the string that represents the AWS region name
+	"""
+
 	import boto3
 	import logging
 	from botocore.exceptions import ClientError
