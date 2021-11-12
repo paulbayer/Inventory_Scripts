@@ -373,7 +373,7 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 		# print(ERASE_LINE,"Deleting vpc...",end='',flush=True)
 		print(f"Deleting vpc in {fRegion}...", end='', flush=True)
 
-		logging.info("Deleting vpc-endpoints... for vpc %s in region %s", fVPCId, fRegion)
+		logging.info(f"Deleting vpc-endpoints... for vpc {fVPCId} in region {fRegion}")
 		print(".", end='', flush=True)
 		ResultGood = (find_and_delete_vpc_endpoints(client_vpc, fVPCId, fRegion) == 0)
 		if not ResultGood:
