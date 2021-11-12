@@ -33,8 +33,8 @@ class CommonArguments():
 		self.my_parser.add_argument(
 				"--version",
 				dest="Version",
-				const=True,
-				default=False,  # Defaults to False, so the script would continue to run
+				action="store_true",
+				default="store_false",  # Defaults to not providing the version
 				help="Version #")
 
 	def rootOnly(self):
