@@ -8,6 +8,7 @@ from colorama import init, Fore
 from botocore.exceptions import ClientError
 
 init()
+
 parser = CommonArguments()
 parser.singleprofile()      # Allows for a single profile to be specified
 parser.multiregion()        # Allows for multiple regions to be specified at the command line
@@ -54,6 +55,7 @@ NumStacksFound = 0
 ERASE_LINE = '\x1b[2K'
 
 print()
+# TODO: Gotta find a way to dynamically size the columns below
 if pInstanceCount:
 	fmt = '%-20s %-15s %-15s %-50s %-5s'
 	print(fmt % ("Account", "Region", "Status", "StackSet Name", "# of instances"))
