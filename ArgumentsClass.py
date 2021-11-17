@@ -27,7 +27,7 @@ class CommonArguments():
 		self.my_parser = argparse.ArgumentParser(
 				description='Accept common arguments to the Inventory Scripts',
 				allow_abbrev=True,
-				prefix_chars='-+/')
+				prefix_chars='-+')
 
 	def version(self):
 		self.my_parser.add_argument(
