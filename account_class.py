@@ -124,7 +124,8 @@ class aws_acct_access:
 				prelim_session = boto3.Session(profile_name=fProfile, region_name='us-east-1')
 				account_access_successful = True
 			except ProfileNotFound as my_Error:
-				ErrorMessage = (f"The profile {fProfile} wasn't found. Perhaps there was a typo?")
+				ErrorMessage = (f"The profile {fProfile} wasn't found. Perhaps there was a typo?"
+				                f"Error Message: {my_Error}")
 				logging.error(ErrorMessage)
 				account_access_successful = False
 		if account_access_successful:
