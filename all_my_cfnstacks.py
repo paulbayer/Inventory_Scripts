@@ -30,6 +30,11 @@ parser.my_parser.add_argument(
 	default="active",
 	help="String that determines whether we only see 'CREATE_COMPLETE' or 'DELETE_COMPLETE' too")
 parser.my_parser.add_argument(
+	"--stackid",
+	dest="stackid",
+	action="store_true",
+	help="Flag that determines whether we display the Stack IDs as well")
+parser.my_parser.add_argument(
 	"+delete", "+forreal",
 	dest="DeletionRun",
 	action="store_true",
@@ -42,6 +47,7 @@ AccountsToSkip = args.SkipAccounts
 verbose = args.loglevel
 pstackfrag = args.stackfrag
 pstatus = args.status
+pStackIdFlag = args.stackid
 DeletionRun = args.DeletionRun
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
 
@@ -63,7 +69,7 @@ if DeletionRun:
 	print("And delete the stacks that are found...")
 
 print()
-if args.loglevel < 21:  # INFO level
+if pStackIdFlag:
 	fmt = '%-20s %-15s %-15s %-50s %-50s'
 	print(fmt % ("Account", "Region", "Stack Status", "Stack Name", "Stack ID"))
 	print(fmt % ("-------", "------", "------------", "----------", "--------"))
@@ -104,7 +110,7 @@ for account_number in AccountList:
 				StackName = Stacks[y]['StackName']
 				StackStatus = Stacks[y]['StackStatus']
 				StackID = Stacks[y]['StackId']
-				if args.loglevel < 21:  # INFO level
+				if pStackIdFlag:
 					print(fmt % (account_number, region, StackStatus, StackName, StackID))
 				else:
 					print(fmt % (account_number, region, StackStatus, StackName))
@@ -163,3 +169,4 @@ elif DeletionRun:
 
 print()
 print("Thanks for using this script...")
+print()
