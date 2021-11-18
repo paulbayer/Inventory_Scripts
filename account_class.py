@@ -101,6 +101,7 @@ class aws_acct_access:
 		# Otherwise, all hell will break if it's not.
 		UsingKeys = False
 		UsingSessionToken = False
+		account_access_successful = False
 		if ocredentials is not None:
 			# Trying to instantiate a class, based on passed in credentials
 			UsingKeys = True
@@ -119,40 +120,45 @@ class aws_acct_access:
 				                               region_name='us-east-1')
 		else:
 			# Not trying to use account_key_credentials
-			prelim_session = boto3.Session(profile_name=fProfile, region_name='us-east-1')
-		try:
-			result = validate_region(prelim_session, fRegion)
-			if result['Result'] is True:
-				if UsingSessionToken:
-					self.session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-					                             aws_secret_access_key=ocredentials['SecretAccessKey'],
-					                             aws_session_token=ocredentials['SessionToken'],
-					                             region_name='us-east-1')
-				elif UsingKeys:
-					self.session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-					                             aws_secret_access_key=ocredentials['SecretAccessKey'],
-					                             region_name='us-east-1')
-				else:
-					self.session = boto3.Session(profile_name=fProfile, region_name=result['Region'])
+			try:
+				prelim_session = boto3.Session(profile_name=fProfile, region_name='us-east-1')
 				account_access_successful = True
-				self.AccountStatus = 'ACTIVE'
-			else:
-				logging.error(result['Message'])
+			except ProfileNotFound as my_Error:
+				ErrorMessage = (f"The profile {fProfile} wasn't found. Perhaps there was a typo?")
+				logging.error(ErrorMessage)
 				account_access_successful = False
-				self.AccountStatus = 'INACTIVE'
-		except ProfileNotFound as my_Error:
-			logging.error(f"Profile {fProfile} not found. Please ensure this profile is valid within your system.")
-			logging.info(f"Error: {my_Error}")
-			account_access_successful = False
+		if account_access_successful:
+			try:
+				result = validate_region(prelim_session, fRegion)
+				if result['Result'] is True:
+					if UsingSessionToken:
+						self.session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+						                             aws_secret_access_key=ocredentials['SecretAccessKey'],
+						                             aws_session_token=ocredentials['SessionToken'],
+						                             region_name=result['Region'])
+					elif UsingKeys:
+						self.session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+						                             aws_secret_access_key=ocredentials['SecretAccessKey'],
+						                             region_name=result['Region'])
+					else:
+						self.session = boto3.Session(profile_name=fProfile, region_name=result['Region'])
+					account_and_region_access_successful = True
+					self.AccountStatus = 'ACTIVE'
+				else:
+					logging.error(result['Message'])
+					account_and_region_access_successful = False
+					self.AccountStatus = 'INACTIVE'
+			except ProfileNotFound as my_Error:
+				logging.error(f"Profile {fProfile} not found. Please ensure this profile is valid within your system.")
+				logging.info(f"Error: {my_Error}")
+				account_and_region_access_successful = False
 
 		logging.info(f"Capturing Account Information for profile {fProfile}...")
-		if not account_access_successful:
+		if not account_and_region_access_successful:
 			logging.error(f"Didn't find information for profile {fProfile} as something failed")
-			account_access_successful = False
 		else:
 			logging.info(f"Successfully validated access to account in region {fRegion}")
-			account_access_successful = True
-		if account_access_successful:
+		if account_and_region_access_successful:
 			self.acct_number = self.acct_num()
 			self._AccountAttributes = self.find_account_attr()
 			logging.info(f"Found {len(self._AccountAttributes)} attributes in this account")
@@ -169,8 +175,15 @@ class aws_acct_access:
 
 			else:
 				self.ChildAccounts = self.find_child_accounts()
-		else:
+		elif fProfile is not None:
 			logging.error(f"Profile {fProfile} failed to successfully access an account")
+			self.AccountType = 'Unknown'
+			self.MgmtAccount = 'Unknown'
+			self.OrgID = 'Unknown'
+			self.MgmtEmail = 'Unknown'
+			self.creds = 'Unknown'
+		elif ocredentials is not None:
+			logging.error(f"Credentials for access_key {ocredentials['A']} failed to successfully access an account")
 			self.AccountType = 'Unknown'
 			self.MgmtAccount = 'Unknown'
 			self.OrgID = 'Unknown'
