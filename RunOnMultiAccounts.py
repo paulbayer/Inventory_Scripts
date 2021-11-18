@@ -87,6 +87,7 @@ for account_num in Accounts:
 		print(f"Account {account_num} was successfully connected via role {pAccessRole} from {aws_acct.acct_number}")
 		"""
 		Put more commands here... Or you can write functions that represent your commands and call them from here.
+		
 		"""
 	else:
 		print(f"Access Role {pAccessRole} failed to connect to {account_num} from {aws_acct.acct_number} with error: {response['ErrorMessage']}")
