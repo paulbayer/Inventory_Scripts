@@ -358,7 +358,8 @@ def find_account_number(fProfile=None):
 			pass
 	except InvalidConfigError as my_Error:
 		if str(my_Error).find("InvalidConfigError") > 0:
-			logging.error(f"{fProfile}: profile is invalid. Probably due to a config profile based on a credential that doesn't work")
+			logging.error(
+				f"{fProfile}: profile is invalid. Probably due to a config profile based on a credential that doesn't work")
 			pass
 	except Exception as my_Error:
 		logging.error(f"Other kind of failure for profile {fProfile}: {my_Error}")
@@ -541,10 +542,10 @@ def RemoveCoreAccounts(MainList, AccountsToRemove=None):
 	NewCA = []
 	for i in range(len(MainList)):
 		if MainList[i]['AccountId'] in AccountsToRemove:
-			logging.info("Comparing %s to above", str(MainList[i]['AccountId']))
+			logging.info(f"Comparing {str(MainList[i]['AccountId'])} to above")
 			continue
 		else:
-			logging.info("Account %s was allowed", str(MainList[i]['AccountId']))
+			logging.info(f"Account {str(MainList[i]['AccountId'])} was allowed")
 			NewCA.append(MainList[i])
 	return (NewCA)
 
@@ -1804,7 +1805,7 @@ def find_stacksets2(faws_acct, fRegion='us-east-1', fStackFragment=['all']):
 	# Set Log Level
 
 	result = validate_region(faws_acct, fRegion)
-	if not result['Success']:       # Region failed to validate
+	if not result['Success']:  # Region failed to validate
 		return (result['Message'])  # Region was validated
 	else:
 		logging.info(result['Message'])
