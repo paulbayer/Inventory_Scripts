@@ -7,7 +7,6 @@ from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 from colorama import init, Fore
 from botocore.exceptions import ClientError
-
 import logging
 
 init()
@@ -166,6 +165,7 @@ elif DeletionRun:
 		print(f"Finished {y+1} of {len(StacksFound)}")
 		response = Inventory_Modules.delete_stack2(account_credentials, StacksFound[y]['Region'], StacksFound[y]['StackName'])
 		# pprint(response)
+
 
 print()
 print("Thanks for using this script...")
