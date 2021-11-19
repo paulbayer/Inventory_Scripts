@@ -702,7 +702,7 @@ if OldStackSetExists:
 		stack_ids_subset = [stack_ids['Stack_instances'][x + i] for i in range(limit) if
 		                    x + i < len(stack_ids['Stack_instances'])]
 		x += limit
-		print(f"Importing {len(stack_ids_subset)} stacks into the new stackset now...")
+		print(f"{ERASE_LINE}Importing {len(stack_ids_subset)} stacks into the new stackset now...")
 		ReconnectStackInstances = populate_new_stack_with_existing_stack_instances(aws_acct, stack_ids_subset, pNewStackSet)
 		StackReadyToImport = check_stack_set_status(aws_acct, pNewStackSet, ReconnectStackInstances['OperationId'])
 		if not StackReadyToImport['Success']:
@@ -719,7 +719,7 @@ if OldStackSetExists:
 			if not StackReadyToImport['Success']:
 				sys.exit(
 					f"There was a problem with importing the stack instances into stackset {pNewStackSet}. Exiting...")
-		logging.info(f"That import took {intervals_waited * sleep_interval} seconds to complete")
+		logging.info(f"{ERASE_LINE}That import took {intervals_waited * sleep_interval} seconds to complete")
 
 else:  # Old Stackset doesn't exist - so there was a typo somewhere. Tell the user and exit
 	print(f"It appears that the legacy stackset you provided {pOldStackSet} doesn't exist.\n"
