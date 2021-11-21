@@ -64,7 +64,6 @@ else:
 ##########################
 ERASE_LINE = '\x1b[2K'
 
-
 ##########################
 
 
@@ -172,7 +171,6 @@ def createrole(ocredentials, fRootAccount, frole):
 
 def removerole(ocredentials, frole):
 	import boto3
-
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -180,6 +178,7 @@ def removerole(ocredentials, frole):
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountId'] holds the account number you're connecting to
 	"""
+	return_response = {'Success': False, 'ErrorMessage': ''}
 	session_iam = boto3.Session(
 			aws_access_key_id=ocredentials['AccessKeyId'],
 			aws_secret_access_key=ocredentials['SecretAccessKey'],
@@ -190,19 +189,95 @@ def removerole(ocredentials, frole):
 	AdminPolicy = 'arn:aws:iam::aws:policy/AdministratorAccess'
 
 	try:
-		response1 = client_iam.detach_role_policy(
-				RoleName=frole,
-				PolicyArn=AdminPolicy
-				)
-		logging.info("Successfully removed the admin policy from role %s", frole)
-		response = client_iam.delete_role(
-				RoleName=frole
-				)
+		# We need to list the policies attached (whether inline or managed)
+		# TODO: Both of these calls below should allow for pagination
+		attached_managed_policies = client_iam.list_attached_role_policies(RoleName=frole)
+		"""
+		{
+	    'AttachedPolicies': [
+	        {
+	            'PolicyName': 'string',
+	            'PolicyArn': 'string'
+	        },
+	    ],
+	    'IsTruncated': True|False,
+	    'Marker': 'string'
+		}
+		"""
+
+		attached_inline_policies = client_iam.list_role_policies(RoleName=frole)
+		"""
+		{
+	    'PolicyNames': [
+	        'string',
+	    ],
+	    'IsTruncated': True|False,
+	    'Marker': 'string'
+		}
+		"""
+
+		# Then we need to detach/ delete the policy we find
+		for managed_policy in attached_managed_policies['AttachedPolicies']:
+			try:
+				response1 = client_iam.detach_role_policy(
+					RoleName=frole,
+					PolicyArn=managed_policy['PolicyArn']
+					)
+				logging.info(f"Successfully removed the managed policy {managed_policy['PolicyName']} from role {frole}")
+				return_response['Success'] = True
+			except (client_iam.exceptions.NoSuchEntityException,
+			        client_iam.exceptions.InvalidInputException,
+			        client_iam.exceptions.ServiceFailureException) as my_Error:
+				logging.error(f"Error Message: {my_Error}")
+				return_response['ErrorMessage'] = str(my_Error)
+				return_response['Success'] = False
+			if return_response['Success']:
+				continue
+			else:
+				return(return_response)
+
+		for inline_policy in attached_inline_policies['PolicyNames']:
+			try:
+				inline_role_deletion = client_iam.delete_role_policy(
+					RoleName=frole,
+					PolicyName=inline_policy
+					)
+				logging.info(f"Successfully removed the inline policy {inline_policy} from role {frole}")
+				return_response['Success'] = True
+			except (client_iam.exceptions.NoSuchEntityException,
+			        client_iam.exceptions.LimitExceededException,
+			        client_iam.exceptions.UnmodifiableEntityException,
+			        client_iam.exceptions.ServiceFailureException) as my_Error:
+				logging.error(f"Error Message: {my_Error}")
+				return_response['ErrorMessage'] = str(my_Error)
+				return_response['Success'] = False
+			if return_response['Success']:
+				continue
+			else:
+				return(return_response)
+
+		# Only then we can we delete the role
+		try:
+			response = client_iam.delete_role(RoleName=frole)
+			logging.info(f"Successfully removed the role {frole}")
+			return_response['Success'] = True
+		except (client_iam.exceptions.NoSuchEntityException,
+		        client_iam.exceptions.DeleteConflictException,
+		        client_iam.exceptions.LimitExceededException,
+		        client_iam.exceptions.UnmodifiableEntityException,
+		        client_iam.exceptions.ConcurrentModificationException,
+		        client_iam.exceptions.ServiceFailureException) as my_Error:
+			logging.error(f"Error Message: {my_Error}")
+			return_response['ErrorMessage'] = str(my_Error)
+			return_response['Success'] = False
+			if return_response['Success']:
+				pass
+			else:
+				return(return_response)
+
 		print(f"{ERASE_LINE}We've successfully removed the role{Fore.GREEN} {frole} {Fore.RESET}"
 		      f"from account{Fore.GREEN} {ocredentials['AccountId']} {Fore.RESET}")
 	except ClientError as my_Error:
-		# if my_Error.response['Error']['Code'] == 'EntityAlreadyExists':
-		# 	print("Role {} already exists in account {}. Skipping.".format(frole, pAccount))
 		print(my_Error)
 		pass
 
@@ -218,7 +293,7 @@ def roleexists(ocredentials, frole):
 
 	client_iam = session_iam.client('iam')
 	try:
-		logging.info(f"Checking Account {ocredentials['AccountId']} for Role {frole}")
+		logging.info(f"{ERASE_LINE}Checking Account {ocredentials['AccountId']} for Role {frole}")
 		response = client_iam.get_role(RoleName=frole)
 		return (True)
 	except ClientError as my_Error:
@@ -229,7 +304,7 @@ def roleexists(ocredentials, frole):
 
 ##########################
 print()
-RootAccountNumber = aws_acct.acct_number
+RootAccountNumber = aws_acct.MgmtAccount
 sts_client = aws_acct.session.client('sts')
 UpdatedAccounts = 0
 Results = []
@@ -277,13 +352,16 @@ for account in ChildAccounts:
 print()
 print()
 if pAccount is not None:
-	print(f"You asked me to check account {pAccount} under your organization")
+	print(f"You asked to check account {pAccount} under your organization")
 else:
 	print(f"We found {len(ChildAccounts)} accounts under your organization")
 	print(f"Of these, we checked {len(Results)} accounts")
-if verbose < 40:  # Warning, Info and Debug - skips ERROR
+if verbose < 40:  # Warning, Info and Debug
 	AccountList = [item['AccountId'] for item in Results]
-	logging.warning(f"We checked the following accounts: {AccountList}")
+	print(f"{Fore.GREEN}We checked the following accounts: {AccountList}{Fore.RESET}")
+	MissingAccounts = [item['AccountId'] for item in ChildAccounts if item['AccountId'] not in AccountList]
+	if len(MissingAccounts) > 0:
+		print(f"{Fore.RED}We failed to check the following accounts: {MissingAccounts}{Fore.RESET}")
 
 if pRoleNameToCheck is not None:
 	print(f"We found {UpdatedAccounts} accounts that included the {pRoleNameToCheck} role")

@@ -1649,8 +1649,7 @@ def find_stacks_in_acct(ocredentials, fRegion, fStackFragment="all", fStatus="ac
 
 	import boto3
 	import logging
-	logging.error("Acct ID #: %s | Region: %s | Fragment: %s | Status: %s", str(
-			ocredentials['AccountNumber']), fRegion, fStackFragment, fStatus)
+	logging.error(f"Acct ID #: {str(ocredentials['AccountNumber'])} | Region: {fRegion} | Fragment: {fStackFragment} | Status: {fStatus}")
 	session_cfn = boto3.Session(region_name=fRegion,
 	                            aws_access_key_id=ocredentials['AccessKeyId'],
 	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
