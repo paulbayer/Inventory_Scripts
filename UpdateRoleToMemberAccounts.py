@@ -365,11 +365,16 @@ if verbose < 40:  # Warning, Info and Debug
 
 if pRoleNameToCheck is not None:
 	print(f"We found {UpdatedAccounts} accounts that included the {pRoleNameToCheck} role")
+	if verbose < 41:
+		MissingAccounts = [item['AccountId'] for item in Results if not (item['Result'] == 'Role Exists')]
+		if len(MissingAccounts) > 0:
+			print(f"{Fore.RED}We didn't find {pRoleNameToCheck} in the following accounts: {MissingAccounts}{Fore.RESET}")
 elif pRoleNameToAdd is not None:
 	print(f"We updated {UpdatedAccounts} accounts to include the {pRoleNameToAdd} role")
 elif pRoleNameToRemove is not None:
 	print(f"We updated {UpdatedAccounts} accounts to remove the {pRoleNameToRemove} role")
 
-print()
+
 print()
 print("Thanks for using the tool.")
+print()
