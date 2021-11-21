@@ -102,6 +102,7 @@ class aws_acct_access:
 		UsingKeys = False
 		UsingSessionToken = False
 		account_access_successful = False
+		account_and_region_access_successful = False
 		if ocredentials is not None:
 			# Trying to instantiate a class, based on passed in credentials
 			UsingKeys = True
