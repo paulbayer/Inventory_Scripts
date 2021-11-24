@@ -1683,6 +1683,29 @@ def find_stacks_in_acct(ocredentials, fRegion, fStackFragment="all", fStatus="ac
 			logging.warning(f"2-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
 			                f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 			stacksCopy.append(stack)
+	elif fStatus.lower() == 'all':
+		# Send back all stacks that match the fragment, including all statuses
+		stacks = client_cfn.list_stacks(StackStatusFilter=['CREATE_IN_PROGRESS', 'CREATE_FAILED',
+		                                                   'CREATE_COMPLETE', 'ROLLBACK_IN_PROGRESS',
+		                                                   'ROLLBACK_FAILED', 'ROLLBACK_COMPLETE',
+		                                                   'DELETE_IN_PROGRESS', 'DELETE_FAILED',
+		                                                   'DELETE_COMPLETE', 'UPDATE_IN_PROGRESS',
+		                                                   'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS',
+		                                                   'UPDATE_COMPLETE', 'UPDATE_FAILED',
+		                                                   'UPDATE_ROLLBACK_IN_PROGRESS',
+		                                                   'UPDATE_ROLLBACK_FAILED',
+		                                                   'UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS',
+		                                                   'UPDATE_ROLLBACK_COMPLETE', 'REVIEW_IN_PROGRESS',
+		                                                   'IMPORT_IN_PROGRESS', 'IMPORT_COMPLETE',
+		                                                   'IMPORT_ROLLBACK_IN_PROGRESS', 'IMPORT_ROLLBACK_FAILED',
+		                                                   'IMPORT_ROLLBACK_COMPLETE'])
+		for stack in stacks['StackSummaries']:
+			if fStackFragment in stack['StackName']:
+				# Check the fragment now - only send back those that match, regardless of status
+				logging.warning(f"1-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
+				                f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+				stacksCopy.append(stack)
+
 	elif not fStatus.lower() == 'active':
 		# Send back stacks that match the single status, check the fragment further down.
 		try:

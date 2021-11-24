@@ -22,6 +22,12 @@ parser.my_parser.add_argument(
 		default=None,
 		metavar="Single account to check/ update",
 		help="To specify a specific account to check/ update, use this parameter. Default is to update all accounts within an Org.")
+parser.my_parser.add_argument(
+		"--RoleToUse",
+		dest="pRoleToUse",
+		default=None,
+		metavar="Role name",
+		help="Role that should be used to access child accounts")
 group = parser.my_parser.add_mutually_exclusive_group(required=True)
 group.add_argument(
 		"+r", "--RoleToAdd",
@@ -45,6 +51,7 @@ args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
 pAccount = args.pAccount
+pRoleToUse = args.pRoleToUse
 pRoleNameToAdd = args.pRoleNameToAdd
 pRoleNameToRemove = args.pRoleNameToRemove
 pRoleNameToCheck = args.pRoleNameToCheck
@@ -56,11 +63,7 @@ if pAccount is None:
 	ChildAccounts = aws_acct.ChildAccounts
 else:
 	ChildAccounts = [{'AccountId': pAccount}]
-# [{'ParentProfile': pProfile,
-# 	                  'AccountId'    : pAccount,
-# 	                  'AccountEmail' : 'Not Provided',
-# 	                  'AccountStatus': 'Unknown'
-# 	                  }]
+
 ##########################
 ERASE_LINE = '\x1b[2K'
 
@@ -308,15 +311,12 @@ RootAccountNumber = aws_acct.MgmtAccount
 sts_client = aws_acct.session.client('sts')
 UpdatedAccounts = 0
 Results = []
+# if the user supplied a role to use, this parameter will cause the Inventory_Modules function to use it.
+# If the parameter wasn't supplied, the default value is None, where it will be translated into a number of commonly used role names inside the function
+if pRoleToUse is not None:
+	RoleList = [pRoleToUse]
 for account in ChildAccounts:
-	# ConnectionSuccess = False
-	# rolenames = ['AWSCloudFormationStackSetExecutionRole', 'OrganizationalFullAccess', 'OrganizationAccountAccessRole',
-	#              'AWSControlTowerExecution', 'Owner', 'admin-crossAccount', 'AdministratorAccess']
-	'''
-	The comment below exists just to show the structure of the ARN that we build via code.
-	'''
-	# role_arn = "arn:aws:iam::{}:role/AWSCloudFormationStackSetExecutionRole".format(account['AccountId'])
-	account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'])
+	account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'], fRoleList=[pRoleToUse])
 	if not account_credentials['Success']:
 		logging.error(f"Something failed in getting credentials for account {account['AccountId']}\n"
 		              f"Error Message: {account_credentials['ErrorMessage']}")
@@ -356,12 +356,12 @@ if pAccount is not None:
 else:
 	print(f"We found {len(ChildAccounts)} accounts under your organization")
 	print(f"Of these, we checked {len(Results)} accounts")
-if verbose < 40:  # Warning, Info and Debug
-	AccountList = [item['AccountId'] for item in Results]
-	print(f"{Fore.GREEN}We checked the following accounts: {AccountList}{Fore.RESET}")
-	MissingAccounts = [item['AccountId'] for item in ChildAccounts if item['AccountId'] not in AccountList]
-	if len(MissingAccounts) > 0:
-		print(f"{Fore.RED}We failed to check the following accounts: {MissingAccounts}{Fore.RESET}")
+
+AccountList = [item['AccountId'] for item in Results]
+print(f"{Fore.GREEN}We checked the following accounts: {AccountList}{Fore.RESET}")
+MissingAccounts = [item['AccountId'] for item in ChildAccounts if item['AccountId'] not in AccountList]
+if len(MissingAccounts) > 0:
+	print(f"{Fore.RED}We failed to check the following accounts: {MissingAccounts}{Fore.RESET}")
 
 if pRoleNameToCheck is not None:
 	print(f"We found {UpdatedAccounts} accounts that included the {pRoleNameToCheck} role")
@@ -370,7 +370,7 @@ if pRoleNameToCheck is not None:
 		if len(MissingAccounts) > 0:
 			print(f"{Fore.RED}We didn't find {pRoleNameToCheck} in the following accounts: {MissingAccounts}{Fore.RESET}")
 elif pRoleNameToAdd is not None:
-	print(f"We updated {UpdatedAccounts} accounts to include the {pRoleNameToAdd} role")
+	print(f"We updated {UpdatedAccounts} accounts to add the {pRoleNameToAdd} role")
 elif pRoleNameToRemove is not None:
 	print(f"We updated {UpdatedAccounts} accounts to remove the {pRoleNameToRemove} role")
 
