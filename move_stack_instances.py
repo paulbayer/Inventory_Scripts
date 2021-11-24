@@ -236,7 +236,11 @@ def compare_stacksets(faws_acct, fExisting_stack_set_name, fNew_stack_set_name):
 	return_response['CapabilitiesComparison'] = (Stack_Set_Info_old['stack_set_info']['Capabilities'] == Stack_Set_Info_new['stack_set_info']['Capabilities'])
 	return_response['ParametersComparison'] = (Stack_Set_Info_old['stack_set_info']['Parameters'] == Stack_Set_Info_new['stack_set_info']['Parameters'])
 	return_response['TagsComparison'] = (Stack_Set_Info_old['stack_set_info']['Tags'] == Stack_Set_Info_new['stack_set_info']['Tags'])
-	return_response['DescriptionComparison'] = (Stack_Set_Info_old['stack_set_info']['Description'] == Stack_Set_Info_new['stack_set_info']['Description'])
+	try:
+		return_response['DescriptionComparison'] = (Stack_Set_Info_old['stack_set_info']['Description'] == Stack_Set_Info_new['stack_set_info']['Description'])
+	except KeyError as myError:
+		logging.error(f"Description key wasn't available... Unimportant")
+		return_response['DescriptionComparison'] = False
 	return_response['ExecutionRoleComparison'] = (Stack_Set_Info_old['stack_set_info']['ExecutionRoleName'] == Stack_Set_Info_new['stack_set_info']['ExecutionRoleName'])
 
 	if (return_response['TemplateComparison'] and return_response['CapabilitiesComparison'] and return_response['ParametersComparison']):

@@ -382,12 +382,12 @@ elif CompareTemplates['Success'] and not (CompareTemplates['TagsComparison'] and
                                           CompareTemplates['ExecutionRoleComparison']):
 	print()
 	print(
-			f"{Fore.CYAN}Ok - there {Style.BRIGHT}might{Style.NORMAL} be a problem here. While the templates, parameters and capabilities in the two stacksets you provided match\n"
+			f"{Fore.CYAN}Ok - there {Style.BRIGHT}might{Style.NORMAL} be a problem here. While the templates, parameters and capabilities in the two stacksets you provided match\n{Fore.RESET}"
 			f"Either the Description, the Tags, or the ExecutionRole is different between the two stacksets.\n"
 			f"But I assume that's why you're using this script...")
 	print(f"Tags match: {CompareTemplates['TagsComparison']}")
-	print(f"Tags match: {CompareTemplates['DescriptionComparison']}")
-	print(f"Tags match: {CompareTemplates['ExecutionRoleComparison']}")
+	print(f"Description match: {CompareTemplates['DescriptionComparison']}")
+	print(f"ExecutionRole match: {CompareTemplates['ExecutionRoleComparison']}")
 	print()
 	print(f"You should look at the above analysis of the difference between the stacksets, and determine whether you're comfortable moving forward. "
 	      f"If so, press 'Y' at the next prompt, and the {pOldStackSet} will be updated to match the {pNewStackSet}."
