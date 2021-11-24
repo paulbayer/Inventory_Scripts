@@ -301,13 +301,13 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 			# We assume the process worked. We should probably NOT assume this.
 			ProcessStatus[Step]['IssuesFixed'] += 1
 	for _ in range(len(DeliveryChanList)):
-		logging.warning(f"{Fore.RED}Found a delivery channel for account %s in region %s", DeliveryChanList[_]['AccountID'], DeliveryChanList[_]['Region']+Fore.RESET)
+		logging.warning(f"{Fore.RED}Found a delivery channel for account {DeliveryChanList[_]['AccountID']} in region {DeliveryChanList[_]['Region']}{Fore.RESET}")
 		ProcessStatus[Step]['Success'] = False
 		ProcessStatus[Step]['IssuesFound'] += 1
 		ProcessStatus[Step]['ProblemsFound'].extend(DeliveryChanList)
 		if fFixRun:
 			logging.warning("Deleting %s in account %s in region %s", DeliveryChanList[_]['Name'], DeliveryChanList[_]['AccountID'], DeliveryChanList[_]['Region'])
-			DelDeliveryChannel = Inventory_Modules.del_delivery_channel(account_credentials, ConfigList[_]['Region'], DeliveryChanList[_]['Name'])
+			DelDeliveryChannel = Inventory_Modules.del_delivery_channel(account_credentials, DeliveryChanList[_]['Region'], DeliveryChanList[_]['Name'])
 			# We assume the process worked. We should probably NOT assume this.
 			ProcessStatus[Step]['IssuesFixed'] += 1
 
