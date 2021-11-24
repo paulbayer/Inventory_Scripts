@@ -71,8 +71,12 @@ if Quick:
 	RegionList = ['us-east-1']
 else:
 	# RegionList=Inventory_Modules.get_ec2_regions('all', pProfile)
-	# ap-northeast-3 doesn't support Config (and therefore doesn't support Control Tower), but is a region that is normally included within EC2. Therefore - this is easier.
-	# Updated as of August 4th, 2021 to the 10 regions supported by AWS Control Tower.
+	# ap-northeast-3 doesn't support Config (and therefore doesn't support Control Tower),
+	# but is a region that is normally included within EC2. Therefore - this is easier.
+	# Updated as of November 24, 2021 to the regions supported by AWS Control Tower.
+	# So - the enroll OU feature doesn't only limit its checks to the regions supported by Control Tower,
+	# which is why this script failed to prepare accounts before.
+	# I've updated the list here, but we do need to replace this list with a dynamically generated one.
 	RegionList = ['us-east-1', 'us-east-2', 'us-west-2', 'us-west-1',
 	              'eu-central-1', 'eu-north-1', 'eu-west-1', 'eu-west-2', 'eu-west-3',
 	              'ap-northeast-1', 'ap-northeast-2', 'ap-northeast-3', 'ap-south-1', 'ap-southeast-1', 'ap-southeast-2',
