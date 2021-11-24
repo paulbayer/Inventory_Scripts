@@ -66,7 +66,7 @@ ERASE_LINE = '\x1b[2K'
 sleep_interval = 5
 # Currently, this is a hard-stop at 10, but I made it a variable in case they up the limit
 StackInstancesImportedAtOnce = 10
-stack_ids = []
+stack_ids = dict()
 
 """
 This script attempts to move stack-instances from one stack-set to another without any impact to the ultimate resources.
@@ -96,6 +96,7 @@ Here's what's needed:
 """
 
 ########################
+
 
 def check_stack_set_status(faws_acct, fStack_set_name, fOperationId=None):
 	"""
@@ -160,15 +161,6 @@ def find_if_stack_set_exists(faws_acct, fStack_set_name):
 	return (return_response)
 
 
-# def operation_is_complete(faws_acct, fOperationId):
-# 	"""
-#
-# 	"""
-# 	import logging
-# 	client_cfn = aws_acct.session.client('cloudformation')
-# 	# response = client_cfn.
-
-
 def get_template_body_and_parameters(faws_acct, fExisting_stack_set_name):
 	"""
 	describe_stack_set output:
@@ -223,6 +215,33 @@ def get_template_body_and_parameters(faws_acct, fExisting_stack_set_name):
 		print(f"{ErrorMessage}: {myError}")
 		return_response['Success'] = False
 	return (return_response)
+
+
+def compare_stacksets(faws_acct, fExisting_stack_set_name, fNew_stack_set_name):
+	"""
+	The idea here is to compare the templates and parameters of the stacksets, to ensure that the import will succeed.
+	"""
+
+	return_response = {'Success': False,
+	                   'TemplateComparison': False,
+	                   'CapabilitiesComparison': False,
+	                   'ParametersComparison': False,
+	                   'TagsComparison': False,
+	                   'DescriptionComparison': False,
+	                   'ExecutionRoleComparison': False}
+	Stack_Set_Info_old = get_template_body_and_parameters(faws_acct, fExisting_stack_set_name)
+	Stack_Set_Info_new = get_template_body_and_parameters(faws_acct, fNew_stack_set_name)
+	# Time to compare - only the Template Body, Parameters, and Capabilities are critical to making sure the stackset works.
+	return_response['TemplateComparison'] = (Stack_Set_Info_old['stack_set_info']['TemplateBody'] == Stack_Set_Info_new['stack_set_info']['TemplateBody'])
+	return_response['CapabilitiesComparison'] = (Stack_Set_Info_old['stack_set_info']['Capabilities'] == Stack_Set_Info_new['stack_set_info']['Capabilities'])
+	return_response['ParametersComparison'] = (Stack_Set_Info_old['stack_set_info']['Parameters'] == Stack_Set_Info_new['stack_set_info']['Parameters'])
+	return_response['TagsComparison'] = (Stack_Set_Info_old['stack_set_info']['Tags'] == Stack_Set_Info_new['stack_set_info']['Tags'])
+	return_response['DescriptionComparison'] = (Stack_Set_Info_old['stack_set_info']['Description'] == Stack_Set_Info_new['stack_set_info']['Description'])
+	return_response['ExecutionRoleComparison'] = (Stack_Set_Info_old['stack_set_info']['ExecutionRoleName'] == Stack_Set_Info_new['stack_set_info']['ExecutionRoleName'])
+
+	if (return_response['TemplateComparison'] and return_response['CapabilitiesComparison'] and return_response['ParametersComparison']):
+		return_response['Success'] = True
+	return(return_response)
 
 
 def get_stack_ids_from_existing_stack_set(faws_acct, fExisting_stack_set_name, fAccountToMove=None):
@@ -354,7 +373,6 @@ def create_stack_set_with_body_and_parameters(faws_acct, fNew_stack_set_name, fS
 	    ClientRequestToken='string'
 	)
 	"""
-
 	import logging
 
 	logging.info(
@@ -363,6 +381,8 @@ def create_stack_set_with_body_and_parameters(faws_acct, fNew_stack_set_name, fS
 	client_cfn = faws_acct.session.client('cloudformation')
 	return_response = dict()
 	# TODO: We should change the template body to a template url to accommodate really big templates
+	if 'Description' not in fStack_set_info.keys():
+		fStack_set_info['Description'] = 'This is a Description'
 	try:
 		response = client_cfn.create_stack_set(StackSetName=fNew_stack_set_name,
 		                                       TemplateBody=fStack_set_info['TemplateBody'],
@@ -522,27 +542,35 @@ def populate_new_stack_with_existing_stack_instances(faws_acct, fStack_instance_
 			                                                 'MaxConcurrentPercentage'   : 100},
 		                                                 CallAs='SELF')
 		return_response['OperationId'] = response['OperationId']
+		return_response['Success'] = True
 	except client_cfn.exceptions.LimitExceededException as myError:
 		logging.error(f"Limit Exceeded: {myError}")
 		return_response['Success'] = False
+		return_response['ErrorMessage'] = myError
 	except client_cfn.exceptions.StackSetNotFoundException as myError:
 		logging.error(f"Stack Set Not Found: {myError}")
 		return_response['Success'] = False
+		return_response['ErrorMessage'] = myError
 	except client_cfn.exceptions.InvalidOperationException as myError:
 		logging.error(f"Invalid Operation: {myError}")
 		return_response['Success'] = False
+		return_response['ErrorMessage'] = myError
 	except client_cfn.exceptions.OperationInProgressException as myError:
 		logging.error(f"Operation is already in progress: {myError}")
 		return_response['Success'] = False
+		return_response['ErrorMessage'] = myError
 	except client_cfn.exceptions.StackNotFoundException as myError:
 		logging.error(f"Stack Not Found: {myError}")
 		return_response['Success'] = False
+		return_response['ErrorMessage'] = myError
 	except client_cfn.exceptions.StaleRequestException as myError:
 		logging.error(f"Stale Request: {myError}")
 		return_response['Success'] = False
+		return_response['ErrorMessage'] = myError
 	except ClientError as myError:
 		logging.error(f"Client Error: {myError}")
 		return_response['Success'] = False
+		return_response['ErrorMessage'] = myError
 	return (return_response)
 
 
@@ -551,6 +579,7 @@ def populate_new_stack_with_existing_stack_instances(faws_acct, fStack_instance_
 aws_acct = aws_acct_access(pProfile)
 InfoFilename = (f"{pOldStackSet}-{pNewStackSet}-{aws_acct.acct_number}-{pRegion}")
 Use_recovery_file = False
+
 
 if exists(InfoFilename) and pRecoveryFlag:
 	print(f"You requested to use the recovery file {InfoFilename}, so we'll use that to pick up from where we left off")
@@ -602,7 +631,24 @@ else:
 	print(f"{Fore.RED}The 'Old' Stackset {pOldStackSet} does not exist within the account {aws_acct.acct_number}{Fore.RESET}")
 	OldStackSetExists = False
 
-User_Confirmation = (input(f"Is the above information correct? Do you want to proceed? (y/n): ") in ['y', 'Y'])
+CompareTemplates = {'Success': False}
+if OldStackSetExists and NewStackSetExists:
+	CompareTemplates = compare_stacksets(aws_acct, pOldStackSet, pNewStackSet)
+if not CompareTemplates['Success']:
+	print()
+	print(f"{Fore.RED}Ok - there's a problem here. The templates or parameters or capabilities in the two stacksets you provided don't match{Fore.RESET}\n"
+	      f"It might be a very bad idea to try to import these stacksets, if the templates or other critical components don't match.\n"
+	      f"I'd suggest strongly that you answer 'N' to the next prompt... ")
+	print()
+elif CompareTemplates['Success'] and not (CompareTemplates['TagsComparison'] and CompareTemplates['DescriptionComparison'] and CompareTemplates['ExecutionRoleComparison']):
+	print()
+	print(f"{Fore.CYAN}Ok - there {Style.BRIGHT}might{Style.NORMAL} be a problem here. While the templates, parameters and capabilities in the two stacksets you provided match\n"
+	      f"Either the Description, the Tags, or the ExecutionRole is different between the two stacksets.\n"
+	      f"I'd suggest that you answer 'N' to the next prompt, and then investigate the differences\n"
+	      f"No changes were made yet - so you can always run this script again.{Fore.RESET}")
+	print()
+
+User_Confirmation = (input(f"Do you want to proceed? (y/n): ") in ['y', 'Y'])
 if not User_Confirmation:
 	print(f"User cancelled script", file=sys.stderr)
 	sys.exit(10)
@@ -653,7 +699,7 @@ if OldStackSetExists:
 		# First time this script has run...
 		print("New Stack Set already exists path...")
 
-	######## This code is common across both use-cases ##################
+	""" ######## This code is common across both use-cases ################## """
 	logging.debug(f"Getting Stack Ids from existing stack set {pOldStackSet}")
 	# **** 1. Get the stack-ids from the old stack-set ****
 	if Use_recovery_file:
@@ -704,6 +750,11 @@ if OldStackSetExists:
 		x += limit
 		print(f"{ERASE_LINE}Importing {len(stack_ids_subset)} stacks into the new stackset now...")
 		ReconnectStackInstances = populate_new_stack_with_existing_stack_instances(aws_acct, stack_ids_subset, pNewStackSet)
+		if not ReconnectStackInstances['Success']:
+			print(f"Re-attaching the stack-instance to the new stackset seems to have failed."
+			      f"The error received was: {ReconnectStackInstances['ErrorMessage']}")
+			print(f"You'll have to resolve the issue that caused this problem, and then re-run this script using the recovery file.")
+			sys.exit(9)
 		StackReadyToImport = check_stack_set_status(aws_acct, pNewStackSet, ReconnectStackInstances['OperationId'])
 		if not StackReadyToImport['Success']:
 			sys.exit(f"There was a problem with importing the stack"
