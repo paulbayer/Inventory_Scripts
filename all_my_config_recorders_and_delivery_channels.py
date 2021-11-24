@@ -27,10 +27,17 @@ parser.my_parser.add_argument(
 		dest="flagDelete",
 		action="store_true",  # If the parameter is supplied, it will be true, otherwise it's false
 		help="Whether to delete the configuration recorders and delivery channels it finds.")
+parser.my_parser.add_argument(
+		"-a", "--account",
+		dest="pAccount",
+		default=None,
+		metavar="Account",
+		help="Just the single account you want to check")
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
 pRegionList = args.Regions
+pAccount = args.pAccount
 AccountsToSkip = args.SkipAccounts
 verbose = args.loglevel
 DeletionRun = args.flagDelete
@@ -43,7 +50,10 @@ ERASE_LINE = '\x1b[2K'
 NumObjectsFound = 0
 NumAccountsInvestigated = 0
 aws_acct = aws_acct_access(pProfile)
-ChildAccounts = aws_acct.ChildAccounts
+if pAccount is None:
+	ChildAccounts = aws_acct.ChildAccounts
+else:
+	ChildAccounts = [{'AccountId': pAccount}]
 
 ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, AccountsToSkip)
 

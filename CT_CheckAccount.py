@@ -73,10 +73,10 @@ else:
 	# RegionList=Inventory_Modules.get_ec2_regions('all', pProfile)
 	# ap-northeast-3 doesn't support Config (and therefore doesn't support Control Tower), but is a region that is normally included within EC2. Therefore - this is easier.
 	# Updated as of August 4th, 2021 to the 10 regions supported by AWS Control Tower.
-	RegionList = ['us-east-1', 'us-east-2', 'us-west-2',
+	RegionList = ['us-east-1', 'us-east-2', 'us-west-2', 'us-west-1',
 	              'eu-central-1', 'eu-north-1', 'eu-west-1', 'eu-west-2', 'eu-west-3',
-	              'ap-northeast-1', 'ap-northeast-3', 'ap-south-1', 'ap-southeast-1', 'ap-southeast-2',
-	              'ca-central-1']
+	              'ap-northeast-1', 'ap-northeast-2', 'ap-northeast-3', 'ap-south-1', 'ap-southeast-1', 'ap-southeast-2',
+	              'ca-central-1', 'sa-east-1']
 	# TODO: 'ap-east-1' isn't included here, because it's an opt-in region, which we can't include if we haven't opted-in.
 	# TODO: This is a larger problem of Control Tower not publishing its regions via an API like other services do.
 
