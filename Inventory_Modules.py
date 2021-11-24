@@ -1077,7 +1077,7 @@ def del_delivery_channel(ocredentials, fRegion, fDelivery_channel_name):
 	client_cfg = session_cfg.client('config')
 	logging.error("Deleting Delivery Channel %s from Region %s in account %s", fDelivery_channel_name, fRegion,
 	              ocredentials['AccountNumber'])
-	response = client_cfg.delete_delivery_channels(DeliveryChannelName=fDelivery_channel_name)
+	response = client_cfg.delete_delivery_channel(DeliveryChannelName=fDelivery_channel_name)
 	return (response)
 
 
