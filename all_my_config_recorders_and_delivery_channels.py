@@ -31,13 +31,14 @@ parser.my_parser.add_argument(
 		"-a", "--account",
 		dest="pAccount",
 		default=None,
+		nargs="*",
 		metavar="Account",
-		help="Just the single account you want to check")
+		help="Just the accounts you want to check")
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
 pRegionList = args.Regions
-pAccount = args.pAccount
+pAccounts = args.pAccounts
 AccountsToSkip = args.SkipAccounts
 verbose = args.loglevel
 DeletionRun = args.flagDelete
@@ -50,10 +51,11 @@ ERASE_LINE = '\x1b[2K'
 NumObjectsFound = 0
 NumAccountsInvestigated = 0
 aws_acct = aws_acct_access(pProfile)
-if pAccount is None:
+if pAccounts is None:
 	ChildAccounts = aws_acct.ChildAccounts
 else:
-	ChildAccounts = [{'AccountId': pAccount}]
+	for item in pAccounts:
+		ChildAccounts.append({'AccountId': item})
 
 ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, AccountsToSkip)
 
@@ -185,10 +187,10 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 			sys.exit(9)
 	print("Removed {} config recorders".format(len(all_config_recorders)))
 	for y in range(len(all_config_delivery_channels)):
-		logging.info(
-				f"Deleting delivery channel: {all_config_delivery_channels[y]['DeliveryChannel']} from account {all_config_delivery_channels[y]['AccountId']} in region {all_config_delivery_channels[y]['Region']}")
-		print(
-				f"Deleting delivery channel in account {all_config_delivery_channels[y]['AccountId']} in region {all_config_delivery_channels[y]['Region']}")
+		logging.info(f"Deleting delivery channel: {all_config_delivery_channels[y]['DeliveryChannel']} from account "
+		             f"{all_config_delivery_channels[y]['AccountId']} in region {all_config_delivery_channels[y]['Region']}")
+		print(f"Deleting delivery channel in account {all_config_delivery_channels[y]['AccountId']} in "
+		      f"region {all_config_delivery_channels[y]['Region']}", end='\r')
 		session_cf_child = boto3.Session(
 				aws_access_key_id=all_config_delivery_channels[y]['AccessKeyId'],
 				aws_secret_access_key=all_config_delivery_channels[y]['SecretAccessKey'],
