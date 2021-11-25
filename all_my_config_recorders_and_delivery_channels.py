@@ -29,7 +29,7 @@ parser.my_parser.add_argument(
 		help="Whether to delete the configuration recorders and delivery channels it finds.")
 parser.my_parser.add_argument(
 		"-a", "--account",
-		dest="pAccount",
+		dest="pAccounts",
 		default=None,
 		nargs="*",
 		metavar="Account",
