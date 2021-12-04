@@ -114,11 +114,13 @@ class aws_acct_access:
 				                               aws_secret_access_key=ocredentials['SecretAccessKey'],
 				                               aws_session_token=ocredentials['SessionToken'],
 				                               region_name='us-east-1')
+				account_access_successful = True
 			else:
 				# Not using a token-based role
 				prelim_session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
 				                               aws_secret_access_key=ocredentials['SecretAccessKey'],
 				                               region_name='us-east-1')
+				account_access_successful = True
 		else:
 			# Not trying to use account_key_credentials
 			try:
@@ -134,15 +136,18 @@ class aws_acct_access:
 				result = validate_region(prelim_session, fRegion)
 				if result['Result'] is True:
 					if UsingSessionToken:
+						logging.debug("Credentials are using SessionToken")
 						self.session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
 						                             aws_secret_access_key=ocredentials['SecretAccessKey'],
 						                             aws_session_token=ocredentials['SessionToken'],
 						                             region_name=result['Region'])
 					elif UsingKeys:
+						logging.debug("Credentials are using Keys, but no SessionToken")
 						self.session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
 						                             aws_secret_access_key=ocredentials['SecretAccessKey'],
 						                             region_name=result['Region'])
 					else:
+						logging.debug("Credentials are using a profile")
 						self.session = boto3.Session(profile_name=fProfile, region_name=result['Region'])
 					account_and_region_access_successful = True
 					self.AccountStatus = 'ACTIVE'
@@ -185,7 +190,7 @@ class aws_acct_access:
 			self.MgmtEmail = 'Unknown'
 			self.creds = 'Unknown'
 		elif ocredentials is not None:
-			logging.error(f"Credentials for access_key {ocredentials['A']} failed to successfully access an account")
+			logging.error(f"Credentials for access_key {ocredentials['AccountNum']} failed to successfully access an account")
 			self.AccountType = 'Unknown'
 			self.MgmtAccount = 'Unknown'
 			self.OrgID = 'Unknown'
