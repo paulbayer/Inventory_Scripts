@@ -29,9 +29,10 @@ Additional common parameters:
 ------------------
   - -h: Provide "-h" or "--help" on the command line and get a nicely formatted screen that describes all possible parameters.
   - -p: to specify the profile which the script will work with. In most cases, this could/ should be a Master Profile, but doesn't always have to be.
-  - -r: to specify the region for the script to work in. Most scripts take "all" as a valid parameter. Most scripts also assume "us-east-1" as a default if nothing is specified. Also note - you can specify a fragment here - so you can specify "us-east" and get both "us-east-1" and "us-east-2". Specify "us-" and you'll get all four "us-" regions.
+  - -r: to specify the single region for the script to work in. Most scripts take "all" as a valid parameter. Most scripts also assume "us-east-1" as a default if nothing is specified. 
+  - -rs: Inmany of the scripts, you can specify a fragment - so you can specify "us-east" and get both "us-east-1" and "us-east-2". Specify "us-" and you'll get all four "us-" regions.
   - -f: string fragment - some scripts (specifically ones dealing with CFN stacks and stacksets) take a parameter that allows you to specify a fragment of the stack name, so you can find that stack you can't quite remember the whole name of.
-  - +delete: I've tried to make it difficult to **accidentally** delete any resources, so that's why it's a "+" instead of a "-"
+  - +delete: I've tried to make it difficult to **accidentally** delete any resources, so that's why it's a "+" instead of a "-".
 
 
 Purpose Built Scripts
@@ -44,29 +45,37 @@ Purpose Built Scripts
 - **CT_CheckAccount.py**
   - This script takes an Organization Master Account profile, and checks additional accounts to see if they meet the pre-reqs to be "adopted" by Control Tower.
   - If there are blockers to the adoption (like the Config Recorder already being enabled), it can rectify those blockers it finds. However - to avoid mistakes - it only does this if you specifically select that in the submitted parameters. This script is still being worked on.
+ 
+- **find_my_LZ_versions.py**
+  - I wrote this script because I've noticed that many customers find it difficult to find their own ALZ versions, and some customers have multiple Landing Zones (like me), so it makes it even harder to keep track. This script will take either a single profile, or the keyword "all" and determine whether your profile is the Management Account of a Landing Zone - or in the case of "all", go through all of your profiles and find those accounts which are Landing Zones roots, and tell you the version of the ALZ in that account.  
 
-- **RegistrationScript.py**
-  - This script goes through an Organization and determines (based on roles) whether the account has been on-boarded to the AWS Federation tool or not. If not, it creates a temporary user ("Alice") and prints the information to the screen to be able to register the account to the tool.
+- **move_stack_instances.py**
+  - In my work on migrating customer's from ALZ to ControlTower, I've found that many just need to move from ALZ-managed stacksets, to Control-Tower managed stacksets. I've written this script to be able to do that. Be careful tho - I've recently found that the CfCT pipeline REMOVES stack-instances that are not under Control Tower management, so this script shouldn't be used yet in production, until I can also publish a way to remove that functionality in the CfCT pipeline.
+  - **recover_stack_ids.py**
+    - This script was created to bail me out when the above script failed in the middle. It had already disassociated stack-instances from the old stack-set, but hadn't yet begun to create the new stack-set. Therefore, the stack-instances were only available within the child accounts, and not visible from the Management Account. This script recreated the file that held these stack-instances, so that the move_stack_instances.py could resume properly. Since that happened, I've embedded this behavior into the original script, but I've left this script around, in case it's useful in another similar situation.    
+
+- **put_s3_public_block.py**
+  - I wrote this script because we all need a way to ensure that we're following Best Security practices, without **too** much actual work. Therefore - this script will take either a profile of an Organization (typical -p format), or just run it with no parameters, and it will find all your Orgs, and all the accounts within your orgs, and lock down all the S3 buckets in all your accounts for you. It runs in "Dry-Run" mode by default, but when you run it with "+n", it will actually make the changes to your S3 config, without prompting for each change, so watch out that you aren't running this in a Production Org where you NEED an S3 bucket to be open (rare).
+  - Additionally, I've added a parameter to accept a file of account numbers, as long as they're all reachable by the profile specified with the "-p" parameter.
+
+- **RunOnMultiAccounts.py**
+  - So using the base of some of the other scripts, I realized that there were sometimes commands I just needed to run on multiple accounts - regardless of any meta-script stuff (think creating or deleting users). This script enabled me to simply change out the commands I'm running, for another set of commands - with the same framework around the script. 
+  - Maybe eventually - I'll generalize this script to where it takes another parameter of commands as input, but for now - you can simply go in an replace the command payloads, and this script will just run that on lots of accounts. 
 
 - **SC_Products_to_CFN_Stacks.py**
   - This script is focused on reconciling the SC Products with the CFN Stacks they create. It definitely can happen that a CFN stack can exist without a corresponding SC Product, and it can happen that an SC Product can exist without a corresponding CFN stack (I'm looking at you AWS Control Tower!). However, when an SC Product is in ERROR state and the CFN stack is in an error state - you're best served by terminating the SC Product and starting over. This script can help you find those instances and even offers to get rid of them for you.
 
-- **del_enable_config.template.py**
-  - This script was specifically created to remove the resources created during the "Enable Config" stack through the ALZ. Since this stack enables the Config Recorder, Delivery Channel, SNS Topic, Lambda Function, and SNS Notification Forwarder; all of these resources can be removed with this script.
-  
 - **UpdateRoleToMemberAccounts.py**
   - I wrote this script realizing that there's no easy way to "convert" an ALZ account over to the CT model, before you have the necessary "AWSControlTowerExecutionRole" created within the member/ child account. This script does that for you - when given the proper parameters. Perhaps I'll add a default method to the script when I can.
-  - I updated this script to also allow "removal" of a rolename (assuming it's been setup with this script [TODO]). This way, the script can be used and also "backed out" - since it doesn't offer much of a confirmation on changes.
+  - I updated this script to also allow "removal" of a rolename (assuming it's been setup with this script). This way, the script can be used and also "backed out" - since it doesn't offer much of a confirmation on changes.
   
-- **find_my_LZ_versions.py**
-  - I wrote this script because I've noticed that many customers find it difficult to find their own ALZ versions, and some customers have multiple Landing Zones (like me), so it makes it even harder to keep track. This script will take either a single profile, or the keyword "all" and determine whether your profile is the Management Account of a Landing Zone - or in the case of "all", go through all of your profiles and find those accounts which are Landing Zones roots, and tell you the version of the ALZ in that account.  
-
-- **put_s3_public_block.py**
-  - I wrote this script because we all need a way to ensure that we're following Best Security practices, without **too** much actual work. Therefore - this script will take either a profile of an Organization (typical -p format), or just run it with no parameters, and it will find all your Orgs, and all the accounts within your orgs, and lock down all the S3 buckets in all your accounts for you. It runs in "Dry-Run" mode by default, but when you run it with "-n", it will actually make the changes to your S3 config, without prompting for each change, so watch out that you aren't running this in a Production Org where you NEED an S3 bucket to be open (rare).
+- **UpdateStackSetFromAnother.py**
+  - I've had the issue very often, where I've wanted to copy a stackset's attributes (template, stack-instances, description, etc.) to another stackset. Sometimes this is for migrations, sometimes for testing. Either way - this script will do that for you.  
 
 
-  Generic Scripts
-  ------------------
+
+    Generic Scripts
+    ------------------
 - **all_my_cfnstacks.py**
   - The objective of this script is to find that CloudFormation stack you know you created in some account within your Organization - but you just can't remember which one (and God forbid - in which region!). So here you can specify a stack fragment, and a region fragment and the script will search through all accounts within your Org (assuming you provided a profile of the Master Account-with appropriate rights) in only those regions that match your fragment, and find the stacks that match the fragment you provided.
   - If you provide the "+delete" parameter - it will DELETE those stacks WITHOUT ADDITIONAL CONFIRMATION! So please be careful about using this.
@@ -76,14 +85,19 @@ Purpose Built Scripts
 - **all_my_config_recorders_and_delivery_channels.py**
   - I wrote this script to help remove the Config Recorders and Delivery Channels for a given account, so that we could use this within the "adoption" of legacy accounts into the AWS Landing Zone.
   - Now that we have the ALZ_CheckAccount tool, I don't see a lot of use from this script, but it's complete - so why delete it?
+
 - **all_my_elbs.py**
   - The objective of this script was to find all the various Load Balancers created in various accounts within your org.
+
 - **all_my_functions.py**
   - The objective of this script was to find all the various Lambda functions you've created and left in various accounts.
+
 - **all_my_gd-detectors.py**
   - This script was created to help remove all the various GuardDuty pieces that are created when GuardDuty is enabled in an organization and its children. Trying to remove all the pieces by hand is crazy, so this script is really long and complex - but it does the job well.
+
 - **all_my_instances.py**
   - The objective of this script is to find all the EC2 instances available within your accounts and regions. The script can accept 1 or more profiles. If you specify a profile representing a Master Account - the script will assume you mean the entire organization, instead of just that one account - and will try to find all instances for all accounts within that Org.
+
 - **all_my_orgs.py**
   - I use this script almost every day. In its default form with no parameters provided - it will go through all of your profiles and find all the Master Accounts you may have access to - and list out all the accounts under all of the Master Accounts it can find.
   - If you provide a profile using the "-p" parameter, it will determine if that profile is a Master and only list out the accounts within that Org.
@@ -92,23 +106,29 @@ Purpose Built Scripts
   - There are two additional parameters which are useful:
     - "-R" for listing only the root profiles it can find
     - "-s" for listing only the short form of the output
+
 - **all_my_phzs.py**
   - The objective of this script is to find all of the Private Hosted Zones in a cross-account fashion.
   - This is one of the older scripts that only worked by profile. I still need to fix this one up to use the "account" method instead of just looking through matching profiles.
+
 - **all_my_roles.py**
   - The objective of this script is to find all the roles within the accounts it looks through.
   - There are most common use cases for this script:
     - "In which account did I put that role?" (you'd have to use 'grep', since I didn't update this to take a string fragment - yet)
-- **all_my_saml_providers.py**
-  - The objective of this script is to find all Identity Providers within your accounts within your org.
-  - There is also the capability to delete these idps - but I don't see people doing that all that often.
+  - **all_my_saml_providers.py**
+    - The objective of this script is to find all Identity Providers within your accounts within your org.
+    - There is also the capability to delete these idps - but I don't see people doing that all that often.
+
 - **all_my_vpcs.py**
   - The objective of this script is to find all the vpcs within your set of accounts - as determined by your profiles. This script has been superseded by the "all_my_vpcs2.py" since this script only looked in the specific profile you supplied.
+
 - **all_my_vpcs2.py**
   - The objective of this script is to find all the vpcs within your set of accounts - as determined by your Master Account's list of children. This script obsoletes the previous "all_my_vpcs.py" as this script can look at your whole Org, instead of only the single profile you specify.
   - You can also specify "--default" to limit your searching to only default VPCs.
+
 - **delete_bucket_objects.py**
   - This is a tool that should delete buckets and the objects in them. I didn't write the original script, but I've been adapting it to my needs. This one should be considered alpha.
+
 - **mod_my_cfnstacksets.py**
   - So, originally, when I was creating this library, I had the idea that I would create scripts that found resources - and different scripts that deleted those resources. Hence - both the "all_my_cfnstacksets" as well as "del_my_cfnstacksets". However, I quickly realized that you had to do the finding before you could do the deleting - so I decided to put more effort into the "del\*" tool instead of the "find\*" tool. Of course - then I realized that having the "deletion" be action in the find script made way more sense, so I tried to put everything I had done from one script into the other. At the end of it all - I had a mish-mash of useful and stale features in both scripts.
   - The truth is that I need to go through this script and make sure everything useful here has gotten into the "all_my_cfnstacksets.py" script and simply move forward with that one only. Still a work in progress, I guess.
@@ -117,21 +137,26 @@ Purpose Built Scripts
 
 - **my_org_users.py**
   - The objective of this script is to go through all of your child accounts within an Org and pull out any IAM users you have - to ensure it's only what you expect.
+
 - **my_ssm_parameters.py**
   - The objective of this script was two fold -
     - One is to just list out your SSM Parameters, so you know how many and which ones you have.
     - The other is to resolve a problem that exists with the AWS Landing Zone tool - which creates Parameter Store entries and doesn't clean them up when needed. Since the Parameter Store has a limit of 10,000 entries - some sophisticated, long-time customers could hit this limit and be frustrated by the inability to easily remediate this acknowledged bug.
-      - This script can solve that problem by using the "--ALZ" parameter and the "-b" parameter to identify any left-over parameters that should be cleaned up since so many days back (ideally further back than your last successful Pipeline run).
-    - As usual - provide the "+delete" parameter to allow the script to programmatically remediate the problem.
+  - This script can solve that problem by using the "--ALZ" parameter and the "-b" parameter to identify any left-over parameters that should be cleaned up since so many days back (ideally further back than your last successful Pipeline run).
+  - As usual - provide the "+delete" parameter to allow the script to programmatically remediate the problem.
 
 Utility Files
 ----------------
 - **Inventory_Modules.py**
   - This is the "utils" file that is referenced by nearly every other script I've written. I didn't know Python well enough when I started to know that I should have named this "utils". If I get ambitious, maybe I'll go through and rename it within every script.
+
 - **vpc_modules.py**
   - This is another "utils" collection, generally specific to the "ALZ_CheckAccount" script as well as the all_my_vpcs(2).py script, because all of the VPC deletion functions are in this library file. Props to
 
-Miscellaneous Files
+Class Files
 ----------------
-- **ReportOnStateMachines.py**
-  - This script is a work-in-progress of trying to come up with a way of reporting on the time it takes for each of the stages within the CodePipeline (ALZ) to run. 
+- **account_class.py**
+  - This class script enables the entire AWS account to be considered as its own object. This handles finding what kind of account it is (Root, Child, Standalone), the Child Accounts attached to it (if it's a Root account) among other attributes.
+
+- **ArgumentsClass.py**
+  - This class holds the argparse class I use to standardize te parameters across as many scripts as possible.

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import sys
 
 import Inventory_Modules
 from account_class import aws_acct_access
@@ -79,7 +80,12 @@ print()
 SCP2Stacks = []
 SCProducts = []
 ErroredSCPExists = False
-session_aws = aws_acct.session
+try:
+	session_aws = aws_acct.session
+except AttributeError as my_Error:
+	print(f"Profile '{pProfile}' doesn't seem to exist, or work. Please check your credentials.")
+	print()
+	sys.exit(1)
 client_org = session_aws.client('organizations')
 client_cfn = session_aws.client('cloudformation')
 
@@ -289,7 +295,6 @@ for i in AccountHistogram:
 	logging.info(f"Account ID: {i} is {AccountHistogram[i]}")
 print(f"We found {len(AcctList)} accounts within the Org")
 print(f"We found {len(SCProducts)} Service Catalog Products")
-# print(f"We found {len(SuspendedAccounts)} Active accounts")
 print(f"We found {len(SuspendedAccounts)} Suspended accounts")
 print(f"We found {len(ClosedAccts)} Closed Accounts that still have an SC product")
 # print("We found {} Service Catalog Products with no account attached".format('Some Number'))
