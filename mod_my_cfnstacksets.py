@@ -387,7 +387,7 @@ elif not pdryrun:
 					sys.exit(
 							f"There was a problem with removing the stack instances from stackset {pOldStackSet}. Exiting...")
 			StackSetResult = Inventory_Modules.delete_stackset3(aws_acct, pRegion, StackSetName)
-			print(f"Removed stackset {StackSetName}")
+			print(f"{ERASE_LINE}Removed stackset {StackSetName}")
 
 print()
 print("Thanks for using this script...")
