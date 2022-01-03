@@ -5,7 +5,7 @@ import sys
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
-from colorama import init
+from colorama import init, Fore
 from time import sleep
 
 '''
@@ -149,7 +149,9 @@ sleep_interval = 5
 AllInstances = []
 
 aws_acct = aws_acct_access(pProfile)
-
+if pRegion.lower() == 'all':
+	logging.critical(f"{Fore.RED}You specified 'all' as the region, but this script only works with a single region.\n"
+	                 f"Please run the command again and specify only a single region{Fore.RESET}")
 print()
 
 if pdryrun:
@@ -176,7 +178,7 @@ print()
 StackSetNames = Inventory_Modules.find_stacksets2(aws_acct, pRegion, pStackfrag)
 if not StackSetNames['Success']:
 	logging.error("Something went wrong with the AWS connection. Please check the parameters supplied and try again.")
-	sys.exit("Failure to connect to AWS")
+	sys.exit(StackSetNames)
 logging.error(f"Found {len(StackSetNames['StackSets'])} StackSetNames that matched your fragment")
 
 # Now go through those stacksets and determine the instances, made up of accounts and regions
@@ -334,7 +336,7 @@ elif not pdryrun:
 	StackInstanceItem = 0
 	for StackSetName in ApplicableStackSetsList:
 		StackInstanceItem += 1
-		print(f"Now deleting stackset {StackSetName}. {StackInstanceItem} of {len(ApplicableStackSetsList)} done", end='\r')
+		print(f"Now deleting stackset {StackSetName}. {StackInstanceItem} of {len(ApplicableStackSetsList)} done")
 		# TODO: This needs to be wrapped in a try...except
 		if RegionList is None:
 			print(f"There appear to be no stack instances for this stack-set")
@@ -352,7 +354,8 @@ elif not pdryrun:
 			RemoveStackSet = False
 			RemoveStackInstanceResult = _delete_stack_instances(aws_acct, pRegion, AccountList, RegionList, StackSetName, pForce)
 		if RemoveStackInstanceResult['Success']:
-			print(f"{ERASE_LINE}Successfully initiated removal of {len(AllInstances)} instances from StackSet {StackSetName}")
+			Instances = [item for item in AllInstances if item['StackSetName'] == StackSetName]
+			print(f"{ERASE_LINE}Successfully initiated removal of {len(Instances)} instances from StackSet {StackSetName}")
 		elif RemoveStackInstanceResult['ErrorMessage'] == 'Failed-ForceIt' and pForce:
 			print("We tried to force the deletion, but some other problem happened.")
 		elif RemoveStackInstanceResult['ErrorMessage'] == 'Failed-ForceIt' and not pForce:
@@ -364,9 +367,14 @@ elif not pdryrun:
 				elif pForce is True and RemoveStackInstanceResult['ErrorMessage'] == 'Failed-ForceIt':
 					print(f"{ERASE_LINE}Some other problem happened on the retry.")
 				elif RemoveStackInstanceResult['ErrorMessage'] == 'Failed-Other':
-					print(f"{ERASE_LINE}Something else failed on the retry... Please report the error received?")
+					print(f"{ERASE_LINE}Something else failed on the retry... Please report the error received.")
 		elif RemoveStackInstanceResult['ErrorMessage'] == 'Failed-Other':
-			print("Something else failed... Please report the error received")
+			print(f"{Fore.RED}Something else failed... Please report the error below{Fore.RESET}")
+			logging.critical(f"{RemoveStackInstanceResult['ErrorMessage']}")
+			sys.exit(RemoveStackInstanceResult['ErrorMessage'])
+		elif str(RemoveStackInstanceResult['ErrorMessage']).find('OperationInProgressException') > 0:
+			print(f"{Fore.RED}Another operation is running on this StackSet... Please wait for that operation to end and re-run this script{Fore.RESET}")
+			sys.exit(RemoveStackInstanceResult['ErrorMessage'])
 		# TODO: We need to update this to add logic to delete the stack-set itself, once the instances are deleted.x
 		if RemoveStackSet:
 			logging.info(f"Now that all instances are gone, removing the stackset too")
@@ -377,8 +385,8 @@ elif not pdryrun:
 			logging.debug(f"The operation id {RemoveStackInstanceResult['OperationId']} is {StackInstancesAreGone['StackSetStatus']}")
 			intervals_waited = 1
 			while StackInstancesAreGone['StackSetStatus'] in ['RUNNING']:
-				print(f"Waiting for operation ID {RemoveStackInstanceResult['OperationId']} to finish",
-				      f"." * intervals_waited,
+				print(f"Waiting for operation {RemoveStackInstanceResult['OperationId']} to finish",
+				      # f"." * intervals_waited,
 				      f"{sleep_interval * intervals_waited} seconds waited so far", end='\r')
 				sleep(sleep_interval)
 				intervals_waited += 1
@@ -387,7 +395,7 @@ elif not pdryrun:
 					sys.exit(
 							f"There was a problem with removing the stack instances from stackset {pOldStackSet}. Exiting...")
 			StackSetResult = Inventory_Modules.delete_stackset3(aws_acct, pRegion, StackSetName)
-			print(f"{ERASE_LINE}Removed stackset {StackSetName}")
+			print(f"{ERASE_LINE}Removal of stackset {StackSetName} took {sleep_interval * intervals_waited} seconds")
 
 print()
 print("Thanks for using this script...")
