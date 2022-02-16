@@ -48,6 +48,7 @@ print(fmt % ("-------", "------", "------", "----", "-----------", "--------"))
 # RegionList = Inventory_Modules.get_ec2_regions(pRegionList, pProfiles)
 SoughtAllProfiles = False
 AllChildAccounts = list()
+NumOfRootProfiles = 0
 AdminRole = "AWSCloudFormationStackSetExecutionRole"
 if pDefault:
 	vpctype = "default"
@@ -66,76 +67,70 @@ else:
 # 	logging.error("Time: %s", datetime.datetime.now())
 # 	logging.error("Found %s root profiles", len(ProfileList))
 # 	# logging.info("Profiles Returned from function get_parent_profiles: %s",pProfile)
+#
 # else:
 # 	ProfileList = [pProfiles]
 
-for profile in pProfiles:
-	aws_acct = aws_acct_access(profile)
-	print(ERASE_LINE, f"Gathering all account data from {profile} profile", end="\r")
-	# if not SoughtAllProfiles:
-	logging.info("Checking to see which profiles are root profiles")
-	ProfileIsRoot = aws_acct.AccountType
-	logging.info(f"---{ProfileIsRoot}---")
-	if ProfileIsRoot == 'Root':
-		logging.info(f"Parent Profile name: {profile}")
-		ChildAccounts = aws_acct.ChildAccounts
-		# ChildAccounts=Inventory_Modules.RemoveCoreAccounts(ChildAccounts,AccountsToSkip)
-		AllChildAccounts.extend(ChildAccounts)
-	elif ProfileIsRoot == 'StandAlone':
-		logging.info(f"Parent Profile name: {profile}")
-		MyAcctNumber = aws_acct.acct_number
-		Accounts = [{'ParentProfile': profile,
-		             'AccountId': MyAcctNumber,
-		             'AccountEmail': 'noonecares@doesntmatter.com'}]
-		AllChildAccounts.extend(Accounts)
-	elif ProfileIsRoot == 'Child':
-		logging.info(f"Profile name: {profile} is a child profile")
-		MyAcctNumber = aws_acct.acct_number
-		Accounts = [{'ParentProfile': profile,
-		             'AccountId': MyAcctNumber,
-		             'AccountEmail': 'noonecares@doesntmatter.com'}]
-		AllChildAccounts.extend(Accounts)
+aws_acct_list = []
+if pProfiles is None:
+	aws_acct = aws_acct_access()
+	AllChildAccounts.extend(aws_acct.ChildAccounts)
+	if aws_acct.AccountType.lower() == 'root':
+		NumOfRootProfiles += 1
+else:
+	for profile in pProfiles:
+		aws_acct = aws_acct_access()
+		AllChildAccounts.extend(aws_acct.ChildAccounts)
+		print(ERASE_LINE, f"Gathering all account data from account # {aws_acct.acct_number}", end="\r")
+		if aws_acct.AccountType.lower() == 'root':
+			NumOfRootProfiles += 1
 
+NumOfTotalAccounts = len(AllChildAccounts)
+AccountCounter = 0
 logging.info(f"# of Regions: {len(pRegionList)}")
-logging.info(f"# of Master Accounts: {len(pProfiles)}")
-logging.info(f"# of Child Accounts: {len(AllChildAccounts)}")
+logging.info(f"# of Management Accounts: {NumOfRootProfiles}")
+logging.info(f"# of Child Accounts: {NumOfTotalAccounts}")
 
-
+print(f"Found {NumOfTotalAccounts} accounts to look through:")
+print()
 for i in range(len(AllChildAccounts)):
 	# aws_acct = aws_acct_access(AllChildAccounts[i]['ParentProfile'])
 	# sts_client = aws_acct.session.client('sts')
 	# logging.info(f"Connecting to account {aws_acct.acct_number} using Parent Profile %s:", AllChildAccounts[i]['AccountId'], AllChildAccounts[i]['ParentProfile'])
+	AccountCounter += 1
+	print(f"{Fore.BLUE}{AccountCounter} of {NumOfTotalAccounts} looked at... {Fore.RESET}", end='')
 	try:
 		account_credentials = Inventory_Modules.get_child_access3(aws_acct, AllChildAccounts[i]['AccountId'])
 		if account_credentials['AccessError']:
 			print(f"Accessing account {AllChildAccounts[i]['AccountId']} with {aws_acct.acct_number} failed...")
 		aws_acct_child = aws_acct_access(ocredentials=account_credentials)
-	except ClientError as my_Error:
-		if str(my_Error).find("AuthFailure") > 0:
+	except ClientError as my_error:
+		if str(my_error).find("AuthFailure") > 0:
 			print(f"Authorization Failure for account {AllChildAccounts[i]['AccountId']}")
-		elif str(my_Error).find("AccessDenied") > 0:
+		elif str(my_error).find("AccessDenied") > 0:
 			print(f"Access Denied Failure for account {AllChildAccounts[i]['AccountId']}")
-			print(my_Error)
+			print(my_error)
 		else:
 			print(f"Other kind of failure for account {AllChildAccounts[i]['AccountId']}")
-			print(my_Error)
+			print(my_error)
 			break
 
 	# NumRegions += 1
 	# NumProfilesInvestigated = 0	# I only care about the last run - so I don't get profiles * regions.
 	for region in pRegionList:
 		# NumProfilesInvestigated += 1
+		Vpcs = dict()
 		try:
 			Vpcs = Inventory_Modules.find_account_vpcs2(aws_acct_child, region, pDefault)
 			VpcNum = len(Vpcs['Vpcs']) if Vpcs['Vpcs'] == [] else 0
 			print(ERASE_LINE, f"Looking in account {Fore.RED}{AllChildAccounts[i]['AccountId']}", f"{Fore.RESET}in {region} where we found {VpcNum} {vpctype} Vpcs", end='\r')
-		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+		except ClientError as my_error:
+			if str(my_error).find("AuthFailure") > 0:
 				print(ERASE_LINE, f"Authorization Failure for account: {AllChildAccounts[i]['AccountId']} in region {region}")
-		except TypeError as my_Error:
-			print(my_Error)
-			pass
-		if 'Vpcs' in Vpcs and len(Vpcs['Vpcs']) > 0:
+		except TypeError as my_error:
+			print(my_error)
+			continue
+		if 'Vpcs' in Vpcs.keys() and len(Vpcs['Vpcs']) > 0:
 			for y in range(len(Vpcs['Vpcs'])):
 				VpcId = Vpcs['Vpcs'][y]['VpcId']
 				IsDefault = Vpcs['Vpcs'][y]['IsDefault']
