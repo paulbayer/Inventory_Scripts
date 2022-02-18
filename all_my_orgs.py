@@ -28,12 +28,19 @@ parser.my_parser.add_argument(
 		dest="shortform",
 		const=True,
 		default=False)
+parser.my_parser.add_argument(
+		'-A', '--account',
+		help="Find which Org this account is a part of",
+		nargs="*",
+		dest="accountList",
+		default=None)
 args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
 verbose = args.loglevel
 rootonly = args.rootonly
 shortform = args.shortform
+pAccountList = args.accountList
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 SkipProfiles = ["default"]
@@ -44,6 +51,7 @@ RootProfiles = []  # List of the Organization Root's profiles
 
 logging.warning("All available profiles will be shown")
 ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=SkipProfiles, fprofiles=pProfiles)
+AccountOrgAssociationList = []
 # ShowEverything = True
 
 """
@@ -59,14 +67,16 @@ print(fmt % ("Profile Name", "Account Number", "Payer Org Acct", "Org ID", "Root
 print(fmt % ("------------", "--------------", "--------------", "------", "----------"))
 NumProfiles = 0
 FailedProfiles = []
-RootAcct = False
 for profile in ProfileList:
 	try:
 		NumProfiles += 1
-		print(f"{ERASE_LINE}Trying profile {NumProfiles} of {len(ProfileList)}", end='\r')
+		print(f"{ERASE_LINE}Trying profile '{profile}' -- {NumProfiles} of {len(ProfileList)}", end='\r')
 		aws_acct = aws_acct_access(profile)
 		ErrorFlag = False
 		RootAcct = False
+		MnmgtAcct = None
+		Email = None
+		OrgId = None
 		if aws_acct.acct_number in ['123456789012', 'Failure']:
 			ErrorFlag = True
 			logging.info(f"Access to the profile {profile} has failed")
@@ -85,6 +95,10 @@ for profile in ProfileList:
 			Email = aws_acct.MgmtEmail
 			OrgId = aws_acct.OrgID
 			RootAcct = False
+		if pAccountList is not None:
+			for acctnum in aws_acct.ChildAccounts:
+				if acctnum['AccountId'] in pAccountList:
+					AccountOrgAssociationList.append({'Account': acctnum['AccountId'], 'Org': aws_acct.MgmtAccount})
 	except ClientError as my_Error:
 		ErrorFlag = True
 		FailedProfiles.append(profile)
@@ -103,8 +117,8 @@ for profile in ProfileList:
 		ErrorFlag = True
 		FailedProfiles.append(profile)
 		if str(my_Error).find("does not exist") > 0:
-			ErrorMessage = str(my_Error)[str(my_Error).find(":"):]
-			print(ErrorMessage)
+			print("Source profile error")
+			print(my_Error)
 		else:
 			print("Credentials Error")
 			print(my_Error)
@@ -116,11 +130,12 @@ for profile in ProfileList:
 		else:
 			print("Credentials Error")
 			print(my_Error)
-	except AttributeError as my_Error:
+	except AttributeError or Exception as my_Error:
 		ErrorFlag = True
 		FailedProfiles.append(profile)
 		if str(my_Error).find("object has no attribute") > 0:
 			MnmgtAcct = "This profile's credentials don't work."
+			print(my_Error)
 		else:
 			print("Credentials Error")
 			print(my_Error)
@@ -136,10 +151,11 @@ for profile in ProfileList:
 	if ErrorFlag:
 		continue
 	elif RootAcct:
-		print(Fore.RED + fmt % (profile, aws_acct.acct_number, aws_acct.MgmtAccount, aws_acct.OrgID, RootAcct) + Style.RESET_ALL)
+		print(Fore.RED + fmt % (
+			profile, aws_acct.acct_number, aws_acct.MgmtAccount, aws_acct.OrgID, RootAcct) + Style.RESET_ALL)
 	# If I'm looking for only the root accounts, when I find something that isn't a root account, don't print anything and continue on.
 	elif rootonly:
-		print(ERASE_LINE, f"{profile} isn't a root account", end="\r")
+		print(f"{ERASE_LINE}{profile} isn't a root account", end="\r")
 	else:
 		print(fmt % (profile, aws_acct.acct_number, aws_acct.MgmtAccount, aws_acct.OrgID, RootAcct))
 print(ERASE_LINE)
@@ -172,5 +188,8 @@ if not shortform:
 	print("Number of Organization Accounts:", NumOfAccounts)
 	print(f"Number of profiles that failed: {len(FailedProfiles)}")
 	logging.error(f"List of failed profiles: {FailedProfiles}")
+
+for acct in AccountOrgAssociationList:
+	print(f"Account: {acct['Account']} | Org: {acct['Org']}")
 
 print("Thanks for using this script")
