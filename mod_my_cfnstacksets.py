@@ -5,7 +5,7 @@ import sys
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
-from colorama import init, Fore
+from colorama import init, Fore, Style
 from time import sleep
 
 '''
@@ -398,7 +398,7 @@ elif not pdryrun:
 			if StackSetResult['Success']:
 				print(f"{ERASE_LINE}Removal of stackset {StackSetName} took {sleep_interval * intervals_waited} seconds")
 			else:
-				print(f"{ERASE_LINE}{Fore.RED}Removal of stackset {StackSetName} failed due to:\n\t{StackSetResult['ErrorMessage']}.{Fore.RESET}")
+				print(f"{ERASE_LINE}{Fore.RED}Removal of stackset {StackSetName} {Style.BRIGHT}failed{Style.NORMAL} due to:\n\t{StackSetResult['ErrorMessage']}.{Fore.RESET}")
 
 
 print()
