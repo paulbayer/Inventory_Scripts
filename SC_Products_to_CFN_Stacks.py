@@ -34,7 +34,7 @@ def sort_by_email(elem):
 
 
 def define_pretty_headings(fSCP2Stacks):
-	namelength = 0
+	namelength = 3
 	for _ in range(len(fSCP2Stacks)):
 		if namelength < len(fSCP2Stacks[_]['SCProductName']):
 			namelength = len(fSCP2Stacks[_]['SCProductName'])
@@ -80,20 +80,19 @@ print()
 SCP2Stacks = []
 SCProducts = []
 ErroredSCPExists = False
-try:
-	session_aws = aws_acct.session
-except AttributeError as my_Error:
-	print(f"Profile '{pProfile}' doesn't seem to exist, or work. Please check your credentials.")
-	print()
-	sys.exit(1)
-client_org = session_aws.client('organizations')
-client_cfn = session_aws.client('cloudformation')
+# try:
+# 	session_aws = aws_acct.session
+# except AttributeError as my_Error:
+# 	print(f"Profile '{pProfile}' doesn't seem to exist, or work. Please check your credentials.")
+# 	print()
+# 	sys.exit(1)
+client_org = aws_acct.session.client('organizations')
+client_cfn = aws_acct.session.client('cloudformation')
 
-AcctList = aws_acct.ChildAccounts
 AccountHistogram = {}
 SuspendedAccounts = []
 ClosedAccts = []
-for account in AcctList:
+for account in aws_acct.ChildAccounts:
 	AccountHistogram[account['AccountId']] = account['AccountStatus']
 	if account['AccountStatus'] == 'SUSPENDED':
 		SuspendedAccounts.append(account['AccountId'])
@@ -112,11 +111,11 @@ try:
 		if SCresponse[i]['Status'] == 'ERROR' or SCresponse[i]['Status'] == 'TAINTED':
 			ErroredSCPExists = True
 
-	CFNStacks = Inventory_Modules.find_stacks(pProfile, pRegion, f"SC-{aws_acct.acct_number}")
+	CFNStacks = Inventory_Modules.find_stacks(aws_acct, pRegion, f"SC-{aws_acct.acct_number}")
 	SCresponse = None
 	for i in range(len(SCProducts)):
 		print(f"{ERASE_LINE}{Fore.RED}Checking {i + 1} of {len(SCProducts)} products{Fore.RESET}", end='\r')
-		CFNresponse = Inventory_Modules.find_stacks(pProfile, pRegion, SCProducts[i]['SCPId'])
+		CFNresponse = Inventory_Modules.find_stacks(aws_acct, pRegion, SCProducts[i]['SCPId'])
 		logging.info(f"There are {len(CFNresponse)} matches for SC Provisioned Product Name {SCProducts[i]['SCPName']}")
 		try:
 			if len(CFNresponse) > 0:
@@ -221,7 +220,7 @@ try:
 	      "CFN StackName".ljust(DisplaySpacing['CFNStackName']),
 	      "SC Status".ljust(DisplaySpacing['SCStatus']),
 	      "CFN Stack Status".ljust(DisplaySpacing['CFNStackStatus']),
-	      "Account Status".ljust(DisplaySpacing['AccountNumber']),
+	      "Account Status".ljust(DisplaySpacing['AccountStatus']),
 	      "Account Email".ljust(DisplaySpacing['AccountEmail']))
 	# This next line just prints the "-" header under the heading names.
 	print("-" * DisplaySpacing['AccountNumber'],
@@ -230,20 +229,20 @@ try:
 	      "-" * DisplaySpacing['CFNStackName'],
 	      "-" * DisplaySpacing['SCStatus'],
 	      "-" * DisplaySpacing['CFNStackStatus'],
-	      "-" * DisplaySpacing['AccountNumber'],
+	      "-" * DisplaySpacing['AccountStatus'],
 	      "-" * DisplaySpacing['AccountEmail'])
 
 	for i in range(len(SCP2Stacks)):
 		if SCP2Stacks[i]['SCStatus'] == 'ERROR' or SCP2Stacks[i]['SCStatus'] == 'TAINTED':
 			print(Fore.RED, end='')     # If the SC is in error - the line is written in RED.
-		print(SCP2Stacks[i]['AccountID'].ljust(DisplaySpacing['AccountNumber']),
-		      SCP2Stacks[i]['SCProductName'].ljust(DisplaySpacing['SCProductName']),
-		      SCP2Stacks[i]['ProvisioningArtifactName'].ljust(DisplaySpacing['ProvisioningArtifactName']),
-		      SCP2Stacks[i]['CFNStackName'].ljust(DisplaySpacing['CFNStackName']),
-		      SCP2Stacks[i]['SCStatus'].ljust(DisplaySpacing['SCStatus']),
-		      SCP2Stacks[i]['CFNStackStatus'].ljust(DisplaySpacing['CFNStackStatus']),
-		      SCP2Stacks[i]['AccountStatus'].ljust(DisplaySpacing['AccountNumber']),
-		      SCP2Stacks[i]['AccountEmail'].ljust(DisplaySpacing['AccountEmail'])+Fore.RESET)
+		print(str(SCP2Stacks[i]['AccountID']).ljust(DisplaySpacing['AccountNumber']),
+		      str(SCP2Stacks[i]['SCProductName']).ljust(DisplaySpacing['SCProductName']),
+		      str(SCP2Stacks[i]['ProvisioningArtifactName']).ljust(DisplaySpacing['ProvisioningArtifactName']),
+		      str(SCP2Stacks[i]['CFNStackName']).ljust(DisplaySpacing['CFNStackName']),
+		      str(SCP2Stacks[i]['SCStatus']).ljust(DisplaySpacing['SCStatus']),
+		      str(SCP2Stacks[i]['CFNStackStatus']).ljust(DisplaySpacing['CFNStackStatus']),
+		      str(SCP2Stacks[i]['AccountStatus']).ljust(DisplaySpacing['AccountStatus']),
+		      str(SCP2Stacks[i]['AccountEmail']).ljust(DisplaySpacing['AccountEmail'])+Fore.RESET)
 except ClientError as my_Error:
 	if str(my_Error).find("AuthFailure") > 0:
 		print(f"{pProfile}: Authorization Failure ")
@@ -293,7 +292,7 @@ if ErroredSCPExists:
 print()
 for i in AccountHistogram:
 	logging.info(f"Account ID: {i} is {AccountHistogram[i]}")
-print(f"We found {len(AcctList)} accounts within the Org")
+print(f"We found {len(aws_acct.ChildAccounts)} accounts within the Org")
 print(f"We found {len(SCProducts)} Service Catalog Products")
 print(f"We found {len(SuspendedAccounts)} Suspended accounts")
 print(f"We found {len(ClosedAccts)} Closed Accounts that still have an SC product")

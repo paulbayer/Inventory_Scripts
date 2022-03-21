@@ -45,7 +45,7 @@ def check_account_access(faws_acct, faccount_num, fAccessRole=None):
 		return(return_response)
 	sts_client = faws_acct.session.client('sts')
 	try:
-		role_arn = "arn:aws:iam::{}:role/{}".format(faccount_num, fAccessRole)
+		role_arn = f"arn:aws:iam::{faccount_num}:role/{fAccessRole}"
 		credentials = sts_client.assume_role(RoleArn=role_arn,
 		                                  RoleSessionName='TheOtherGuy')['Credentials']
 		return_response = {'Credentials': credentials, 'Success': True, 'ErrorMessage': ""}

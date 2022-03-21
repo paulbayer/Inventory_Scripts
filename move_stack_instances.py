@@ -91,7 +91,6 @@ Here's what's needed:
 	7. Loop through the stack-ids until complete - verifying after each one
 		7.5 Remember the script will have to continuously poll the stack-set to determine when it's complete 
 	8. Report on status at the end.
-	
 
 """
 

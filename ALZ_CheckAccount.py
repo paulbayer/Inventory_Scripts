@@ -420,8 +420,8 @@ for childaccount in ChildAccountList:
 		print(f"Checking account {childaccount} for a specially named CloudTrail in all regions")
 		for region in RegionList:
 			print(ERASE_LINE, f"Checking account {childaccount} in region {region} for CloudTrail trails", end='\r')
-			CTtrails = Inventory_Modules.find_cloudtrails(account_credentials, region,
-			                                              ['AWS-Landing-Zone-BaselineCloudTrail'])
+			CTtrails = Inventory_Modules.find_cloudtrails2(account_credentials, region,
+			                                               ['AWS-Landing-Zone-BaselineCloudTrail'])
 			if len(CTtrails) > 0:
 				logging.error(
 					f"Unfortunately, we've found existing CloudTrails in account {childaccount} in the {region} region, which means we'll have to delete it before this account can be adopted.")
@@ -439,8 +439,8 @@ for childaccount in ChildAccountList:
 		if FixRun:
 			try:
 				logging.error("CloudTrail trail deletion commencing...")
-				delresponse = Inventory_Modules.del_cloudtrails(account_credentials, CTtrails2[i]['HomeRegion'],
-				                                                CTtrails2[i]['TrailARN'])
+				delresponse = Inventory_Modules.del_cloudtrails2(account_credentials, CTtrails2[i]['HomeRegion'],
+				                                                 CTtrails2[i]['TrailARN'])
 				ProcessStatus[childaccount]['Step3']['IssuesFixed'] += 1
 			except ClientError as my_Error:
 				print(my_Error)
@@ -472,7 +472,7 @@ for childaccount in ChildAccountList:
 			print(
 				f"{ERASE_LINE}Checking account {childaccount} in region {region} for {Fore.RED}GuardDuty{Fore.RESET}invitations",
 				end='\r')
-			GDinvites = Inventory_Modules.find_gd_invites(account_credentials, region)
+			GDinvites = Inventory_Modules.find_gd_invites2(account_credentials, region)
 			if len(GDinvites['Invitations']) > 0:
 				gdinvites_found = True
 				for x in range(len(GDinvites['Invitations'])):
@@ -497,8 +497,8 @@ for childaccount in ChildAccountList:
 			for x in range(len(GDinvites2)):
 				try:
 					logging.warning("GuardDuty invite deletion commencing...")
-					delresponse = Inventory_Modules.delete_gd_invites(account_credentials, GDinvites2[x]['Region'],
-					                                                  GDinvites2[x]['AccountId'])
+					delresponse = Inventory_Modules.delete_gd_invites2(account_credentials, GDinvites2[x]['Region'],
+					                                                   GDinvites2[x]['AccountId'])
 					ProcessStatus[childaccount]['Step4']['IssuesFixed'] += 1
 				# We assume the process worked. We should probably NOT assume this.
 				except ClientError as my_Error:

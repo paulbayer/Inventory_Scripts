@@ -3,21 +3,17 @@
 import sys
 import boto3
 import Inventory_Modules
-import argparse
+from account_class import aws_acct_access
+from ArgumentsClass import CommonArguments
 from botocore.exceptions import ClientError
+import simplejson as json
 
 import logging
 
-parser = argparse.ArgumentParser(
-	description="We\'re going to ensure the 'AWSCloudFormationStackSetExecutionRole' is locked down properly.",
-	prefix_chars='-+/')
-parser.my_parser.add_argument(
-	"-p", "--profile",
-	dest="pProfile",
-	required = True,
-	default='default',
-	metavar="profile to use",
-	help="This profile should be for the Management Account - with access into the children.")
+parser = CommonArguments()
+parser.singleprofile()
+parser.singleregion()
+parser.verbosity()
 parser.my_parser.add_argument(
 	"-R", "--access_rolename",
 	dest="pAccessRole",
@@ -51,37 +47,9 @@ parser.my_parser.add_argument(
 	const=False,
 	default=True,
 	help="Adding this parameter will 'remove the safety' - by not including the principle running this script, which might mean you get locked out of making further changes.")
-parser.my_parser.add_argument(
-	'-v',
-	help="Be verbose",
-	action="store_const",
-	default=logging.CRITICAL,  # args.loglevel = 50
-	dest="loglevel",
-	const=logging.ERROR)  # args.loglevel = 40
-parser.my_parser.add_argument(
-	'-vv', '--verbose',
-	help="Be MORE verbose",
-	action="store_const",
-	default=logging.CRITICAL,  # args.loglevel = 50
-	dest="loglevel",
-	const=logging.WARNING)  # args.loglevel = 30
-parser.my_parser.add_argument(
-	'-vvv',
-	help="Print INFO statements",
-	action="store_const",
-	default=logging.CRITICAL,  # args.loglevel = 50
-	dest="loglevel",
-	const=logging.INFO)  # args.loglevel = 20
-parser.my_parser.add_argument(
-	'-d', '--debug',
-	help="Print debugging statements",
-	action="store_const",
-	default=logging.CRITICAL,  # args.loglevel = 50
-	dest="loglevel",
-	const=logging.DEBUG)  # args.loglevel = 20
 args = parser.my_parser.parse_args()
 
-pProfile = args.pProfiles
+pProfile = args.Profile
 pTargetRole = args.pTargetRole
 pAccessRole = args.pAccessRole
 pLock = args.pLock
@@ -90,9 +58,9 @@ pFix = args.pFix
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
-ParentAcctNum = Inventory_Modules.find_account_number(pProfile)
-ChildAccounts = Inventory_Modules.find_child_accounts2(pProfile)
-if len(ChildAccounts) == 0:
+aws_acct = aws_acct_access(pProfile)
+
+if not aws_acct.AccountType.lower() == 'root':
 	print()
 	print(f"The profile {pProfile} does not represent an Org")
 	print("This script only works with org accounts.")
@@ -114,8 +82,7 @@ print(f"We're targeting the {pTargetRole} role to change its Trust Policy")
 # 1. Collect parameters with the ARNs that should be in the permission
 # lock_down_arns_list=[]
 allowed_arns = []
-aws_session = boto3.Session(profile_name=pProfile)
-ssm_client = aws_session.client('ssm')
+ssm_client = aws_acct.session.client('ssm')
 param_list = ssm_client.describe_parameters(ParameterFilters=[{'Key': 'Name', 'Option': 'Contains', 'Values': ['lock_down_role_arns_list']}])['Parameters']
 if len(param_list) == 0:
 	print("You need to set the region (-r|--region) to the default region where the SSM parameters are stored.")
@@ -132,7 +99,6 @@ Creds = Inventory_Modules.find_calling_identity(pProfile)
 if pSafety:
 	allowed_arns.append(Creds['Arn'])
 # 2. Create the Trust Policy in JSON
-import simplejson as json
 
 if pLock:
 	if pSafety and pFix:
@@ -169,20 +135,20 @@ else:
                     "Sid": "DevAccess",
                     "Effect": "Allow",
                     "Principal": {
-	                "AWS": [f"arn:aws:iam::{ParentAcctNum}:root"]
+	                "AWS": [f"arn:aws:iam::{aws_acct.MgmtAccount}:root"]
                         },
                     "Action": "sts:AssumeRole"
                     }
                 ]}
 Trust_Policy_json = json.dumps(Trust_Policy)
-# 3. Get a listing of all accounts that need to be updated
-child_accounts = Inventory_Modules.find_child_accounts2(pProfile)
+# 3. Get a listing of all accounts that need to be updated and then ...
+
 
 # 4. Connect to each account, and detach the existing policy, and apply the new policy
-sts_client = aws_session.client('sts')
+sts_client = aws_acct.session.client('sts')
 TrustPoliciesChanged = 0
 ErroredAccounts = []
-for acct in child_accounts:
+for acct in aws_acct.ChildAccounts:
 	ConnectionSuccess = False
 	try:
 		role_arn = f"arn:aws:iam::{acct['AccountId']}:role/{pAccessRole}"
@@ -193,7 +159,7 @@ for acct in child_accounts:
 		logging.warning(f"Accessed Account {acct['AccountId']} using rolename {pAccessRole}")
 		ConnectionSuccess = True
 	except ClientError as my_Error:
-		logging.error("Account %s, role %s was unavailable to change, so we couldn't access the role's Trust Policy", acct['AccountId'], pTargetRole)
+		logging.error(f"Account {acct['AccountId']}, role {pTargetRole} was unavailable to change, so we couldn't access the role's Trust Policy")
 		logging.warning(my_Error)
 		ErroredAccounts.append(acct['AccountId'])
 		pass
@@ -204,7 +170,7 @@ for acct in child_accounts:
 				aws_access_key_id=account_credentials['AccessKeyId'],
 				aws_secret_access_key=account_credentials['SecretAccessKey'],
 				aws_session_token=account_credentials['SessionToken']
-			)
+				)
 			iam_client = iam_session.client('iam')
 			trustpolicyexisting = iam_client.get_role(RoleName=pTargetRole)
 			logging.info("Found Trust Policy %s in account %s for role %s" % (
@@ -227,7 +193,7 @@ for acct in child_accounts:
 			pass
 
 print(ERASE_LINE)
-print("We found {} accounts under your organization".format(len(ChildAccounts)))
+print(f"We found {len(ChildAccounts)} accounts under your organization")
 if pLock and pFix:
 	print(f"We locked {TrustPoliciesChanged} Trust Policies")
 elif not pLock and pFix:
@@ -235,9 +201,11 @@ elif not pLock and pFix:
 else:
 	print(f"We didn't change {TrustPoliciesChanged} Trust Policies")
 if len(ErroredAccounts) > 0:
-	print("We weren't able to access {} accounts.".format(len(ErroredAccounts)))
+	print(f"We weren't able to access {len(ErroredAccounts)} accounts.")
 if verbose < 50:
 	print("Here are the accounts that were not updated")
 	for i in ErroredAccounts:
 		print(i)
+print()
 print("Thanks for using the tool.")
+print()

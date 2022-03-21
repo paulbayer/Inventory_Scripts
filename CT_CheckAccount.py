@@ -335,7 +335,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		CTtrails2 = []
 		for region in fRegionList:
 			print(ERASE_LINE, f"Checking account {fChildAccountId} in region {region} for CloudTrail trails", end='\r')
-			CTtrails = Inventory_Modules.find_cloudtrails(account_credentials, region, ['aws-controltower-BaselineCloudTrail'])
+			CTtrails = Inventory_Modules.find_cloudtrails2(account_credentials, region, ['aws-controltower-BaselineCloudTrail'])
 			if len(CTtrails) > 0:
 				logging.warning(f"Unfortunately, we've found a CloudTrail log named {CTtrails[0]['Name']} in account {fChildAccountId} "
 				              f"in the {region} region, which means we'll have to delete it before this account can be adopted.")
@@ -352,7 +352,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		if fFixRun:
 			try:
 				logging.warning("CloudTrail trail deletion commencing...")
-				delresponse = Inventory_Modules.del_cloudtrails(account_credentials, region, CTtrails2[_]['TrailARN'])
+				delresponse = Inventory_Modules.del_cloudtrails2(account_credentials, region, CTtrails2[_]['TrailARN'])
 				ProcessStatus[Step]['IssuesFixed'] += 1
 			except ClientError as my_Error:
 				print(my_Error)
@@ -523,7 +523,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		for region in fRegionList:
 			logging.warning(f"Checking account %s in region %s for {Fore.RED}Lambda functions{Fore.RESET}", fChildAccountId, region)
 			print(ERASE_LINE, f"Checking account {fChildAccountId} in region {region} for Lambda Functions", end='\r')
-			LambdaFunctions = Inventory_Modules.find_lambda_functions(account_credentials, region, ['controltower', 'CpntrolTower'])
+			LambdaFunctions = Inventory_Modules.find_lambda_functions2(account_credentials, region, ['controltower', 'CpntrolTower'])
 			if len(LambdaFunctions) > 0:
 				logging.info(
 					"Unfortunately, account %s contains %s functions with reserved names, which means we'll have to delete them before this account can be adopted.",	fChildAccountId, len(LambdaFunctions))

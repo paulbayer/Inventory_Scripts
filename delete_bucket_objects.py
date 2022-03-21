@@ -3,11 +3,8 @@
 import boto3
 import sys
 import logging
-import pprint
-import argparse
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
-from botocore.exceptions import ClientError
 
 parser = CommonArguments()
 parser.singleprofile()
@@ -18,7 +15,7 @@ parser.my_parser.add_argument(
 	dest="pBucketName",
 	metavar="bucket to empty and delete",
 	required=True,
-	help="To specify a profile, use this parameter.")
+	help="To specify a bucket, use this parameter.")
 parser.my_parser.add_argument(
 	'+delete', '+force-delete',
 	help="Whether or not to delete the bucket after it's been emptied",
@@ -35,7 +32,6 @@ pBucketName = args.pBucketName
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
-
 aws_acct = aws_acct_access(pProfile)
 s3 = aws_acct.session.resource(service_name='s3')
 
@@ -43,16 +39,16 @@ print()
 print(f"This script is about to delete all versions of all objects from bucket {pBucketName}")
 print()
 
+bucket = s3.Bucket(pBucketName)
 try:
-	bucket = s3.Bucket(pBucketName)
 	# print(len(list(bucket.object_versions.all)))# Deletes everything in the bucket
 	bucket.object_versions.delete()
-except Exception as e:
-	pprint.pprint(e)
-	print("Error messages here")
+except Exception as my_Error:
+	print(f"Error message: {my_Error}")
 
 DeleteBucket = False
 if pBucketDelete:  # They provided the parameter that said they wanted to delete the bucket
+	print(f"As per your request, we're deleting the bucket {pBucketName}")
 	bucket.delete()
 	print(f"Bucket: {pBucketName} has been deleted")
 else:

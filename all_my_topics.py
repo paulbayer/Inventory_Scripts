@@ -16,7 +16,7 @@ parser.verbosity()
 parser.singleprofile()
 parser.multiregion()
 parser.my_parser.add_argument(
-	"-t", "--topic",
+	"-f", "--topic", "--fragment",
 	dest="pTopicFrag",
 	default=["all"],
 	nargs='*',
@@ -71,7 +71,7 @@ for i in range(len(ChildAccounts)):
 			logging.info(f"Looking for Topics in acct {ChildAccounts[i]['AccountId']} in region {region}")
 			Topics = Inventory_Modules.find_sns_topics(account_credentials, region, pTopicFrag)
 			print(f"{ERASE_LINE}On account {i+1} of {len(ChildAccounts)} in region {regionNum} of {len(RegionList)}", end='\r')
-			logging.error(f"{ERASE_LINE}Found {len(Topics)} topics in account {Fore.RED}{ChildAccounts[i]['AccountId']}{Fore.RESET} in {region}", end='\r')
+			logging.error(f"Found {len(Topics)} topics in account {Fore.RED}{ChildAccounts[i]['AccountId']}{Fore.RESET} in {region}")
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(f"{aws_acct.acct_number} :Authorization Failure for account: {ChildAccounts[i]['AccountId']} in region {region}")

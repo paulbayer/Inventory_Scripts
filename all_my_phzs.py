@@ -51,7 +51,7 @@ for profile in ProfileList:
 		aws_acct = aws_acct_access(profile)
 	for region in RegionList:
 		try:
-			HostedZones = Inventory_Modules.find_private_hosted_zones2(aws_acct, region)['HostedZones']
+			HostedZones = Inventory_Modules.find_private_hosted_zones(aws_acct, region)['HostedZones']
 			PHZNum = len(HostedZones)
 			logging.info(f"Account: {aws_acct.acct_number:12s} | Region: {region:15s} | Found {PHZNum:2d} Hosted Zones")
 			print(f"{ERASE_LINE}{Fore.RED}Account: {aws_acct.acct_number:12s} Region: {region:15s} Found: {PHZNum:2d} Hosted Zones{Fore.RESET}", end='\r')

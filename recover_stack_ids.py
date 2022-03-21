@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-# import boto3
 import Inventory_Modules
 from pprint import pprint
 from ArgumentsClass import CommonArguments
@@ -9,6 +8,11 @@ from colorama import init, Fore
 from botocore.exceptions import ClientError
 import simplejson as json
 import logging
+
+"""
+This script was created to help solve a testing problem for the "move_stack_instances.py" script.e
+Originally, that script didn't have built-in recovery, so we needed this script to "recover" those stack-instance ids that might have been lost during the move_stack_instances.py run. However, that script now has built-in recovery, so this script isn't really needed. However, it can still be used to find any stack-instances that have been orphaned from their original stack-set, if that happens. 
+"""
 
 init()
 

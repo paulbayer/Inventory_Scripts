@@ -1,6 +1,6 @@
-boto3==1.18.47
-botocore==1.21.47
-colorama==0.4.4
-prettytable==2.2.0
-simplejson==3.17.5
-urllib3==1.26.7
+boto3>=1.18.47
+botocore>=1.21.47
+colorama>=0.4.4
+prettytable>=2.2.0
+simplejson>=3.17.5
+urllib3>=1.26.7

@@ -56,7 +56,7 @@ def check_accounts_for_instances(faws_acct, fRegionList=[]):
 			try:
 				Instances = None
 				print(f"{ERASE_LINE}Checking account {account['AccountId']} in region {region}", end='\r')
-				Instances = Inventory_Modules.find_account_instances(account_credentials, region)
+				Instances = Inventory_Modules.find_account_instances2(account_credentials, region)
 				logging.info(f"Root Account: {faws_acct.acct_number} Account: {account['AccountId']} Region: {region} | Found {len(Instances['Reservations'])} instances")
 			except ClientError as my_Error:
 				if str(my_Error).find("AuthFailure") > 0:
@@ -104,7 +104,7 @@ AllChildAccounts = []
 if pProfiles is None:   # Default use case from the classes
 	logging.info("Using whatever the default profile is")
 	aws_acct = aws_acct_access()
-	RegionList = Inventory_Modules.get_regions2(aws_acct, pRegionList)
+	RegionList = Inventory_Modules.get_regions(aws_acct, pRegionList)
 	logging.warning(f"Default profile will be used")
 	InstancesFound.extend(check_accounts_for_instances(aws_acct, RegionList))
 	AllChildAccounts.extend(aws_acct.ChildAccounts)
@@ -116,7 +116,7 @@ else:
 	for profile in ProfileList:
 		aws_acct = aws_acct_access(profile)
 		logging.info(f"Looking at {profile} account now... ")
-		RegionList = Inventory_Modules.get_regions2(aws_acct, pRegionList)
+		RegionList = Inventory_Modules.get_regions(aws_acct, pRegionList)
 		InstancesFound.extend(check_accounts_for_instances(aws_acct, RegionList))
 		AllChildAccounts.extend(aws_acct.ChildAccounts)
 
