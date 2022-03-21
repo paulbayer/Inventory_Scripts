@@ -2022,15 +2022,19 @@ def delete_stackset3(faws_acct, fRegion, fStackSetName):
 	try:
 		response = client_cfn.delete_stack_set(StackSetName=fStackSetName, CallAs='SELF')
 		return_response['Success'] = True
+		return_response['ErrorMessage'] = None
 	except client_cfn.exceptions.StackSetNotEmptyException as myError:
 		logging.error(f"StackSet not empty: {myError}")
 		return_response['Success'] = False
+		return_response['ErrorMessage'] = myError
 	except client_cfn.exceptions.OperationInProgressException as myError:
 		logging.error(f"Operation in progress: {myError}")
 		return_response['Success'] = False
+		return_response['ErrorMessage'] = myError
 	except Exception as myError:
 		logging.error(f"Other Error: {myError}")
 		return_response['Success'] = False
+		return_response['ErrorMessage'] = myError
 	return (return_response)
 
 
