@@ -21,9 +21,7 @@ parser = CommonArguments()
 parser.verbosity()
 parser.singleprofile()
 parser.singleregion()
-# parser = argparse.ArgumentParser(
-# 	description="We\'re going to find all SSM parameters within the master profile, and optionally delete some of them.",
-# 	prefix_chars='-+/')
+
 parser.my_parser.add_argument(
 		'--ALZ',
 		help="Identify left-over parameters created by the ALZ solution",
@@ -61,8 +59,9 @@ fmt = '%-15s %-20s'
 print(fmt % ("Parameter Name", "Last Modified Date"))
 print(fmt % ("--------------", "------------------"))
 
-session_ssm = boto3.Session(profile_name=pProfile)
-client_ssm = session_ssm.client('ssm')
+aws_acct = aws_acct_access(pProfile)
+aws_session = aws_acct.session
+client_ssm = aws_session.client('ssm')
 Parameters = []
 ParamsToDelete = []
 ALZParams = 0
@@ -70,7 +69,7 @@ ALZParams = 0
 try:
 	# Since there could be 10,000 parameters stored in the Parameter Store - this function COULD take a long time
 	Parameters = Inventory_Modules.find_ssm_parameters(pProfile, pRegion)
-	logging.error("Profile: %s found a total of %s parameters", pProfile, len(Parameters))
+	logging.error(f"Profile: {pProfile} found a total of {len(Parameters)} parameters")
 # print(ERASE_LINE,"Account:",account['AccountId'],"Found",len(Users),"users",end='\r')
 except ClientError as my_Error:
 	if str(my_Error).find("AuthFailure") > 0:
@@ -84,10 +83,9 @@ if ALZParam:
 		ParameterDate = Parameters[y]['LastModifiedDate']
 		mydelta = today - ParameterDate  # this is a "timedelta" object
 		p = re.compile(ALZRegex)  # Sets the regex to look for
-		logging.info("Parameter %s: %s with date %s", y, Parameters[y]['Name'], Parameters[y]['LastModifiedDate'])
+		logging.info(f"Parameter{y}: {Parameters[y]['Name']} with date {Parameters[y]['LastModifiedDate']}")
 		if p.match(Parameters[y]['Name']) and mydelta > dtDaysBack:
-			logging.error("Parameter %s with date of %s matched", Parameters[y]['Name'],
-			              Parameters[y]['LastModifiedDate'])
+			logging.error(f"Parameter {Parameters[y]['Name']} with date of {Parameters[y]['LastModifiedDate']} matched")
 			ALZParams += 1
 			if DeletionRun:
 				ParamsToDelete.append(Parameters[y]['Name'])
@@ -108,7 +106,7 @@ if DeletionRun:
 			response = client_ssm.delete_parameters(
 					Names=ParamsToDelete[mark:i]
 					)
-			logging.warning(f"Deleted the last {i} parameters.")
+			logging.warning(f"Deleted the last {i % 10} parameters.")
 print()
 print(ERASE_LINE)
 print(f"Found {len(Parameters)} total parameters")

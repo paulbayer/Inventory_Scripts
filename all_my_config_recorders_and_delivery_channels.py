@@ -54,7 +54,7 @@ aws_acct = aws_acct_access(pProfile)
 if pAccounts is None:
 	ChildAccounts = aws_acct.ChildAccounts
 else:
-	ChildAccounts=[]
+	ChildAccounts = []
 	for item in pAccounts:
 		ChildAccounts.append({'AccountId': item})
 

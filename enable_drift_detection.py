@@ -132,10 +132,11 @@ for account in ChildAccounts:
 			# pprint.pprint(Stacks)
 			# StackNum=len(Stacks)
 			logging.warning("Account: %s | Region: %s | Found %s Stacks", account['AccountId'], region, StackNum)
-			logging.info(ERASE_LINE, f"{Fore.RED}Account: {account['AccountId']} Region: {region} Found {StackNum} Stacks{Fore.RESET}", end='\r')
+			logging.info(f"{ERASE_LINE}{Fore.RED}Account: {account['AccountId']} Region: {region} Found {StackNum} Stacks{Fore.RESET}")
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(f"{account['AccountId']}: Authorization Failure")
+		# TODO: Is there a better way to refer to "Stacks" if there are no stacks in the account?
 		if len(Stacks) > 0:
 			for y in range(len(Stacks)):
 				StackName = Stacks[y]['StackName']

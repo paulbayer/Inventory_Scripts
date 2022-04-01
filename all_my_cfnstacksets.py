@@ -10,10 +10,10 @@ from botocore.exceptions import ClientError
 init()
 
 parser = CommonArguments()
-parser.singleprofile()      # Allows for a single profile to be specified
-parser.multiregion()        # Allows for multiple regions to be specified at the command line
+parser.singleprofile()  # Allows for a single profile to be specified
+parser.multiregion()  # Allows for multiple regions to be specified at the command line
 parser.rootOnly()
-parser.verbosity()          # Allows for the verbosity to be handled.
+parser.verbosity()  # Allows for the verbosity to be handled.
 parser.my_parser.add_argument(
 	"-f", "--fragment",
 	dest="pstackfrag",
@@ -46,7 +46,8 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(fu
 
 aws_acct = aws_acct_access(pProfile)
 if pRootOnly:
-	ChildAccounts = [childaccount for childaccount in aws_acct.ChildAccounts if childaccount['AccountId'] == aws_acct.acct_number]
+	ChildAccounts = [childaccount for childaccount in aws_acct.ChildAccounts if
+	                 childaccount['AccountId'] == aws_acct.acct_number]
 else:
 	ChildAccounts = aws_acct.ChildAccounts
 
@@ -68,7 +69,7 @@ RegionList = Inventory_Modules.get_ec2_regions2(aws_acct, pRegionList)
 
 sts_session = aws_acct.session
 sts_client = sts_session.client('sts')
-account_credentials = {'AccessError': False}     # This shouldn't matter, but makes the IDE checker happy.
+account_credentials = {'AccessError': False}  # This shouldn't matter, but makes the IDE checker happy.
 for account in ChildAccounts:
 	try:
 		account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'])
@@ -85,18 +86,24 @@ for account in ChildAccounts:
 	# logging.info(f"Account Creds: {account_credentials}")
 	for region in RegionList:
 		try:
-			print(f"{ERASE_LINE}{Fore.RED}Checking Account: {account['AccountId']} Region: {region} for stacksets matching {pstackfrag} with status: {pstatus}{Fore.RESET}", end="\r")
+			print(
+				f"{ERASE_LINE}{Fore.RED}Checking Account: {account['AccountId']} Region: {region} for stacksets matching {pstackfrag} with status: {pstatus}{Fore.RESET}",
+				end="\r")
 			StackSets = Inventory_Modules.find_stacksets(account_credentials, region, pstackfrag, pstatus)
 			logging.warning(f"Account: {account['AccountId']} | Region: {region} | Found {len(StackSets)} Stacksets")
-			if StackSets == []:
-				logging.info(f"We connected to account {account['AccountId']} in region {region}, but found no stacksets")
+			if not StackSets:
+				logging.info(
+					f"We connected to account {account['AccountId']} in region {region}, but found no stacksets")
 			else:
-				print(f"{ERASE_LINE}{Fore.RED}Account: {account['AccountId']} Region: {region} Found {len(StackSets)} Stacksets{Fore.RESET}", end="\r")
+				print(
+					f"{ERASE_LINE}{Fore.RED}Account: {account['AccountId']} Region: {region} Found {len(StackSets)} Stacksets{Fore.RESET}",
+					end="\r")
 			for y in range(len(StackSets)):
 				StackName = StackSets[y]['StackSetName']
 				StackStatus = StackSets[y]['Status']
 				if pInstanceCount:
-					ListOfStackInstances = Inventory_Modules.find_stack_instances2(account_credentials, region, StackName)
+					ListOfStackInstances = Inventory_Modules.find_stack_instances2(account_credentials, region,
+					                                                               StackName)
 					print(fmt % (account['AccountId'], region, StackStatus, StackName, len(ListOfStackInstances)))
 				else:
 					print(fmt % (account['AccountId'], region, StackStatus, StackName))
@@ -105,6 +112,7 @@ for account in ChildAccounts:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(f"{account['AccountId']}: Authorization Failure")
 print(ERASE_LINE)
-print(f"{Fore.RED}Found {NumStacksFound} Stacksets across {len(ChildAccounts)} accounts across {len(RegionList)} regions{Fore.RESET}")
+print(
+	f"{Fore.RED}Found {NumStacksFound} Stacksets across {len(ChildAccounts)} accounts across {len(RegionList)} regions{Fore.RESET}")
 print()
 print("Thanks for using this script...")

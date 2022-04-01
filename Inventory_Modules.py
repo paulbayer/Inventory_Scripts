@@ -1413,18 +1413,17 @@ def find_profile_load_balancers(fProfile, fRegion, fStackFragment='all', fStatus
 
 def find_load_balancers(faws_acct, fRegion='us-east-1', fStackFragment='all', fStatus='all'):
 	"""
-	This library script returns the load balancers within an account and a region
+	This library script returns the list of load balancers within an account and a region
 	"""
 	import logging
 
-	logging.info(f"Profile: %s | Region: %s | Fragment: %s | Status: %s", fProfile, fRegion, fStackFragment, fStatus)
+	logging.info(f"Account: {faws_acct.acct_number} | Region: {fRegion} | Fragment: {fStackFragment} | Status: {fStatus}")
 	session_cfn = faws_acct.session
 	lb_info = session_cfn.client('elbv2')
 	load_balancers = lb_info.describe_load_balancers()
 	load_balancers_Copy = []
 	if fStackFragment.lower() == 'all' and (fStatus.lower() == 'active' or fStatus.lower() == 'all'):
-		logging.warning("Found all the lbs in Profile: %s in Region: %s with Fragment: %s and Status: %s", fProfile,
-		                fRegion, fStackFragment, fStatus)
+		logging.warning(f"Found all the lbs in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 		return (load_balancers['LoadBalancers'])
 	elif (fStackFragment.lower() == 'all'):
 		for load_balancer in load_balancers['LoadBalancers']:
@@ -2022,7 +2021,6 @@ def delete_stackset3(faws_acct, fRegion, fStackSetName):
 	try:
 		response = client_cfn.delete_stack_set(StackSetName=fStackSetName, CallAs='SELF')
 		return_response['Success'] = True
-		return_response['ErrorMessage'] = None
 	except client_cfn.exceptions.StackSetNotEmptyException as myError:
 		logging.error(f"StackSet not empty: {myError}")
 		return_response['Success'] = False

@@ -15,38 +15,38 @@ parser.singleprofile()
 parser.singleregion()
 parser.verbosity()
 parser.my_parser.add_argument(
-	"-R", "--access_rolename",
-	dest="pAccessRole",
-	default='AWSCloudFormationStackSetExecutionRole',
-	metavar="role to use for access to child accounts",
-	help="This parameter specifies the role that will allow this script to have access to the children accounts.")
+		"-R", "--access_rolename",
+		dest="pAccessRole",
+		default='AWSCloudFormationStackSetExecutionRole',
+		metavar="role to use for access to child accounts",
+		help="This parameter specifies the role that will allow this script to have access to the children accounts.")
 parser.my_parser.add_argument(
-	"-t", "--target_rolename",
-	dest="pTargetRole",
-	default='AWSCloudFormationStackSetExecutionRole',
-	metavar="role to change",
-	help="This parameter specifies the role to have its Trust Policy changed.")
+		"-t", "--target_rolename",
+		dest="pTargetRole",
+		default='AWSCloudFormationStackSetExecutionRole',
+		metavar="role to change",
+		help="This parameter specifies the role to have its Trust Policy changed.")
 parser.my_parser.add_argument(
-	"+f", "--fix", "+fix",
-	dest="pFix",
-	action="store_const",
-	const=True,
-	default=False,
-	help="This parameter determines whether to make any changes in child accounts.")
+		"+f", "--fix", "+fix",
+		dest="pFix",
+		action="store_const",
+		const=True,
+		default=False,
+		help="This parameter determines whether to make any changes in child accounts.")
 parser.my_parser.add_argument(
-	"+l", "--lock", "+lock",
-	dest="pLock",
-	action="store_const",
-	const=True,
-	default=False,
-	help="This parameter determines whether to lock the Trust Policy.")
+		"+l", "--lock", "+lock",
+		dest="pLock",
+		action="store_const",
+		const=True,
+		default=False,
+		help="This parameter determines whether to lock the Trust Policy.")
 parser.my_parser.add_argument(
-	"-s", "--safety",
-	dest="pSafety",
-	action="store_const",
-	const=False,
-	default=True,
-	help="Adding this parameter will 'remove the safety' - by not including the principle running this script, which might mean you get locked out of making further changes.")
+		"-s", "--safety",
+		dest="pSafety",
+		action="store_const",
+		const=False,
+		default=True,
+		help="Adding this parameter will 'remove the safety' - by not including the principle running this script, which might mean you get locked out of making further changes.")
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
@@ -83,7 +83,8 @@ print(f"We're targeting the {pTargetRole} role to change its Trust Policy")
 # lock_down_arns_list=[]
 allowed_arns = []
 ssm_client = aws_acct.session.client('ssm')
-param_list = ssm_client.describe_parameters(ParameterFilters=[{'Key': 'Name', 'Option': 'Contains', 'Values': ['lock_down_role_arns_list']}])['Parameters']
+param_list = ssm_client.describe_parameters(
+	ParameterFilters=[{'Key': 'Name', 'Option': 'Contains', 'Values': ['lock_down_role_arns_list']}])['Parameters']
 if len(param_list) == 0:
 	print("You need to set the region (-r|--region) to the default region where the SSM parameters are stored.")
 	print("Otherwise, with no *allowed* arns, we would lock everything out from this role.")
@@ -106,40 +107,41 @@ if pLock:
 	elif pFix:
 		logging.error(f"Locking down the Trust Policy to the Lambda functions and {Creds['Arn']}.")
 	else:
-		logging.critical("While you asked us to lock things down, You didn't use the '+f' parameter, so we're not changing a thing.")
+		logging.critical(
+			"While you asked us to lock things down, You didn't use the '+f' parameter, so we're not changing a thing.")
 	Trust_Policy = {
-		"Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Sid": "LambdaAccess",
-                    "Effect": "Allow",
-                    "Principal": {
-	                "AWS": allowed_arns
-                        },
-                    "Action": "sts:AssumeRole"
-                    }
-                ]}
+		"Version"  : "2012-10-17",
+		"Statement": [
+			{
+				"Sid"      : "LambdaAccess",
+				"Effect"   : "Allow",
+				"Principal": {
+					"AWS": allowed_arns
+					},
+				"Action"   : "sts:AssumeRole"
+				}
+			]}
 else:
 	Trust_Policy = {
-		"Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Sid": "LambdaAccess",
-                    "Effect": "Allow",
-                    "Principal": {
-	                "AWS": allowed_arns
-                        },
-                    "Action": "sts:AssumeRole"
-                    },
-                {
-                    "Sid": "DevAccess",
-                    "Effect": "Allow",
-                    "Principal": {
-	                "AWS": [f"arn:aws:iam::{aws_acct.MgmtAccount}:root"]
-                        },
-                    "Action": "sts:AssumeRole"
-                    }
-                ]}
+		"Version"  : "2012-10-17",
+		"Statement": [
+			{
+				"Sid"      : "LambdaAccess",
+				"Effect"   : "Allow",
+				"Principal": {
+					"AWS": allowed_arns
+					},
+				"Action"   : "sts:AssumeRole"
+				},
+			{
+				"Sid"      : "DevAccess",
+				"Effect"   : "Allow",
+				"Principal": {
+					"AWS": [f"arn:aws:iam::{aws_acct.MgmtAccount}:root"]
+					},
+				"Action"   : "sts:AssumeRole"
+				}
+			]}
 Trust_Policy_json = json.dumps(Trust_Policy)
 # 3. Get a listing of all accounts that need to be updated and then ...
 
@@ -153,13 +155,14 @@ for acct in aws_acct.ChildAccounts:
 	try:
 		role_arn = f"arn:aws:iam::{acct['AccountId']}:role/{pAccessRole}"
 		account_credentials = sts_client.assume_role(
-			RoleArn=role_arn,
-			RoleSessionName="RegistrationScript")['Credentials']
+				RoleArn=role_arn,
+				RoleSessionName="RegistrationScript")['Credentials']
 		account_credentials['Account'] = acct['AccountId']
 		logging.warning(f"Accessed Account {acct['AccountId']} using rolename {pAccessRole}")
 		ConnectionSuccess = True
 	except ClientError as my_Error:
-		logging.error(f"Account {acct['AccountId']}, role {pTargetRole} was unavailable to change, so we couldn't access the role's Trust Policy")
+		logging.error(
+			f"Account {acct['AccountId']}, role {pTargetRole} was unavailable to change, so we couldn't access the role's Trust Policy")
 		logging.warning(my_Error)
 		ErroredAccounts.append(acct['AccountId'])
 		pass
@@ -167,10 +170,10 @@ for acct in aws_acct.ChildAccounts:
 		try:
 			# detach policy from the role and attach the new policy
 			iam_session = boto3.Session(
-				aws_access_key_id=account_credentials['AccessKeyId'],
-				aws_secret_access_key=account_credentials['SecretAccessKey'],
-				aws_session_token=account_credentials['SessionToken']
-				)
+					aws_access_key_id=account_credentials['AccessKeyId'],
+					aws_secret_access_key=account_credentials['SecretAccessKey'],
+					aws_session_token=account_credentials['SessionToken']
+					)
 			iam_client = iam_session.client('iam')
 			trustpolicyexisting = iam_client.get_role(RoleName=pTargetRole)
 			logging.info("Found Trust Policy %s in account %s for role %s" % (
@@ -178,7 +181,8 @@ for acct in aws_acct.ChildAccounts:
 				acct['AccountId'],
 				pTargetRole))
 			if pFix:
-				trustpolicyupdate = iam_client.update_assume_role_policy(RoleName=pTargetRole, PolicyDocument=Trust_Policy_json)
+				trustpolicyupdate = iam_client.update_assume_role_policy(RoleName=pTargetRole,
+				                                                         PolicyDocument=Trust_Policy_json)
 				TrustPoliciesChanged += 1
 				logging.error(f"Updated Trust Policy in Account {acct['AccountId']} for role {pTargetRole}")
 				trustpolicyexisting = iam_client.get_role(RoleName=pTargetRole)

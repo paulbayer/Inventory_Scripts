@@ -316,9 +316,10 @@ def write_info_to_file(faws_acct, fstack_ids):
 			print(file_data, file=out)
 		return_response = {'Success': True}
 		return(return_response)
-	except:
-		logging.error("There was a problem. Not sure... ")
-		return_response = {'Success': False, 'ErrorMessage': 'Unsure yet'}
+	except Exception as myError:
+		error_message = "There was a problem. Not sure... "
+		logging.error(error_message)
+		return_response = {'Success': False, 'ErrorMessage': myError}
 		return(return_response)
 
 
@@ -334,9 +335,10 @@ def read_stack_info_from_file():
 			my_input_file = json.load(input_file)
 		return_response = {'Success': True, 'Payload': my_input_file}
 		return(return_response)
-	except:
-		logging.error("There was a problem. Not sure... ")
-		return_response = {'Success': False, 'ErrorMessage': 'Unsure yet'}
+	except Exception as myError:
+		error_message = "There was a problem. Not sure... "
+		logging.error(error_message)
+		return_response = {'Success': False, 'ErrorMessage': myError}
 		return(return_response)
 
 

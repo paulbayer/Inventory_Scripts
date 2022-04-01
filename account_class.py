@@ -35,7 +35,7 @@ import logging
 from botocore.exceptions import ProfileNotFound, ClientError
 
 
-def validate_region(faws_prelim_session, fRegion=None):
+def _validate_region(faws_prelim_session, fRegion=None):
 	import logging
 
 	client_region = faws_prelim_session.client('ec2')
@@ -133,7 +133,7 @@ class aws_acct_access:
 				account_access_successful = False
 		if account_access_successful:
 			try:
-				result = validate_region(prelim_session, fRegion)
+				result = _validate_region(prelim_session, fRegion)
 				if result['Result'] is True:
 					if UsingSessionToken:
 						logging.debug("Credentials are using SessionToken")

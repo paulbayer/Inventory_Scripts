@@ -148,6 +148,7 @@ def participant_user(faws_acct, create=None, username=None):
 
 #####################
 
+
 Accounts = []
 with open(pAccountFile, 'r') as infile:
 	for line in infile:
@@ -169,8 +170,7 @@ for account_num in Accounts:
 	else:
 		print(f"Access Role {pAccessRole} failed to connect to {account_num} from {aws_acct.acct_number} with error: {response['ErrorMessage']}")
 
-	## Display access keys
-
+	# Display access keys
 	print(f"Credentials for account {tgt_aws_access.acct_number}")
 	print(f"User {username} has been created (or confirmed) in account {user_response['AccountId']}")
 	print(f"Password for {user_response['User']} is {user_response['Password']}")

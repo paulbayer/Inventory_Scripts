@@ -11,55 +11,59 @@ import logging
 init()
 
 parser = argparse.ArgumentParser(
-	description="This script finds the version of your ALZ.",
-	prefix_chars='-+/')
+		description="This script finds the version of your ALZ.",
+		prefix_chars='-+/')
 parser.my_parser.add_argument(
-	"-p", "--profile",
-	dest="pProfile",
-	metavar="profile to use",
-	default="default",
-	help="Must specify a root profile. Default will be the default profile. You can specify 'all' ")
+		"-p", "--profile",
+		dest="pProfile",
+		metavar="profile to use",
+		default="default",
+		help="Must specify a root profile. Default will be the default profile. You can specify 'all' ")
 parser.my_parser.add_argument(
-	'-d', '--debug',
-	help="Print LOTS of debugging statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.DEBUG,  # args.loglevel = 10
-	default=logging.CRITICAL)  # args.loglevel = 50
+		'-d', '--debug',
+		help="Print LOTS of debugging statements",
+		action="store_const",
+		dest="loglevel",
+		const=logging.DEBUG,  # args.loglevel = 10
+		default=logging.CRITICAL)  # args.loglevel = 50
 parser.my_parser.add_argument(
-	'-vvv',
-	help="Print INFO level statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.INFO,  # args.loglevel = 20
-	default=logging.CRITICAL)  # args.loglevel = 50
+		'-vvv',
+		help="Print INFO level statements",
+		action="store_const",
+		dest="loglevel",
+		const=logging.INFO,  # args.loglevel = 20
+		default=logging.CRITICAL)  # args.loglevel = 50
 parser.my_parser.add_argument(
-	'-vv', '--verbose',
-	help="Be MORE verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.WARNING,  # args.loglevel = 30
-	default=logging.CRITICAL)  # args.loglevel = 50
+		'-vv', '--verbose',
+		help="Be MORE verbose",
+		action="store_const",
+		dest="loglevel",
+		const=logging.WARNING,  # args.loglevel = 30
+		default=logging.CRITICAL)  # args.loglevel = 50
 parser.my_parser.add_argument(
-	'-v',
-	help="Be verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.ERROR,  # args.loglevel = 40
-	default=logging.CRITICAL)  # args.loglevel = 50
+		'-v',
+		help="Be verbose",
+		action="store_const",
+		dest="loglevel",
+		const=logging.ERROR,  # args.loglevel = 40
+		default=logging.CRITICAL)  # args.loglevel = 50
 args = parser.my_parser.parse_args()
 
 pProfile = args.pProfiles
 verbose = args.loglevel
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)30s() ] %(message)s")
+logging.basicConfig(level=args.loglevel,
+                    format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)30s() ] %(message)s")
 
 ##########################
 ERASE_LINE = '\x1b[2K'
 SkipProfiles = ['default']
 
 if pProfile in ['all', 'All', 'ALL']:
-	logging.info("%s was provided as the profile, so we're going to check ALL of their profiles to find all of the management accounts, and list out all of their ALZ versions.", pProfile)
-	print("You've specified multiple profiles, so we've got to find them, determine which profiles represent Management Accounts, and then parse through those. This will take a few moments.")
+	logging.info(
+		"%s was provided as the profile, so we're going to check ALL of their profiles to find all of the management accounts, and list out all of their ALZ versions.",
+		pProfile)
+	print(
+		"You've specified multiple profiles, so we've got to find them, determine which profiles represent Management Accounts, and then parse through those. This will take a few moments.")
 	AllProfiles = Inventory_Modules.get_profiles()
 else:
 	AllProfiles = [pProfile]
@@ -74,8 +78,8 @@ for profile in AllProfiles:
 			ALZProfiles.append({
 				'Profile': profile,
 				'Acctnum': accountnum,
-				'Region': ALZMgmntAcct['Region']
-			})
+				'Region' : ALZMgmntAcct['Region']
+				})
 	except ClientError as my_Error:
 		if str(my_Error).find("UnrecognizedClientException") > 0:
 			logging.error("%s: Security Issue", profile)
@@ -88,7 +92,9 @@ for profile in AllProfiles:
 			pass
 	except InvalidConfigError as my_Error:
 		if str(my_Error).find("InvalidConfigError") > 0:
-			logging.error("%s: profile is invalid. Probably due to a config profile based on a credential that doesn't work", profile)
+			logging.error(
+				"%s: profile is invalid. Probably due to a config profile based on a credential that doesn't work",
+				profile)
 			pass
 
 print(ERASE_LINE)
@@ -106,7 +112,8 @@ for item in ALZProfiles:
 			for j in range(len(stack_list[i]['Outputs'])):
 				if stack_list[i]['Outputs'][j]['OutputKey'] == 'LandingZoneSolutionVersion':
 					ALZVersion = stack_list[i]['Outputs'][j]['OutputValue']
-					print(fmt % (item['Profile'], item['Acctnum'], item['Region'], stack_list[i]['StackName'], ALZVersion))
+					print(fmt % (
+					item['Profile'], item['Acctnum'], item['Region'], stack_list[i]['StackName'], ALZVersion))
 
 print(ERASE_LINE)
 print("Checked {} accounts. Found {} ALZs".format(len(AllProfiles), len(ALZProfiles)))

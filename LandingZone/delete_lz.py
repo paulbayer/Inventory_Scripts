@@ -1,20 +1,21 @@
 #!/usr/bin/env python
-
-""" Script for cleanup of deployed AWS Landing Zone, as per flow from https://w.amazon.com/bin/view/AWS/Teams/SA/AWS_Solutions_Builder/Working_Backwards/AWS_Solutions-Foundations-Landing-Zone/deletion/
-    To use it:
-    1. Create a user within your Master account with Administrator Access and key pair or a session token
-    2. run the script
-    Usage: python delete_lz.py REGION AWS_ACCESS_KEY AWS_SECRET_ACCESS_KEY [AWS_SESSION_TOKEN] [debug:true]
-"""
-__author__ = "Lech Migdal and many more"
-__email__ = "lmigdal@amazon.com"
-__status__ = "Use at your own risk"
-
 import boto3
 from botocore.exceptions import ClientError
 # from botocore.errorfactory import StackSetNotFoundException
 import time
 import sys
+
+""" 
+Script for cleanup of deployed AWS Landing Zone, as per flow from https://w.amazon.com/bin/view/AWS/Teams/SA/AWS_Solutions_Builder/Working_Backwards/AWS_Solutions-Foundations-Landing-Zone/deletion/
+    To use it:
+    1. Create a user within your Master account with Administrator Access and key pair or a session token
+    2. run the script
+Usage: python delete_lz.py REGION AWS_ACCESS_KEY AWS_SECRET_ACCESS_KEY [AWS_SESSION_TOKEN] [debug:true]
+"""
+
+__author__ = "Lech Migdal and many more"
+__email__ = "lmigdal@amazon.com"
+__status__ = "Use at your own risk"
 
 # make sure we are running with python 3
 if sys.version_info < (3, 0):
@@ -23,7 +24,9 @@ if sys.version_info < (3, 0):
 
 
 def wait_with_progress_bar(Message="", Seconds=30):
-	"""Wait for given number of seconds, displaying provided message and moving progress bar in the meantime """
+	"""
+	Wait for given number of seconds, displaying provided message and moving progress bar in the meantime
+	"""
 	iteration = 0
 	for _ in range(Seconds):
 		iteration += 1
@@ -274,7 +277,7 @@ if __name__ == "__main__":
 		elif stack_set['StackSetName'] in stack_sets_to_delete and stack_set[
 			'Status'] == 'FAILED' and not delete_in_progress:
 			print(
-				f"Even though the stack set {stack_set['StackSetName']} is in a FAILED state, we're going to delete it anyway...")
+					f"Even though the stack set {stack_set['StackSetName']} is in a FAILED state, we're going to delete it anyway...")
 			print(f"Deleting stack set {stack_set['StackSetName']}", end='')
 			client.delete_stack_set(StackSetName=stack_set['StackSetName'])
 			print('[DONE]')
@@ -300,7 +303,7 @@ if __name__ == "__main__":
 				print(f"Status of {stack_set['StackSetName']} stackset is currently {stack_set_status['Status']}")
 				wait_with_progress_bar(Message="\nSecurity Baseline stack sets delete in progress", Seconds=30)
 		print('[DONE]')
-		# TODO: If the Stackset is in status "Failed" - this will go into a race condition, and never complete.
+	# TODO: If the Stackset is in status "Failed" - this will go into a race condition, and never complete.
 	if not deleted_stack_sets:
 		print("No more stack sets to delete")
 
@@ -370,13 +373,13 @@ if __name__ == "__main__":
 						print(".", end="")
 						time.sleep(5)
 						print_debug(
-							f"Still deleting stackset {stack_set_name} in region {instance['Region']} in account {instance['Account']}")
+								f"Still deleting stackset {stack_set_name} in region {instance['Region']} in account {instance['Account']}")
 					deleted_instances = True
 
 				if not deleted_instances:
 					print(f"No instances to delete for {stack_set_name}")
 
-					# wait for delete operations on this stack set to finish
+				# wait for delete operations on this stack set to finish
 				# operations = client.list_stack_set_operations(StackSetName=stack_set_name)
 				delete_in_progress = True
 				while delete_in_progress:
@@ -408,7 +411,7 @@ if __name__ == "__main__":
 
 	# Step 9 - Delete the Logging Bucket in the Logging Account. Note - I delete all buckets that include 'aws-landing-zone' string in name
 	print(
-		"\nStep 9 - cleaning up logging account, since we are emptying S3 buckets one-by-one, this step will take some time. ")
+			"\nStep 9 - cleaning up logging account, since we are emptying S3 buckets one-by-one, this step will take some time. ")
 	provided_account_name = input(f"Please provide logging account name or press ENTER if it's {LOGGING_ACCOUNT_NAME} ")
 	if provided_account_name == "":
 		provided_account_name = LOGGING_ACCOUNT_NAME
@@ -456,8 +459,8 @@ if __name__ == "__main__":
 					s3_bucket = s3.Bucket(bucket['Name'])
 					if s3_bucket in s3.buckets.all():
 						print(
-							f"Emptying bucket (this may take a while, restart script if it crashes here) {bucket['Name']}",
-							end=" ")
+								f"Emptying bucket (this may take a while, restart script if it crashes here) {bucket['Name']}",
+								end=" ")
 						try:
 							s3_bucket.object_versions.all().delete()
 							print('[DONE]')
@@ -752,8 +755,8 @@ if __name__ == "__main__":
 					delete_in_progress = True
 			if delete_in_progress:
 				wait_with_progress_bar(
-					Message="Stack(s) are still being deleted (if it takes more than 1 hour, restart the process)",
-					Seconds=30)
+						Message="Stack(s) are still being deleted (if it takes more than 1 hour, restart the process)",
+						Seconds=30)
 
 	# Step 14 - Clean up Organizations
 	print("\n\nStep 14 - Clean up Organizations.")
