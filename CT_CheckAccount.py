@@ -742,7 +742,6 @@ for i in OrgResults:
 		i['Step8']['IssuesFound'] - i['Step8']['IssuesFixed'],
 		i['Step9']['IssuesFound'] - i['Step9']['IssuesFixed'],
 		i['Step10']['IssuesFound'] - i['Step10']['IssuesFixed'],
-		'None Yet',
 		i['Step0']['Success'] and i['Step2']['Success'] and i['Step3']['Success'] and i['Step4']['Success'] and i['Step5']['Success'] and i['Step6']['Success'] and i['Step7']['Success'] and i['Step8']['Success'] and i['Step9']['Success'] and i['Step10']['Success']
 	])
 print("The following table represents the accounts looked at, and whether they are ready to be incorporated into a Control Tower environment.")
