@@ -44,7 +44,7 @@ lib-cov
 coverage
 *.lcov
 
-# nyc test coverage
+# nyc test12 coverage
 .nyc_output
 
 # Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
@@ -177,7 +177,7 @@ MANIFEST
 pip-log.txt
 pip-delete-this-directory.txt
 
-# Unit test / coverage reports
+# Unit test12 / coverage reports
 htmlcov/
 .tox/
 .nox/
@@ -226,7 +226,7 @@ ipython_config.py
 #   However, in case of collaboration, if having platform-specific dependencies or dependencies
 #   having no cross-platform support, pipenv may install dependencies that don't work, or not
 #   install all needed dependencies.
-#Pipfile.lock
+Pipfile.lock
 
 # celery beat schedule file
 celerybeat-schedule
@@ -395,7 +395,7 @@ lib-cov
 coverage
 *.lcov
 
-# nyc test coverage
+# nyc test12 coverage
 .nyc_output
 
 # Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
@@ -500,7 +500,7 @@ MANIFEST
 pip-log.txt
 pip-delete-this-directory.txt
 
-# Unit test / coverage reports
+# Unit test12 / coverage reports
 htmlcov/
 .tox/
 .nox/
@@ -549,7 +549,7 @@ ipython_config.py
 #   However, in case of collaboration, if having platform-specific dependencies or dependencies
 #   having no cross-platform support, pipenv may install dependencies that don't work, or not
 #   install all needed dependencies.
-#Pipfile.lock
+Pipfile.lock
 
 # celery beat schedule file
 celerybeat-schedule

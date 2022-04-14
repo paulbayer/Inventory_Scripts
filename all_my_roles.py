@@ -1,136 +1,91 @@
 #!/usr/bin/env python3
 
-"""
-Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software is furnished to do so.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-"""
-
-import os, sys, pprint
-from typing import List, Any
-
-import Inventory_Modules, boto3
-import argparse
-from colorama import init, Fore, Back, Style
-from botocore.exceptions import ClientError, NoCredentialsError, EndpointConnectionError
-from urllib3.exceptions import NewConnectionError
+import Inventory_Modules
+import boto3
+from ArgumentsClass import CommonArguments
+from account_class import aws_acct_access
+from colorama import init
+from botocore.exceptions import ClientError
 
 import logging
 
 init()
 
-parser = argparse.ArgumentParser(
-	prefix_chars='-+/',
-	description="We're going to find all resources within any of the profiles we have access to.")
-parser.add_argument(
-	"-p", "--profile",
-	dest="pProfile",
-	metavar="profile to use",
-	help="You need to specify a profile that represents the ROOT account.")
-parser.add_argument(
-	"-r", "--role",
+parser = CommonArguments()
+parser.my_parser.description = ("We're going to find all roles within any of the accounts we have access to, given the profile provided.")
+parser.verbosity()
+parser.singleprofile()
+parser.extendedargs()   # This adds the "DryRun" and "Force" objects
+parser.my_parser.add_argument(
+	"--role",
 	dest="pRole",
 	metavar="specific role to find",
-	default="",
+	default=None,
 	help="Please specify the role you're searching for")
-parser.add_argument(
+parser.my_parser.add_argument(
 	"+d", "--delete",
 	dest="pDelete",
 	action="store_const",
 	const=True,
 	default=False,
 	help="Whether you'd like to delete that specified role.")
-parser.add_argument(
-	'-v',
-	help="Be verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.ERROR,  # args.loglevel = 40
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
-	'-vv', '--verbose',
-	help="Be MORE verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.WARNING,  # args.loglevel = 30
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
-	'-vvv',
-	help="Print debugging statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.INFO,  # args.loglevel = 20
-	default=logging.CRITICAL)  # args.loglevel = 50
-parser.add_argument(
-	'-d', '--debug',
-	help="Print LOTS of debugging statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.DEBUG,  # args.loglevel = 10
-	default=logging.CRITICAL)  # args.loglevel = 50
-args = parser.parse_args()
+args = parser.my_parser.parse_args()
 
-pProfile = args.pProfile
+# for k, v in args.__dict__.items():
+# 	# exec(f"{'p'+k} = {v}")      # Assigns each item within the args namespace to a separate variable
+# 	logging.info("Arguments provided")
+# 	logging.info(f"{k}: {v}")
+
+pProfile = args.Profile
 pRole = args.pRole
 pDelete = args.pDelete
-logging.basicConfig(level=args.loglevel,
-                    format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(""message)s")
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(""message)s")
 
 ##########################
 ERASE_LINE = '\x1b[2K'
-
-
 ##########################
 
-def delete_role(fRoleList):
+
+def my_delete_role(fRoleList):
 	iam_session = boto3.Session(
 		aws_access_key_id=fRoleList['aws_access_key_id'],
 		aws_secret_access_key=fRoleList['aws_secret_access_key'],
 		aws_session_token=fRoleList['aws_session_token'],
-		region_name='us-east-1')
+		region_name='us-east-1'
+		)
 	iam_client = iam_session.client('iam')
 	try:
 		attached_role_policies = iam_client.list_attached_role_policies(
 			RoleName=fRoleList['RoleName']
-		)['AttachedPolicies']
-		for i in range(len(attached_role_policies)):
+			)['AttachedPolicies']
+		for _ in range(len(attached_role_policies)):
 			response = iam_client.detach_role_policy(
 				RoleName=fRoleList['RoleName'],
-				PolicyArn=attached_role_policies[i]['PolicyArn']
-			)
-		inline_role_policies = iam_client.list_role_policies(
-			RoleName=fRoleList['RoleName']
-		)['PolicyNames']
-		for i in range(len(inline_role_policies)):
+				PolicyArn=attached_role_policies[_]['PolicyArn']
+				)
+		inline_role_policies = iam_client.list_role_policies(RoleName=fRoleList['RoleName'])['PolicyNames']
+		for _ in range(len(inline_role_policies)):
 			response = iam_client.delete_role_policy(
 				RoleName=fRoleList['RoleName'],
-				PolicyName=inline_role_policies[i]['PolicyName']
-			)
-		response = iam_client.delete_role(
+				PolicyName=inline_role_policies[_]['PolicyName']
+				)
+		response = iam_client.my_delete_role(
 			RoleName=fRoleList['RoleName']
-		)
+			)
 		return (True)
 	except ClientError as my_Error:
 		print(my_Error)
 		return (False)
+##########################
 
 
-ChildAccounts = Inventory_Modules.find_child_accounts2(pProfile)
+aws_acct = aws_acct_access(pProfile)
+ChildAccounts = aws_acct.ChildAccounts
+# ChildAccounts = Inventory_Modules.find_child_accounts2(pProfile)
 
 print()
-if not (pRole == ""):
-	print("Looking for a specific role called {}".format(pRole))
+if pRole is not None:
+	print(f"Looking for a specific role called {pRole}")
 	print()
 fmt = '%-15s %-42s'
 print(fmt % ("Account Number", "Role Name"))
@@ -141,23 +96,28 @@ DeletedRoles = 0
 for account in ChildAccounts:
 	try:
 		RoleNum = 0
-		account_credentials, role_arn = Inventory_Modules.get_child_access2(pProfile, account['AccountId'])
-		if role_arn.find("failed") > 0:
-			logging.error("Access to member account %s failed...", account['AccountId'])
+		account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'])
+		if "AccessError" in account_credentials.keys():
+			logging.error(f"Access to member account {account['AccountId']} failed...")
 			continue
-		account_credentials['AccountId'] = account['AccountId']
-		logging.info("Connecting to %s with %s role", account['AccountId'], role_arn)
-		logging.info("Role ARN: %s" % role_arn)
-		print(ERASE_LINE,"Checking Account {}".format(account_credentials['AccountId']), end="")
+		elif account_credentials['Role'] == 'Use Profile':
+			logging.error(f"Access to the Root Account {account['AccountId']}")
+			logging.info(f"Using Root profile provided")
+			iam_session = aws_acct.session
+		else:
+			logging.info(f"Using child account's creds")
+			iam_session = boto3.Session(
+				aws_access_key_id=account_credentials['AccessKeyId'],
+				aws_secret_access_key=account_credentials['SecretAccessKey'],
+				aws_session_token=account_credentials['SessionToken'],
+				region_name='us-east-1')
+		account_credentials['AccountNumber'] = account['AccountId']
+		logging.info(f"Connecting to {account['AccountId']} with {account_credentials['Role']} role")
+		print(ERASE_LINE, f"Checking Account {account_credentials['AccountNumber']}", end="")
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print("{}: Authorization Failure for account {}".format(pProfile, account['AccountId']))
+			print(f"{pProfile}: Authorization Failure for account {account['AccountId']}")
 		continue
-	iam_session = boto3.Session(
-		aws_access_key_id=account_credentials['AccessKeyId'],
-		aws_secret_access_key=account_credentials['SecretAccessKey'],
-		aws_session_token=account_credentials['SessionToken'],
-		region_name='us-east-1')
 	iam_client = iam_session.client('iam')
 	try:
 		response = iam_client.list_roles()
@@ -166,47 +126,52 @@ for account in ChildAccounts:
 				'aws_access_key_id': account_credentials['AccessKeyId'],
 				'aws_secret_access_key': account_credentials['SecretAccessKey'],
 				'aws_session_token': account_credentials['SessionToken'],
-				'AccountId': account_credentials['AccountId'],
+				'AccountId': account_credentials['AccountNumber'],
 				'RoleName': response['Roles'][i]['RoleName']
-			})
-		RoleNum=len(response['Roles'])
+				})
+		RoleNum = len(response['Roles'])
 		while response['IsTruncated']:
 			response = iam_client.list_roles(Marker=response['Marker'])
 			for i in range(len(response['Roles'])):
 				Roles.append({
-					'AccountId': account_credentials['AccountId'],
+					'AccountId': account_credentials['AccountNumber'],
 					'RoleName': response['Roles'][i]['RoleName']
-				})
-				RoleNum+=len(response['Roles'])
-		print(" - Found {} roles".format(RoleNum), end="\r")
+					})
+				RoleNum += len(response['Roles'])
+		print(f" - Found {RoleNum} roles", end="\r")
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print(pProfile + ": Authorization Failure for account {}".format(account['AccountId']))
+			print(f"{pProfile}: Authorization Failure for account {account['AccountId']}")
+		else:
+			print(f"Error: {my_Error}")
 
-RoleNum=0
-if (pRole == ""):
+RoleNum = 0
+if pRole is None:
 	for i in range(len(Roles)):
 		print(fmt % (Roles[i]['AccountId'], Roles[i]['RoleName']))
 		RoleNum += 1
-elif not (pRole == ""):
+elif pRole is not None:
+	if pDelete:
+		DeletedRoles = 0
 	for i in range(len(Roles)):
 		RoleNum += 1
-		if Roles[i]['RoleName'] == pRole:
+		logging.info(f"In account {Roles[i]['AccountId']}: Found Role {Roles[i]['RoleName']} : Looking for role {pRole}")
+		if Roles[i]['RoleName'].find(pRole) >= 0:
 			print(fmt % (Roles[i]['AccountId'], Roles[i]['RoleName']), end="")
 			SpecifiedRoleNum += 1
 			if pDelete:
-				delete_role(Roles[i])
-				print(" - deleted", end="")
+				my_delete_role(Roles[i])
+				print(f" - deleted", end="")
 				DeletedRoles += 1
 			print()
 
 print()
-if (pRole == ""):
-	print("Found {} roles across {} accounts".format(RoleNum, len(ChildAccounts)))
+if pRole is None:
+	print(f"Found {RoleNum} roles across {len(ChildAccounts)} accounts")
 else:
-	print("Found {} in {} of {} accounts".format(pRole, SpecifiedRoleNum, len(ChildAccounts)))
+	print(f"Found {SpecifiedRoleNum} instances where role containing '{pRole}' was found across {len(ChildAccounts)} accounts")
 	if pDelete:
-		print("     And we deleted it {} times".format(DeletedRoles))
+		print(f"     And we deleted it {DeletedRoles} times")
 print()
 print("Thanks for using this script...")
 print()

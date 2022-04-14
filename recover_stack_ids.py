@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 
-# import boto3
 import Inventory_Modules
 from pprint import pprint
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 from colorama import init, Fore
 from botocore.exceptions import ClientError
+import simplejson as json
 import logging
+
+"""
+This script was created to help solve a testing problem for the "move_stack_instances.py" script.e
+Originally, that script didn't have built-in recovery, so we needed this script to "recover" those stack-instance ids that might have been lost during the move_stack_instances.py run. However, that script now has built-in recovery, so this script isn't really needed. However, it can still be used to find any stack-instances that have been orphaned from their original stack-set, if that happens. 
+"""
 
 init()
 
@@ -29,25 +34,31 @@ parser.my_parser.add_argument(
 	default="active",
 	help="String that determines whether we only see 'CREATE_COMPLETE' or 'DELETE_COMPLETE' too")
 parser.my_parser.add_argument(
-	"--stackid",
-	dest="stackid",
-	action="store_true",
-	help="Flag that determines whether we display the Stack IDs as well")
+	"--home",
+	dest="homeRegion",
+	metavar="Single Region name",
+	help="Region where the StackSets are homed")
 parser.my_parser.add_argument(
-	"+delete", "+forreal",
-	dest="DeletionRun",
-	action="store_true",
-	help="This will delete the stacks found - without any opportunity to confirm. Be careful!!")
+	"--new",
+	dest="newStackSetName",
+	metavar="New Stackset name",
+	help="The NEW Stack Set name")
+parser.my_parser.add_argument(
+	"--old",
+	dest="oldStackSetName",
+	metavar="Old Stackset name",
+	help="The OLD Stack Set name")
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
 pRegionList = args.Regions
+pRegion = args.homeRegion
 AccountsToSkip = args.SkipAccounts
 verbose = args.loglevel
+pOldStackSetName = args.oldStackSetName
+pNewStackSetName = args.newStackSetName
 pstackfrag = args.stackfrag
 pstatus = args.status
-pStackIdFlag = args.stackid
-DeletionRun = args.DeletionRun
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
 
 ##########################
@@ -57,29 +68,22 @@ ChildAccounts = aws_acct.ChildAccounts
 RegionList = Inventory_Modules.get_service_regions('cloudformation', pRegionList)
 ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, AccountsToSkip)
 AccountList = [account['AccountId'] for account in ChildAccounts]
+pStackIdFlag = True
+precoveryFlag = True
 
 print(f"You asked to find stacks with this fragment {Fore.RED}'{pstackfrag}'{Fore.RESET}")
 print(f"in these accounts:\n{Fore.RED}{AccountList}{Fore.RESET}")
 print(f"in these regions:\n{Fore.RED}{RegionList}{Fore.RESET}")
 if len(AccountsToSkip) > 0:
 	print(f"While skipping these accounts:\n{Fore.RED}{AccountsToSkip}{Fore.RESET}")
-if DeletionRun:
-	print()
-	print("And delete the stacks that are found...")
 
 print()
-if pStackIdFlag:
-	fmt = '%-20s %-15s %-15s %-50s %-50s'
-	print(fmt % ("Account", "Region", "Stack Status", "Stack Name", "Stack ID"))
-	print(fmt % ("-------", "------", "------------", "----------", "--------"))
-else:
-	fmt = '%-20s %-15s %-15s %-50s'
-	print(fmt % ("Account", "Region", "Stack Status", "Stack Name"))
-	print(fmt % ("-------", "------", "------------", "----------"))
+fmt = '%-20s %-15s %-15s %-50s %-50s'
+print(fmt % ("Account", "Region", "Stack Status", "Stack Name", "Stack ID"))
+print(fmt % ("-------", "------", "------------", "----------", "--------"))
 
 StacksFound = []
-aws_session = aws_acct.session
-sts_client = aws_session.client('sts')
+sts_client = aws_acct.session.client('sts')
 item_counter = 0
 for account_number in AccountList:
 	try:
@@ -133,39 +137,26 @@ if args.loglevel < 21:  # INFO level
 	print("The list of accounts and regions:")
 	pprint(list(sorted(set(lAccountsAndRegions))))
 
-if DeletionRun and ('GuardDuty' in pstackfrag):
-	logging.warning("Deleting %s stacks", len(StacksFound))
-	for y in range(len(StacksFound)):
-		# TODO: Change this to use the "get_child_access3" library instead of doing it here.
-		role_arn = f"arn:aws:iam::{StacksFound[y]['Account']}:role/AWSCloudFormationStackSetExecutionRole"
-		cfn_client = aws_session.client('cloudformation')
-		account_credentials = sts_client.assume_role(
-			RoleArn=role_arn,
-			RoleSessionName="Delete-Stacks")['Credentials']
-		account_credentials['AccountNumber'] = StacksFound[y]['Account']
-		print(f"Deleting stack {StacksFound[y]['StackName']} from Account {StacksFound[y]['Account']} in region {StacksFound[y]['Region']}")
-		# TODO: Fix the below
-		""" This next line is BAD because it's hard-coded for GuardDuty, but we'll fix that eventually """
-		if StacksFound[y]['StackStatus'] == 'DELETE_FAILED':
-			# This deletion generally fails because the Master Detector doesn't properly delete (and it's usually already deleted due to some other script) - so we just need to delete the stack anyway - and ignore the actual resource.
-			response = Inventory_Modules.delete_stack2(account_credentials, StacksFound[y]['Region'], StacksFound[y]['StackName'], RetainResources=True, ResourcesToRetain=["MasterDetector"])
-		else:
-			response = Inventory_Modules.delete_stack2(account_credentials, StacksFound[y]['Region'], StacksFound[y]['StackName'])
-elif DeletionRun:
-	logging.warning(f"Deleting {len(StacksFound)} stacks")
-	for y in range(len(StacksFound)):
-		# TODO: Change this to use the "get_child_access3" library instead of doing it here.
-		role_arn = f"arn:aws:iam::{StacksFound[y]['Account']}:role/AWSCloudFormationStackSetExecutionRole"
-		cfn_client = aws_session.client('cloudformation')
-		account_credentials = sts_client.assume_role(
-			RoleArn=role_arn,
-			RoleSessionName="Delete-Stacks")['Credentials']
-		account_credentials['AccountNumber'] = StacksFound[y]['Account']
-		print(f"Deleting stack {StacksFound[y]['StackName']} from account {StacksFound[y]['Account']} in region {StacksFound[y]['Region']} with status: {StacksFound[y]['StackStatus']}")
-		print(f"Finished {y+1} of {len(StacksFound)}")
-		response = Inventory_Modules.delete_stack2(account_credentials, StacksFound[y]['Region'], StacksFound[y]['StackName'])
-		# pprint(response)
-
+if precoveryFlag:
+	Stack_Instances = []
+	for item in StacksFound:
+		Stack_Instances.append({'Account': item['Account'],
+		                        'Region': item['Region'],
+		                        'Status': item['StackStatus'],
+		                        'StackId': item['StackArn']})
+	stack_ids = {'Stack_instances': Stack_Instances, 'Success': True}
+	BigString = {'AccountNumber': aws_acct.acct_number,
+	             'AccountToMove': None,
+	             'ManagementAccount': aws_acct.MgmtAccount,
+	             'NewStackSetName': pNewStackSetName,
+	             'OldStackSetName': pOldStackSetName,
+	             'ProfileUsed': pProfile,
+	             'Region': pRegion,
+	             'stack_ids': stack_ids}
+	file_data = json.dumps(BigString, sort_keys=True, indent=4 * ' ')
+	OutputFilename = (f"{pOldStackSetName}-{pNewStackSetName}-{aws_acct.acct_number}-{pRegion}")
+	with open(OutputFilename, 'w') as out:
+		print(file_data, file=out)
 
 print()
 print("Thanks for using this script...")

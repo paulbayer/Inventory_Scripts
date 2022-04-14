@@ -1,69 +1,33 @@
 #!/usr/bin/env python3
 
-"""
-Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software is furnished to do so.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-"""
-
-import os, sys, pprint
+import os
+import sys
+import pprint
 import Inventory_Modules
-import argparse
-from colorama import init,Fore,Back,Style
+from colorama import init, Fore, Back, Style
 from botocore.exceptions import ClientError, NoCredentialsError
+from ArgumentsClass import CommonArguments
+from account_class import aws_acct_access
 
 import logging
 
 init()
 
-parser = argparse.ArgumentParser(
-	description="We\'re going to find all resources within any of the profiles we have access to.",
-	prefix_chars='-+/')
-parser.add_argument(
-	"-p", "--profile",
-	dest="pProfiles",
-	nargs="*",
-	metavar="profile to use",
-	default="all",
-	help="To specify a specific profile, use this parameter. Default will be ALL profiles, including those in ~/.aws/credentials and ~/.aws/config")
-parser.add_argument(
-	"-r", "--region",
-	nargs="*",
-	dest="pregion",
-	metavar="region name string",
-	default=["us-east-1"],
-	help="String fragment of the region(s) you want to check for resources.")
-parser.add_argument(
-	'-d', '--debug',
-	help="Print lots of debugging statements",
-	action="store_const",
-	dest="loglevel",
-	const=logging.DEBUG,
-	default=logging.CRITICAL)
-parser.add_argument(
-	'-v', '--verbose',
-	help="Be verbose",
-	action="store_const",
-	dest="loglevel",
-	const=logging.INFO)
-args = parser.parse_args()
+parser = CommonArguments()
+parser.multiprofile()  # Allows for a single profile to be specified
+parser.multiregion()  # Allows for multiple regions to be specified at the command line
+parser.fragment()   # Allows for soecifying a string fragment to be looked for
+parser.verbosity()  # Allows for the verbosity to be handled.
+args = parser.my_parser.parse_args()
 
-pProfiles=args.pProfiles
-pRegionList=args.pregion
-logging.basicConfig(level=args.loglevel)
+pProfiles = args.Profiles
+pRegionList = args.Regions
+pFragments = args.Fragments
+verbose = args.loglevel
 
-SkipProfiles=["default"]
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+
+SkipProfiles = ["default"]
 
 
 def left(s, amount):
@@ -75,41 +39,43 @@ def right(s, amount):
 
 
 def mid(s, offset, amount):
-	return s[offset-1:offset+amount-1]
+	return s[offset - 1:offset + amount - 1]
+
 
 ##########################
 ERASE_LINE = '\x1b[2K'
 NumInstancesFound = 0
-NumRegions = 0
+RegionList = Inventory_Modules.get_ec2_regions(pRegionList)
+ProfileList = Inventory_Modules.get_profiles(SkipProfiles, pProfiles)
 print()
-fmt='%-20s %-10s %-40s %-12s %-35s'
+print(f"Looking through {len(RegionList)} regions and {len(ProfileList)} profiles")
+print()
+fmt = '%-20s %-10s %-40s %-12s %-35s'
 print(fmt % ("Profile", "Region", "Function Name", "Runtime", "Role"))
 print(fmt % ("-------", "------", "-------------", "-------", "----"))
-RegionList=Inventory_Modules.get_ec2_regions(pRegionList)
-ProfileList=Inventory_Modules.get_profiles(SkipProfiles, pProfiles)
-# pprint.pprint(RegionList)
-for pregion in RegionList:
-	NumRegions += 1
-	NumProfilesInvestigated = 0	# I only care about the last run - so I don't get profiles * regions.
-	for profile in ProfileList:
-		NumProfilesInvestigated += 1
+
+for profile in ProfileList:
+	aws_acct = aws_acct_access(profile)
+	for pregion in RegionList:
 		try:
-			Functions=Inventory_Modules.find_profile_functions(profile, pregion)
-			FunctionNum=len(Functions['Functions'])
-			print(ERASE_LINE+"Profile:", profile, "Region:", pregion, "Found", FunctionNum, "functions", end='\r')
+			Functions = Inventory_Modules.find_lambda_functions3(aws_acct, pregion, pFragments)
+			FunctionNum = len(Functions['Functions'])
+			print(f"{ERASE_LINE}Profile: {profile} Region: {pregion} Found {FunctionNum} functions", end='\r')
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
-				print(ERASE_LINE+profile+": Authorization Failure")
+				print(f"{ERASE_LINE + profile}: Authorization Failure")
 		if len(Functions['Functions']) > 0:
-			for y in range(len(Functions['Functions'])):
+			for function in range(len(Functions['Functions'])):
 				# print("Y:",y,"Number:",len(Functions['Functions']))
 				# print("Function Name:",Functions['Functions'][y]['FunctionName'])
-				FunctionName=Functions['Functions'][y]['FunctionName']
-				Runtime=Functions['Functions'][y]['Runtime']
-				Rolet=Functions['Functions'][y]['Role']
-				Role=mid(Rolet,Rolet.find("/")+2,len(Rolet))
-				print(fmt % (profile,pregion,FunctionName,Runtime,Role))
+				FunctionName = Functions['Functions'][function]['FunctionName']
+				Runtime = Functions['Functions'][function]['Runtime']
+				Rolet = Functions['Functions'][function]['Role']
+				Role = mid(Rolet, Rolet.find("/") + 2, len(Rolet))
+				print(fmt % (profile, pregion, FunctionName, Runtime, Role))
 				NumInstancesFound += 1
 print(ERASE_LINE)
-print("Found",NumInstancesFound,"functions across",NumProfilesInvestigated,"profiles across",NumRegions,"regions")
+print(f"Found {NumInstancesFound} functions across {len(ProfileList)} profiles across {len(RegionList)} regions")
+print()
+print("Thank you for using this script")
 print()
