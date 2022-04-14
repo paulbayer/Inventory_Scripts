@@ -114,7 +114,7 @@ AllChildAccounts = []
 if pProfiles is None:  # Default use case from the classes
 	logging.info("Using whatever the default profile is")
 	aws_acct = aws_acct_access()
-	RegionList = Inventory_Modules.get_regions(aws_acct, pRegionList)
+	RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
 	logging.warning(f"Default profile will be used")
 	InstancesFound.extend(check_accounts_for_instances(aws_acct, RegionList))
 	AllChildAccounts.extend(aws_acct.ChildAccounts)
@@ -126,7 +126,7 @@ else:
 	for profile in ProfileList:
 		aws_acct = aws_acct_access(profile)
 		logging.info(f"Looking at {profile} account now... ")
-		RegionList = Inventory_Modules.get_regions(aws_acct, pRegionList)
+		RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
 		InstancesFound.extend(check_accounts_for_instances(aws_acct, RegionList))
 		AllChildAccounts.extend(aws_acct.ChildAccounts)
 

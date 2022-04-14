@@ -55,7 +55,7 @@ for account in ChildAccounts:
 			print(my_Error)
 		break
 	try:
-		Idps = Inventory_Modules.find_saml_components_in_acct(account_credentials, pRegion)
+		Idps = Inventory_Modules.find_saml_components_in_acct2(account_credentials, pRegion)
 		idpNum = len(Idps)
 		logging.warning(f"Account: {account['AccountId']} | Region: {pRegion} | Found {idpNum} Idps")
 		logging.warning(f"{ERASE_LINE}{Fore.RED}Account: {account['AccountId']} pRegion: {pRegion} Found {idpNum} Idps. Only {NumofAccounts} accounts left to go{Fore.RESET}")

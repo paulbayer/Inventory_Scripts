@@ -101,7 +101,7 @@ for account_number in AccountList:
 		item_counter += 1
 		Stacks = False
 		try:
-			Stacks = Inventory_Modules.find_stacks_in_acct(account_credentials, region, pstackfrag, pstatus)
+			Stacks = Inventory_Modules.find_stacks2(account_credentials, region, pstackfrag, pstatus)
 			logging.warning(f"Account: {account_number} | Region: {region} | Found {len(Stacks)} Stacks")
 			print(f"{ERASE_LINE}{Fore.RED}Account: {account_number} Region: {region} Found {len(Stacks)} Stacks{Fore.RESET} ({item_counter} of {len(AccountList) * len(RegionList)})", end='\r')
 		except ClientError as my_Error:

@@ -82,17 +82,26 @@ class CommonArguments():
 		# 	action="store_false",
 		# 	dest="DryRun")              # Default to Dry Run (no changes)
 		self.my_parser.add_argument(
-				"--force", "+force",
-				help="To force a change - despite indications to the contrary",
-				action="store_true",
-				dest="Force")  # Default to Dry Run (no changes)
+			"--force", "+force",
+			help="To force a change - despite indications to the contrary",
+			action="store_true",
+			dest="Force")  # Default to Dry Run (no changes)
 		self.my_parser.add_argument(
-				"-k", "--skip",
-				dest="SkipAccounts",
-				nargs="*",
-				metavar="Accounts to leave alone",
-				default=[],
-				help="These are the account numbers you don't want to screw with. Likely the core accounts.")
+			"-k", "--skip",
+			dest="SkipAccounts",
+			nargs="*",
+			metavar="Accounts to leave alone",
+			default=[],
+			help="These are the account numbers you don't want to screw with. Likely the core accounts.")
+
+	def fragment(self):
+		self.my_parser.add_argument(
+			"-f", "--fragment",
+			dest="Fragment",
+			nargs='*',
+			metavar="CloudFormation stack fragment",
+			default=["all"],
+			help="List of fragments of the cloudformation stackset(s) you want to check for.")
 
 	def singleprofile(self):
 		self.my_parser.add_argument(

@@ -121,7 +121,7 @@ for i in range(len(AllChildAccounts)):
 		# NumProfilesInvestigated += 1
 		Vpcs = dict()
 		try:
-			Vpcs = Inventory_Modules.find_account_vpcs2(aws_acct_child, region, pDefault)
+			Vpcs = Inventory_Modules.find_account_vpcs3(aws_acct_child, region, pDefault)
 			VpcNum = len(Vpcs['Vpcs']) if Vpcs['Vpcs'] == [] else 0
 			print(ERASE_LINE, f"Looking in account {Fore.RED}{AllChildAccounts[i]['AccountId']}", f"{Fore.RESET}in {region} where we found {VpcNum} {vpctype} Vpcs", end='\r')
 		except ClientError as my_error:

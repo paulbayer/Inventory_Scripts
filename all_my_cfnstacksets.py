@@ -65,7 +65,7 @@ else:
 	fmt = '%-20s %-15s %-15s %-50s'
 	print(fmt % ("Account", "Region", "Status", "StackSet Name"))
 	print(fmt % ("-------", "------", "------", "-------------"))
-RegionList = Inventory_Modules.get_ec2_regions2(aws_acct, pRegionList)
+RegionList = Inventory_Modules.get_ec2_regions3(aws_acct, pRegionList)
 
 sts_session = aws_acct.session
 sts_client = sts_session.client('sts')
@@ -89,7 +89,7 @@ for account in ChildAccounts:
 			print(
 				f"{ERASE_LINE}{Fore.RED}Checking Account: {account['AccountId']} Region: {region} for stacksets matching {pstackfrag} with status: {pstatus}{Fore.RESET}",
 				end="\r")
-			StackSets = Inventory_Modules.find_stacksets(account_credentials, region, pstackfrag, pstatus)
+			StackSets = Inventory_Modules.find_stacksets2(account_credentials, region, pstackfrag, pstatus)
 			logging.warning(f"Account: {account['AccountId']} | Region: {region} | Found {len(StackSets)} Stacksets")
 			if not StackSets:
 				logging.info(

@@ -270,7 +270,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		for region in fRegionList:
 			print(ERASE_LINE, f"Checking account {fChildAccountId} in region {region} for Config Recorder", end='\r')
 			logging.info("Looking for Config Recorders in account %s from Region %s", fChildAccountId, region)
-			ConfigRecorder = Inventory_Modules.find_config_recorders(account_credentials, region)
+			ConfigRecorder = Inventory_Modules.find_config_recorders2(account_credentials, region)
 			logging.debug("Tried to capture Config Recorder")
 			if len(ConfigRecorder['ConfigurationRecorders']) > 0:
 				ConfigList.append({
@@ -280,7 +280,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 					'Region': region
 					})
 			print(f"{ERASE_LINE}Checking account {fChildAccountId} in region {region} for Delivery Channel", end='\r')
-			DeliveryChannel = Inventory_Modules.find_delivery_channels(account_credentials, region)
+			DeliveryChannel = Inventory_Modules.find_delivery_channels2(account_credentials, region)
 			logging.debug("Tried to capture Delivery Channel")
 			if len(DeliveryChannel['DeliveryChannels']) > 0:
 				DeliveryChanList.append({
@@ -301,7 +301,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		ProcessStatus[Step]['ProblemsFound'].extend(ConfigList)
 		if fFixRun:
 			logging.warning("Deleting %s in account %s in region %s", ConfigList[_]['Name'], ConfigList[_]['AccountID'], ConfigList[_]['Region'])
-			DelConfigRecorder = Inventory_Modules.del_config_recorder(account_credentials, ConfigList[_]['Region'], ConfigList[_]['Name'])
+			DelConfigRecorder = Inventory_Modules.del_config_recorder2(account_credentials, ConfigList[_]['Region'], ConfigList[_]['Name'])
 			# We assume the process worked. We should probably NOT assume this.
 			ProcessStatus[Step]['IssuesFixed'] += 1
 	for _ in range(len(DeliveryChanList)):
@@ -311,7 +311,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		ProcessStatus[Step]['ProblemsFound'].extend(DeliveryChanList)
 		if fFixRun:
 			logging.warning("Deleting %s in account %s in region %s", DeliveryChanList[_]['Name'], DeliveryChanList[_]['AccountID'], DeliveryChanList[_]['Region'])
-			DelDeliveryChannel = Inventory_Modules.del_delivery_channel(account_credentials, DeliveryChanList[_]['Region'], DeliveryChanList[_]['Name'])
+			DelDeliveryChannel = Inventory_Modules.del_delivery_channel2(account_credentials, DeliveryChanList[_]['Region'], DeliveryChanList[_]['Name'])
 			# We assume the process worked. We should probably NOT assume this.
 			ProcessStatus[Step]['IssuesFixed'] += 1
 
@@ -485,7 +485,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		for region in fRegionList:
 			logging.warning("Checking account %s in region %s for", fChildAccountId, f"{region + Fore.RED} SNS Topics{Fore.RESET}")
 			print(ERASE_LINE, f"Checking account {fChildAccountId} in region {region} for SNS Topics", end='\r')
-			SNSTopics = Inventory_Modules.find_sns_topics(account_credentials, region, ['controltower', 'ControlTower'])
+			SNSTopics = Inventory_Modules.find_sns_topics2(account_credentials, region, ['controltower', 'ControlTower'])
 			if len(SNSTopics) > 0:
 				for x in range(len(SNSTopics)):
 					logging.warning("SNS Topic: %s", str(SNSTopics[x]))
@@ -562,7 +562,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		print(f" Checking account {fChildAccountId} for any Role names containing the 'controltower' string")
 		RoleNames2 = []
 		logging.warning("Checking account %s for", f"{fChildAccountId + Fore.RED} Role names{Fore.RESET}")
-		RoleNames = Inventory_Modules.find_role_names(account_credentials, 'us-east-1', ['controltower', 'ControlTower'])
+		RoleNames = Inventory_Modules.find_role_names2(account_credentials, 'us-east-1', ['controltower', 'ControlTower'])
 		if len(RoleNames) > 0:
 			logging.info(f"Unfortunately, account {fChildAccountId} contains {len(RoleNames)} roles with reserved names,"
 			             f" which means we'll have to delete them before this account can be adopted.")
@@ -604,7 +604,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		LogGroupNames2 = []
 		for region in fRegionList:
 			logging.warning(f"Checking account {fChildAccountId} for {Fore.RED}duplicate CloudWatch Log Group names{Fore.RESET}")
-			LogGroupNames = Inventory_Modules.find_cw_log_group_names(account_credentials, region, ['controltower', 'ControlTower'])
+			LogGroupNames = Inventory_Modules.find_cw_log_group_names2(account_credentials, region, ['controltower', 'ControlTower'])
 			if len(LogGroupNames) > 0:
 				logging.info(f"Unfortunately, account {fChildAccountId} contains {len(LogGroupNames)} log groups with reserved names,"
 				             f" which means we'll have to delete them before this account can be adopted.")

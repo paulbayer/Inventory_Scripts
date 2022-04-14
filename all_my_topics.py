@@ -41,7 +41,7 @@ print()
 fmt = '%-20s %-15s %-25s'
 print(fmt % ("Account", "Region", "SNS Topic"))
 print(fmt % ("-------", "------", "---------"))
-RegionList = Inventory_Modules.get_ec2_regions2(aws_acct, pRegionList)
+RegionList = Inventory_Modules.get_ec2_regions3(aws_acct, pRegionList)
 ChildAccounts = aws_acct.ChildAccounts
 
 logging.info(f"# of Regions: {len(RegionList)}")
@@ -69,7 +69,7 @@ for i in range(len(ChildAccounts)):
 		regionNum += 1
 		try:
 			logging.info(f"Looking for Topics in acct {ChildAccounts[i]['AccountId']} in region {region}")
-			Topics = Inventory_Modules.find_sns_topics(account_credentials, region, pTopicFrag)
+			Topics = Inventory_Modules.find_sns_topics2(account_credentials, region, pTopicFrag)
 			print(f"{ERASE_LINE}On account {i+1} of {len(ChildAccounts)} in region {regionNum} of {len(RegionList)}", end='\r')
 			logging.error(f"Found {len(Topics)} topics in account {Fore.RED}{ChildAccounts[i]['AccountId']}{Fore.RESET} in {region}")
 		except ClientError as my_Error:

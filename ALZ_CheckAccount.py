@@ -267,7 +267,7 @@ for childaccount in ChildAccountList:
 			      f"Checking account {childaccount} in region {region} for {Fore.RED}default VPCs{Fore.RESET}",
 			      end='\r')
 			logging.info("Looking for Default VPCs in account {} from Region {}}", childaccount, region)
-			DefaultVPC = Inventory_Modules.find_account_vpcs(account_credentials, region, True)
+			DefaultVPC = Inventory_Modules.find_account_vpcs2(account_credentials, region, True)
 			if len(DefaultVPC['Vpcs']) > 0:
 				DefaultVPCs.append({
 					'VPCId'    : DefaultVPC['Vpcs'][0]['VpcId'],
@@ -344,7 +344,7 @@ for childaccount in ChildAccountList:
 		for region in RegionList:
 			print(ERASE_LINE, f"Checking account {childaccount} in region {region} for Config Recorder", end='\r')
 			logging.info(f"Looking for Config Recorders in account {childaccount} from Region {region}")
-			ConfigRecorder = Inventory_Modules.find_config_recorders(account_credentials, region)
+			ConfigRecorder = Inventory_Modules.find_config_recorders2(account_credentials, region)
 			logging.debug("Tried to capture Config Recorder")
 			if len(ConfigRecorder['ConfigurationRecorders']) > 0:
 				ConfigList.append({
@@ -354,7 +354,7 @@ for childaccount in ChildAccountList:
 					'Region'   : region
 					})
 			print(ERASE_LINE, f"Checking account {childaccount} in region {region} for Delivery Channel", end='\r')
-			DeliveryChannel = Inventory_Modules.find_delivery_channels(account_credentials, region)
+			DeliveryChannel = Inventory_Modules.find_delivery_channels2(account_credentials, region)
 			logging.debug("Tried to capture Delivery Channel")
 			if len(DeliveryChannel['DeliveryChannels']) > 0:
 				DeliveryChanList.append({
@@ -377,8 +377,8 @@ for childaccount in ChildAccountList:
 		if FixRun:
 			logging.warning("Deleting %s in account %s in region %s", ConfigList[i]['Name'], ConfigList[i]['AccountID'],
 			                ConfigList[i]['Region'])
-			DelConfigRecorder = Inventory_Modules.del_config_recorder(account_credentials, ConfigList[i]['Region'],
-			                                                          ConfigList[i]['Name'])
+			DelConfigRecorder = Inventory_Modules.del_config_recorder2(account_credentials, ConfigList[i]['Region'],
+			                                                           ConfigList[i]['Name'])
 			# We assume the process worked. We should probably NOT assume this.
 			ProcessStatus[childaccount]['Step2']['IssuesFixed'] += 1
 	for i in range(len(DeliveryChanList)):
@@ -389,8 +389,8 @@ for childaccount in ChildAccountList:
 		if FixRun:
 			logging.warning("Deleting %s in account %s in region %s", DeliveryChanList[i]['Name'],
 			                DeliveryChanList[i]['AccountID'], DeliveryChanList[i]['Region'])
-			DelDeliveryChannel = Inventory_Modules.del_delivery_channel(account_credentials, ConfigList[i]['Region'],
-			                                                            DeliveryChanList[i]['Name'])
+			DelDeliveryChannel = Inventory_Modules.del_delivery_channel2(account_credentials, ConfigList[i]['Region'],
+			                                                             DeliveryChanList[i]['Name'])
 			# We assume the process worked. We should probably NOT assume this.
 			ProcessStatus[childaccount]['Step2']['IssuesFixed'] += 1
 	if config_deliv_channels_found:

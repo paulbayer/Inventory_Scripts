@@ -111,18 +111,18 @@ try:
 		if SCresponse[i]['Status'] == 'ERROR' or SCresponse[i]['Status'] == 'TAINTED':
 			ErroredSCPExists = True
 
-	CFNStacks = Inventory_Modules.find_stacks(aws_acct, pRegion, f"SC-{aws_acct.acct_number}")
+	CFNStacks = Inventory_Modules.find_stacks3(aws_acct, pRegion, f"SC-{aws_acct.acct_number}")
 	SCresponse = None
 	for i in range(len(SCProducts)):
 		print(f"{ERASE_LINE}{Fore.RED}Checking {i + 1} of {len(SCProducts)} products{Fore.RESET}", end='\r')
-		CFNresponse = Inventory_Modules.find_stacks(aws_acct, pRegion, SCProducts[i]['SCPId'])
+		CFNresponse = Inventory_Modules.find_stacks3(aws_acct, pRegion, SCProducts[i]['SCPId'])
 		logging.info(f"There are {len(CFNresponse)} matches for SC Provisioned Product Name {SCProducts[i]['SCPName']}")
 		try:
 			if len(CFNresponse) > 0:
 				stack_info = client_cfn.describe_stacks(
 					StackName=CFNresponse[0]['StackName']
 					)
-				# The above command fails if the stack found (by the find_stacks function) has been deleted
+				# The above command fails if the stack found (by the find_stacks3 function) has been deleted
 				# The following section determines the NEW Account's AccountEmail and AccountID
 				AccountEmail = None
 				AccountID = None

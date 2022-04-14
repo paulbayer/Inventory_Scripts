@@ -124,7 +124,7 @@ def _delete_stack_instances(faws_acct, fRegion, fAccountList, fRegionList, fStac
 		return_response = {'Success': True, 'ErrorMessage': "Failed - Account List or Region List was null"}
 		return(return_response)
 	try:
-		delete_stack_instance_response = Inventory_Modules.delete_stack_instances2(faws_acct, fRegion, fAccountList, fRegionList, fStackSetName, fForce, StackSetOpId)
+		delete_stack_instance_response = Inventory_Modules.delete_stack_instances3(faws_acct, fRegion, fAccountList, fRegionList, fStackSetName, fForce, StackSetOpId)
 		if delete_stack_instance_response['Success']:
 			return_response = {'Success': True, 'OperationId': delete_stack_instance_response['OperationId']}
 		else:
@@ -175,7 +175,7 @@ if pCheckAccount:
 print()
 
 # Get the StackSet names from the Management Account
-StackSetNames = Inventory_Modules.find_stacksets2(aws_acct, pRegion, pStackfrag)
+StackSetNames = Inventory_Modules.find_stacksets3(aws_acct, pRegion, pStackfrag)
 if not StackSetNames['Success']:
 	logging.error("Something went wrong with the AWS connection. Please check the parameters supplied and try again.")
 	sys.exit(StackSetNames)

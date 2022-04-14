@@ -37,15 +37,24 @@ from botocore.exceptions import ProfileNotFound, ClientError
 
 def _validate_region(faws_prelim_session, fRegion=None):
 	import logging
+	from botocore.exceptions import CredentialRetrievalError, ClientError
 
-	client_region = faws_prelim_session.client('ec2')
 	try:
+		client_region = faws_prelim_session.client('ec2')
 		all_regions_list = [region_name['RegionName'] for region_name in client_region.describe_regions(AllRegions=True)['Regions']]
 	except ClientError as myError:
 		message = (f"Access using these credentials didn't work. "
 		           f"Error Message: {myError}")
 		result = {
-			'Result': False,
+			'Success': False,
+			'Message': message,
+			'Region': fRegion}
+		return (result)
+	except CredentialRetrievalError as myError:
+		message = (f"Error getting access credentials. "
+		           f"Error Message: {myError}")
+		result = {
+			'Success': False,
 			'Message': message,
 			'Region': fRegion}
 		return (result)
@@ -66,7 +75,7 @@ def _validate_region(faws_prelim_session, fRegion=None):
 			message = f"'{fRegion}' is not a valid AWS region name"
 		logging.error(message)
 		result = {
-			'Result': False,
+			'Success': False,
 			'Message': message,
 			'Region': fRegion}
 		return (result)
@@ -74,7 +83,7 @@ def _validate_region(faws_prelim_session, fRegion=None):
 		message = f"'{fRegion}' is a valid region for this account"
 		logging.error(message)
 		result = {
-			'Result': True,
+			'Success': True,
 			'Message': message,
 			'Region': fRegion}
 		return (result)
@@ -134,7 +143,7 @@ class aws_acct_access:
 		if account_access_successful:
 			try:
 				result = _validate_region(prelim_session, fRegion)
-				if result['Result'] is True:
+				if result['Success'] is True:
 					if UsingSessionToken:
 						logging.debug("Credentials are using SessionToken")
 						self.session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],

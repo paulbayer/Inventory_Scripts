@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import logging
+import sys
+
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
@@ -16,7 +18,8 @@ parser.my_parser.add_argument(
 	"-f", "--file",
 	dest="pAccountFile",
 	metavar="Account File",
-	# default="accountfile.txt",
+	required=True,
+	default=None,
 	help="List of account numbers, one per line.")
 parser.my_parser.add_argument(
 	"--Role",
@@ -148,6 +151,10 @@ def participant_user(faws_acct, create=None, username=None):
 
 #####################
 
+
+if pAccountFile is None:
+	logging.critical(f"file of accounts was not provided. This is required. Exiting.")
+	sys.exit(1)
 
 Accounts = []
 with open(pAccountFile, 'r') as infile:
