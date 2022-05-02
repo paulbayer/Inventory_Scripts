@@ -54,13 +54,13 @@ for i in range(len(ChildAccounts)):
 		account_credentials = Inventory_Modules.get_child_access3(aws_acct, ChildAccounts[i]['AccountId'], 'us-east-1')
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print(f"{ChildAccounts[i]['MgmntAccount']}: Authorization Failure for account {ChildAccounts[i]['AccountId']}")
+			print(f"{ChildAccounts[i]['MgmtAccount']}: Authorization Failure for account {ChildAccounts[i]['AccountId']}")
 			print(my_Error)
 		elif str(my_Error).find("AccessDenied") > 0:
-			print(f"{ChildAccounts[i]['MgmntAccount']}: Access Denied Failure for account {ChildAccounts[i]['AccountId']}")
+			print(f"{ChildAccounts[i]['MgmtAccount']}: Access Denied Failure for account {ChildAccounts[i]['AccountId']}")
 			print(my_Error)
 		else:
-			print(f"{ChildAccounts[i]['MgmntAccount']}: Other kind of failure for account {ChildAccounts[i]['AccountId']}")
+			print(f"{ChildAccounts[i]['MgmtAccount']}: Other kind of failure for account {ChildAccounts[i]['AccountId']}")
 			print(my_Error)
 			break
 

@@ -1,17 +1,18 @@
+import os
+import sys
+import boto3
+import cli_skeleton.core.Inventory_Modules
+from cli_skeleton.core.ArgumentsClass import CommonArguments
+from cli_skeleton.core.account_class import aws_acct_access
+from colorama import init, Fore
+from botocore.exceptions import ClientError
+
+import logging
+
+init()
+
+
 def all_my_instances(pProfiles, pRegionList, verbose):
-
-	import os
-	import sys
-	import boto3
-	import cli_skeleton.core.Inventory_Modules
-	from cli_skeleton.core.ArgumentsClass import CommonArguments
-	from cli_skeleton.core.account_class import aws_acct_access
-	from colorama import init, Fore
-	from botocore.exceptions import ClientError
-
-	import logging
-
-	init()
 
 	parser = CommonArguments()
 	parser.multiprofile()

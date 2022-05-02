@@ -254,7 +254,7 @@ class aws_acct_access:
 		                     'OrgId': None,
 		                     'Id': None,
 		                     'MasterAccountId': None,
-		                     'MgmntAccountId': None,
+		                     'MgmtAccountId': None,
 		                     'ManagementEmail': None}
 		try:
 			session_org = self.session
@@ -264,7 +264,7 @@ class aws_acct_access:
 			function_response['Id'] = self.acct_number
 			function_response['AccountNumber'] = self.acct_number
 			function_response['MasterAccountId'] = response['MasterAccountId']
-			function_response['MgmntAccountId'] = response['MasterAccountId']
+			function_response['MgmtAccountId'] = response['MasterAccountId']
 			function_response['ManagementEmail'] = response['MasterAccountEmail']
 			if response['MasterAccountId'] == self.acct_number:
 				function_response['AccountType'] = 'Root'
@@ -279,7 +279,7 @@ class aws_acct_access:
 				function_response['ManagementEmail'] = 'Email not available'
 				function_response['AccountNumber'] = self.acct_number
 				function_response['MasterAccountId'] = self.acct_number
-				function_response['MgmntAccountId'] = self.acct_number
+				function_response['MgmtAccountId'] = self.acct_number
 			elif str(my_Error).find("UnrecognizedClientException") > 0:
 				logging.error(f"Security Issue with account {self.acct_number}")
 			elif str(my_Error).find("InvalidClientTokenId") > 0:
@@ -301,9 +301,9 @@ class aws_acct_access:
 		"""
 		This is an example of the list response from this call:
 			[
-			{'MgmntAccount':'<12 digit number>', 'AccountId': 'xxxxxxxxxxxx', 'AccountEmail': 'EmailAddr1@example.com', 'AccountStatus': 'ACTIVE'},
-			{'MgmntAccount':'<12 digit number>', 'AccountId': 'yyyyyyyyyyyy', 'AccountEmail': 'EmailAddr2@example.com', 'AccountStatus': 'ACTIVE'},
-			{'MgmntAccount':'<12 digit number>', 'AccountId': 'zzzzzzzzzzzz', 'AccountEmail': 'EmailAddr3@example.com', 'AccountStatus': 'SUSPENDED'}
+			{'MgmtAccount':'<12 digit number>', 'AccountId': 'xxxxxxxxxxxx', 'AccountEmail': 'EmailAddr1@example.com', 'AccountStatus': 'ACTIVE'},
+			{'MgmtAccount':'<12 digit number>', 'AccountId': 'yyyyyyyyyyyy', 'AccountEmail': 'EmailAddr2@example.com', 'AccountStatus': 'ACTIVE'},
+			{'MgmtAccount':'<12 digit number>', 'AccountId': 'zzzzzzzzzzzz', 'AccountEmail': 'EmailAddr3@example.com', 'AccountStatus': 'SUSPENDED'}
 			]
 		This can be convenient for appending and removing.
 		"""
@@ -320,7 +320,7 @@ class aws_acct_access:
 				logging.info(f"Enumerating Account info for account: {self.acct_number}")
 				while theresmore:
 					for account in response['Accounts']:
-						child_accounts.append({'MgmntAccount': self.acct_number,
+						child_accounts.append({'MgmtAccount': self.acct_number,
 						                       'AccountId': account['Id'],
 						                       'AccountEmail': account['Email'],
 						                       'AccountStatus': account['Status']})
@@ -335,7 +335,7 @@ class aws_acct_access:
 				logging.debug(my_Error)
 				return ()
 		elif self.find_account_attr()['AccountType'].lower() in ['standalone', 'child']:
-			child_accounts.append({'MgmntAccount': self.acct_num(),
+			child_accounts.append({'MgmtAccount': self.acct_num(),
 			                       'AccountId': self.acct_num(),
 			                       'AccountEmail': 'Not an Org Management Account',
 			                       # We know the account is ACTIVE because if it was SUSPENDED, we wouldn't have gotten a valid response from the org_root check

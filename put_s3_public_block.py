@@ -182,12 +182,12 @@ if pFile is not None:
 	for accountnumber in AccountList:
 		AllChildAccountList.append({'AccountId'    : accountnumber,
 		                            'AccountStatus': 'ACTIVE',
-		                            'MgmntAccount' : aws_acct.acct_number})
+		                            'MgmtAccount' : aws_acct.acct_number})
 elif aws_acct.AccountType.lower() == 'root':
 	AllChildAccountList = aws_acct.ChildAccounts
 else:
 	AllChildAccountList = [{
-		'MgmntAccount' : aws_acct.acct_number,
+		'MgmtAccount' : aws_acct.acct_number,
 		'AccountId'    : aws_acct.acct_number,
 		'AccountEmail' : 'Child Account',
 		'AccountStatus': aws_acct.AccountStatus}]
@@ -213,7 +213,7 @@ for i in range(len(AllChildAccountList)):
 		except Exception as e:
 			print(str(e))
 			print(
-					f"Failed using root account {AllChildAccountList[i]['MgmntAccount']} to get credentials for acct {AllChildAccountList[i]['AccountId']}")
+					f"Failed using root account {AllChildAccountList[i]['MgmtAccount']} to get credentials for acct {AllChildAccountList[i]['AccountId']}")
 	else:
 		print(ERASE_LINE,
 		      f"Skipping account {AllChildAccountList[i]['AccountId']} since it's SUSPENDED or CLOSED    {i + 1} of {len(AllChildAccountList)}",
@@ -234,7 +234,7 @@ for item in AllChildAccountList:
 		try:
 			Updated = "Skipped"
 			Enabled = check_block_s3_public_access(item)
-			logging.info(f"Checking account #{item['AccountId']} with Parent Account {item['MgmntAccount']}")
+			logging.info(f"Checking account #{item['AccountId']} with Parent Account {item['MgmtAccount']}")
 			if not Enabled:
 				NotEnabledList.append(item['AccountId'])
 				if pDryRun:
@@ -245,7 +245,7 @@ for item in AllChildAccountList:
 					Updated = response['Status']
 					NotEnabledList.remove(item['AccountId'])
 					BlockEnabledList.append(item['AccountId'])
-			print(fmt % (item['MgmntAccount'], item['AccountId'], Enabled, Updated))
+			print(fmt % (item['MgmtAccount'], item['AccountId'], Enabled, Updated))
 		except ProfileNotFound as myError:
 			logging.info(f"You've tried to update your own management account.")
 

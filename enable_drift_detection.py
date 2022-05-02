@@ -70,7 +70,7 @@ if aws_acct.AccountType == 'Root':
 	if answer == 'root':
 		ChildAccounts = aws_acct.ChildAccounts
 	else:
-		ChildAccounts = {'MgmntAccount' : aws_acct.acct_number,
+		ChildAccounts = {'MgmtAccount' : aws_acct.acct_number,
 		                 'AccountId'    : aws_acct.acct_number,
 		                 'AccountEmail' : aws_acct.MgmtEmail,
 		                 'AccountStatus': aws_acct.AccountStatus}
