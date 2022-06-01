@@ -1359,9 +1359,15 @@ def find_lambda_functions3(faws_acct, fRegion='us-east-1', fSearchStrings=None):
 	"""
 	import boto3
 	import logging
-	client_lambda = faws_acct.session.client('lambda', region_name=fRegion)
-	functions = client_lambda.list_functions()['Functions']
+
 	functions2 = []
+	# TODO: Add pagination here
+	try:
+		client_lambda = faws_acct.session.client('lambda', region_name=fRegion)
+		functions = client_lambda.list_functions()['Functions']
+	except AttributeError as my_Error:
+		logging.info(f"Error: {my_Error}")
+		return(functions2)
 	if fSearchStrings is None:
 		for i in range(len(functions)):
 			logging.warning(f"Found function {functions[i]['FunctionName']}")
@@ -1740,7 +1746,7 @@ def find_stacks3(faws_acct, fRegion, fStackFragment="all", fStatus="active"):
 	AllStacks = response['Stacks']
 	logging.info("Found %s stacks this time around", len(response['Stacks']))
 	while 'NextToken' in response.keys():
-		response = client_cfn.describe_stacks()
+		response = client_cfn.describe_stacks(NextToken=response['NextToken'])
 		AllStacks.extend(response['Stacks'])
 		logging.info(f"Found {len(response['Stacks'])} stacks this time around")
 	logging.info(f"Done with loops and found a total of {len(AllStacks)} stacks")

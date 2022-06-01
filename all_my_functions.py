@@ -43,10 +43,12 @@ def mid(s, offset, amount):
 
 
 ##########################
+
 ERASE_LINE = '\x1b[2K'
 NumInstancesFound = 0
-RegionList = Inventory_Modules.get_ec2_regions(pRegionList)
 ProfileList = Inventory_Modules.get_profiles(SkipProfiles, pProfiles)
+aws_acct = aws_acct_access(ProfileList[0])
+RegionList = Inventory_Modules.get_ec2_regions3(aws_acct, pRegionList)
 print()
 print(f"Looking through {len(RegionList)} regions and {len(ProfileList)} profiles")
 print()
@@ -56,11 +58,15 @@ print(fmt % ("-------", "------", "-------------", "-------", "----"))
 
 for profile in ProfileList:
 	aws_acct = aws_acct_access(profile)
-	for pregion in RegionList:
+	for region in RegionList:
+		print(f"{ERASE_LINE}Looking in profile: {profile} in region {region}", end='\r')
 		try:
-			Functions = Inventory_Modules.find_lambda_functions3(aws_acct, pregion, pFragments)
+			Functions = Inventory_Modules.find_lambda_functions3(aws_acct, region, pFragments)
 			FunctionNum = len(Functions['Functions'])
-			print(f"{ERASE_LINE}Profile: {profile} Region: {pregion} Found {FunctionNum} functions", end='\r')
+			print(f"{ERASE_LINE}Profile: {profile} Region: {region} Found {FunctionNum} functions", end='\r')
+		except TypeError as my_Error:
+			logging.info(f"Error: {my_Error}")
+			continue
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(f"{ERASE_LINE + profile}: Authorization Failure")
@@ -72,7 +78,7 @@ for profile in ProfileList:
 				Runtime = Functions['Functions'][function]['Runtime']
 				Rolet = Functions['Functions'][function]['Role']
 				Role = mid(Rolet, Rolet.find("/") + 2, len(Rolet))
-				print(fmt % (profile, pregion, FunctionName, Runtime, Role))
+				print(fmt % (profile, region, FunctionName, Runtime, Role))
 				NumInstancesFound += 1
 print(ERASE_LINE)
 print(f"Found {NumInstancesFound} functions across {len(ProfileList)} profiles across {len(RegionList)} regions")

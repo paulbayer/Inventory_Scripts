@@ -97,7 +97,7 @@ class CommonArguments():
 	def fragment(self):
 		self.my_parser.add_argument(
 			"-f", "--fragment",
-			dest="Fragment",
+			dest="Fragments",
 			nargs='*',
 			metavar="CloudFormation stack fragment",
 			default=["all"],
