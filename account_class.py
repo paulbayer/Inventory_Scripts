@@ -81,7 +81,7 @@ def _validate_region(faws_prelim_session, fRegion=None):
 		return (result)
 	else:
 		message = f"'{fRegion}' is a valid region for this account"
-		logging.error(message)
+		logging.info(message)
 		result = {
 			'Success': True,
 			'Message': message,
