@@ -44,8 +44,7 @@ def get_regions3(faws_acct, fregion_list=None):
 	"""
     import logging
 
-    session_ec2 = faws_acct.session
-    region_info = session_ec2.client('ec2')
+    region_info = faws_acct.client('ec2')
     regions = region_info.describe_regions(Filters=[
         {'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
     RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
@@ -159,7 +158,7 @@ def validate_region3(faws_acct, fRegion=None):
         return (result)
     else:
         message = f"'{fRegion}' is a valid region name for this account"
-        logging.error(message)
+        logging.info(message)
         result = {'Success': True, 'Message': message}
         return (result)
 

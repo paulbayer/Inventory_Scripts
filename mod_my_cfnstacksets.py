@@ -12,6 +12,7 @@ from time import sleep
 TODO:
 	- Pythonize the whole thing
 	- More Commenting throughout script
+	Make deleting multiple closed accounts easier - needs a parameter that comprises "+delete +force -A -check" all in one - to delete all closed accounts at one time... 
 
 	- There are four possible use-cases:
 		- The stack exists as an association within the stackset AND it exists within the child account (typical)
