@@ -95,17 +95,20 @@ for account in ChildAccounts:
         except Exception as my_Error:
             print(my_Error)
             continue
-        if 'Invitations' in response.keys():
-            for i in range(len(response['Invitations'])):
-                all_gd_invites.append({
-                    'AccountId': response['Invitations'][i]['AccountId'],
-                    'InvitationId': response['Invitations'][i]['InvitationId'],
-                    'Region': region,
-                    'AccessKeyId': account_credentials['AccessKeyId'],
-                    'SecretAccessKey': account_credentials['SecretAccessKey'],
-                    'SessionToken': account_credentials['SessionToken']
-                })
-                logging.error(f"Found invite ID {response['Invitations'][i]['InvitationId']} in account {response['Invitations'][i]['AccountId']} in region {region}")
+        try:
+            if 'Invitations' in response.keys():
+                for i in range(len(response['Invitations'])):
+                    all_gd_invites.append({
+                        'AccountId': response['Invitations'][i]['AccountId'],
+                        'InvitationId': response['Invitations'][i]['InvitationId'],
+                        'Region': region,
+                        'AccessKeyId': account_credentials['AccessKeyId'],
+                        'SecretAccessKey': account_credentials['SecretAccessKey'],
+                        'SessionToken': account_credentials['SessionToken']
+                    })
+                    logging.error(f"Found invite ID {response['Invitations'][i]['InvitationId']} in account {response['Invitations'][i]['AccountId']} in region {region}")
+        except NameError:
+            pass
         try:
             print(
                 f"{ERASE_LINE}Trying account {account['AccountId']} in region {region} -- {places_to_try} left of {len(ChildAccounts) * len(gd_regions)}",
