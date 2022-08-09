@@ -52,6 +52,7 @@ else:
     gd_regions = Inventory_Modules.get_regions3(session_gd, pRegions)
 all_gd_detectors = []
 all_gd_invites = []
+GD_Admin_Accounts = []
 print(f"Searching {len(ChildAccounts)} accounts and {len(gd_regions)} regions")
 
 sts_session = aws_acct.session
@@ -112,17 +113,34 @@ for account in ChildAccounts:
             response = client_aws.list_detectors()
             if len(response['DetectorIds']) > 0:
                 NumObjectsFound = NumObjectsFound + len(response['DetectorIds'])
-                all_gd_detectors.append({
-                    'AccountId': account['AccountId'],
-                    'Region': region,
-                    'DetectorIds': response['DetectorIds'],
-                    'AccessKeyId': account_credentials['AccessKeyId'],
-                    'SecretAccessKey': account_credentials['SecretAccessKey'],
-                    'SessionToken': account_credentials['SessionToken']
-                })
+                admin_acct_response = client_aws.list_members(
+                    DetectorId=str(response['DetectorIds'][0]),
+                    OnlyAssociated='False',
+                )
                 logging.warning(
                     f"Found another detector {str(response['DetectorIds'][0])} in account {account['AccountId']} in region {region} bringing the total found to {str(NumObjectsFound)}")
-            # logging.info("Found another detector ("+str(response['DetectorIds'][0])+") in account "+account['AccountId']+" in region "+account['AccountId']+" bringing the total found to "+str(NumObjectsFound))
+                if len(admin_acct_response['Members']) > 0:
+                    all_gd_detectors.append({
+                        'AccountId': account['AccountId'],
+                        'Region': region,
+                        'DetectorIds': response['DetectorIds'],
+                        'AccessKeyId': account_credentials['AccessKeyId'],
+                        'SecretAccessKey': account_credentials['SecretAccessKey'],
+                        'SessionToken': account_credentials['SessionToken'],
+                        'GD_Admin_Accounts': admin_acct_response['Members']
+                    })
+                    logging.error(f"Found account {account['AccountId']} in region {region} to be a GuardDuty Admin account."
+                                  f"It has {len(admin_acct_response['Members'])} member accounts connected to detector {response['DetectorIds'][0]}")
+                else:
+                    all_gd_detectors.append({
+                        'AccountId': account['AccountId'],
+                        'Region': region,
+                        'DetectorIds': response['DetectorIds'],
+                        'AccessKeyId': account_credentials['AccessKeyId'],
+                        'SecretAccessKey': account_credentials['SecretAccessKey'],
+                        'SessionToken': account_credentials['SessionToken'],
+                        'GD_Admin_Accounts': "Not an Admin Account"
+                    })
             else:
                 print(ERASE_LINE,
                       f"{Fore.RED}No luck in account: {account['AccountId']} in region {region}{Fore.RESET} -- {places_to_try} of {len(ChildAccounts) * len(gd_regions)}",
@@ -133,14 +151,21 @@ for account in ChildAccounts:
 
 if args.loglevel < 50:
     print()
-    fmt = '%-20s %-15s %-20s'
-    print(fmt % ("Account ID", "Region", "Detector ID"))
-    print(fmt % ("----------", "------", "-----------"))
+    fmt = '%-20s %-15s %-35s %-25s'
+    print(fmt % ("Account ID", "Region", "Detector ID", "# of Member Accounts"))
+    print(fmt % ("----------", "------", "-----------", "--------------------"))
     for i in range(len(all_gd_detectors)):
-        print(
-            fmt % (
-                all_gd_detectors[i]['AccountId'], all_gd_detectors[i]['Region'],
-                all_gd_detectors[i]['DetectorIds']))
+        try:
+            if 'AccountId' in all_gd_detectors[i]['GD_Admin_Accounts'][0].keys():
+                print(
+                    fmt % (
+                        all_gd_detectors[i]['AccountId'], all_gd_detectors[i]['Region'],
+                        all_gd_detectors[i]['DetectorIds'], f"{len(all_gd_detectors[i]['GD_Admin_Accounts'])} Member Accounts"))
+        except AttributeError:
+            print(
+                fmt % (
+                    all_gd_detectors[i]['AccountId'], all_gd_detectors[i]['Region'],
+                    all_gd_detectors[i]['DetectorIds'], "Not an Admin Account"))
 
 print(ERASE_LINE)
 print(
@@ -178,7 +203,7 @@ if DeletionRun and (ReallyDelete or ForceDelete):
                 print("Caught unexpected error regarding deleting invites")
                 print(e)
                 sys.exit(9)
-    print("Removed {} GuardDuty Invites".format(len(all_gd_invites)))
+    print(f"Removed {len(all_gd_invites)} GuardDuty Invites")
     num_of_gd_detectors = len(all_gd_detectors)
     for y in range(len(all_gd_detectors)):
         logging.info(
