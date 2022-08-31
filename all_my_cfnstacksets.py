@@ -102,8 +102,7 @@ for account in ChildAccounts:
 				StackName = StackSets[y]['StackSetName']
 				StackStatus = StackSets[y]['Status']
 				if pInstanceCount:
-					ListOfStackInstances = Inventory_Modules.find_stack_instances2(account_credentials, region,
-					                                                               StackName)
+					ListOfStackInstances = Inventory_Modules.find_stack_instances2(account_credentials, region, StackName)
 					print(fmt % (account['AccountId'], region, StackStatus, StackName, len(ListOfStackInstances)))
 				else:
 					print(fmt % (account['AccountId'], region, StackStatus, StackName))

@@ -35,14 +35,12 @@ parser.my_parser.add_argument(
 	dest="pAccountToMove",
 	default=None,
 	metavar="Account Number",
-	help="The single account to be moved from one stackset to another",
-)
+	help="The single account to be moved from one stackset to another")
 parser.my_parser.add_argument(
 	"--recovery",
 	dest="pRecoveryFlag",
 	action="store_true",
-	help="Whether we should use the recovery file.",
-)
+	help="Whether we should use the recovery file.")
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
