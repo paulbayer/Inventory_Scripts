@@ -44,7 +44,7 @@ def get_regions3(faws_acct, fregion_list=None):
 	"""
     import logging
 
-    region_info = faws_acct.client('ec2')
+    region_info = faws_acct.session.client('ec2')
     regions = region_info.describe_regions(Filters=[
         {'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
     RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
@@ -182,13 +182,17 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
     my_profiles = my_Session._session.available_profiles
     if "all" in fprofiles or "ALL" in fprofiles or "All" in fprofiles:
         return (my_profiles)
+
     ProfileList = []
     for x in fprofiles:
         for y in my_profiles:
             logging.info(f"Have {y}| Looking for {x}")
             if y.find(x) >= 0:
                 logging.info(f"Found profile {y}")
-                ProfileList.append(y)
+                if "skipplus" in fSkipProfiles and y.find("+") >= 0:
+                    pass
+                else:
+                    ProfileList.append(y)
     return (ProfileList)
 
 

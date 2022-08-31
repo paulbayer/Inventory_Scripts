@@ -119,13 +119,12 @@ if pProfiles is None:  # Default use case from the classes
 	InstancesFound.extend(check_accounts_for_instances(aws_acct, RegionList))
 	AllChildAccounts.extend(aws_acct.ChildAccounts)
 else:
-	logging.info("The following profiles are being checked.")
-	ProfileList = Inventory_Modules.get_profiles(fprofiles=pProfiles)
-	logging.info(pProfiles)
-	logging.warning("All available profiles will be shown")
+	logging.warning(f"These profiles are being checked {pProfiles}.")
+	ProfileList = Inventory_Modules.get_profiles(fprofiles=pProfiles, fSkipProfiles="skipplus")
+	logging.warning(ProfileList)
 	for profile in ProfileList:
 		aws_acct = aws_acct_access(profile)
-		logging.info(f"Looking at {profile} account now... ")
+		logging.warning(f"Looking at {profile} account now... ")
 		RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
 		InstancesFound.extend(check_accounts_for_instances(aws_acct, RegionList))
 		AllChildAccounts.extend(aws_acct.ChildAccounts)
