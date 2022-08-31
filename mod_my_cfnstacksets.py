@@ -118,10 +118,11 @@ def _delete_stack_instances(faws_acct, fRegion, fAccountList, fRegionList, fStac
 	"""
 	logging.warning(f"Removing instances from {fStackSetName} StackSet")
 	StackSetOpId = f"DeleteInstances-{random_string(5)}"
-	if fAccountList is None or fRegionList is None:
+	if not fAccountList or not fRegionList:
 		logging.error(f"AccountList and RegionList cannot be null")
 		logging.warning(f"AccountList: {fAccountList}")
 		logging.warning(f"RegionList: {fRegionList}")
+		# TODO: Should this 'Success' really be "True" here?
 		return_response = {'Success': True, 'ErrorMessage': "Failed - Account List or Region List was null"}
 		return(return_response)
 	try:
@@ -376,14 +377,24 @@ elif not pdryrun:
 		elif str(RemoveStackInstanceResult['ErrorMessage']).find('OperationInProgressException') > 0:
 			print(f"{Fore.RED}Another operation is running on this StackSet... Please wait for that operation to end and re-run this script{Fore.RESET}")
 			sys.exit(RemoveStackInstanceResult['ErrorMessage'])
-		# TODO: We need to update this to add logic to delete the stack-set itself, once the instances are deleted.x
 		if RemoveStackSet:
-			logging.info(f"Now that all instances are gone, removing the stackset too")
-			StackInstancesAreGone = Inventory_Modules.check_stack_set_status3(aws_acct, StackSetName, RemoveStackInstanceResult['OperationId'])
+			logging.info(f"Instances have received the deletion command, continuing to remove the stackset too")
+			# If there were no Instances to be deleted
+			if Instances[0]['ChildAccount'] is None:
+				# skip the check to see if stack instances are gone
+				RemoveStackInstanceResult['OperationId'] = None
+				StackInstancesAreGone = dict()
+				StackInstancesAreGone['Success'] = True
+				StackInstancesAreGone['OperationId'] = None
+				StackInstancesAreGone['StackSetStatus'] = "Not yet assigned"
+			# else if there WERE child stacks that were deleted
+			else:
+				StackInstancesAreGone = Inventory_Modules.check_stack_set_status3(aws_acct, StackSetName, RemoveStackInstanceResult['OperationId'])
+				logging.debug(f"The operation id {RemoveStackInstanceResult['OperationId']} is {StackInstancesAreGone['StackSetStatus']}")
 			if not StackInstancesAreGone['Success']:
-				sys.exit(
-					f"There was a problem with removing the stack instances from stackset {pOldStackSet}. Exiting...")
-			logging.debug(f"The operation id {RemoveStackInstanceResult['OperationId']} is {StackInstancesAreGone['StackSetStatus']}")
+				logging.critical(f"There was a problem with removing the stack instances from stackset {StackSetName}."
+								 f"Moving to the next stackset in the list")
+				break
 			intervals_waited = 1
 			while StackInstancesAreGone['StackSetStatus'] in ['RUNNING']:
 				print(f"Waiting for operation {RemoveStackInstanceResult['OperationId']} to finish",
@@ -393,8 +404,7 @@ elif not pdryrun:
 				intervals_waited += 1
 				StackInstancesAreGone = Inventory_Modules.check_stack_set_status3(aws_acct, StackSetName, RemoveStackInstanceResult['OperationId'])
 				if not StackInstancesAreGone['Success']:
-					sys.exit(
-							f"There was a problem with removing the stack instances from stackset {pOldStackSet}. Exiting...")
+					logging.critical(f"There was a problem with removing the stack instances from stackset {StackSetName}.")
 			StackSetResult = Inventory_Modules.delete_stackset3(aws_acct, pRegion, StackSetName)
 			if StackSetResult['Success']:
 				print(f"{ERASE_LINE}Removal of stackset {StackSetName} took {sleep_interval * intervals_waited} seconds")

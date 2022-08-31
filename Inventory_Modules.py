@@ -2341,6 +2341,7 @@ def check_stack_set_status3(faws_acct, fStack_set_name, fOperationId=None):
 	# If the calling process couldn't supply the OpId, then we have to find it, based on the name of the stackset
 	if fOperationId is None:
 		# If there is no OperationId, they've called us after creating the stack-set itself,
+		# or there were no stack instances to be deleted,
 		# so we need to check the status of the stack-set creation, and not the operations that happen to the stackset
 		try:
 			response = client_cfn.describe_stack_set(StackSetName=fStack_set_name,
