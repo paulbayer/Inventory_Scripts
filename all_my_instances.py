@@ -130,9 +130,6 @@ else:
 		AllChildAccounts.extend(aws_acct.ChildAccounts)
 
 print(ERASE_LINE)
-NumInstFound = len(InstancesFound)
-NumChildAccounts = len(AllChildAccounts)
-NumRegions = len(RegionList)
 print(f"Found {len(InstancesFound)} instances across {len(AllChildAccounts)} accounts across {len(RegionList)} regions")
 print()
 print("Thank you for using this script")
