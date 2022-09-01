@@ -30,7 +30,7 @@ Additional common parameters:
   - -h: Provide "-h" or "--help" on the command line and get a nicely formatted screen that describes all possible parameters.
   - -p: to specify the profile which the script will work with. In most cases, this could/ should be a Master Profile, but doesn't always have to be.
   - -r: to specify the single region for the script to work in. Most scripts take "all" as a valid parameter. Most scripts also assume "us-east-1" as a default if nothing is specified. 
-  - -rs: Inmany of the scripts, you can specify a fragment - so you can specify "us-east" and get both "us-east-1" and "us-east-2". Specify "us-" and you'll get all four "us-" regions.
+  - -rs: In many of the scripts, you can specify a fragment - so you can specify "us-east" and get both "us-east-1" and "us-east-2". Specify "us-" and you'll get all four "us-" regions.
   - -f: string fragment - some scripts (specifically ones dealing with CFN stacks and stacksets) take a parameter that allows you to specify a fragment of the stack name, so you can find that stack you can't quite remember the whole name of.
   - +delete: I've tried to make it difficult to **accidentally** delete any resources, so that's why it's a "+" instead of a "-".
 
@@ -51,6 +51,8 @@ Purpose Built Scripts
 
 - **move_stack_instances.py**
   - In my work on migrating customer's from ALZ to ControlTower, I've found that many just need to move from ALZ-managed stacksets, to Control-Tower managed stacksets. I've written this script to be able to do that. Be careful tho - I've recently found that the CfCT pipeline REMOVES stack-instances that are not under Control Tower management, so this script shouldn't be used yet in production, until I can also publish a way to remove that functionality in the CfCT pipeline.
+  - To use this script, you'll want to supply the old stackset name and the new stackset name (which doesn't have to exist). This script takes the stack instances (optionally of only the specified account, so you can POC this script) and moves the underlying instances from one stackset to another.
+  - Since this script runs on the local machine, it's possible that something happens on the local machine that disturbs the script and causes it to fail or stop. In case that happens, there is a recovery file created during the run (without you doing anything) which can be referenced when the script is run again, and the script will pick up from where it left off when it stopped.
   - **recover_stack_ids.py**
     - This script was created to bail me out when the above script failed in the middle. It had already disassociated stack-instances from the old stack-set, but hadn't yet begun to create the new stack-set. Therefore, the stack-instances were only available within the child accounts, and not visible from the Management Account. This script recreated the file that held these stack-instances, so that the move_stack_instances.py could resume properly. Since that happened, I've embedded this behavior into the original script, but I've left this script around, in case it's useful in another similar situation.    
 

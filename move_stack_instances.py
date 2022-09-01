@@ -692,7 +692,8 @@ if OldStackSetExists:
 		# print(f"New Stack Set {pNewStackSet} needs to be created...")
 		print()
 		print(f"You've asked for us to move stacksets from the existing stackset {pOldStackSet}"
-			  f" and create a new stackset called: {pNewStackSet}")
+			  f" and create a new stackset called: {pNewStackSet}\n"
+			  f"Please note that we can only move {StackInstancesImportedAtOnce} stack instances at a time, so we may to loop a few times to do this.")
 		if pAccountToMove is not None:
 			print(f"But only for account {pAccountToMove}")
 		print()
@@ -774,7 +775,7 @@ if OldStackSetExists:
 		stack_ids_subset = [stack_ids['Stack_instances'][x + i] for i in range(limit) if
 							x + i < len(stack_ids['Stack_instances'])]
 		x += limit
-		print(f"{ERASE_LINE}Importing {len(stack_ids_subset)} stacks into the new stackset now...")
+		print(f"Importing {len(stack_ids_subset)} of {len(stack_ids['Stack_instances'])} stacks into the new stackset now...")
 		ReconnectStackInstances = populate_new_stack_with_existing_stack_instances(aws_acct, stack_ids_subset,
 																				   pNewStackSet)
 		if not ReconnectStackInstances['Success']:
@@ -789,7 +790,7 @@ if OldStackSetExists:
 					 f" instances into stackset {pNewStackSet}. Exiting...")
 		intervals_waited = 1
 		while StackReadyToImport['StackSetStatus'] in ['RUNNING', 'QUEUED']:
-			print(f"Waiting for StackSet {pNewStackSet} to finish importing -",
+			print(f"Waiting for {len(stack_ids_subset)} more instances of StackSet {pNewStackSet} to finish importing -",
 				  # f"." * intervals_waited,
 				  f"{sleep_interval * intervals_waited} seconds waited so far", end='\r')
 			sleep(sleep_interval)
