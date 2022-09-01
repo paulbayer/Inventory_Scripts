@@ -122,7 +122,7 @@ def _delete_stack_instances(faws_acct, fRegion, fAccountList, fRegionList, fStac
 		logging.error(f"AccountList and RegionList cannot be null")
 		logging.warning(f"AccountList: {fAccountList}")
 		logging.warning(f"RegionList: {fRegionList}")
-		# TODO: Should this 'Success' really be "True" here?
+		# Note: The "Success" is True below to show that the calling function can move forward, even though the Account / Regions are null
 		return_response = {'Success': True, 'ErrorMessage': "Failed - Account List or Region List was null"}
 		return(return_response)
 	try:
