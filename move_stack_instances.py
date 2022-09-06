@@ -654,7 +654,13 @@ else:
 CompareTemplates = {'Success': False}
 if OldStackSetExists and NewStackSetExists:
 	CompareTemplates = compare_stacksets(aws_acct, pOldStackSet, pNewStackSet)
-if not CompareTemplates['Success']:
+if OldStackSetExists and not NewStackSetExists:
+	print()
+	print(f"It looks like the new stack-set doesn't yet have a template assigned to it.\n"
+		  f"We can simply copy over the template from the source stackset and copy to the new stackset.\n"
+		  f"Please answer Y to the prompt below, if you're ok with that.")
+	print()
+elif not CompareTemplates['Success']:
 	print()
 	print(
 		f"{Fore.RED}Ok - there's a problem here. The templates or parameters or capabilities in the two stacksets you provided don't match{Fore.RESET}\n"
