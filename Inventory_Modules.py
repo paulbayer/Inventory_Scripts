@@ -1284,6 +1284,80 @@ def find_account_instances2(ocredentials, fRegion='us-east-1'):
 	return (AllInstances)
 
 
+def find_cw_groups_retention2(ocredentials, fRegion='us-east-1'):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+		- ['Profile'] can hold the profile, instead of the session credentials
+	"""
+	import boto3
+	import logging
+
+	if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
+		ProfileAccountNumber = find_account_number(ocredentials['Profile'])
+		logging.info(
+			f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
+		if ProfileAccountNumber == ocredentials['AccountNumber']:
+			session_cw = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
+		else:
+			session_cw = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+										aws_secret_access_key=ocredentials['SecretAccessKey'],
+										aws_session_token=ocredentials['SessionToken'],
+										region_name=fRegion)
+	else:
+		session_cw = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
+			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	log_group_info = session_cw.client('logs')
+	logging.warning(f"Looking for cw_groups in account # {ocredentials['AccountNumber']} in region {fRegion}")
+	log_groups = log_group_info.describe_log_groups()
+	#TODO: Will need to add some kind of string fragment filter here later
+	#TODO: Also want to add a "retention filter" here as well to only find log groups matching a certain retention period
+	AllLogGroups = log_groups
+	while 'NextToken' in log_groups.keys():
+		log_groups = log_group_info.describe_instances(NextToken=log_groups['NextToken'])
+		AllLogGroups['logGroups'].extend(log_groups['logGroups'])
+	return (AllLogGroups)
+
+
+def find_account_rds_instances2(ocredentials, fRegion='us-east-1'):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+		- ['Profile'] can hold the profile, instead of the session credentials
+	"""
+	import boto3
+	import logging
+
+	if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
+		ProfileAccountNumber = find_account_number(ocredentials['Profile'])
+		logging.info(
+			f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
+		if ProfileAccountNumber == ocredentials['AccountNumber']:
+			session_ec2 = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
+		else:
+			session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+										aws_secret_access_key=ocredentials['SecretAccessKey'],
+										aws_session_token=ocredentials['SessionToken'],
+										region_name=fRegion)
+	else:
+		session_rds = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
+			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	instance_info = session_rds.client('rds')
+	logging.warning(f"Looking for RDS instances in account #{ocredentials['AccountNumber']} in region {fRegion}")
+	instances = instance_info.describe_db_instances()
+	AllInstances = instances
+	while 'NextToken' in instances.keys():
+		instances = instance_info.describe_db_instances(NextToken=instances['NextToken'])
+		AllInstances['DBInstances'].extend(instances['DBInstances'])
+	return (AllInstances)
+
+
 def find_users2(ocredentials):
 	"""
 	ocredentials is an object with the following structure:
