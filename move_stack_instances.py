@@ -66,6 +66,9 @@ sleep_interval = 5
 StackInstancesImportedAtOnce = 10
 stack_ids = dict()
 
+# TODO: Could we enable a stack-set-drift-detection to find out if any children
+#  stacks are out of sync before pushing down the current templates...
+
 """
 This script attempts to move stack-instances from one stack-set to another without any impact to the ultimate resources.
 Here's what's needed:
