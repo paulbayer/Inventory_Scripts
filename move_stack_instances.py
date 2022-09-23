@@ -41,12 +41,18 @@ parser.my_parser.add_argument(
 	dest="pRecoveryFlag",
 	action="store_true",
 	help="Whether we should use the recovery file.")
+parser.my_parser.add_argument(
+	"--drift-check",
+	dest="pDriftCheckFlag",
+	action="store_true",
+	help="Whether we should check for drift before moving instances")
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
 pRegion = args.Region
 verbose = args.loglevel
 pRecoveryFlag = args.pRecoveryFlag
+pDriftCheck = args.pDriftCheckFlag
 # version = args.Version
 pOldStackSet = args.pOldStackSet
 pNewStackSet = args.pNewStackSet
@@ -68,6 +74,7 @@ stack_ids = dict()
 
 # TODO: Could we enable a stack-set-drift-detection to find out if any children
 #  stacks are out of sync before pushing down the current templates...
+# Something like this: $ aws cloudformation detect-stack-set-drift --stack-set-name Test4-IOT6 --operation-preferences "RegionConcurrencyType=PARALLEL,FailureTolerancePercentage=10,MaxConcurrentPercentage=100"
 
 """
 This script attempts to move stack-instances from one stack-set to another without any impact to the ultimate resources.
@@ -97,6 +104,140 @@ Here's what's needed:
 
 
 ########################
+def check_stack_set_drift_status(faws_acct, fStack_set_name, fOperation_id=None):
+	"""
+	response = client.detect_stack_set_drift(
+    StackSetName='string',
+    OperationPreferences={
+        'RegionConcurrencyType': 'SEQUENTIAL'|'PARALLEL',
+        'RegionOrder': [
+            'string',
+        ],
+        'FailureToleranceCount': 123,
+        'FailureTolerancePercentage': 123,
+        'MaxConcurrentCount': 123,
+        'MaxConcurrentPercentage': 123
+    },
+    OperationId='string',
+    CallAs='SELF'|'DELEGATED_ADMIN'
+	)
+	"""
+
+	import logging
+
+	client_cfn = faws_acct.session.client('cloudformation')
+	return_response = dict()
+	if fOperation_id is None:
+		# Do the initial stack_set_drift_detection
+		try:
+			response = client_cfn.detect_stack_set_drift(StackSetName=fStack_set_name,
+														 OperationPreferences={
+															 'RegionConcurrencyType'     : 'PARALLEL',
+															 'FailureTolerancePercentage': 10,
+															 'MaxConcurrentPercentage'   : 100
+														 },
+														 )
+			fOperation_id = response['OperationId']
+			return_response = {'OperationId': fOperation_id, 'Success': True}
+		except client_cfn.exceptions.InvalidOperationException as myError:
+			logging.error(f"There's been an error: {myError}")
+			return_response = {'ErrorMessage': myError, 'Success': False}
+		except client_cfn.exceptions.OperationInProgressException as myError:
+			logging.error(f"There's been an error: {myError}")
+			OperationId = myError.response['Error']['Message'][myError.response['Error']['Message'].rfind(":")+2:]
+			return_response = {'OperationId': OperationId, 'Success': True}
+		except client_cfn.exceptions.StackSetNotFoundException as myError:
+			logging.error(f"There's been an error: {myError}")
+			return_response = {'ErrorMessage': myError, 'Success': False}
+		return (return_response)
+	else:
+		# Do the describe_stack_set_operation with the operation_id, and determine how close we are to done...
+		"""
+		The response we're going to get from this "describe" operation looks like this:
+		{
+		"StackSetOperation": {
+			"OperationId": "4e23045a-xxxx-xxxx-xxxx-bad01ed6902a",
+			"StackSetId": "Test4-IOT6:735b8599-xxxx-xxxx-xxxx-7bc78fe8b817",
+			"Action": "DETECT_DRIFT",
+			"Status": "SUCCEEDED",
+			"OperationPreferences": {
+				"RegionConcurrencyType": "PARALLEL",
+				"RegionOrder": [],
+				"FailureTolerancePercentage": 10,
+				"MaxConcurrentPercentage": 100
+			},
+			"AdministrationRoleARN": "arn:aws:iam::517713657778:role/AWSCloudFormationStackSetAdministrationRole",
+			"ExecutionRoleName": "AWSCloudFormationStackSetExecutionRole",
+			"CreationTimestamp": "2022-09-19T16:55:44.358000+00:00",
+			"EndTimestamp": "2022-09-19T16:59:32.138000+00:00",
+			"StackSetDriftDetectionDetails": {
+				"DriftStatus": "IN_SYNC",
+				"DriftDetectionStatus": "COMPLETED",
+				"LastDriftCheckTimestamp": "2022-09-19T16:59:00.324000+00:00",
+				"TotalStackInstancesCount": 39,
+				"DriftedStackInstancesCount": 0,
+				"InSyncStackInstancesCount": 39,
+				"InProgressStackInstancesCount": 0,
+				"FailedStackInstancesCount": 0
+				}
+			}
+		}
+		"""
+		Finished = False
+		Sync_Has_Started = False
+		while Finished is False:
+			try:
+				response = client_cfn.describe_stack_set_operation(
+					StackSetName=fStack_set_name,
+					OperationId=fOperation_id,
+				)
+				Start_Time = response['StackSetOperation']['CreationTimestamp']
+				Operation_Status = response['StackSetOperation']['Status']
+				if 'StackSetDriftDetectionDetails' in response['StackSetOperation'].keys():
+					Drift_Detection_Status = response['StackSetOperation']['StackSetDriftDetectionDetails']['DriftDetectionStatus']
+					if 'LastDriftCheckTimestamp' in response['StackSetOperation']['StackSetDriftDetectionDetails'].keys():
+						Last_Instances_Finished = response['StackSetOperation']['StackSetDriftDetectionDetails']['LastDriftCheckTimestamp']
+						Check_Failed = response['StackSetOperation']['StackSetDriftDetectionDetails']['FailedStackInstancesCount']
+						Total_Stack_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['TotalStackInstancesCount']
+						Drifted_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['DriftedStackInstancesCount']
+						In_Sync_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['InSyncStackInstancesCount']
+						Currently_Checking = response['StackSetOperation']['StackSetDriftDetectionDetails']['InProgressStackInstancesCount']
+						Sync_Has_Started = True
+					else:
+						Sync_Has_Started = False
+				if Operation_Status == 'SUCCEEDED':
+					End_Time = response['StackSetOperation']['EndTimestamp']
+					return_response = {'OperationStatus'      : Operation_Status,
+									   'StartTime'            : Start_Time,
+									   'EndTime'              : End_Time,
+									   'StackInstancesChecked': Total_Stack_Instances,
+									   'Success'              : True}
+					Finished = True
+				elif Operation_Status == 'RUNNING' and Sync_Has_Started:
+					# TODO: Give a decent status, Wait a little longer, and try again
+					Time_Taken = Last_Instances_Finished - Start_Time
+					Checked_Instances = In_Sync_Instances + Drifted_Instances + Check_Failed
+					Time_Left = (Time_Taken / Checked_Instances) * Currently_Checking
+					print(f"{ERASE_LINE} It's taken {Time_Taken} to detect on {Checked_Instances} "
+						  f"instances, which means we probably have {Time_Left} left to go for {Currently_Checking} stack instances", end='\r')
+					logging.info(f"{response}")
+					Finished = False
+				elif Operation_Status == 'RUNNING' and not Sync_Has_Started:
+					# TODO: Give a decent status, Wait a little longer, and try again
+					print(f"{ERASE_LINE} We're still waiting for the Sync to start... Sleeping for {sleep_interval} seconds", end='\r')
+					sleep(sleep_interval)
+					Finished = False
+			except client_cfn.exceptions.StackSetNotFoundException as myError:
+				logging.error(f"There's been an error: {myError}")
+				return_response = {'ErrorMessage': myError, 'Success': False}
+				Finished = True
+			except client_cfn.exceptions.OperationNotFoundException as myError:
+				logging.error(f"There's been an error: {myError}")
+				return_response = {'ErrorMessage': myError, 'Success': False}
+				Finished = True
+			logging.info(f"Sleeping for {sleep_interval} seconds")
+			sleep(sleep_interval)
+		return (return_response)
 
 
 def check_stack_set_status(faws_acct, fStack_set_name, fOperationId=None):
@@ -223,12 +364,12 @@ def compare_stacksets(faws_acct, fExisting_stack_set_name, fNew_stack_set_name):
 	The idea here is to compare the templates and parameters of the stacksets, to ensure that the import will succeed.
 	"""
 
-	return_response = {'Success': False,
-					   'TemplateComparison': False,
-					   'CapabilitiesComparison': False,
-					   'ParametersComparison': False,
-					   'TagsComparison': False,
-					   'DescriptionComparison': False,
+	return_response = {'Success'                : False,
+					   'TemplateComparison'     : False,
+					   'CapabilitiesComparison' : False,
+					   'ParametersComparison'   : False,
+					   'TagsComparison'         : False,
+					   'DescriptionComparison'  : False,
 					   'ExecutionRoleComparison': False}
 	Stack_Set_Info_old = get_template_body_and_parameters(faws_acct, fExisting_stack_set_name)
 	Stack_Set_Info_new = get_template_body_and_parameters(faws_acct, fNew_stack_set_name)
@@ -297,7 +438,8 @@ def get_stack_ids_from_existing_stack_set(faws_acct, fExisting_stack_set_name, f
 		logging.debug(f"No Account was specified, so all stack-instance-ids are being returned")
 		pass
 	else:
-		return_response['Stack_instances'] = [stacksetinfo for stacksetinfo in return_response['Stack_instances'] if stacksetinfo['Account'] == fAccountToMove]
+		return_response['Stack_instances'] = [stacksetinfo for stacksetinfo in return_response['Stack_instances'] if
+											  stacksetinfo['Account'] == fAccountToMove]
 		logging.debug(
 			f"Account {fAccountToMove} was specified, so only the {len(return_response['Stack_instances'])} "
 			f"stack-instance-ids matching that account are being returned")
@@ -314,14 +456,14 @@ def write_info_to_file(faws_acct, fstack_ids):
 	# Create a dictionary that will represent everything we're trying to do
 	try:
 		StackSetsInfo = {
-			'ProfileUsed': pProfile,
+			'ProfileUsed'      : pProfile,
 			'ManagementAccount': faws_acct.MgmtAccount,
-			'Region': pRegion,
-			'AccountNumber': faws_acct.acct_number,
-			'AccountToMove': pAccountToMove,
-			'OldStackSetName': pOldStackSet,
-			'NewStackSetName': pNewStackSet,
-			'stack_ids': fstack_ids
+			'Region'           : pRegion,
+			'AccountNumber'    : faws_acct.acct_number,
+			'AccountToMove'    : pAccountToMove,
+			'OldStackSetName'  : pOldStackSet,
+			'NewStackSetName'  : pNewStackSet,
+			'stack_ids'        : fstack_ids
 		}
 		logging.info(f"Writing data to the file {InfoFilename}")
 		logging.debug(f"Here's the data we're writing: {StackSetsInfo}")
@@ -464,9 +606,9 @@ def disconnect_stack_instances(faws_acct, fStack_instances, fOldStackSet):
 	logging.info(f"Disassociating stacks from {fOldStackSet}")
 	return_response = dict()
 	if len(fStack_instances['Stack_instances']) == 0:
-		return_response = {'Success': False,
+		return_response = {'Success'     : False,
 						   'ErrorMessage': f"Stackset {fOldStackSet} has no matching instances",
-						   'OperationId': None}
+						   'OperationId' : None}
 		return (return_response)
 	client_cfn = faws_acct.session.client('cloudformation')
 	regions = set()
@@ -480,9 +622,9 @@ def disconnect_stack_instances(faws_acct, fStack_instances, fOldStackSet):
 			Accounts=list(accounts),
 			Regions=list(regions),
 			OperationPreferences={
-				'RegionConcurrencyType': 'PARALLEL',
+				'RegionConcurrencyType'     : 'PARALLEL',
 				'FailureTolerancePercentage': 10,
-				'MaxConcurrentPercentage': 100},
+				'MaxConcurrentPercentage'   : 100},
 			RetainStacks=True,
 			CallAs='SELF')
 		return_response['OperationId'] = response['OperationId']
@@ -556,9 +698,9 @@ def populate_new_stack_with_existing_stack_instances(faws_acct, fStack_instance_
 		response = client_cfn.import_stacks_to_stack_set(StackSetName=fNew_stack_name,
 														 StackIds=stack_instance_ids,
 														 OperationPreferences={
-															 'RegionConcurrencyType': 'PARALLEL',
+															 'RegionConcurrencyType'     : 'PARALLEL',
 															 'FailureTolerancePercentage': 0,
-															 'MaxConcurrentPercentage': 100},
+															 'MaxConcurrentPercentage'   : 100},
 														 CallAs='SELF')
 		return_response['OperationId'] = response['OperationId']
 		return_response['Success'] = True
@@ -598,6 +740,16 @@ def populate_new_stack_with_existing_stack_instances(faws_acct, fStack_instance_
 aws_acct = aws_acct_access(pProfile)
 InfoFilename = (f"{pOldStackSet}-{pNewStackSet}-{aws_acct.acct_number}-{pRegion}")
 Use_recovery_file = False
+
+if pDriftCheck:
+	drift_check_response = check_stack_set_drift_status(aws_acct, pOldStackSet)
+	print(drift_check_response)
+	print(f"Kicked off Drift Sync... now we'll wait {sleep_interval} seconds before checking on the process...")
+	sleep(sleep_interval)
+	if drift_check_response['Success']:
+		drift_check_response2 = check_stack_set_drift_status(aws_acct, pOldStackSet, drift_check_response['OperationId'])
+		print(drift_check_response2)
+	sys.exit("Exiting...")
 
 if exists(InfoFilename) and pRecoveryFlag:
 	print(f"You requested to use the recovery file {InfoFilename}, so we'll use that to pick up from where we left off")
@@ -784,7 +936,8 @@ if OldStackSetExists:
 		stack_ids_subset = [stack_ids['Stack_instances'][x + i] for i in range(limit) if
 							x + i < len(stack_ids['Stack_instances'])]
 		x += limit
-		print(f"Importing {len(stack_ids_subset)} of {len(stack_ids['Stack_instances'])} stacks into the new stackset now...")
+		print(
+			f"Importing {len(stack_ids_subset)} of {len(stack_ids['Stack_instances'])} stacks into the new stackset now...")
 		ReconnectStackInstances = populate_new_stack_with_existing_stack_instances(aws_acct, stack_ids_subset,
 																				   pNewStackSet)
 		if not ReconnectStackInstances['Success']:
@@ -799,9 +952,10 @@ if OldStackSetExists:
 					 f" instances into stackset {pNewStackSet}. Exiting...")
 		intervals_waited = 1
 		while StackReadyToImport['StackSetStatus'] in ['RUNNING', 'QUEUED']:
-			print(f"Waiting for {len(stack_ids_subset)} more instances of StackSet {pNewStackSet} to finish importing -",
-				  # f"." * intervals_waited,
-				  f"{sleep_interval * intervals_waited} seconds waited so far", end='\r')
+			print(
+				f"Waiting for {len(stack_ids_subset)} more instances of StackSet {pNewStackSet} to finish importing -",
+				# f"." * intervals_waited,
+				f"{sleep_interval * intervals_waited} seconds waited so far", end='\r')
 			sleep(sleep_interval)
 			intervals_waited += 1
 			StackReadyToImport = check_stack_set_status(aws_acct, pNewStackSet, ReconnectStackInstances['OperationId'])
