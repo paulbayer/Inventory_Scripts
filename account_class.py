@@ -116,7 +116,7 @@ class aws_acct_access:
 			# Trying to instantiate a class, based on passed in credentials
 			UsingKeys = True
 			UsingSessionToken = False
-			if ocredentials['SessionToken'] is not None:
+			if 'SessionToken' in ocredentials:
 				# Using a token-based role
 				UsingSessionToken = True
 				prelim_session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],

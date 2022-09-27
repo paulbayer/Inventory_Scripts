@@ -127,6 +127,8 @@ def check_stack_set_drift_status(faws_acct, fStack_set_name, fOperation_id=None)
 
 	client_cfn = faws_acct.session.client('cloudformation')
 	return_response = dict()
+	Sync_Has_Started = False
+	time_waited = 0
 	if fOperation_id is None:
 		# Do the initial stack_set_drift_detection
 		try:
@@ -142,13 +144,13 @@ def check_stack_set_drift_status(faws_acct, fStack_set_name, fOperation_id=None)
 		except client_cfn.exceptions.InvalidOperationException as myError:
 			logging.error(f"There's been an error: {myError}")
 			return_response = {'ErrorMessage': myError, 'Success': False}
-		except client_cfn.exceptions.OperationInProgressException as myError:
-			logging.error(f"There's been an error: {myError}")
-			OperationId = myError.response['Error']['Message'][myError.response['Error']['Message'].rfind(":")+2:]
-			return_response = {'OperationId': OperationId, 'Success': True}
 		except client_cfn.exceptions.StackSetNotFoundException as myError:
 			logging.error(f"There's been an error: {myError}")
 			return_response = {'ErrorMessage': myError, 'Success': False}
+		except client_cfn.exceptions.OperationInProgressException as myError:
+			logging.error(f"There's a drift-detection process already running: {myError}")
+			OperationId = myError.response['Error']['Message'][myError.response['Error']['Message'].rfind(":") + 2:]
+			return_response = {'OperationId': OperationId, 'Success': True}
 		return (return_response)
 	else:
 		# Do the describe_stack_set_operation with the operation_id, and determine how close we are to done...
@@ -184,7 +186,6 @@ def check_stack_set_drift_status(faws_acct, fStack_set_name, fOperation_id=None)
 		}
 		"""
 		Finished = False
-		Sync_Has_Started = False
 		while Finished is False:
 			try:
 				response = client_cfn.describe_stack_set_operation(
@@ -196,37 +197,46 @@ def check_stack_set_drift_status(faws_acct, fStack_set_name, fOperation_id=None)
 				if 'StackSetDriftDetectionDetails' in response['StackSetOperation'].keys():
 					Drift_Detection_Status = response['StackSetOperation']['StackSetDriftDetectionDetails']['DriftDetectionStatus']
 					if 'LastDriftCheckTimestamp' in response['StackSetOperation']['StackSetDriftDetectionDetails'].keys():
-						Last_Instances_Finished = response['StackSetOperation']['StackSetDriftDetectionDetails']['LastDriftCheckTimestamp']
-						Check_Failed = response['StackSetOperation']['StackSetDriftDetectionDetails']['FailedStackInstancesCount']
-						Total_Stack_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['TotalStackInstancesCount']
-						Drifted_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['DriftedStackInstancesCount']
-						In_Sync_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['InSyncStackInstancesCount']
-						Currently_Checking = response['StackSetOperation']['StackSetDriftDetectionDetails']['InProgressStackInstancesCount']
 						Sync_Has_Started = True
 					else:
 						Sync_Has_Started = False
-				if Operation_Status == 'SUCCEEDED':
-					End_Time = response['StackSetOperation']['EndTimestamp']
-					return_response = {'OperationStatus'      : Operation_Status,
-									   'StartTime'            : Start_Time,
-									   'EndTime'              : End_Time,
-									   'StackInstancesChecked': Total_Stack_Instances,
-									   'Success'              : True}
-					Finished = True
-				elif Operation_Status == 'RUNNING' and Sync_Has_Started:
+				if Operation_Status == 'RUNNING' and Sync_Has_Started:
 					# TODO: Give a decent status, Wait a little longer, and try again
+					Last_Instances_Finished = response['StackSetOperation']['StackSetDriftDetectionDetails']['LastDriftCheckTimestamp']
+					Check_Failed = response['StackSetOperation']['StackSetDriftDetectionDetails']['FailedStackInstancesCount']
+					Total_Stack_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['TotalStackInstancesCount']
+					Drifted_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['DriftedStackInstancesCount']
+					In_Sync_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['InSyncStackInstancesCount']
+					Currently_Checking = response['StackSetOperation']['StackSetDriftDetectionDetails']['InProgressStackInstancesCount']
 					Time_Taken = Last_Instances_Finished - Start_Time
 					Checked_Instances = In_Sync_Instances + Drifted_Instances + Check_Failed
 					Time_Left = (Time_Taken / Checked_Instances) * Currently_Checking
 					print(f"{ERASE_LINE} It's taken {Time_Taken} to detect on {Checked_Instances} "
 						  f"instances, which means we probably have {Time_Left} left to go for {Currently_Checking} stack instances", end='\r')
 					logging.info(f"{response}")
+					return_response = {'OperationStatus'      : Operation_Status,
+									   'StartTime'            : Start_Time,
+									   'EndTime'              : None,
+									   'DriftedInstances'     : Drifted_Instances,
+									   'FailedInstances'      : Check_Failed,
+									   'StackInstancesChecked': Total_Stack_Instances,
+									   'Success'              : False,
+									   }
 					Finished = False
 				elif Operation_Status == 'RUNNING' and not Sync_Has_Started:
 					# TODO: Give a decent status, Wait a little longer, and try again
-					print(f"{ERASE_LINE} We're still waiting for the Sync to start... Sleeping for {sleep_interval} seconds", end='\r')
-					sleep(sleep_interval)
+					time_waited += sleep_interval
+					print(f"{ERASE_LINE} We're still waiting for the Sync to start... Sleeping for {time_waited} seconds", end='\r')
 					Finished = False
+				elif Operation_Status == 'SUCCEEDED':
+					End_Time = response['StackSetOperation']['EndTimestamp']
+					Total_Stack_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['TotalStackInstancesCount']
+					return_response.update({'OperationStatus'      : Operation_Status,
+											'StartTime'            : Start_Time,
+											'EndTime'              : End_Time,
+											'StackInstancesChecked': Total_Stack_Instances,
+											'Success'              : True})
+					Finished = True
 			except client_cfn.exceptions.StackSetNotFoundException as myError:
 				logging.error(f"There's been an error: {myError}")
 				return_response = {'ErrorMessage': myError, 'Success': False}
@@ -748,7 +758,18 @@ if pDriftCheck:
 	sleep(sleep_interval)
 	if drift_check_response['Success']:
 		drift_check_response2 = check_stack_set_drift_status(aws_acct, pOldStackSet, drift_check_response['OperationId'])
-		print(drift_check_response2)
+		Total_Stacksets = drift_check_response2['StackInstancesChecked']
+		Drifted_Stacksets = drift_check_response2['DriftedInstances']
+		Failed_Stacksets = drift_check_response2['FailedInstances']
+		Duration = drift_check_response2['EndTime'] - drift_check_response2['StartTime']
+		print()
+		print(f"We're done checking the drift status of the old StackSet\n"
+			  f"We found {Total_Stacksets} Total Stacksets\n"
+			  f"{Drifted_Stacksets} have drifted, while\n"
+			  f"{Failed_Stacksets} failed to be checked\n"
+			  f"This process took {Duration} seconds to run")
+		logging.info(drift_check_response2)
+		print()
 	sys.exit("Exiting...")
 
 if exists(InfoFilename) and pRecoveryFlag:
