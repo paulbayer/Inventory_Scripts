@@ -31,7 +31,7 @@ def wait_with_progress_bar(Message="", Seconds=30):
 	for _ in range(Seconds):
 		iteration += 1
 		progress_string = "." * (iteration % 10)
-		print('{}, please wait {}'.format(Message, progress_string), end=' ')
+		print(f'{Message}, please wait {progress_string}', end=' ')
 		time.sleep(1)
 
 
@@ -284,7 +284,7 @@ if __name__ == "__main__":
 			deleted_stack_sets = True
 			delete_in_progress = True
 		elif not stack_set['StackSetName'] in stack_sets_to_delete:
-			print("It appears that {} isn't a stackset we need to delete".format(stack_set['StackSetName']), end='')
+			print(f"It appears that {stack_set['StackSetName']} isn't a stackset we need to delete", end='')
 
 		# wait for those stacks sets to be deleted
 		while deleted_stack_sets and delete_in_progress:

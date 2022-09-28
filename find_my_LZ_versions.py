@@ -116,6 +116,6 @@ for item in ALZProfiles:
 					item['Profile'], item['Acctnum'], item['Region'], stack_list[i]['StackName'], ALZVersion))
 
 print(ERASE_LINE)
-print("Checked {} accounts. Found {} ALZs".format(len(AllProfiles), len(ALZProfiles)))
+print(f"Checked {len(AllProfiles)} accounts. Found {len(ALZProfiles)} ALZs")
 print()
 print("Thank you for using this script.")

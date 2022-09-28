@@ -629,7 +629,7 @@ def get_child_access(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleList
 					 'OrganizationAccountAccessRole', 'AdministratorAccess', 'Owner']
 	# Initializing the "Negative Use Case" string, returning the whole list instead of only the last role it tried.
 	# This way the operator knows that NONE of the roles supplied worked.
-	return_string = "{} failed. Try Again".format(str(fRoleList))
+	return_string = f"{str(fRoleList)} failed. Try Again"
 
 	account_credentials = {'Profile'        : fRootProfile,
 						   'AccessKeyId'    : None,
@@ -2613,7 +2613,7 @@ def find_ssm_parameters(fProfile, fRegion):
 			response2.append(response['Parameters'][i])
 		if (len(response2) % 500 == 0) and (logging.getLogger().getEffectiveLevel() > 30):
 			print(ERASE_LINE,
-				  "Sorry this is taking a while - we've already found {} parameters!".format(len(response2)), end="\r")
+				  f"Sorry this is taking a while - we've already found {len(response2)} parameters!", end="\r")
 
 	print()
 	logging.error("Found %s parameters", len(response2))

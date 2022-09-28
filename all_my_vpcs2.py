@@ -147,6 +147,6 @@ for i in range(len(AllChildAccounts)):
 			continue
 
 print(ERASE_LINE)
-print("Found {} {} Vpcs across {} accounts across {} regions".format(NumVpcsFound, vpctype, len(AllChildAccounts), len(pRegionList)))
+print(f"Found {NumVpcsFound} {vpctype} Vpcs across {len(AllChildAccounts)} accounts across {len(pRegionList)} regions")
 print()
 print("Thank you for using this script.")

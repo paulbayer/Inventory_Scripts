@@ -63,7 +63,7 @@ ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, AccountsToSk
 cf_regions = Inventory_Modules.get_service_regions('config', pRegionList)
 all_config_recorders = []
 all_config_delivery_channels = []
-print("Searching {} accounts and {} regions".format(len(ChildAccounts), len(cf_regions)))
+print(f"Searching {len(ChildAccounts)} accounts and {len(cf_regions)} regions")
 
 sts_client = aws_acct.session.client('sts')
 for account in ChildAccounts:
@@ -186,7 +186,7 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 			print("Caught unexpected error regarding deleting config recorders. Exiting...")
 			pprint.pprint(e)
 			sys.exit(9)
-	print("Removed {} config recorders".format(len(all_config_recorders)))
+	print(f"Removed {len(all_config_recorders)} config recorders")
 	for y in range(len(all_config_delivery_channels)):
 		logging.info(f"Deleting delivery channel: {all_config_delivery_channels[y]['DeliveryChannel']} from account "
 		             f"{all_config_delivery_channels[y]['AccountId']} in region {all_config_delivery_channels[y]['Region']}")
