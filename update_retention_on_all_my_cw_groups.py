@@ -17,6 +17,7 @@ parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
 parser.verbosity()
+parser.rootOnly()
 
 parser.my_parser.add_argument(
 	'+R', "--ReplaceRetention",
@@ -28,7 +29,7 @@ parser.my_parser.add_argument(
 	dest="pRetentionDays")
 parser.my_parser.add_argument(
 	'-o', "--OldRetention",
-	help="The retention you want to change on all groups that match.",
+	help="The retention you want to change on all groups that match. Use '0' for 'Never'",
 	default=None,
 	metavar="retention days",
 	type=int,
@@ -40,28 +41,32 @@ pProfiles = args.Profiles
 pRegionList = args.Regions
 pRetentionDays = args.pRetentionDays
 pOldRetentionDays = args.pOldRetentionDays
+pRootOnly = args.RootOnly
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 ##################
 
 ERASE_LINE = '\x1b[2K'
-
 logging.info(f"Profiles: {pProfiles}")
+account_number_format = "12s"
 
 ##################
+
 
 def check_cw_groups_retention(faws_acct, fRegionList=None):
 	ChildAccounts = faws_acct.ChildAccounts
 	AllCWLogGroups = []
+	account_credentials = {'Role': 'unset'}
 	if fRegionList is None:
 		fRegionList = ['us-east-1']
 	for account in ChildAccounts:
+		if account['MgmtAccount'] != account['AccountId'] and pRootOnly:
+			continue
 		logging.info(f"Connecting to account {account['AccountId']}")
 		try:
 			account_credentials = Inventory_Modules.get_child_access3(faws_acct, account['AccountId'])
 			logging.info(f"Connected to account {account['AccountId']} using role {account_credentials['Role']}")
-		# TODO: We shouldn't refer to "account_credentials['Role']" below, if there was an error.
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				logging.error(
@@ -103,8 +108,9 @@ def check_cw_groups_retention(faws_acct, fRegionList=None):
 					CW_Groups['logGroups'][y]['AccountId'] = account_credentials['AccountId']
 					CW_Groups['logGroups'][y]['region'] = region
 					fmt = '%-12s %-12s %-10s %-10s %15d %-50s'
-					print(fmt % (
-						faws_acct.acct_number, account['AccountId'], region, Retention, Size, Name))
+					# print(fmt % (faws_acct.acct_number, account['AccountId'], region, Retention, Size, Name))
+					print(f"{str(faws_acct.acct_number):{account_number_format}} {str(account['AccountId']):{account_number_format}} {region:10s} "
+						  f"{str(Retention):4s} {'' if Retention == 'Never' else 'days'} {Size: >15,} {Name:50s}")
 				AllCWLogGroups.extend(CW_Groups['logGroups'])
 
 	return (AllCWLogGroups)
@@ -163,6 +169,7 @@ print(fmt % ("-----------", "---------", "------", "---------", "----", "----"))
 
 CWGroups = []
 AllChildAccounts = []
+RegionList = []
 
 if pProfiles is None:  # Default use case from the classes
 	logging.info("Using whatever the default profile is")
@@ -186,7 +193,12 @@ print(ERASE_LINE)
 totalspace = 0
 for i in CWGroups:
 	totalspace += i['storedBytes']
-print(f"Found {len(CWGroups)} log groups across {len(AllChildAccounts)} accounts across {len(RegionList)} regions, representing {totalspace/1024/1024/1024:,} GB")
+print(f"Found {len(CWGroups)} log groups across {len(AllChildAccounts)} accounts across {len(RegionList)} regions, representing {totalspace/1024/1024/1024:,.3f} GB")
+print(f"To give you a small idea - in us-east-1 - it costs $0.03 per GB per month to store (after 5GB).")
+if totalspace/1024/1024/1024 <= 5.0:
+	print("Which means this is essentially free for you...")
+else:
+	print(f"This means you're paying about ${((totalspace/1024/1024/1024)-5 ) * 0.03:,.2f} per month in CW storage charges")
 
 if pRetentionDays is not None:
 	print(f"As per your parameter - updating ALL retention periods to {pRetentionDays} days")
