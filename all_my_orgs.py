@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-import os
-import sys
 import logging
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
@@ -67,6 +65,7 @@ print(fmt % ("Profile Name", "Account Number", "Payer Org Acct", "Org ID", "Root
 print(fmt % ("------------", "--------------", "--------------", "------", "----------"))
 NumProfiles = 0
 FailedProfiles = []
+RootAcct = False
 for profile in ProfileList:
 	try:
 		NumProfiles += 1
@@ -82,7 +81,7 @@ for profile in ProfileList:
 			logging.info(f"Access to the profile {profile} has failed")
 			FailedProfiles.append(profile)
 			pass
-		elif aws_acct.AccountType.lower() == 'root':  # The Account is deemed to be an Management Account
+		elif aws_acct.AccountType.lower() == 'root':  # The Account is deemed to be a Management Account
 			logging.info(f"AccountNumber: {aws_acct.acct_number}")
 			MnmgtAcct = aws_acct.MgmtAccount
 			Email = aws_acct.MgmtEmail
@@ -151,8 +150,7 @@ for profile in ProfileList:
 	if ErrorFlag:
 		continue
 	elif RootAcct:
-		print(Fore.RED + fmt % (
-			profile, aws_acct.acct_number, aws_acct.MgmtAccount, aws_acct.OrgID, RootAcct) + Style.RESET_ALL)
+		print(Fore.RED + fmt % (profile, aws_acct.acct_number, aws_acct.MgmtAccount, aws_acct.OrgID, RootAcct) + Style.RESET_ALL)
 	# If I'm looking for only the root accounts, when I find something that isn't a root account, don't print anything and continue on.
 	elif rootonly:
 		print(f"{ERASE_LINE}{profile} isn't a root account", end="\r")
@@ -163,7 +161,7 @@ print("-------------------")
 
 if not shortform:
 	fmt = '%-23s %-15s %-6s'
-	child_fmt = "\t\t%-20s %-20s"
+	child_fmt = "\t\t%-20s %-20s %-20s"
 	print()
 	print(fmt % ("Organization's Profile", "Root Account", "ALZ"))
 	print(fmt % ("----------------------", "------------", "---"))
@@ -179,10 +177,10 @@ if not shortform:
 		else:
 			fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}%-6s"
 		print(fmt % (profile, aws_acct.MgmtAccount, landing_zone))
-		print(child_fmt % ("Child Account Number", "Child Email Address"))
+		print(child_fmt % ("Child Account Number", "Child Account Status", "Child Email Address"))
 		# for account in sorted(child_accounts):
 		for account in child_accounts:
-			print(child_fmt % (account['AccountId'], account['AccountEmail']))
+			print(child_fmt % (account['AccountId'], account['AccountStatus'], account['AccountEmail']))
 	print()
 	print("Number of Organizations:", len(RootProfiles))
 	print("Number of Organization Accounts:", NumOfAccounts)

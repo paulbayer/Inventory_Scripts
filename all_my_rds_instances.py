@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-import boto3
+# import boto3
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
@@ -34,8 +32,12 @@ logging.info(f"Profiles: {pProfiles}")
 
 ##################
 def check_accounts_for_instances(faws_acct, fRegionList=None):
+	"""
+	Note that this function checks the account AND any children accounts in the Org.
+	"""
 	ChildAccounts = faws_acct.ChildAccounts
 	AllInstances = []
+	Instances = dict()
 	if fRegionList is None:
 		fRegionList = ['us-east-1']
 	for account in ChildAccounts:
@@ -46,25 +48,24 @@ def check_accounts_for_instances(faws_acct, fRegionList=None):
 		# TODO: We shouldn't refer to "account_credentials['Role']" below, if there was an error.
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
-				logging.error(
-					f"{account['AccountId']}: Authorization failure using role: {account_credentials['Role']}")
+				logging.error(f"{account['AccountId']}: Authorization failure using role: {account_credentials['Role']}")
 				logging.warning(my_Error)
 			elif str(my_Error).find("AccessDenied") > 0:
-				logging.error(
-					f"{account['AccountId']}: Access Denied failure using role: {account_credentials['Role']}")
+				logging.error(f"{account['AccountId']}: Access Denied failure using role: {account_credentials['Role']}")
 				logging.warning(my_Error)
 			else:
-				logging.error(
-					f"{account['AccountId']}: Other kind of failure using role: {account_credentials['Role']}")
+				logging.error(f"{account['AccountId']}: Other kind of failure using role: {account_credentials['Role']}")
 				logging.warning(my_Error)
+			continue
+		except AttributeError as my_Error:
+			logging.error(f"Error: Likely that one of the supplied profiles {pProfiles} was wrong")
+			logging.warning(my_Error)
 			continue
 		for region in fRegionList:
 			try:
-				Instances = None
 				print(f"{ERASE_LINE}Checking account {account['AccountId']} in region {region}", end='\r')
 				Instances = Inventory_Modules.find_account_rds_instances2(account_credentials, region)
-				logging.info(
-					f"Root Account: {faws_acct.acct_number} Account: {account['AccountId']} Region: {region} | Found {len(Instances['DBInstances'])} instances")
+				logging.info(f"Root Account: {faws_acct.acct_number} Account: {account['AccountId']} Region: {region} | Found {len(Instances['DBInstances'])} instances")
 			except ClientError as my_Error:
 				if str(my_Error).find("AuthFailure") > 0:
 					logging.error(f"Authorization Failure accessing account {account['AccountId']} in {region} region")
@@ -100,6 +101,7 @@ print(fmt % ("-----------", "---------", "------", "------------", "----", "----
 
 InstancesFound = []
 AllChildAccounts = []
+RegionList = ['us-east-1']
 
 if pProfiles is None:  # Default use case from the classes
 	logging.info("Using whatever the default profile is")
@@ -109,9 +111,8 @@ if pProfiles is None:  # Default use case from the classes
 	InstancesFound.extend(check_accounts_for_instances(aws_acct, RegionList))
 	AllChildAccounts.extend(aws_acct.ChildAccounts)
 else:
-	logging.warning(f"These profiles are being checked {pProfiles}.")
 	ProfileList = Inventory_Modules.get_profiles(fprofiles=pProfiles, fSkipProfiles="skipplus")
-	logging.warning(ProfileList)
+	logging.warning(f"These profiles are being checked {ProfileList}.")
 	for profile in ProfileList:
 		aws_acct = aws_acct_access(profile)
 		logging.warning(f"Looking at {profile} account now... ")

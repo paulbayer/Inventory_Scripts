@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-import pprint
-import boto3
+
+# import boto3
 import Inventory_Modules
 from account_class import aws_acct_access
 from ArgumentsClass import CommonArguments
-from colorama import init, Fore, Back, Style
-from botocore.exceptions import ClientError, NoCredentialsError
+from colorama import init
+from botocore.exceptions import ClientError
 
 import logging
 
@@ -58,7 +56,7 @@ for account in ChildAccounts:
 		print(f"{ERASE_LINE}Account: {account['AccountId']} Found {len(Users)} users", end='\r')
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
-			print(f"{ERASE_LINE}{profile}: Authorization Failure")
+			print(f"{ERASE_LINE}{account}: Authorization Failure")
 	except TypeError as my_Error:
 		# print(my_Error)
 		pass

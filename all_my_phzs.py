@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-import pprint
+
 import Inventory_Modules
-import argparse
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
-from colorama import init, Fore, Back, Style
-from botocore.exceptions import ClientError, NoCredentialsError
+from colorama import init, Fore
+from botocore.exceptions import ClientError
 
 import logging
 
@@ -39,6 +36,7 @@ else:
 RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
 
 NumPHZsFound = 0
+HostedZones = []
 print()
 fmt = '%-20s %-10s %-25s %-20s %-25s'
 print(fmt % ("Account", "Region", "Hosted Zone Name", "Number of Records", "Zone ID"))

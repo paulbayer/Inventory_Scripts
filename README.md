@@ -116,7 +116,9 @@ Purpose Built Scripts
 
 - **all_my_phzs.py**
   - The objective of this script is to find all of the Private Hosted Zones in a cross-account fashion.
-  - This is one of the older scripts that only worked by profile. I still need to fix this one up to use the "account" method instead of just looking through matching profiles.
+
+- **all_my_rds_instances.py**
+  - The objective of this script is to find all the RDS instances within a profile, or an Org.
 
 - **all_my_roles.py**
   - The objective of this script is to find all the roles within the accounts it looks through.
@@ -125,6 +127,10 @@ Purpose Built Scripts
   - **all_my_saml_providers.py**
     - The objective of this script is to find all Identity Providers within your accounts within your org.
     - There is also the capability to delete these idps - but I don't see people doing that all that often.
+
+- **all_my_saml_providers.py**
+  - The objective of this script is to find the saml providers within the Org. 
+  - It's possible with this script to delete those providers you find, making it easier to remove a SAML provider across all of your Org, all at once. Obviously this should not be used lightly, as gaining access BACK to those accounts may be very difficult. 
 
 - **all_my_vpcs.py**
   - The objective of this script is to find all the vpcs within your set of accounts - as determined by your profiles. This script has been superseded by the "all_my_vpcs2.py" since this script only looked in the specific profile you supplied.
@@ -151,6 +157,10 @@ Purpose Built Scripts
     - The other is to resolve a problem that exists with the AWS Landing Zone tool - which creates Parameter Store entries and doesn't clean them up when needed. Since the Parameter Store has a limit of 10,000 entries - some sophisticated, long-time customers could hit this limit and be frustrated by the inability to easily remediate this acknowledged bug.
   - This script can solve that problem by using the "--ALZ" parameter and the "-b" parameter to identify any left-over parameters that should be cleaned up since so many days back (ideally further back than your last successful Pipeline run).
   - As usual - provide the "+delete" parameter to allow the script to programmatically remediate the problem.
+
+- **update_retention_on_all_my_cw_groups.py**
+  - Ok - so I thought that perhaps the default behavior of CW to make all log groups set to "Never Delete" was wrong, and how much money could I save if I changed all my groups to be 90 days instead? I was really excited, except then I found out (after I wrote the thing) that you weren't really saving all that much.
+  - Just in case people want to use this to save money - it runs and shows you how much you could save, if you want to update the retention periods across your environment.
 
 Utility Files
 ----------------

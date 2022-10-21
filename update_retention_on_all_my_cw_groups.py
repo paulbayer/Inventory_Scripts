@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-import boto3
+# import boto3
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
@@ -25,7 +23,7 @@ parser.my_parser.add_argument(
 	default=None,
 	metavar="retention days",
 	type=int,
-	choices=[1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 2192, 2557, 2922, 3288, 3653],
+	choices=[0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 2192, 2557, 2922, 3288, 3653],
 	dest="pRetentionDays")
 parser.my_parser.add_argument(
 	'-o', "--OldRetention",
@@ -85,7 +83,7 @@ def check_cw_groups_retention(faws_acct, fRegionList=None):
 			CW_Groups = dict()
 			try:
 				print(f"{ERASE_LINE}Checking account {account['AccountId']} in region {region}", end='\r')
-				#TODO: Will eventually support a filter for string fragments, and retention periods
+				# TODO: Will eventually support a filter for string fragments, and retention periods
 				CW_Groups = Inventory_Modules.find_cw_groups_retention2(account_credentials, region)
 				logging.info(
 					f"Root Account: {faws_acct.acct_number} Account: {account['AccountId']} Region: {region} | Found {len(CW_Groups['logGroups'])} groups")
@@ -107,22 +105,21 @@ def check_cw_groups_retention(faws_acct, fRegionList=None):
 					CW_Groups['logGroups'][y]['SessionToken'] = account_credentials['SessionToken']
 					CW_Groups['logGroups'][y]['AccountId'] = account_credentials['AccountId']
 					CW_Groups['logGroups'][y]['region'] = region
-					fmt = '%-12s %-12s %-10s %-10s %15d %-50s'
+					# fmt = f'%-12s %-{account_number_format} %-15s %-10s %15d %-50s'
 					# print(fmt % (faws_acct.acct_number, account['AccountId'], region, Retention, Size, Name))
-					print(f"{str(faws_acct.acct_number):{account_number_format}} {str(account['AccountId']):{account_number_format}} {region:10s} "
-						  f"{str(Retention):4s} {'' if Retention == 'Never' else 'days'} {Size: >15,} {Name:50s}")
+					print(f"{str(faws_acct.acct_number):{account_number_format}} {str(account['AccountId']):{account_number_format}} {region:15s} "
+						  f"{str(Retention):10s} {'' if Retention == 'Never' else 'days'} {Size: >15,} {Name:50s}")
 				AllCWLogGroups.extend(CW_Groups['logGroups'])
 
 	return (AllCWLogGroups)
 
 
-def update_cw_groups_retention(faws_acct, fRegionList=None, fCWGroups=None, fOldRetentionDays=None, fRetentionDays=None):
+def update_cw_groups_retention(fCWGroups=None, fOldRetentionDays=None, fRetentionDays=None):
 	import boto3
 
-	if fRegionList is None:
-		fRegionList = ['us-east-1']
 	if fOldRetentionDays is None:
-		fRegionList = ['us-east-1']
+		fOldRetentionDays = 0
+	Success = True
 	for item in fCWGroups:
 		cw_session = boto3.Session(aws_access_key_id=item['AccessKeyId'],
 								   aws_secret_access_key=item['SecretAccessKey'],
@@ -131,9 +128,7 @@ def update_cw_groups_retention(faws_acct, fRegionList=None, fCWGroups=None, fOld
 		cw_client = cw_session.client('logs')
 		logging.info(f"Connecting to account {item['AccountId']}")
 		try:
-			print(
-				f"{ERASE_LINE}Updating log group {item['logGroupName']} account {item['AccountId']} in region {item['region']}",
-				end='\r')
+			print(f"{ERASE_LINE}Updating log group {item['logGroupName']} account {item['AccountId']} in region {item['region']}", end='\r')
 			if 'retentionInDays' not in item.keys():
 				retentionPeriod = 'Never'
 			else:
@@ -163,7 +158,7 @@ print(f"Checking for CW Log Groups... ")
 print()
 
 print()
-fmt = '%-12s %-12s %-10s %-10s %-15s %-50s'
+fmt = f'%-12s %-{account_number_format} %-15s %-10s %-15s %-50s'
 print(fmt % ("Root Acct #", "Account #", "Region", "Retention", "Size", "Name"))
 print(fmt % ("-----------", "---------", "------", "---------", "----", "----"))
 
@@ -203,11 +198,10 @@ else:
 if pRetentionDays is not None:
 	print(f"As per your parameter - updating ALL retention periods to {pRetentionDays} days")
 	print(f"")
-	UpdateAllRetention = input(
-		f"This is definitely an intrusive command, so please confirm you want to do this (y/n):")
+	UpdateAllRetention = input(f"This is definitely an intrusive command, so please confirm you want to do this (y/n):")
 	if UpdateAllRetention.upper() == 'Y':
 		print(f"Uodating all log groups to have a {pRetentionDays} retention period")
-		update_cw_groups_retention(aws_acct, RegionList, CWGroups, pOldRetentionDays, pRetentionDays)
+		update_cw_groups_retention(CWGroups, pOldRetentionDays, pRetentionDays)
 	else:
 		print(f"No changes made")
 print()
