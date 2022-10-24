@@ -46,7 +46,6 @@ def check_accounts_for_cloudtrail(faws_acct, fRegionList=None):
 		try:
 			account_credentials = Inventory_Modules.get_child_access3(faws_acct, account['AccountId'])
 			logging.info(f"Connected to account {account['AccountId']} using role {account_credentials['Role']}")
-		# TODO: We shouldn't refer to "account_credentials['Role']" below, if there was an error.
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				logging.error(f"{account['AccountId']}: Authorization failure using role: {account_credentials['Role']}")
