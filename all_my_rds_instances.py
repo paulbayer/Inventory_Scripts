@@ -81,8 +81,7 @@ def check_accounts_for_instances(faws_acct, fRegionList=None):
 						Name = "No Name"
 					Engine = Instances['DBInstances'][y]['Engine']
 					fmt = '%-12s %-12s %-10s %-15s %-20s %-20s %-12s'
-					print(fmt % (
-						faws_acct.acct_number, account['AccountId'], region, InstanceType, Name, Engine, State))
+					print(fmt % (faws_acct.acct_number, account['AccountId'], region, InstanceType, Name, Engine, State))
 		AllInstances.extend(Instances['DBInstances'])
 	return (AllInstances)
 

@@ -2,7 +2,6 @@
 
 import boto3
 import Inventory_Modules
-import argparse
 import logging
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access

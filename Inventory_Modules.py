@@ -1355,6 +1355,42 @@ def find_account_rds_instances2(ocredentials, fRegion='us-east-1'):
 	return (AllInstances)
 
 
+def find_account_cloudtrail2(ocredentials, fRegion='us-east-1'):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+		- ['Profile'] can hold the profile, instead of the session credentials
+	"""
+	import boto3
+	import logging
+
+	if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
+		ProfileAccountNumber = find_account_number(ocredentials['Profile'])
+		logging.info(
+			f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
+		if ProfileAccountNumber == ocredentials['AccountNumber']:
+			session_ct = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
+		else:
+			session_ct = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+									   aws_secret_access_key=ocredentials['SecretAccessKey'],
+									   aws_session_token=ocredentials['SessionToken'],
+									   region_name=fRegion)
+	else:
+		session_ct = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
+			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	instance_info = session_ct.client('cloudtrail')
+	logging.warning(f"Looking for CloudTrail logging in account #{ocredentials['AccountNumber']} in region {fRegion}")
+	Trails = instance_info.describe_trails(trailNameList=[], includeShadowTrails=True)
+	AllTrails = Trails
+	while 'NextToken' in Trails.keys():
+		Trails = instance_info.describe_trails(NextToken=Trails['NextToken'])
+		AllTrails['trailList'].extend(Trails['trailList'])
+	return (AllTrails)
+
+
 def find_users2(ocredentials):
 	"""
 	ocredentials is an object with the following structure:

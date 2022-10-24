@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-import pprint
-import datetime
+
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
-import boto3
+# import boto3
 from account_class import aws_acct_access
-from colorama import init, Fore, Back, Style
-from botocore.exceptions import ClientError, NoCredentialsError
+from colorama import init, Fore
+from botocore.exceptions import ClientError
 
 import logging
 
@@ -61,7 +58,9 @@ else:
 # 	# print(Fore.RED+"Doesn't yet work to specify 'all' profiles, since it takes a long time to go through and find only those profiles that either Org Masters, or stand-alone accounts",Fore.RESET)
 # 	# sys.exit(1)
 # 	SoughtAllProfiles = True
-# 	print("Since you specified 'all' profiles, we going to look through ALL of your profiles. Then we go through and determine which profiles represent the Master of an Organization and which are stand-alone accounts. This will enable us to go through all accounts you have access to for inventorying.")
+# 	print("Since you specified 'all' profiles, we're going to look through ALL of your profiles. \
+# 	Then we go through and determine which profiles represent the Master of an Organization and which are stand-alone accounts. \
+# 	This will enable us to go through all accounts you have access to for inventorying.")
 # 	logging.error("Time: %s", datetime.datetime.now())
 # 	ProfileList = Inventory_Modules.get_parent_profiles('all', SkipProfiles)
 # 	logging.error("Time: %s", datetime.datetime.now())

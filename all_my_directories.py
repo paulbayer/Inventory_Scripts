@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import pprint
 import Inventory_Modules
 from colorama import init, Fore, Back, Style
 from botocore.exceptions import ClientError
