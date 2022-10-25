@@ -43,7 +43,7 @@ def check_accounts_for_cloudtrail(faws_acct, fRegionList=None):
 	if fRegionList is None:
 		fRegionList = ['us-east-1']
 	for account in ChildAccounts:
-		SkipAccounts = ['135034107635']
+		SkipAccounts = ['135034107635', '177672183868', '382978328952']
 		if account['AccountId'] in SkipAccounts:
 			continue
 		logging.info(f"Connecting to account {account['AccountId']}")
@@ -135,7 +135,7 @@ else:
 		AllChildAccounts.extend(aws_acct.ChildAccounts)
 
 ChildAccountList = [[item['MgmtAccount'], item['AccountId']] for item in AllChildAccounts]
-ChildAccountsWithCloudTrail = set([[item['MgmtAccount'], item['AccountId']] for item in TrailsFound])
+ChildAccountsWithCloudTrail = [[item['MgmtAccount'], item['AccountId']] for item in TrailsFound]
 ProblemAccounts = [item['AccountId'] for item in ChildAccountList if item not in ChildAccountsWithCloudTrail]
 
 print(ERASE_LINE)
@@ -159,6 +159,7 @@ print(ERASE_LINE)
 # 					x.add_row([MgmtAccount, ChildAccount, region, 'None', 'None', 'None'])
 # 	print()
 # 	print(x)
+print(f"Problem Accounts: {ProblemAccounts}")
 print()
 print(f"Found {len(TrailsFound)} trails across {len(AllChildAccounts)} accounts across {len(RegionList)} regions")
 print()
