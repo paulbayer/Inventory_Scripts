@@ -43,6 +43,9 @@ def check_accounts_for_cloudtrail(faws_acct, fRegionList=None):
 	if fRegionList is None:
 		fRegionList = ['us-east-1']
 	for account in ChildAccounts:
+		SkipAccounts = ['135034107635']
+		if account['AccountId'] in SkipAccounts:
+			continue
 		logging.info(f"Connecting to account {account['AccountId']}")
 		try:
 			account_credentials = Inventory_Modules.get_child_access3(faws_acct, account['AccountId'])
