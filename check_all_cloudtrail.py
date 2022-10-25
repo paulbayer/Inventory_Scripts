@@ -61,6 +61,8 @@ def check_accounts_for_cloudtrail(faws_acct, fRegionList=None):
 				logging.error(f"{account['AccountId']}: Other kind of failure using role: {account_credentials['Role']}")
 				logging.warning(my_Error)
 			continue
+		except KeyError as my_Error:
+			logging.error(f"Account Access failed - trying to access {account['AccountId']}")
 		except AttributeError as my_Error:
 			logging.error(f"Error: Likely that one of the supplied profiles {pProfiles} was wrong")
 			logging.warning(my_Error)
