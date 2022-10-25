@@ -6,6 +6,7 @@ from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 from colorama import init, Fore
 from botocore.exceptions import ClientError
+from prettytable import PrettyTable
 
 import logging
 
@@ -72,19 +73,26 @@ def check_accounts_for_cloudtrail(faws_acct, fRegionList=None):
 					logging.warning(f"It's possible that the region {region} hasn't been opted-into")
 					pass
 			if 'trailList' in Trails.keys():
-				for y in Trails['trailList']:
-					TrailName = y['Name']
-					MultiRegion = y['IsMultiRegionTrail']
-					OrgTrail = y['IsOrganizationTrail']
-					Bucket = y['S3BucketName']
-					KMS = y['KmsKeyId'] if 'KmsKeyId' in Trails.keys() else None
-					CloudWatchLogArn = y['CloudWatchLogsLogGroupArn'] if 'CloudWatchLogsLogGroupArn' in Trails.keys() else None
-					HomeRegion = y['HomeRegion'] if 'HomeRegion' in Trails.keys() else None
-					SNSTopicName = y['SNSTopicName'] if 'SNSTopicName' in Trails.keys() else None
+				for y in range(len(Trails['trailList'])):
+					Trails['trailList'][y]['MgmtAccount'] = account['MgmtAccount']
+					Trails['trailList'][y]['AccountId'] = account['AccountId']
+					Trails['trailList'][y]['Region'] = region
+					TrailName = Trails['trailList'][y]['Name']
+					MultiRegion = Trails['trailList'][y]['IsMultiRegionTrail']
+					OrgTrail = Trails['trailList'][y]['IsOrganizationTrail']
+					Bucket = Trails['trailList'][y]['S3BucketName']
+					KMS = Trails['trailList'][y]['KmsKeyId'] if 'KmsKeyId' in Trails.keys() else None
+					Trails['trailList'][y]['KMS'] = KMS
+					CloudWatchLogArn = Trails['trailList'][y]['CloudWatchLogsLogGroupArn'] if 'CloudWatchLogsLogGroupArn' in Trails.keys() else None
+					Trails['trailList'][y]['CloudWatchLogArn'] = CloudWatchLogArn
+					HomeRegion = Trails['trailList'][y]['HomeRegion'] if 'HomeRegion' in Trails.keys() else None
+					Trails['trailList'][y]['HomeRegion'] = HomeRegion
+					SNSTopicName = Trails['trailList'][y]['SNSTopicName'] if 'SNSTopicName' in Trails.keys() else None
+					Trails['trailList'][y]['SNSTopicName'] = SNSTopicName
 					# fmt = '%-12s %-12s %-10s %-15s %-20s %-20s %-12s'
 					# print(fmt % (faws_acct.acct_number, account['AccountId'], region, InstanceType, Name, Engine, State))
 					print(f"{faws_acct.acct_number:12s} {account['AccountId']:12s} {region:15s} {TrailName:40s} {str(OrgTrail):15s} {Bucket:45s} ")
-		AllTrails.extend(Trails['trailList'])
+			AllTrails.extend(Trails['trailList'])
 	return (AllTrails)
 
 
@@ -121,7 +129,32 @@ else:
 		TrailsFound.extend(check_accounts_for_cloudtrail(aws_acct, RegionList))
 		AllChildAccounts.extend(aws_acct.ChildAccounts)
 
+ChildAccountList = [[item['MgmtAccount'], item['AccountId']] for item in AllChildAccounts]
+ChildAccountsWithCloudTrail = set([[item['MgmtAccount'], item['AccountId']] for item in TrailsFound])
+ProblemAccounts = [item['AccountId'] for item in ChildAccountList if item not in ChildAccountsWithCloudTrail]
+
 print(ERASE_LINE)
+# if verbose < 50:
+# 	print(f"This table represents the summary of CloudTrail within the Org:")
+# 	x = PrettyTable()
+# 	x.field_names = ['Root Account', 'Account', 'Region', 'CloudTrail Name', 'Org Trail', 'Bucket Name']
+#
+# 	for item in ChildAccountList:
+# 		MgmtAccount = item[0]
+# 		ChildAccount = item[1]
+# 		for region in RegionList:
+# 			trailFound = False
+# 			for trail in TrailsFound:
+# 				if trail['AccountId'] == ChildAccount and trail['Region'] == region:
+# 					x.add_row([trail['MgmtAccount'], trail['AccountId'], region, trail['Name'], trail['IsOrganizationTrail'], trail['S3BucketName']])
+# 					trailFound = True
+# 				elif trailFound:
+# 					pass
+# 				else:
+# 					x.add_row([MgmtAccount, ChildAccount, region, 'None', 'None', 'None'])
+# 	print()
+# 	print(x)
+print()
 print(f"Found {len(TrailsFound)} trails across {len(AllChildAccounts)} accounts across {len(RegionList)} regions")
 print()
 print("Thank you for using this script")
