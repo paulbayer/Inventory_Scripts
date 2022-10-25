@@ -6,7 +6,7 @@ from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 from colorama import init, Fore
 from botocore.exceptions import ClientError
-from prettytable import PrettyTable
+# from prettytable import PrettyTable
 
 import logging
 
