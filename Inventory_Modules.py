@@ -1391,6 +1391,54 @@ def find_account_cloudtrail2(ocredentials, fRegion='us-east-1'):
 	return (AllTrails)
 
 
+def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+		- ['Profile'] can hold the profile, instead of the session credentials
+	"""
+	import boto3
+	import logging
+	import ipaddress
+
+	if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
+		ProfileAccountNumber = find_account_number(ocredentials['Profile'])
+		logging.info(
+			f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
+		if ProfileAccountNumber == ocredentials['AccountNumber']:
+			session_ec2 = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
+		else:
+			session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+									   aws_secret_access_key=ocredentials['SecretAccessKey'],
+									   aws_session_token=ocredentials['SessionToken'],
+									   region_name=fRegion)
+	else:
+		session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
+			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	subnet_info = session_ec2.client('ec2')
+	logging.warning(f"Looking for Subnets that match any of {fipaddresses} in account #{ocredentials['AccountNumber']} in region {fRegion}")
+	Subnets = {'NextToken': None}
+	AllSubnets = {'Subnets': []}
+
+	while 'NextToken' in Subnets.keys():
+		if fipaddresses is None:
+			Subnets = subnet_info.describe_subnets()
+			AllSubnets = Subnets
+		else:
+			Subnets = subnet_info.describe_subnets()
+			# Run through each of the subnets, and determine if the passed in IP address fits within any of them
+			# If it does - then include that data within the array, otherwise next...
+			for subnet in Subnets['Subnets']:
+				for address in fipaddresses:
+					logging.info(f"{address} in {subnet['CidrBlock']}: {ipaddress.ip_address(address) in ipaddress.ip_network(subnet['CidrBlock'])}")
+					if ipaddress.ip_address(address) in ipaddress.ip_network(subnet['CidrBlock']):
+						AllSubnets['Subnets'].append(subnet)
+	return (AllSubnets)
+
+
 def find_users2(ocredentials):
 	"""
 	ocredentials is an object with the following structure:
