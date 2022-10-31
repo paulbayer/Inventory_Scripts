@@ -112,7 +112,7 @@ class aws_acct_access:
 		UsingSessionToken = False
 		account_access_successful = False
 		account_and_region_access_successful = False
-		if ocredentials is not None:
+		if ocredentials is not None and ocredentials['Success']:
 			# Trying to instantiate a class, based on passed in credentials
 			UsingKeys = True
 			UsingSessionToken = False

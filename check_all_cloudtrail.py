@@ -135,7 +135,7 @@ if pProfiles is None:  # Default use case from the classes
 	TrailsFound.extend(check_accounts_for_cloudtrail(aws_acct, RegionList))
 	AllChildAccounts.extend(aws_acct.ChildAccounts)
 else:
-	ProfileList = Inventory_Modules.get_profiles(fprofiles=pProfiles, fSkipProfiles="skipplus")
+	ProfileList = Inventory_Modules.get_profiles(fprofiles=pProfiles)
 	logging.warning(f"These profiles are being checked {ProfileList}.")
 	for profile in ProfileList:
 		aws_acct = aws_acct_access(profile)
@@ -170,7 +170,8 @@ if verbose < 50:
 				x.add_row([MgmtAccount, ChildAccount, region, 'None', 'None', 'None'])
 	print()
 	print(x)
-print(f"Problem Accounts: {[acct for acct in ProblemAccounts if acct not in pSkipAccounts]}")
+print(f"These accounts were skipped - as requested: {pSkipAccounts}")
+print(f"These accounts didn't seem to have a CloudTrail in the regions specified: {[acct for acct in ProblemAccounts if acct not in pSkipAccounts]}")
 print()
 print(f"Found {len(TrailsFound)} trails across {len(AllChildAccounts)} accounts across {len(RegionList)} regions")
 print()
