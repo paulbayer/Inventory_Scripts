@@ -132,6 +132,11 @@ Purpose Built Scripts
   - The objective of this script is to find the saml providers within the Org. 
   - It's possible with this script to delete those providers you find, making it easier to remove a SAML provider across all of your Org, all at once. Obviously this should not be used lightly, as gaining access BACK to those accounts may be very difficult. 
 
+- **all_my_subnets.py**
+  - The objective of this script is to allow the user to find all their subnets across their org, but ALSO to find a specific subnet that matches a provided IP address, to make it easier to find that account and region where that one IP is being used.
+  - This is a READ-ONLY script, since there's likely no scenario where you want to wontonly delete subnets from your environment.
+  - I have experimented with multi-threading in this script, and it seems to make a world of difference. As always - all comments are welcome!
+
 - **all_my_vpcs.py**
   - The objective of this script is to find all the vpcs within your set of accounts - as determined by your profiles. This script has been superseded by the "all_my_vpcs2.py" since this script only looked in the specific profile you supplied.
 

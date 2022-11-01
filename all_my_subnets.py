@@ -45,7 +45,9 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(fu
 ERASE_LINE = '\x1b[2K'
 
 logging.info(f"Profiles: {pProfiles}")
-WorkerThreads = 4
+WorkerThreads = 20
+
+
 ##################
 
 
@@ -98,7 +100,7 @@ def find_places_to_check(faws_acct):
 
 	ChildAccounts = faws_acct.ChildAccounts
 	if pTiming:
-		print(f"{Fore.GREEN}Running 'find_places_to_check' for {faws_acct.acct_number} after {time()-begin_time} seconds, with {len(aws_acct.ChildAccounts)} child accounts{Fore.RESET}")
+		print(f"{Fore.GREEN}Running 'find_places_to_check' for {faws_acct.acct_number} after {time() - begin_time} seconds, with {len(aws_acct.ChildAccounts)} child accounts{Fore.RESET}")
 	account_credentials = {'Role': 'Nothing'}
 	AccountNum = 0
 	AllCreds = []
@@ -121,8 +123,8 @@ def find_places_to_check(faws_acct):
 		print(f"{ERASE_LINE}Queuing account info for {AccountNum} / {len(ChildAccounts)} accounts", end='\r')
 		logging.info(f"Queuing account {account['AccountId']}")
 		credqueue.put(account)
-		# logging.info(f"Connected to account {account['AccountId']} using role {account_credentials['Role']}")
-		# AllCreds.append(account_credentials)
+	# logging.info(f"Connected to account {account['AccountId']} using role {account_credentials['Role']}")
+	# AllCreds.append(account_credentials)
 	credqueue.join()
 	return (AllCreds)
 
@@ -198,7 +200,7 @@ def check_accounts_for_subnets(CredentialList, fRegionList=None, fip=None):
 					logging.warning(f"It's possible that the region {region} hasn't been opted-into")
 					pass
 	checkqueue.join()
-	return(AllSubnets)
+	return (AllSubnets)
 
 
 def display_subnets(subnets_list):
@@ -208,8 +210,9 @@ def display_subnets(subnets_list):
 	for subnet in subnets_list:
 		# print(subnet)
 		print(f"{subnet['MgmtAccount']:12s} {subnet['AccountId']:12s} {subnet['Region']:15s} {subnet['SubnetName']:40s} {subnet['CidrBlock']:18s} {subnet['AvailableIpAddressCount']:5d}")
-		# AllSubnets.extend(subnets['Subnets'])
-		# AccountNum += 1
+	# AllSubnets.extend(subnets['Subnets'])
+	# AccountNum += 1
+
 
 ##################
 
@@ -254,26 +257,26 @@ if pProfiles is None:  # Default use case from the classes
 	if pTiming:
 		print(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
 	logging.warning(f"Default profile will be used")
+	# This should populate the list "AllCreds" with the credentials for the relevant accounts.
+	logging.info(f"Queueing default profile for credentials")
 	AllCredentials.extend(find_places_to_check(aws_acct))
-	# SubnetsFound.extend(check_accounts_for_subnets(AllCredentials, RegionList, fip=pIPaddressList))
-	# display_subnets(SubnetsFound)
+
 else:
 	ProfileList = Inventory_Modules.get_profiles(fprofiles=pProfiles)
 	print(f"Capturing info for supplied profiles")
 	logging.warning(f"These profiles are being checked {ProfileList}.")
 	for profile in ProfileList:
 		aws_acct = aws_acct_access(profile)
-		if pTiming:
-			print(f"{Fore.GREEN}Overhead consumed {time()-begin_time} seconds up till now{Fore.RESET}")
-		logging.warning(f"Looking at {profile} account now... ")
 		RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
+		if pTiming:
+			print(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
+		logging.warning(f"Looking at {profile} account now... ")
 		logging.info(f"Queueing {profile} for credentials")
 		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 		AllCredentials.extend(find_places_to_check(aws_acct))
 
 SubnetsFound.extend(check_accounts_for_subnets(AllCredentials, RegionList, fip=pIPaddressList))
 display_subnets(SubnetsFound)
-		# AllChildAccounts.extend(aws_acct.ChildAccounts)
 
 end_time = time()
 duration = end_time - begin_time

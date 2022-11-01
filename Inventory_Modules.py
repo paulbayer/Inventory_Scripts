@@ -1423,7 +1423,6 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 		session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
 			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
 	subnet_info = session_ec2.client('ec2')
-	logging.warning(f"Looking for Subnets that match any of {fipaddresses} in account #{ocredentials['AccountNumber']} in region {fRegion}")
 	Subnets = {'NextToken': None}
 	AllSubnets = {'Subnets': []}
 
@@ -1432,9 +1431,11 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 		Subnets = dict()
 		try:
 			if fipaddresses is None:
+				logging.warning(f"Looking for all subnets in account #{ocredentials['AccountNumber']} in region {fRegion}")
 				Subnets = subnet_info.describe_subnets()
 				AllSubnets = Subnets
 			else:
+				logging.warning(f"Looking for Subnets that match any of {fipaddresses} in account #{ocredentials['AccountNumber']} in region {fRegion}")
 				Subnets = subnet_info.describe_subnets()
 				# Run through each of the subnets, and determine if the passed in IP address fits within any of them
 				# If it does - then include that data within the array, otherwise next...
