@@ -13,13 +13,12 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 	import boto3
 	import logging
 	from botocore.exceptions import ClientError
-	from colorama import init, Fore, Back, Style
+	from colorama import init, Fore
 
 	# ERASE_LINE = '\x1b[2K'
 
 	def find_and_delete_vpc_endpoints(fVPC_client, fVpcId, fRegion):
 
-		import boto3
 		import logging
 		vpc_endpoints = fVPC_client.describe_vpc_endpoints(
 				Filters=[
@@ -50,8 +49,6 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 
 	def find_and_delete_vpc_security_groups(fVPC_client, fVpcId, fRegion):
 
-		import boto3
-		import pprint
 		from botocore.exceptions import ClientError
 
 		vpc_security_groups = fVPC_client.describe_security_groups(
@@ -79,8 +76,6 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 
 	def find_and_delete_vpc_peering_connections(fVPC_client, fVpcId, fRegion):
 
-		import boto3
-		import pprint
 		from botocore.exceptions import ClientError
 
 		vpc_peering_connections = fVPC_client.describe_vpc_peering_connections(
@@ -104,8 +99,6 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 
 	def find_and_delete_vpc_route_tables(fVPC_client, fVpcId, fRegion):
 
-		import boto3
-		import pprint
 		from botocore.exceptions import ClientError
 
 		vpc_route_tables = fVPC_client.describe_route_tables(
@@ -152,8 +145,6 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 
 	def find_and_delete_vpc_nacls(fVPC_client, fVpcId, fRegion):
 
-		import boto3
-		import pprint
 		from botocore.exceptions import ClientError
 
 		vpc_nacls = fVPC_client.describe_network_acls(
@@ -181,8 +172,6 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 
 	def find_and_delete_subnets(fVPC_client, fVpcId, fRegion):
 
-		import boto3
-		import pprint
 		from botocore.exceptions import ClientError
 
 		subnets = fVPC_client.describe_subnets(
@@ -213,11 +202,10 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 
 	def find_and_delete_NAT_gateways(fVPC_client, fVpcId, fRegion):
 
-		import boto3
-		import pprint
 		import time
 		from botocore.exceptions import ClientError
 
+		cyclesWaited = 0
 		nat_gateways = fVPC_client.describe_nat_gateways(
 				Filters=[
 					{
@@ -265,8 +253,6 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 
 	def find_and_delete_gateways(fVPC_client, fVpcId, fRegion):
 
-		import boto3
-		import pprint
 		from botocore.exceptions import ClientError
 
 		gateways = fVPC_client.describe_internet_gateways(
@@ -298,11 +284,10 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 
 	def find_and_delete_virtual_gateways(fVPC_client, fVpcId, fRegion):
 
-		import boto3
-		import pprint
 		import time
 		from botocore.exceptions import ClientError
 
+		cyclesWaited = 0
 		vgws = fVPC_client.describe_vpn_gateways(
 				Filters=[
 					{
@@ -348,8 +333,6 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 
 	def delete_vpc(fVPC_client, fVpcId, fRegion):
 
-		import boto3
-		import pprint
 		from botocore.exceptions import ClientError
 
 		try:

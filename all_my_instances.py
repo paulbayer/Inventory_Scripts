@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-import boto3
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access

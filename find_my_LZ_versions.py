@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
+import sys
 
 import Inventory_Modules
 import argparse
+from ArgumentsClass import CommonArguments
 import boto3
 from colorama import init
 from botocore.exceptions import ClientError, CredentialRetrievalError, InvalidConfigError
@@ -10,67 +12,34 @@ import logging
 
 init()
 
-parser = argparse.ArgumentParser(
-		description="This script finds the version of your ALZ.",
-		prefix_chars='-+/')
-parser.my_parser.add_argument(
-		"-p", "--profile",
-		dest="pProfile",
-		metavar="profile to use",
-		default="default",
-		help="Must specify a root profile. Default will be the default profile. You can specify 'all' ")
-parser.my_parser.add_argument(
-		'-d', '--debug',
-		help="Print LOTS of debugging statements",
-		action="store_const",
-		dest="loglevel",
-		const=logging.DEBUG,  # args.loglevel = 10
-		default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-		'-vvv',
-		help="Print INFO level statements",
-		action="store_const",
-		dest="loglevel",
-		const=logging.INFO,  # args.loglevel = 20
-		default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-		'-vv', '--verbose',
-		help="Be MORE verbose",
-		action="store_const",
-		dest="loglevel",
-		const=logging.WARNING,  # args.loglevel = 30
-		default=logging.CRITICAL)  # args.loglevel = 50
-parser.my_parser.add_argument(
-		'-v',
-		help="Be verbose",
-		action="store_const",
-		dest="loglevel",
-		const=logging.ERROR,  # args.loglevel = 40
-		default=logging.CRITICAL)  # args.loglevel = 50
+parser = CommonArguments()
+parser.verbosity()
+parser.multiprofile()
 args = parser.my_parser.parse_args()
 
-pProfile = args.pProfiles
+pProfiles = args.Profiles
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel,
-                    format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)30s() ] %(message)s")
+					format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)30s() ] %(message)s")
 
 ##########################
 ERASE_LINE = '\x1b[2K'
 SkipProfiles = ['default']
 
-if pProfile in ['all', 'All', 'ALL']:
-	logging.info(
-		"%s was provided as the profile, so we're going to check ALL of their profiles to find all of the management accounts, and list out all of their ALZ versions.",
-		pProfile)
-	print(
-		"You've specified multiple profiles, so we've got to find them, determine which profiles represent Management Accounts, and then parse through those. This will take a few moments.")
+if pProfiles is None:
+	print(f"This script requires a profile name to be submitted.")
+	sys.exit(1)
+elif 'all' in pProfiles or 'ALL' in pProfiles or 'All' in pProfiles:
+	logging.info(f"You specified 'all' as the profile, so we're going to check ALL of the profiles to find all of the management accounts, and list out all of their ALZ versions.")
+	print("You've specified multiple profiles, so we've got to find them, determine which profiles represent Management Accounts, \n"
+		  "and then parse through those. This will take a few moments.")
 	AllProfiles = Inventory_Modules.get_profiles()
 else:
-	AllProfiles = [pProfile]
+	AllProfiles = pProfiles
 
 ALZProfiles = []
 for profile in AllProfiles:
-	print(ERASE_LINE, f"Checking profile: {profile}", end="\r")
+	print(f"{ERASE_LINE}Checking profile: {profile}", end='\r')
 	try:
 		ALZMgmntAcct = Inventory_Modules.find_if_alz(profile)
 		if ALZMgmntAcct['ALZ']:
@@ -79,7 +48,7 @@ for profile in AllProfiles:
 				'Profile': profile,
 				'Acctnum': accountnum,
 				'Region' : ALZMgmntAcct['Region']
-				})
+			})
 	except ClientError as my_Error:
 		if str(my_Error).find("UnrecognizedClientException") > 0:
 			logging.error("%s: Security Issue", profile)
@@ -113,9 +82,10 @@ for item in ALZProfiles:
 				if stack_list[i]['Outputs'][j]['OutputKey'] == 'LandingZoneSolutionVersion':
 					ALZVersion = stack_list[i]['Outputs'][j]['OutputValue']
 					print(fmt % (
-					item['Profile'], item['Acctnum'], item['Region'], stack_list[i]['StackName'], ALZVersion))
+						item['Profile'], item['Acctnum'], item['Region'], stack_list[i]['StackName'], ALZVersion))
 
 print(ERASE_LINE)
-print(f"Checked {len(AllProfiles)} accounts. Found {len(ALZProfiles)} ALZs")
+print(f"Checked {len(AllProfiles)} accounts/ Orgs. Found {len(ALZProfiles)} ALZs")
 print()
 print("Thank you for using this script.")
+print()

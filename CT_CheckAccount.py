@@ -3,7 +3,6 @@
 from pprint import pprint
 import sys
 import Inventory_Modules
-import argparse
 from colorama import init, Fore
 from botocore.exceptions import ClientError
 from prettytable import PrettyTable

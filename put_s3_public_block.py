@@ -4,7 +4,7 @@ import boto3
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
-from colorama import init, Fore, Back, Style
+from colorama import init, Fore
 from botocore.exceptions import ClientError, ProfileNotFound
 
 import logging

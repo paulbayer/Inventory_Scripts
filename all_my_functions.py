@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-import pprint
 import Inventory_Modules
-from colorama import init, Fore, Back, Style
-from botocore.exceptions import ClientError, NoCredentialsError
+from colorama import init, Fore
+from botocore.exceptions import ClientError
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 

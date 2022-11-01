@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 
 import sys
-
-import boto3
-
 import Inventory_Modules
 import vpc_modules
 from colorama import init, Fore

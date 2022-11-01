@@ -4,5 +4,5 @@ colorama>=0.4.4
 prettytable>=2.2.0
 simplejson>=3.17.5
 urllib3>=1.26.7
-
+randominfo>=2.0.2
 setuptools~=63.4.3

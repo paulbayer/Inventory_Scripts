@@ -10,8 +10,6 @@ from queue import Queue
 from threading import Thread
 from time import time
 
-from prettytable import PrettyTable
-
 import logging
 
 init()
@@ -196,7 +194,7 @@ def check_accounts_for_subnets(CredentialList, fRegionList=None, fip=None):
 				PlaceCount += 1
 			except ClientError as my_Error:
 				if str(my_Error).find("AuthFailure") > 0:
-					logging.error(f"Authorization Failure accessing account {account['AccountId']} in {region} region")
+					logging.error(f"Authorization Failure accessing account {credential['AccountId']} in {region} region")
 					logging.warning(f"It's possible that the region {region} hasn't been opted-into")
 					pass
 	checkqueue.join()

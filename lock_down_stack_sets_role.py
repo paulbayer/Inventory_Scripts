@@ -197,7 +197,7 @@ for acct in aws_acct.ChildAccounts:
 			pass
 
 print(ERASE_LINE)
-print(f"We found {len(ChildAccounts)} accounts under your organization")
+print(f"We found {len(aws_acct.ChildAccounts)} accounts under your organization")
 if pLock and pFix:
 	print(f"We locked {TrustPoliciesChanged} Trust Policies")
 elif not pLock and pFix:
