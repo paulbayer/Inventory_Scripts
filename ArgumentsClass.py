@@ -93,6 +93,11 @@ class CommonArguments():
 			metavar="Accounts to leave alone",
 			default=[],
 			help="These are the account numbers you don't want to screw with. Likely the core accounts.")
+		self.my_parser.add_argument(
+			"--timing", "--time",
+			dest="Time",
+			action="store_true",
+			help="Use this parameter to add a timing for the scripts")
 
 	def fragment(self):
 		self.my_parser.add_argument(
