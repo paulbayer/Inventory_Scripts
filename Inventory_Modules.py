@@ -2292,7 +2292,7 @@ def find_stacksets3(faws_acct, fRegion=None, fStackFragment=None):
 	returns a dict object with the list of stacksets if successful.
 	"""
 	import logging
-	from urllib3.exceptions import NewConnectionError
+	# from urllib3.exceptions import NewConnectionError
 	from botocore.exceptions import EndpointConnectionError
 
 	# Logging Settings
