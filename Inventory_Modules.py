@@ -691,6 +691,7 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 		logging.info(explain_string)
 		# TODO: Wrap this in a try/except loop on the off-chance that the class doesn't work properly
 		account_credentials = {'ParentAcctId'   : ParentAccountId,
+							   'MgmtAccount'    : ParentAccountId,
 							   'OrgType'        : org_status,
 							   'AccessKeyId'    : faws_acct.creds.access_key,
 							   'SecretAccessKey': faws_acct.creds.secret_key,
@@ -710,6 +711,7 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 	# This way the operator knows that NONE of the roles supplied worked.
 	return_string = f"{str(fRoleList)} failed. Try Again"
 	account_credentials = {'ParentAcctId'   : ParentAccountId,
+						   'MgmtAccount'    : ParentAccountId,
 						   'OrgType'        : org_status,
 						   'AccessKeyId'    : None,
 						   'SecretAccessKey': None,
@@ -730,18 +732,19 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 				logging.info(
 					f"Trying to access account {fChildAccount} using account number {faws_acct.acct_number} assuming role: {role}")
 			role_arn = f"arn:aws:iam::{fChildAccount}:role/{role}"
-			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Test-ChildAccount-Access")[
-				'Credentials']
+			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Test-ChildAccount-Access")['Credentials']
 			# If we were successful up to this point, then we'll short-cut everything and just return the credentials that worked
 			logging.info(f"The credentials for account {fChildAccount} using parent account "
 						 f"{faws_acct.acct_number} and role name {role} worked")
 			account_credentials['ParentAcctId'] = ParentAccountId
+			account_credentials['MgmtAccount'] = ParentAccountId
 			account_credentials['OrgType'] = org_status
 			account_credentials['AccountNumber'] = fChildAccount
 			account_credentials['AccountId'] = fChildAccount
 			account_credentials['Region'] = fRegion
 			account_credentials['Role'] = role
 			account_credentials['AccessError'] = False
+			account_credentials['ErrorMessage'] = None
 			account_credentials['Success'] = True
 			return (account_credentials)
 		except ClientError as my_Error:
@@ -1401,6 +1404,7 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 		- ['Profile'] can hold the profile, instead of the session credentials
 	"""
 	import boto3
+	from botocore.exceptions import ClientError
 	import logging
 	import ipaddress
 
@@ -1412,9 +1416,9 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 			session_ec2 = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
 		else:
 			session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-									   aws_secret_access_key=ocredentials['SecretAccessKey'],
-									   aws_session_token=ocredentials['SessionToken'],
-									   region_name=fRegion)
+										aws_secret_access_key=ocredentials['SecretAccessKey'],
+										aws_session_token=ocredentials['SessionToken'],
+										region_name=fRegion)
 	else:
 		session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
 			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
@@ -1424,18 +1428,25 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 	AllSubnets = {'Subnets': []}
 
 	while 'NextToken' in Subnets.keys():
-		if fipaddresses is None:
-			Subnets = subnet_info.describe_subnets()
-			AllSubnets = Subnets
-		else:
-			Subnets = subnet_info.describe_subnets()
-			# Run through each of the subnets, and determine if the passed in IP address fits within any of them
-			# If it does - then include that data within the array, otherwise next...
-			for subnet in Subnets['Subnets']:
-				for address in fipaddresses:
-					logging.info(f"{address} in {subnet['CidrBlock']}: {ipaddress.ip_address(address) in ipaddress.ip_network(subnet['CidrBlock'])}")
-					if ipaddress.ip_address(address) in ipaddress.ip_network(subnet['CidrBlock']):
-						AllSubnets['Subnets'].append(subnet)
+		# Had to add this so that a failure of the describe_subnet function doesn't cause a race condition
+		Subnets = dict()
+		try:
+			if fipaddresses is None:
+				Subnets = subnet_info.describe_subnets()
+				AllSubnets = Subnets
+			else:
+				Subnets = subnet_info.describe_subnets()
+				# Run through each of the subnets, and determine if the passed in IP address fits within any of them
+				# If it does - then include that data within the array, otherwise next...
+				for subnet in Subnets['Subnets']:
+					for address in fipaddresses:
+						logging.info(f"{address} in {subnet['CidrBlock']}: {ipaddress.ip_address(address) in ipaddress.ip_network(subnet['CidrBlock'])}")
+						if ipaddress.ip_address(address) in ipaddress.ip_network(subnet['CidrBlock']):
+							AllSubnets['Subnets'].append(subnet)
+		except ClientError as my_Error:
+			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
+						  f"This is likely due to '{fRegion}' not being enabled for your account")
+			continue
 	return (AllSubnets)
 
 
