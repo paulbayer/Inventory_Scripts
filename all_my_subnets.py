@@ -2,6 +2,7 @@
 
 # import boto3
 import Inventory_Modules
+from Inventory_Modules import find_places_to_check
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 from colorama import init, Fore
@@ -43,88 +44,8 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(fu
 ERASE_LINE = '\x1b[2K'
 
 logging.info(f"Profiles: {pProfiles}")
-WorkerThreads = 20
-
 
 ##################
-
-
-def find_places_to_check(faws_acct):
-	"""
-	Note that this function simply collects credentials of all the accounts underneath the Org passed to it.
-	"""
-
-	class AssembleCredentials(Thread):
-
-		def __init__(self, queue):
-			Thread.__init__(self)
-			self.queue = queue
-
-		def run(self):
-			while True:
-				# Get the work from the queue and expand the tuple
-				account_info = self.queue.get()
-				logging.info(f"De-queued info for account {account_info['AccountId']}")
-				try:
-					logging.info(f"Attempting to connect to {account_info['AccountId']}")
-					faccount_credentials = Inventory_Modules.get_child_access3(faws_acct, account_info['AccountId'])
-					if faccount_credentials['Success']:
-						logging.info(f"Successfully connected to account {account_info['AccountId']}")
-					else:
-						logging.error(f"Error connecting to account {account_info['AccountId']}.\n"
-									  f"Error Message: {faccount_credentials['ErrorMessage']}")
-					AllCreds.append(faccount_credentials)
-				except ClientError as my_Error:
-					if str(my_Error).find("AuthFailure") > 0:
-						logging.error(f"{account['AccountId']}: Authorization failure using role: {account_credentials['Role']}")
-						logging.warning(my_Error)
-					elif str(my_Error).find("AccessDenied") > 0:
-						logging.error(f"{account['AccountId']}: Access Denied failure using role: {account_credentials['Role']}")
-						logging.warning(my_Error)
-					else:
-						logging.error(f"{account['AccountId']}: Other kind of failure using role: {account_credentials['Role']}")
-						logging.warning(my_Error)
-					continue
-				except KeyError as my_Error:
-					logging.error(f"Account Access failed - trying to access {account['AccountId']}")
-					logging.info(f"Actual Error: {my_Error}")
-					pass
-				except AttributeError as my_Error:
-					logging.error(f"Error: Likely that one of the supplied profiles {pProfiles} was wrong")
-					logging.warning(my_Error)
-					continue
-				finally:
-					self.queue.task_done()
-
-	ChildAccounts = faws_acct.ChildAccounts
-	if pTiming:
-		print(f"{Fore.GREEN}Running 'find_places_to_check' for {faws_acct.acct_number} after {time() - begin_time} seconds, with {len(aws_acct.ChildAccounts)} child accounts{Fore.RESET}")
-	account_credentials = {'Role': 'Nothing'}
-	AccountNum = 0
-	AllCreds = []
-	credqueue = Queue()
-
-	# Create x worker threads
-	for x in range(WorkerThreads):
-		worker = AssembleCredentials(credqueue)
-		# Setting daemon to True will let the main thread exit even though the workers are blocking
-		worker.daemon = True
-		worker.start()
-
-	for account in ChildAccounts:
-		SkipAccounts = pSkipAccounts
-		if account['AccountId'] in SkipAccounts:
-			continue
-		elif pRootOnly and not account['AccountId'] == account['MgmtAccount']:
-			continue
-		AccountNum += 1
-		print(f"{ERASE_LINE}Queuing account info for {AccountNum} / {len(ChildAccounts)} accounts", end='\r')
-		logging.info(f"Queuing account {account['AccountId']}")
-		credqueue.put(account)
-	# logging.info(f"Connected to account {account['AccountId']} using role {account_credentials['Role']}")
-	# AllCreds.append(account_credentials)
-	credqueue.join()
-	return (AllCreds)
 
 
 def check_accounts_for_subnets(CredentialList, fRegionList=None, fip=None):
@@ -218,10 +139,6 @@ begin_time = time()
 print()
 print(f"Checking for Subnets... ")
 print()
-print()
-fmt = '%-12s %-12s %-15s %-40s %-18s %-5s'
-print(fmt % ("Root Acct #", "Account #", "Region", "Subnet Name", "CIDR", "Available IPs"))
-print(fmt % ("-----------", "---------", "------", "-----------", "----", "-------------"))
 
 SubnetsFound = []
 AllChildAccounts = []
@@ -230,15 +147,15 @@ subnet_list = []
 AllCredentials = []
 
 if pProfiles is None:  # Default use case from the classes
-	logging.info("Using whatever the default profile is")
+	print("Using the default profile - gathering ")
 	aws_acct = aws_acct_access()
 	RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
+	WorkerThreads = len(aws_acct.ChildAccounts)+4
 	if pTiming:
-		print(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
-	logging.warning(f"Default profile will be used")
+		logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
 	# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 	logging.info(f"Queueing default profile for credentials")
-	AllCredentials.extend(find_places_to_check(aws_acct))
+	AllCredentials.extend(find_places_to_check(aws_acct, pSkipAccounts, pRootOnly))
 
 else:
 	ProfileList = Inventory_Modules.get_profiles(fprofiles=pProfiles)
@@ -246,13 +163,18 @@ else:
 	logging.warning(f"These profiles are being checked {ProfileList}.")
 	for profile in ProfileList:
 		aws_acct = aws_acct_access(profile)
+		WorkerThreads = len(aws_acct.ChildAccounts) + 4
 		RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
 		if pTiming:
-			print(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
+			logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
 		logging.warning(f"Looking at {profile} account now... ")
 		logging.info(f"Queueing {profile} for credentials")
 		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
-		AllCredentials.extend(find_places_to_check(aws_acct))
+		AllCredentials.extend(find_places_to_check(aws_acct, pSkipAccounts, pRootOnly))
+
+fmt = '%-12s %-12s %-15s %-40s %-18s %-5s'
+print(fmt % ("Root Acct #", "Account #", "Region", "Subnet Name", "CIDR", "Available IPs"))
+print(fmt % ("-----------", "---------", "------", "-----------", "----", "-------------"))
 
 SubnetsFound.extend(check_accounts_for_subnets(AllCredentials, RegionList, fip=pIPaddressList))
 display_subnets(SubnetsFound)

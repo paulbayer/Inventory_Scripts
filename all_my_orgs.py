@@ -33,7 +33,7 @@ args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
 rootonly = args.RootOnly
-pTime = args.Time
+pTiming = args.Time
 pSkipAccounts = args.SkipAccounts
 verbose = args.loglevel
 shortform = args.shortform
@@ -194,7 +194,7 @@ for acct in AccountOrgAssociationList:
 end_time = time()
 duration = end_time - begin_time
 print()
-if pTime:
-	print(f"This process took {duration} seconds")
+if pTiming:
+	print(f"{Fore.GREEN}This script took {duration} seconds{Fore.RESET}")
 print("Thanks for using this script")
 print()
