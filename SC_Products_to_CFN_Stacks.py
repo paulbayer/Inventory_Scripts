@@ -5,6 +5,7 @@ import Inventory_Modules
 from account_class import aws_acct_access
 from ArgumentsClass import CommonArguments
 from colorama import init, Fore
+from time import time
 from botocore.exceptions import ClientError
 import logging
 
@@ -13,6 +14,7 @@ init()
 parser = CommonArguments()
 parser.singleprofile()
 parser.singleregion()
+parser.extendedargs()
 parser.verbosity()
 parser.my_parser.add_argument(
 	"+d", "+delete",
@@ -23,10 +25,15 @@ args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
 pRegion = args.Region
+pTiming = args.Time
 verbose = args.loglevel
 DeletionRun = args.DeletionRun
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
+# if pTiming:
+# 	timing_logging_level = 45
+# 	logging.addLevelName(timing_logging_level, 'timing')
+# 	logging.basicConfig(level=timing_logging_level, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 ##########################
 def sort_by_email(elem):
@@ -70,6 +77,7 @@ Significant Variable Explanation:
 	** TODO: This list should hold *all* stacks and then we could find stacks for accounts that no longer exist.
 	'AccountHistogram' holds the list of accounts (the account numbers are the keys in this dict) and the number of SC products that are created for this account is the value of that key.
 '''
+begin_time = time()
 
 ERASE_LINE = '\x1b[2K'
 
@@ -112,7 +120,12 @@ try:
 			ErroredSCPExists = True
 
 	CFNStacks = Inventory_Modules.find_stacks3(aws_acct, pRegion, f"SC-{aws_acct.acct_number}")
+
+	if pTiming:
+		logging.critical(f"It's been {time()-begin_time} seconds now...")
 	SCresponse = None
+
+	# TODO: Create a queue - place the SCProducts on that queue, one by one, and let this code run in a multi-thread worker
 	for i in range(len(SCProducts)):
 		print(f"{ERASE_LINE}{Fore.RED}Checking {i + 1} of {len(SCProducts)} products{Fore.RESET}", end='\r')
 		CFNresponse = Inventory_Modules.find_stacks3(aws_acct, pRegion, SCProducts[i]['SCPId'])
@@ -213,6 +226,7 @@ try:
 				AccountHistogram[SCP2Stacks[i]['AccountID']] = 1
 			else:
 				AccountHistogram[SCP2Stacks[i]['AccountID']] += 1
+	# TODO: See if we can't update this whole thing to PrettyTable?
 	DisplaySpacing = define_pretty_headings(SCP2Stacks)
 	print("Account ID".ljust(DisplaySpacing['AccountNumber']),
 	      "SC Product Name".ljust(DisplaySpacing['SCProductName']),
@@ -292,6 +306,10 @@ if ErroredSCPExists:
 print()
 for i in AccountHistogram:
 	logging.info(f"Account ID: {i} is {AccountHistogram[i]}")
+end_time = time()
+duration = end_time - begin_time
+if pTiming:
+	print(f"{Fore.GREEN}This script took {duration} seconds{Fore.RESET}")
 print(f"We found {len(aws_acct.ChildAccounts)} accounts within the Org")
 print(f"We found {len(SCProducts)} Service Catalog Products")
 print(f"We found {len(SuspendedAccounts)} Suspended accounts")
