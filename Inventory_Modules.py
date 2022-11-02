@@ -2718,7 +2718,7 @@ def find_ssm_parameters(fProfile, fRegion):
 ############
 
 
-def find_places_to_check(faws_acct, fSkipAccounts=[], fRootOnly=False):
+def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=[], fRootOnly=False):
 	"""
 	Note that this function returns the credentials of all the accounts underneath the Org passed to it.
 	"""
@@ -2793,3 +2793,112 @@ def find_places_to_check(faws_acct, fSkipAccounts=[], fRootOnly=False):
 		credqueue.put(account)
 	credqueue.join()
 	return (AllCreds)
+
+
+def get_org_accounts_from_profiles(fProfileList, progress_bar=False):
+	"""
+	Note that this function returns the account information from the list of profiles passed to it
+	"""
+	import logging
+	from queue import Queue
+	from threading import Thread
+	from account_class import aws_acct_access
+	from botocore.exceptions import ClientError, InvalidConfigError, NoCredentialsError
+
+	class AssembleCredentials(Thread):
+
+		def __init__(self, queue):
+			Thread.__init__(self)
+			self.queue = queue
+
+		def run(self):
+			Account = dict()
+			Account['ErrorFlag'] = Account['Success'] = Account['RootAcct'] = False
+			Account['MgmtAcct'] = Account['Email'] = Account['OrgId'] = None
+			while True:
+				# Get the work from the queue and expand the tuple
+				profile = self.queue.get()
+				logging.info(f"De-queued info for account {profile}")
+				try:
+					logging.info(f"Trying profile {profile}")
+					aws_acct = aws_acct_access(profile)
+					Account['profile'] = profile
+					Account['aws_acct'] = aws_acct
+					if aws_acct.acct_number == 'Unknown':
+						Account['ErrorFlag'] = True
+						logging.info(f"Access to the profile {profile} has failed")
+						pass
+					elif aws_acct.AccountType.lower() == 'root':  # The Account is deemed to be a Management Account
+						logging.info(f"AccountNumber: {aws_acct.acct_number}")
+						Account['MgmtAcct'] = aws_acct.MgmtAccount
+						Account['Email'] = aws_acct.MgmtEmail
+						Account['OrgId'] = aws_acct.OrgID
+						Account['Success'] = True
+						Account['RootAcct'] = True
+					elif aws_acct.AccountType.lower() in ['standalone', 'child']:
+						Account['MgmtAcct'] = aws_acct.MgmtAccount
+						Account['Email'] = aws_acct.MgmtEmail
+						Account['OrgId'] = aws_acct.OrgID
+						Account['Success'] = True
+						Account['RootAcct'] = False
+				except ClientError as my_Error:
+					Account['ErrorFlag'] = True
+					if str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
+						Account['MgmtAcct'] = "Not an Org Account"
+					elif str(my_Error).find("AccessDenied") > 0:
+						Account['MgmtAcct'] = "Acct not auth for Org API."
+					elif str(my_Error).find("InvalidClientTokenId") > 0:
+						Account['MgmtAcct'] = "Credentials Invalid."
+					elif str(my_Error).find("ExpiredToken") > 0:
+						Account['MgmtAcct'] = "Token Expired."
+					else:
+						logging.error("Client Error")
+						logging.error(my_Error)
+				except InvalidConfigError as my_Error:
+					Account['ErrorFlag'] = True
+					if str(my_Error).find("does not exist") > 0:
+						logging.error("Source profile error")
+						logging.error(my_Error)
+					else:
+						logging.error("Credentials Error")
+						logging.error(my_Error)
+				except NoCredentialsError as my_Error:
+					Account['ErrorFlag'] = True
+					if str(my_Error).find("Unable to locate credentials") > 0:
+						Account['MgmtAcct'] = "This profile doesn't have credentials."
+					else:
+						logging.error("Credentials Error")
+						logging.error(my_Error)
+				except AttributeError or Exception as my_Error:
+					Account['ErrorFlag'] = True
+					if str(my_Error).find("object has no attribute") > 0:
+						Account['MgmtAcct'] = "This profile's credentials don't work."
+						logging.error(my_Error)
+					else:
+						logging.error("Credentials Error")
+						logging.error(my_Error)
+				finally:
+					self.queue.task_done()
+				AllAccounts.append(Account)
+
+	AllAccounts = []
+	profilequeue = Queue()
+	# WorkerThreads = 9
+	WorkerThreads = len(fProfileList)
+
+	# Create x worker threads
+	for x in range(WorkerThreads):
+		# if progress_bar:
+		# 	print(f"{x}", end='')
+		worker = AssembleCredentials(profilequeue)
+		# Setting daemon to True will let the main thread exit even though the workers are blocking
+		worker.daemon = True
+		worker.start()
+
+	for profile_item in fProfileList:
+		logging.info(f"Queuing profile {profile_item} / {len(fProfileList)} profiles")
+		# if progress_bar:
+		# 	print("\b\b!", end='')
+		profilequeue.put(profile_item)
+	profilequeue.join()
+	return (AllAccounts)
