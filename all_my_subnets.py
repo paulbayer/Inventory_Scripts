@@ -51,7 +51,7 @@ WorkerThreads = 20
 
 def find_places_to_check(faws_acct):
 	"""
-	Note that this function checks the account AND any children accounts in the Org.
+	Note that this function simply collects credentials of all the accounts underneath the Org passed to it.
 	"""
 
 	class AssembleCredentials(Thread):
@@ -129,7 +129,7 @@ def find_places_to_check(faws_acct):
 
 def check_accounts_for_subnets(CredentialList, fRegionList=None, fip=None):
 	"""
-	Note that this function checks the account AND any children accounts in the Org.
+	Note that this function takes a list of Credentials and checks for subnets in every account it has creds for
 	"""
 
 	class FindSubnets(Thread):
@@ -203,7 +203,7 @@ def check_accounts_for_subnets(CredentialList, fRegionList=None, fip=None):
 
 def display_subnets(subnets_list):
 	"""
-
+	Note that this function simply formats the output of the data within the list provided
 	"""
 	for subnet in subnets_list:
 		# print(subnet)
@@ -212,25 +212,6 @@ def display_subnets(subnets_list):
 	# AccountNum += 1
 
 
-##################
-
-
-"""
-queue = Queue()
-# Create 8 worker threads
-for x in range(8):
-	worker = DownloadWorker(queue)
-	# Setting daemon to True will let the main thread exit even though the workers are blocking
-	worker.daemon = True
-	worker.start()
-# Put the tasks into the queue as a tuple
-for link in links:
-	logger.info('Queueing {}'.format(link))
-	queue.put((download_dir, link))
-# Causes the main thread to wait for the queue to finish processing all the tasks
-queue.join()
-logging.info('Took %s', time() - ts)
-"""
 ##################
 
 begin_time = time()

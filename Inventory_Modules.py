@@ -2714,3 +2714,82 @@ def find_ssm_parameters(fProfile, fRegion):
 	print()
 	logging.error("Found %s parameters", len(response2))
 	return (response2)
+
+############
+
+
+def find_places_to_check(faws_acct, fSkipAccounts=[], fRootOnly=False):
+	"""
+	Note that this function returns the credentials of all the accounts underneath the Org passed to it.
+	"""
+	import logging
+	from queue import Queue
+	from threading import Thread
+	from botocore.exceptions import ClientError
+
+	class AssembleCredentials(Thread):
+
+		def __init__(self, queue):
+			Thread.__init__(self)
+			self.queue = queue
+
+		def run(self):
+			while True:
+				# Get the work from the queue and expand the tuple
+				account_info = self.queue.get()
+				logging.info(f"De-queued info for account {account_info['AccountId']}")
+				try:
+					logging.info(f"Attempting to connect to {account_info['AccountId']}")
+					faccount_credentials = get_child_access3(faws_acct, account_info['AccountId'])
+					if faccount_credentials['Success']:
+						logging.info(f"Successfully connected to account {account_info['AccountId']}")
+					else:
+						logging.error(f"Error connecting to account {account_info['AccountId']}.\n"
+									  f"Error Message: {faccount_credentials['ErrorMessage']}")
+					AllCreds.append(faccount_credentials)
+				except ClientError as my_Error:
+					if str(my_Error).find("AuthFailure") > 0:
+						logging.error(f"{account['AccountId']}: Authorization failure using role: {account_credentials['Role']}")
+						logging.warning(my_Error)
+					elif str(my_Error).find("AccessDenied") > 0:
+						logging.error(f"{account['AccountId']}: Access Denied failure using role: {account_credentials['Role']}")
+						logging.warning(my_Error)
+					else:
+						logging.error(f"{account['AccountId']}: Other kind of failure using role: {account_credentials['Role']}")
+						logging.warning(my_Error)
+					continue
+				except KeyError as my_Error:
+					logging.error(f"Account Access failed - trying to access {account['AccountId']}")
+					logging.info(f"Actual Error: {my_Error}")
+					pass
+				except AttributeError as my_Error:
+					logging.error(f"Error: Likely that one of the supplied profiles was wrong")
+					logging.warning(my_Error)
+					continue
+				finally:
+					self.queue.task_done()
+
+	ChildAccounts = faws_acct.ChildAccounts
+	account_credentials = {'Role': 'Nothing'}
+	AccountNum = 0
+	AllCreds = []
+	credqueue = Queue()
+	WorkerThreads = len(ChildAccounts)+4
+
+	# Create x worker threads
+	for x in range(WorkerThreads):
+		worker = AssembleCredentials(credqueue)
+		# Setting daemon to True will let the main thread exit even though the workers are blocking
+		worker.daemon = True
+		worker.start()
+
+	for account in ChildAccounts:
+		if account['AccountId'] in fSkipAccounts:
+			continue
+		elif fRootOnly and not account['AccountId'] == account['MgmtAccount']:
+			continue
+		AccountNum += 1
+		logging.info(f"Queuing account info for {AccountNum} / {len(ChildAccounts)} accounts")
+		credqueue.put(account)
+	credqueue.join()
+	return (AllCreds)
