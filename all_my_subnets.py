@@ -2,7 +2,7 @@
 
 # import boto3
 import Inventory_Modules
-from Inventory_Modules import find_places_to_check
+from Inventory_Modules import get_credentials_for_accounts_in_org
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 from colorama import init, Fore
@@ -155,7 +155,7 @@ if pProfiles is None:  # Default use case from the classes
 		logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
 	# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 	logging.info(f"Queueing default profile for credentials")
-	AllCredentials.extend(find_places_to_check(aws_acct, pSkipAccounts, pRootOnly))
+	AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly))
 
 else:
 	ProfileList = Inventory_Modules.get_profiles(fprofiles=pProfiles)
@@ -170,7 +170,7 @@ else:
 		logging.warning(f"Looking at {profile} account now... ")
 		logging.info(f"Queueing {profile} for credentials")
 		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
-		AllCredentials.extend(find_places_to_check(aws_acct, pSkipAccounts, pRootOnly))
+		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly))
 
 fmt = '%-12s %-12s %-15s %-40s %-18s %-5s'
 print(fmt % ("Root Acct #", "Account #", "Region", "Subnet Name", "CIDR", "Available IPs"))
