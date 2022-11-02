@@ -4,6 +4,7 @@ import logging
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 import Inventory_Modules
+from time import time
 from botocore.exceptions import ClientError, NoCredentialsError, InvalidConfigError
 from colorama import init, Fore, Style
 
@@ -11,14 +12,10 @@ init()
 
 parser = CommonArguments()
 parser.multiprofile()
+parser.rootOnly()
+parser.extendedargs()
 parser.verbosity()
-parser.my_parser.add_argument(
-		'-R', '--root',
-		help="Display only the root accounts found in the profiles",
-		action="store_const",
-		dest="rootonly",
-		const=True,
-		default=False)
+
 parser.my_parser.add_argument(
 		'-s', '--q', '--short',
 		help="Display only brief listing of the root accounts, and not the Child Accounts under them",
@@ -35,11 +32,15 @@ parser.my_parser.add_argument(
 args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
+rootonly = args.RootOnly
+pTime = args.Time
+pSkipAccounts = args.SkipAccounts
 verbose = args.loglevel
-rootonly = args.rootonly
 shortform = args.shortform
 pAccountList = args.accountList
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+
+begin_time = time()
 
 SkipProfiles = ["default"]
 ERASE_LINE = '\x1b[2K'
@@ -190,4 +191,10 @@ if not shortform:
 for acct in AccountOrgAssociationList:
 	print(f"Account: {acct['Account']} | Org: {acct['Org']}")
 
+end_time = time()
+duration = end_time - begin_time
+print()
+if pTime:
+	print(f"This process took {duration} seconds")
 print("Thanks for using this script")
+print()
