@@ -79,12 +79,15 @@ print(fmt % ("------------", "--------------", "--------------", "------", "----
 
 for item in AllAccounts:
 	# Print results for all profiles
-	if pRootOnly and not item['RootAcct']:
-		continue
-	else:
-		# display_results(item)
-		print(f"{Fore.RED if item['RootAcct'] else ''}{item['profile']:23s} {item['aws_acct'].acct_number:15s} {item['MgmtAcct']:15s} {str(item['OrgId']):12s} {item['RootAcct']}{Fore.RESET}")
-
+	try:
+		if pRootOnly and not item['RootAcct']:
+			continue
+		else:
+			# display_results(item)
+			print(f"{Fore.RED if item['RootAcct'] else ''}{item['profile']:23s} {item['aws_acct'].acct_number:15s} {item['MgmtAcct']:15s} {str(item['OrgId']):12s} {item['RootAcct']}{Fore.RESET}")
+	except TypeError as my_Error:
+		print(f"Error - {my_Error} on {item}")
+		pass
 '''
 If I create a dictionary from the Root Accts and Root Profiles Lists - 
 I can use that to determine which profile belongs to the root user of my (child) account.
