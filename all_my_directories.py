@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import Inventory_Modules
+from Inventory_Modules import get_credentials_for_accounts_in_org
 from colorama import init, Fore
 from botocore.exceptions import ClientError
 from ArgumentsClass import CommonArguments
@@ -14,6 +15,7 @@ parser = CommonArguments()
 parser.multiprofile()  # Allows for multiple profiles to be specified
 parser.multiregion()  # Allows for multiple regions to be specified at the command line
 parser.fragment()   # Allows for specifying a string fragment to be looked for
+parser.extendedargs()	# Allows for SkipAccounts and Timing
 parser.verbosity()  # Allows for the verbosity to be handled.
 parser.rootOnly()   # Looks for the directories in the root account of the profile only
 args = parser.my_parser.parse_args()
@@ -21,6 +23,8 @@ args = parser.my_parser.parse_args()
 pProfiles = args.Profiles
 pRegionList = args.Regions
 pFragments = args.Fragments
+pSkipAccounts = args.SkipAccounts
+pTiming = args.Time
 pRootOnly = args.RootOnly
 verbose = args.loglevel
 
@@ -37,19 +41,29 @@ credential_list = []
 directories = dict()
 ProfileList = Inventory_Modules.get_profiles(SkipProfiles, pProfiles)
 aws_acct = aws_acct_access(ProfileList[0])
-RegionList = Inventory_Modules.get_ec2_regions3(aws_acct, pRegionList)
 
 print()
-print(f"You've asked us to look through {len(ProfileList)} profiles")
 
-if pRootOnly:
-	print("And look only at the root account (management account) of each Org")
+if pProfiles is None:
+	try:
+		aws_acct = aws_acct_access()
+		RegionList = Inventory_Modules.get_ec2_regions3(aws_acct, pRegionList)
+		# print(f"You've asked us to look through {len(pProfiles)} profiles")
+		# print(f"{ERASE_LINE}Looking at account {aws_acct.acct_number} within profile: {profile}", end='\r')
+		CredentialList = get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly)
+		# credentials = Inventory_Modules.get_child_access3(aws_acct, aws_acct.acct_number)
+		# credential_list.append(credentials)
+	except AttributeError as myError:
+		print(f"Failed on account: {aws_acct.acct_number}, but continuing on...")
+		pass
+else:
 	for profile in ProfileList:
 		try:
 			aws_acct = aws_acct_access(profile)
-			print(f"{ERASE_LINE}Looking at account {aws_acct.acct_number} within profile: {profile}", end='\r')
-			credentials = Inventory_Modules.get_child_access3(aws_acct, aws_acct.acct_number)
-			credential_list.append(credentials)
+			CredentialList.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly))
+			# print(f"{ERASE_LINE}Looking at account {aws_acct.acct_number} within profile: {profile}", end='\r')
+			# credentials = Inventory_Modules.get_child_access3(aws_acct, aws_acct.acct_number)
+			# credential_list.append(credentials)
 		except AttributeError as myError:
 			print(f"Failed on profile: {profile}, but continuing on...")
 			continue
@@ -75,7 +89,7 @@ fmt = '%-15s %-10s %-40s %-12s %-16s %-15s %-20s %-13s'
 print(fmt % ("Account", "Region", "Directory Name", "Directory Id", "Home Region", "Shared", "Type", "Owner"))
 print(fmt % ("-------", "------", "--------------", "------------", "-----------", "------", "----", "-----"))
 
-for credential in credential_list:
+for credential in CredentialList:
 	aws_acct = aws_acct_access(ocredentials=credential)
 	for region in RegionList:
 		print(f"{ERASE_LINE}Looking in account: {aws_acct.acct_number} in region {region}", end='\r')

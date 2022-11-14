@@ -36,17 +36,20 @@ pProfiles = args.Profiles
 pRootOnly = args.RootOnly
 pTiming = args.Time
 pSkipAccounts = args.SkipAccounts
+pSkipProfiles = args.SkipProfiles
 verbose = args.loglevel
 shortform = args.shortform
 pAccountList = args.accountList
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(processName)s %(threadName)s %(funcName)20s() ] %(message)s")
 
-begin_time = time()
+if pTiming:
+	begin_time = time()
 
-SkipProfiles = ["default"]
+if pSkipProfiles is None:
+	pSkipProfiles = ["default"]
 ERASE_LINE = '\x1b[2K'
 
-logging.warning("All available profiles will be shown")
+# logging.warning("All available profiles will be shown")
 
 """
 TODO:
@@ -66,7 +69,7 @@ def display_results(account_item):
 
 ##################
 
-ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=SkipProfiles, fprofiles=pProfiles)
+ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=pSkipProfiles, fprofiles=pProfiles)
 # print("Capturing info for supplied profiles")
 logging.warning(f"These profiles are being checked {ProfileList}.")
 print(f"Please bear with us as we run through {len(ProfileList)} profiles")
@@ -84,7 +87,10 @@ for item in AllAccounts:
 			continue
 		else:
 			# display_results(item)
-			print(f"{Fore.RED if item['RootAcct'] else ''}{item['profile']:23s} {item['aws_acct'].acct_number:15s} {item['MgmtAcct']:15s} {str(item['OrgId']):12s} {item['RootAcct']}{Fore.RESET}")
+			if item['Success']:
+				print(f"{Fore.RED if item['RootAcct'] else ''}{item['profile']:23s} {item['aws_acct'].acct_number:15s} {item['MgmtAcct']:15s} {str(item['OrgId']):12s} {item['RootAcct']}{Fore.RESET}")
+			else:
+				print(f"{item['profile']} errored. Message: {item['ErrorMessage']}")
 	except TypeError as my_Error:
 		print(f"Error - {my_Error} on {item}")
 		pass
@@ -126,17 +132,17 @@ if not shortform:
 	print(f"Number of Organizations: {len([i for i in AllAccounts if i['RootAcct']])}")
 	print("Number of Organization Accounts:", NumOfAccounts)
 	print(f"Number of profiles that failed: {len([i for i in AllAccounts if not i['Success']])}")
-	logging.error(f"List of failed profiles: {[i for i in AllAccounts if not i['Success']]}")
+	logging.error(f"List of failed profiles: {[i['profile'] for i in AllAccounts if not i['Success']]}")
 
 if pAccountList is not None:
 	for acct in AllAccounts:
 		if acct['aws_acct'].acct_number in pAccountList:
 			print(f"Account: {acct['aws_acct'].acct_number } | Org: {acct['MgmtAcct']}")
 
-end_time = time()
-duration = end_time - begin_time
 print()
 if pTiming:
+	end_time = time()
+	duration = end_time - begin_time
 	print(f"{Fore.GREEN}This script took {duration} seconds{Fore.RESET}")
 print("Thanks for using this script")
 print()

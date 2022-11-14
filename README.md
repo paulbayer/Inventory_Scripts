@@ -172,6 +172,9 @@ Utility Files
 - **Inventory_Modules.py**
   - This is the "utils" file that is referenced by nearly every other script I've written. I didn't know Python well enough when I started to know that I should have named this "utils". If I get ambitious, maybe I'll go through and rename it within every script.
 
+- **test_tools.sh**
+  - This is a great little bash script I wrote that will just test out the scripts that are most useful, and give timings on them. I'm planning to use this bash script to help me prioritize which python scripts to enable for multi-threading first.
+
 - **vpc_modules.py**
   - This is another "utils" collection, generally specific to the "ALZ_CheckAccount" script as well as the all_my_vpcs(2).py script, because all of the VPC deletion functions are in this library file. Props to
 

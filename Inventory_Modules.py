@@ -172,13 +172,13 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 	import boto3
 	import logging
 
-	# TODO: We don't actually use this anywhere in the script. We should remove it.
 	if fSkipProfiles is None:
 		fSkipProfiles = ['default']
 	if fprofiles is None:
 		fprofiles = ['all']
 	my_Session = boto3.Session()
 	my_profiles = my_Session._session.available_profiles
+	#TODO: How to add a way to honor the "skip profiles" piece here
 	if "all" in fprofiles or "ALL" in fprofiles or "All" in fprofiles:
 		return (my_profiles)
 
@@ -189,6 +189,8 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 			if y.find(x) >= 0:
 				logging.info(f"Found profile {y}")
 				if "skipplus" in fSkipProfiles and y.find("+") >= 0:
+					pass
+				elif y in fSkipProfiles:
 					pass
 				else:
 					ProfileList.append(y)
@@ -2814,7 +2816,7 @@ def get_org_accounts_from_profiles(fProfileList, progress_bar=False):
 		def run(self):
 			Account = dict()
 			Account['ErrorFlag'] = Account['Success'] = Account['RootAcct'] = False
-			Account['MgmtAcct'] = Account['Email'] = Account['OrgId'] = None
+			Account['MgmtAcct'] = Account['Email'] = Account['ErrorMessage'] = Account['OrgId'] = None
 			while True:
 				# Get the work from the queue and expand the tuple
 				profile = self.queue.get()
@@ -2843,6 +2845,7 @@ def get_org_accounts_from_profiles(fProfileList, progress_bar=False):
 						Account['RootAcct'] = False
 				except ClientError as my_Error:
 					Account['ErrorFlag'] = True
+					Account['ErrorMessage'] = my_Error
 					if str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
 						Account['MgmtAcct'] = "Not an Org Account"
 					elif str(my_Error).find("AccessDenied") > 0:
@@ -2853,9 +2856,11 @@ def get_org_accounts_from_profiles(fProfileList, progress_bar=False):
 						Account['MgmtAcct'] = "Token Expired."
 					else:
 						logging.error("Client Error")
+						Account['ErrorMessage'] = my_Error
 						logging.error(my_Error)
 				except InvalidConfigError as my_Error:
 					Account['ErrorFlag'] = True
+					Account['ErrorMessage'] = my_Error
 					if str(my_Error).find("does not exist") > 0:
 						logging.error("Source profile error")
 						logging.error(my_Error)
@@ -2864,6 +2869,7 @@ def get_org_accounts_from_profiles(fProfileList, progress_bar=False):
 						logging.error(my_Error)
 				except NoCredentialsError as my_Error:
 					Account['ErrorFlag'] = True
+					Account['ErrorMessage'] = my_Error
 					if str(my_Error).find("Unable to locate credentials") > 0:
 						Account['MgmtAcct'] = "This profile doesn't have credentials."
 					else:
@@ -2871,6 +2877,7 @@ def get_org_accounts_from_profiles(fProfileList, progress_bar=False):
 						logging.error(my_Error)
 				except AttributeError or Exception as my_Error:
 					Account['ErrorFlag'] = True
+					Account['ErrorMessage'] = my_Error
 					if str(my_Error).find("object has no attribute") > 0:
 						Account['MgmtAcct'] = "This profile's credentials don't work."
 						logging.error(my_Error)

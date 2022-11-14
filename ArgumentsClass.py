@@ -87,12 +87,19 @@ class CommonArguments():
 			action="store_true",
 			dest="Force")  # Default to Dry Run (no changes)
 		self.my_parser.add_argument(
-			"-k", "--skip",
+			"-k", "-ka", "--skip", "--skipaccount",
 			dest="SkipAccounts",
 			nargs="*",
 			metavar="Accounts to leave alone",
 			default=[],
 			help="These are the account numbers you don't want to screw with. Likely the core accounts.")
+		self.my_parser.add_argument(
+			"-kp", "--skipprofile",
+			dest="SkipProfiles",
+			nargs="*",
+			metavar="Profiles to leave alone",
+			default=[],
+			help="These are the profiles you don't want to examine.")
 		self.my_parser.add_argument(
 			"--timing", "--time",
 			dest="Time",
