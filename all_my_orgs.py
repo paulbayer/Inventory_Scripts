@@ -73,14 +73,20 @@ ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=pSkipProfiles, fprofi
 # print("Capturing info for supplied profiles")
 logging.warning(f"These profiles are being checked {ProfileList}.")
 print(f"Please bear with us as we run through {len(ProfileList)} profiles")
-AllAccounts = get_org_accounts_from_profiles(ProfileList, progress_bar=False)
+AllProfileAccounts = get_org_accounts_from_profiles(ProfileList, progress_bar=False)
+AccountList = []
+landing_zone = 'N/A'
 
+if pTiming:
+	print()
+	print(f"It's been {time()-begin_time} seconds...")
+	print()
 fmt = '%-23s %-15s %-15s %-12s %-10s'
 print("<------------------------------------>")
 print(fmt % ("Profile Name", "Account Number", "Payer Org Acct", "Org ID", "Root Acct?"))
 print(fmt % ("------------", "--------------", "--------------", "------", "----------"))
 
-for item in AllAccounts:
+for item in AllProfileAccounts:
 	# Print results for all profiles
 	try:
 		if pRootOnly and not item['RootAcct']:
@@ -113,36 +119,58 @@ if not shortform:
 	print()
 	print(fmt % ("Organization's Profile", "Root Account", "ALZ"))
 	print(fmt % ("----------------------", "------------", "---"))
-	NumOfAccounts = 0
-	for item in AllAccounts:
-		if not item['RootAcct']:
+	NumOfOrgAccounts = 0
+	NumOfNonOrgAccounts = 0
+	FailedAccounts = 0
+	account = dict()
+	for item in AllProfileAccounts:
+		if item['Success'] and not item['RootAcct']:
+			account.update(item['aws_acct'].ChildAccounts[0])
+			account.update({'Profile': item['profile']})
+			# print(account)
+			AccountList.append(account.copy())
+			NumOfNonOrgAccounts += len(item['aws_acct'].ChildAccounts)
+		elif item['Success'] and item['RootAcct']:
+			# account = dict()
+			# landing_zone = Inventory_Modules.find_if_alz(item['profile'])['ALZ']
+			for i in item['aws_acct'].ChildAccounts:
+				account.update(i)
+				account.update({'Profile': item['profile']})
+				# print(account)
+				AccountList.append(account.copy())
+			NumOfOrgAccounts += len(item['aws_acct'].ChildAccounts)
+			# if landing_zone:
+			# 	fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}{Fore.RED}%-6s {Fore.RESET}"
+			# else:
+			# 	fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}%-6s"
+			print(f"{item['profile']:23s}{Style.BRIGHT} {item['MgmtAcct']:15s}{Style.RESET_ALL} {Fore.RED if landing_zone else Fore.RESET}{landing_zone}{Fore.RESET}")
+			print(f"\t\t{'Child Account Number':20s} {'Child Account Status':20s} {'Child Email Address':20s}")
+			# for account in sorted(child_accounts):
+			for child_acct in item['aws_acct'].ChildAccounts:
+				print(f"\t\t{child_acct['AccountId']:20s} {child_acct['AccountStatus']:20s} {child_acct['AccountEmail']:20s}")
+		elif not item['Success']:
+			FailedAccounts += 1
 			continue
-		landing_zone = Inventory_Modules.find_if_alz(item['profile'])['ALZ']
-		NumOfAccounts += len(item['aws_acct'].ChildAccounts)
-		# if landing_zone:
-		# 	fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}{Fore.RED}%-6s {Fore.RESET}"
-		# else:
-		# 	fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}%-6s"
-		print(f"{item['profile']:23s}{Style.BRIGHT} {item['MgmtAcct']:15s}{Style.RESET_ALL} {Fore.RED if landing_zone else Fore.RESET}{landing_zone}{Fore.RESET}")
-		print(f"\t\t{'Child Account Number':20s} {'Child Account Status':20s} {'Child Email Address':20s}")
-		# for account in sorted(child_accounts):
-		for child_acct in item['aws_acct'].ChildAccounts:
-			print(f"\t\t{child_acct['AccountId']:20s} {child_acct['AccountStatus']:20s} {child_acct['AccountEmail']:20s}")
+
 	print()
-	print(f"Number of Organizations: {len([i for i in AllAccounts if i['RootAcct']])}")
-	print("Number of Organization Accounts:", NumOfAccounts)
-	print(f"Number of profiles that failed: {len([i for i in AllAccounts if not i['Success']])}")
-	logging.error(f"List of failed profiles: {[i['profile'] for i in AllAccounts if not i['Success']]}")
+	print(f"Number of Organizations: {len([i for i in AllProfileAccounts if i['RootAcct']])}")
+	print(f"Number of Organization Accounts: {NumOfOrgAccounts}")
+	print(f"Number of Standalone Accounts: {NumOfNonOrgAccounts}")
+	print(f"Number of profiles that failed: {FailedAccounts}")
+	logging.error(f"List of failed profiles: {[i['profile'] for i in AllProfileAccounts if not i['Success']]}")
+	print()
 
 if pAccountList is not None:
-	for acct in AllAccounts:
-		if acct['aws_acct'].acct_number in pAccountList:
-			print(f"Account: {acct['aws_acct'].acct_number } | Org: {acct['MgmtAcct']}")
+	# AccountList = (x for x in AllAccounts if x['Success'])
+	# for x in AccountList:
+		# print(x)
+	for acct in AccountList:
+		if acct['AccountId'] in pAccountList:
+			print("Found the requested account number:")
+			print(f"Profile: {acct['Profile']} | Account: {acct['AccountId']} | Org: {acct['MgmtAccount']}")
 
 print()
 if pTiming:
-	end_time = time()
-	duration = end_time - begin_time
-	print(f"{Fore.GREEN}This script took {duration} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
 print("Thanks for using this script")
 print()
