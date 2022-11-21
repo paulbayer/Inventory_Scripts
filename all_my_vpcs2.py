@@ -4,6 +4,7 @@
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
 # import boto3
+from time import time
 from account_class import aws_acct_access
 from colorama import init, Fore
 from botocore.exceptions import ClientError
@@ -15,6 +16,7 @@ init()
 parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
+parser.extendedargs()
 parser.verbosity()
 parser.my_parser.add_argument(
 	"--default",
@@ -28,6 +30,7 @@ args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
 pRegionList = args.Regions
+pTiming = args.Time
 pDefault = args.pDefault
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
@@ -35,6 +38,9 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(fu
 ##########################
 ERASE_LINE = '\x1b[2K'
 SkipProfiles = ["default"]
+
+if pTiming:
+	begin_time = time()
 
 NumVpcsFound = 0
 NumRegions = 0
@@ -122,12 +128,12 @@ for i in range(len(AllChildAccounts)):
 		try:
 			Vpcs = Inventory_Modules.find_account_vpcs3(aws_acct_child, region, pDefault)
 			VpcNum = len(Vpcs['Vpcs']) if Vpcs['Vpcs'] == [] else 0
-			print(ERASE_LINE, f"Looking in account {Fore.RED}{AllChildAccounts[i]['AccountId']}", f"{Fore.RESET}in {region} where we found {VpcNum} {vpctype} Vpcs", end='\r')
+			print(f"{ERASE_LINE} Looking in account {Fore.RED}{AllChildAccounts[i]['AccountId']}{Fore.RESET} in {region} where we found {VpcNum} {vpctype} Vpcs", end='\r')
 		except ClientError as my_error:
 			if str(my_error).find("AuthFailure") > 0:
-				print(ERASE_LINE, f"Authorization Failure for account: {AllChildAccounts[i]['AccountId']} in region {region}")
+				logging.critical(ERASE_LINE, f"Authorization Failure for account: {AllChildAccounts[i]['AccountId']} in region {region}")
 		except TypeError as my_error:
-			print(my_error)
+			logging.error(my_error)
 			continue
 		if 'Vpcs' in Vpcs.keys() and len(Vpcs['Vpcs']) > 0:
 			for y in range(len(Vpcs['Vpcs'])):
@@ -145,6 +151,9 @@ for i in range(len(AllChildAccounts)):
 		else:
 			continue
 
+if pTiming:
+	print(ERASE_LINE)
+	print(f"{Fore.GREEN}This script took {time()-begin_time} seconds{Fore.RESET}")
 print(ERASE_LINE)
 print(f"Found {NumVpcsFound} {vpctype} Vpcs across {len(AllChildAccounts)} accounts across {len(pRegionList)} regions")
 print()

@@ -955,15 +955,15 @@ def find_account_vpcs3(faws_acct, fRegion, defaultOnly=False):
 
 	client_vpc = faws_acct.session.client('ec2')
 	if defaultOnly:
-		logging.warning(f"Looking for default VPCs in account {faws_acct['AccountNumber']} from Region {fRegion}")
+		logging.warning(f"Looking for default VPCs in account {faws_acct.acct_number} from Region {fRegion}")
 		logging.info(f"defaultOnly: {str(defaultOnly)}")
 		response = client_vpc.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
 	else:
-		logging.warning(f"Looking for all VPCs in account {faws_acct.acct_num} from Region {fRegion}")
-		logging.info("defaultOnly: %s", str(defaultOnly))
+		logging.warning(f"Looking for all VPCs in account {faws_acct.acct_number} from Region {fRegion}")
+		logging.info(f"defaultOnly: {str(defaultOnly)}")
 		response = client_vpc.describe_vpcs()
 	# TODO: Enable pagination
-	logging.warning("We found %s VPCs", len(response['Vpcs']))
+	logging.warning(f"We found {len(response['Vpcs'])} VPCs")
 	return (response)
 
 
@@ -2909,3 +2909,4 @@ def get_org_accounts_from_profiles(fProfileList, progress_bar=False):
 		profilequeue.put(profile_item)
 	profilequeue.join()
 	return (AllAccounts)
+

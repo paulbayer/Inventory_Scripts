@@ -179,11 +179,9 @@ print(fmt % ("-----------", "---------", "------", "-----------", "----", "-----
 SubnetsFound.extend(check_accounts_for_subnets(AllCredentials, RegionList, fip=pIPaddressList))
 display_subnets(SubnetsFound)
 
-end_time = time()
-duration = end_time - begin_time
-print(ERASE_LINE)
 if pTiming:
-	print(f"{Fore.GREEN}This script took {duration} seconds{Fore.RESET}")
+	print(ERASE_LINE)
+	print(f"{Fore.GREEN}This script took {time()-begin_time} seconds{Fore.RESET}")
 print()
 print(f"These accounts were skipped - as requested: {pSkipAccounts}")
 print()
