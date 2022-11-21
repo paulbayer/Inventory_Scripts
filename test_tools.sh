@@ -34,6 +34,7 @@ if [[ -n "$tool_to_test" ]]
         then
           echo "Not trying to run $file"
         else
+          echo "Will test run $file"
           arrScripts=("${arrScripts[@]}" "$file")
       fi
     done
@@ -44,7 +45,10 @@ for item in "${arrScripts[@]}"
 do
   echo "Running $item"
   output_file="test_output_$item.txt"
+  summary_file="test_output_summary.$(date).txt"
   echo $(date) > "$output_file"
-  $(python "$item" >> "$output_file" ; echo $? >> "$output_file" ; echo $(date) >> "$output_file" ) &
+#  echo $(tool_to_test) >> "$summary_file"
+#  echo $(date) >> "$summary_file"
+  $(begin_date=$(date) ; python "$item" >> "$output_file" ; echo $? >> "$output_file" ; echo $(date) >> "$output_file" ; echo $item >> "$summary_file"; echo $begin_date >> "$summary_file"; echo $(date) >> "$summary_file") &
 done
 
