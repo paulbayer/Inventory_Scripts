@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import sys
 
 import Inventory_Modules
 from account_class import aws_acct_access
@@ -36,6 +35,8 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(fu
 # 	logging.basicConfig(level=timing_logging_level, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 ##########################
+
+
 def sort_by_email(elem):
 	return elem('AccountEmail')
 
@@ -57,8 +58,8 @@ def define_pretty_headings(fSCP2Stacks):
 		'AccountStatus'           : 10,
 		'AccountEmail'            : 20}
 	return(fDisplaySpacing)
-##########################
 
+##########################
 
 '''
 TODO: 
