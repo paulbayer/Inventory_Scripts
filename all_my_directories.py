@@ -15,7 +15,7 @@ parser = CommonArguments()
 parser.multiprofile()  # Allows for multiple profiles to be specified
 parser.multiregion()  # Allows for multiple regions to be specified at the command line
 parser.fragment()   # Allows for specifying a string fragment to be looked for
-parser.extendedargs()	# Allows for SkipAccounts and Timing
+parser.extendedargs()  # Allows for SkipAccounts and Timing
 parser.verbosity()  # Allows for the verbosity to be handled.
 parser.rootOnly()   # Looks for the directories in the root account of the profile only
 args = parser.my_parser.parse_args()
@@ -41,13 +41,14 @@ credential_list = []
 directories = dict()
 ProfileList = Inventory_Modules.get_profiles(SkipProfiles, pProfiles)
 aws_acct = aws_acct_access(ProfileList[0])
+RegionList = Inventory_Modules.get_ec2_regions3(aws_acct, pRegionList)
+CredentialList = []
 
 print()
 
 if pProfiles is None:
 	try:
 		aws_acct = aws_acct_access()
-		RegionList = Inventory_Modules.get_ec2_regions3(aws_acct, pRegionList)
 		# print(f"You've asked us to look through {len(pProfiles)} profiles")
 		# print(f"{ERASE_LINE}Looking at account {aws_acct.acct_number} within profile: {profile}", end='\r')
 		CredentialList = get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly)
@@ -67,19 +68,6 @@ else:
 		except AttributeError as myError:
 			print(f"Failed on profile: {profile}, but continuing on...")
 			continue
-else:
-	print("And look at all children of the Management Account as well.")
-	for profile in ProfileList:
-		try:
-			aws_acct = aws_acct_access(profile)
-			for child_account in aws_acct.ChildAccounts:
-				print(f"{ERASE_LINE}Looking at account {child_account['AccountId']} within profile: {profile}", end='\r')
-				credentials = Inventory_Modules.get_child_access3(aws_acct, child_account['AccountId'])
-				credential_list.append(credentials)
-		except AttributeError as myError:
-			print(f"Failed on profile: {profile}, but continuing on...")
-			continue
-
 
 NumInstancesFound = 0
 print()
