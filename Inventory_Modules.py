@@ -97,10 +97,14 @@ def get_ec2_regions(fprofile=None, fregion_list=None):
 def get_ec2_regions3(faws_acct, fkey=None):
 	import logging
 
-	region_info = faws_acct.session.client('ec2')
+	RegionNames = []
+	try:
+		region_info = faws_acct.session.client('ec2')
+	except AttributeError as my_Error:
+		logging.error(my_Error)
+		return (RegionNames)
 	regions = region_info.describe_regions(Filters=[
 		{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
-	RegionNames = []
 	for region in regions['Regions']:
 		RegionNames.append(region['RegionName'])
 	if "all" in fkey or "ALL" in fkey or 'All' in fkey or fkey is None:
@@ -173,12 +177,14 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 	import logging
 
 	if fSkipProfiles is None:
-		fSkipProfiles = ['default']
+		fSkipProfiles = []
 	if fprofiles is None:
 		fprofiles = ['all']
 	my_Session = boto3.Session()
 	my_profiles = my_Session._session.available_profiles
-	#TODO: How to add a way to honor the "skip profiles" piece here
+	for profile in my_profiles:
+		if ("skipplus" in fSkipProfiles and y.find("+") >= 0) or profile in fSkipProfiles:
+			my_profiles.remove(profile)
 	if "all" in fprofiles or "ALL" in fprofiles or "All" in fprofiles:
 		return (my_profiles)
 
@@ -188,35 +194,30 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 			logging.info(f"Have {y}| Looking for {x}")
 			if y.find(x) >= 0:
 				logging.info(f"Found profile {y}")
-				if "skipplus" in fSkipProfiles and y.find("+") >= 0:
-					pass
-				elif y in fSkipProfiles:
-					pass
-				else:
-					ProfileList.append(y)
+				ProfileList.append(y)
 	return (ProfileList)
 
 
-def get_profiles2(fSkipProfiles=None, fprofiles=None):
-	"""
-	***Deprecated Version***
-
-	We assume that the user of this function wants all profiles.
-	If they provide a list of profile strings (in fprofiles),
-	then we compare those strings to the full list of profiles we have,
-	and return those profiles that contain the strings they sent.
-	"""
-	import boto3
-
-	my_Session = boto3.Session()
-	my_profiles = my_Session._session.available_profiles
-	if fSkipProfiles is None:
-		fSkipProfiles = ['default']
-	if "all" in fprofiles or "ALL" in fprofiles or "All" in fprofiles or fprofiles is None:
-		my_profiles = list(set(my_profiles) - set(fSkipProfiles))
-	else:
-		my_profiles = list(set(fprofiles) - set(fSkipProfiles))
-	return (my_profiles)
+# def get_profiles2(fSkipProfiles=None, fprofiles=None):
+# 	"""
+# 	***Deprecated Version***
+#
+# 	We assume that the user of this function wants all profiles.
+# 	If they provide a list of profile strings (in fprofiles),
+# 	then we compare those strings to the full list of profiles we have,
+# 	and return those profiles that contain the strings they sent.
+# 	"""
+# 	import boto3
+#
+# 	my_Session = boto3.Session()
+# 	my_profiles = my_Session._session.available_profiles
+# 	if fSkipProfiles is None:
+# 		fSkipProfiles = []
+# 	if "all" in fprofiles or "ALL" in fprofiles or "All" in fprofiles or fprofiles is None:
+# 		my_profiles = list(set(my_profiles) - set(fSkipProfiles))
+# 	else:
+# 		my_profiles = list(set(fprofiles) - set(fSkipProfiles))
+# 	return (my_profiles)
 
 
 # def get_parent_profiles(fprofiles=None, fSkipProfiles=None):
@@ -1491,7 +1492,7 @@ def find_profile_functions(fProfile, fRegion):
 	return (functions)
 
 
-def find_lambda_functions2(ocredentials, fRegion, fSearchStrings):
+def find_lambda_functions2(ocredentials, fRegion='us-east-1', fSearchStrings=None):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -1509,13 +1510,22 @@ def find_lambda_functions2(ocredentials, fRegion, fSearchStrings):
 	client_lambda = session_lambda.client('lambda')
 	functions = client_lambda.list_functions()['Functions']
 	functions2 = []
-	for i in range(len(functions)):
-		for searchitem in fSearchStrings:
-			if searchitem in functions[i]['FunctionName']:
-				logging.warning(f"Found function {functions[i]['FunctionName']}")
-				functions2.append({'FunctionName': functions[i]['FunctionName'],
-								   'FunctionArn' : functions[i]['FunctionArn'], 'Role': functions[i]['Role']})
-	return (functions2)
+	if fSearchStrings is None or 'all' in fSearchStrings:
+		for i in range(len(functions)):
+			logging.warning(f"Found function {functions[i]['FunctionName']}")
+			functions2.append({'FunctionName': functions[i]['FunctionName'],
+							   'FunctionArn' : functions[i]['FunctionArn'],
+							   'Role'        : functions[i]['Role'], 'Runtime': functions[i]['Runtime']})
+		return (functions2)
+	else:
+		for i in range(len(functions)):
+			for searchitem in fSearchStrings:
+				if searchitem in functions[i]['FunctionName']:
+					logging.warning(f"Found function {functions[i]['FunctionName']}")
+					functions2.append({'FunctionName': functions[i]['FunctionName'],
+									   'FunctionArn' : functions[i]['FunctionArn'], 'Role': functions[i]['Role'],
+									   'Runtime'     : functions[i]['Runtime']})
+		return (functions2)
 
 
 def find_lambda_functions3(faws_acct, fRegion='us-east-1', fSearchStrings=None):
@@ -2717,6 +2727,7 @@ def find_ssm_parameters(fProfile, fRegion):
 	logging.error("Found %s parameters", len(response2))
 	return (response2)
 
+
 ############
 
 
@@ -2776,7 +2787,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=[], fRootOnly=F
 	AccountNum = 0
 	AllCreds = []
 	credqueue = Queue()
-	WorkerThreads = len(ChildAccounts)+4
+	WorkerThreads = len(ChildAccounts) + 4
 
 	# Create x worker threads
 	for x in range(WorkerThreads):
@@ -2909,4 +2920,3 @@ def get_org_accounts_from_profiles(fProfileList, progress_bar=False):
 		profilequeue.put(profile_item)
 	profilequeue.join()
 	return (AllAccounts)
-

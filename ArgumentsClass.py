@@ -97,9 +97,9 @@ class CommonArguments():
 			"-kp", "--skipprofile",
 			dest="SkipProfiles",
 			nargs="*",
-			metavar="Profiles to leave alone",
+			metavar="Profile names",
 			default=[],
-			help="These are the profiles you don't want to examine.")
+			help="These are the profiles you don't want to examine. You can specify 'skipplus' to skip over all profiles using a plus in them.")
 		self.my_parser.add_argument(
 			"--timing", "--time",
 			dest="Time",
