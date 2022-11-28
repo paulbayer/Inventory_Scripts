@@ -6,7 +6,9 @@ import Inventory_Modules
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 from colorama import init, Fore, Style
-from time import sleep
+from queue import Queue
+from threading import Thread
+from time import sleep, time
 
 '''
 TODO:
@@ -32,6 +34,7 @@ parser = CommonArguments()
 parser.verbosity()
 parser.singleprofile()
 parser.singleregion()
+parser.extendedargs()
 parser.my_parser.add_argument(
 	"-f", "--fragment",
 	dest="pStackfrag",
@@ -73,17 +76,18 @@ parser.my_parser.add_argument(
 	const=False,
 	default=True,
 	dest="DryRun")
-parser.my_parser.add_argument(
-	'+force',
-	help="This parameter will remove the account from a stackset - WITHOUT trying to remove the stacks within the child. This is a VERY bad thing to do unless you're absolutely sure.",
-	action="store_const",
-	const=True,
-	default=False,
-	dest="RetainStacks")
+# parser.my_parser.add_argument(
+# 	'+force',
+# 	help="This parameter will remove the account from a stackset - WITHOUT trying to remove the stacks within the child. This is a VERY bad thing to do unless you're absolutely sure.",
+# 	action="store_const",
+# 	const=True,
+# 	default=False,
+# 	dest="RetainStacks")
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
 pRegion = args.Region
+pTiming = args.Time
 verbose = args.loglevel
 pStackfrag = args.pStackfrag
 pCheckAccount = args.AccountCheck
@@ -91,7 +95,8 @@ pdryrun = args.DryRun
 # pstatus = args.pstatus
 pRegionRemove = args.pRegionRemove
 pAccountRemoveList = args.pAccountRemoveList
-pForce = args.RetainStacks
+# pForce = args.RetainStacks
+pForce = args.Force
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 
@@ -145,6 +150,8 @@ def _delete_stack_instances(faws_acct, fRegion, fAccountList, fRegionList, fStac
 
 ##########################
 
+if pTiming:
+	begin_time = time()
 
 ERASE_LINE = '\x1b[2K'
 sleep_interval = 5
@@ -184,6 +191,7 @@ if not StackSetNames['Success']:
 logging.error(f"Found {len(StackSetNames['StackSets'])} StackSetNames that matched your fragment")
 
 # Now go through those stacksets and determine the instances, made up of accounts and regions
+# Most time spent in this loop
 for i in range(len(StackSetNames['StackSets'])):
 	print(f"{ERASE_LINE}Looking through {i+1} of {len(StackSetNames['StackSets'])} stacksets found with {pStackfrag} string in them", end='\r')
 	# TODO: Creating the list to delete this way prohibits this script from including stacksets that are already empty. This should be fixed.
@@ -411,7 +419,9 @@ elif not pdryrun:
 			else:
 				print(f"{ERASE_LINE}{Fore.RED}Removal of stackset {StackSetName} {Style.BRIGHT}failed{Style.NORMAL} due to:\n\t{StackSetResult['ErrorMessage']}.{Fore.RESET}")
 
-
+if pTiming:
+	print(ERASE_LINE)
+	print(f"{Fore.GREEN}This script took {time()-begin_time} seconds{Fore.RESET}")
 print()
 print("Thanks for using this script...")
 print()
