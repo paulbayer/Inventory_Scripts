@@ -3,6 +3,7 @@
 from pprint import pprint
 import sys
 import Inventory_Modules
+from time import time
 from colorama import init, Fore
 from botocore.exceptions import ClientError
 from prettytable import PrettyTable
@@ -17,6 +18,7 @@ parser = CommonArguments()
 parser.verbosity()
 parser.singleprofile()
 parser.multiregion()
+parser.extendedargs()
 parser.my_parser.add_argument(
 	"--explain",
 	dest="pExplain",
@@ -47,23 +49,25 @@ parser.my_parser.add_argument(
 	help="This will fix the issues found. If default VPCs must be deleted, you'll be asked to confirm.")
 # TODO: There should be an additional parameter here that would take a role name for access into the account,
 #  since it's likely that users won't be able to use the AWSControlTowerExecution role
-parser.my_parser.add_argument(
-	"+force",
-	dest="pVPCConfirm",
-	const=True,
-	default=False,
-	action="store_const",
-	help="This will remediate issues found with NO confirmation. You still have to specify the +fix too")
+# parser.my_parser.add_argument(
+# 	"+force",
+# 	dest="pVPCConfirm",
+# 	const=True,
+# 	default=False,
+# 	action="store_const",
+# 	help="This will remediate issues found with NO confirmation. You still have to specify the +fix too")
 args = parser.my_parser.parse_args()
 
 Quick = args.Quick
 pProfile = args.Profile
 pRegions = args.Regions
+pSkipAccounts = args.SkipAccounts
+pTiming = args.Time
 verbose = args.loglevel
 pChildAccountId = args.pChildAccountId
 FixRun = args.FixRun
 pExplain = args.pExplain
-pVPCConfirm = args.pVPCConfirm
+pVPCConfirm = args.Force
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
 # This is hard-coded, because this is the listing of regions that are supported by AWS Control Tower.
 if Quick:
@@ -125,6 +129,8 @@ if pExplain:
 	print(ExplainMessage)
 	sys.exit("Exiting after Script Explanation...")
 
+if pTiming:
+	begin_time = time()
 
 aws_acct = aws_acct_access(pProfile)
 
@@ -141,6 +147,10 @@ elif aws_acct.AccountType.lower() == 'root' and pChildAccountId is not None:
 else:
 	sys.exit(f"Account {aws_acct.acct_number} is a {aws_acct.AccountType} account.\n"
 	         f" This script should be run with Management Account credentials.")
+
+if not pSkipAccounts == []:
+	for account_to_skip in pSkipAccounts:
+		ChildAccountList.remove(account_to_skip)
 
 print()
 
@@ -700,5 +710,8 @@ if verbose < 50:
 				print(f"{Fore.LIGHTRED_EX}Issues Found for {step} in account {account['AccountId']}:{Fore.RESET}")
 				pprint(account[step]['ProblemsFound'])
 
-
+if pTiming:
+	print(ERASE_LINE)
+	print(f"{Fore.GREEN}This script took {time()-begin_time} seconds{Fore.RESET}")
 print("Thanks for using this script...")
+print()

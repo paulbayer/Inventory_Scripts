@@ -895,10 +895,13 @@ def find_cw_log_group_names2(ocredentials, fRegion, fCWLogGroupFrag=None):
 	# TODO: Enable pagination # Defaults to 50
 	CWLogGroupList = []
 	FirstTime = True
-	response = {}
+	response = {'nextToken': None}
 	while 'nextToken' in response.keys() or FirstTime:
-		FirstTime = False
-		response = client_cw.describe_log_groups()
+		if FirstTime:
+			response = client_cw.describe_log_groups()
+			FirstTime = False
+		else:
+			response = client_cw.describe_log_groups(nextToken=response['nextToken'])
 		for item in response['logGroups']:
 			CWLogGroupList.append(item['logGroupName'])
 	if 'all' in fCWLogGroupFrag:
