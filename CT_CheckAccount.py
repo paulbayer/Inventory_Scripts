@@ -5,6 +5,8 @@ import sys
 import Inventory_Modules
 from time import time
 from colorama import init, Fore
+from queue import Queue
+from threading import Thread
 from botocore.exceptions import ClientError
 from prettytable import PrettyTable
 from ArgumentsClass import CommonArguments
@@ -81,11 +83,11 @@ else:
 	# which is why this script failed to prepare accounts before.
 	# I've updated the list here, but we do need to replace this list with a dynamically generated one.
 	RegionList = ['us-east-1', 'us-east-2', 'us-west-2', 'us-west-1',
-	              'eu-central-1', 'eu-north-1', 'eu-west-1', 'eu-west-2', 'eu-west-3',
-	              'ap-northeast-1', 'ap-northeast-2', 'ap-northeast-3', 'ap-south-1', 'ap-southeast-1', 'ap-southeast-2',
-	              'ca-central-1', 'sa-east-1']
-	# TODO: 'ap-east-1' isn't included here, because it's an opt-in region, which we can't include if we haven't opted-in.
-	# TODO: This is a larger problem of Control Tower not publishing its regions via an API like other services do.
+				  'eu-central-1', 'eu-north-1', 'eu-west-1', 'eu-west-2', 'eu-west-3',
+				  'ap-northeast-1', 'ap-northeast-2', 'ap-northeast-3', 'ap-south-1', 'ap-southeast-1', 'ap-southeast-2',
+				  'ca-central-1', 'sa-east-1']
+# TODO: 'ap-east-1' isn't included here, because it's an opt-in region, which we can't include if we haven't opted-in.
+# TODO: This is a larger problem of Control Tower not publishing its regions via an API like other services do.
 
 ERASE_LINE = '\x1b[2K'
 
@@ -142,11 +144,11 @@ if aws_acct.AccountType.lower() == 'root' and pChildAccountId is None:
 	print(f"Since you didn't specify a specific account, we'll check all {len(aws_acct.ChildAccounts)} accounts in the Org.")
 elif aws_acct.AccountType.lower() == 'root' and pChildAccountId is not None:
 	print(f"Account {aws_acct.acct_number} is a {aws_acct.AccountType} account.\n"
-	      f"We're specifically checking to validate that account {pChildAccountId} can be adopted into the Landing Zone")
+		  f"We're specifically checking to validate that account {pChildAccountId} can be adopted into the Landing Zone")
 	ChildAccountList = [pChildAccountId]
 else:
 	sys.exit(f"Account {aws_acct.acct_number} is a {aws_acct.AccountType} account.\n"
-	         f" This script should be run with Management Account credentials.")
+			 f" This script should be run with Management Account credentials.")
 
 if not pSkipAccounts == []:
 	for account_to_skip in pSkipAccounts:
@@ -184,8 +186,7 @@ if verbose < 50:
 	print()
 
 
-def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
-
+def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 	def InitDict(StepCount):
 		fProcessStatus = {}
 		# fProcessStatus['ChildAccountIsReady']=True
@@ -248,11 +249,11 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 	logging.info("Was able to successfully connect using the credentials... ")
 	print()
 	print(f"Confirmed the role {Fore.GREEN}{account_credentials['Role']}{Fore.RESET}"
-	      f" exists in account {Fore.GREEN}{fChildAccountId}{Fore.RESET}"
-	      f" and trusts {Fore.GREEN}our role{Fore.RESET} within the Management Account")
+		  f" exists in account {Fore.GREEN}{fChildAccountId}{Fore.RESET}"
+		  f" and trusts {Fore.GREEN}our role{Fore.RESET} within the Management Account")
 	print(f"{Fore.GREEN}** Step 0 completed without issues{Fore.RESET}")
 	print()
-	
+
 	"""
 	# Step 1 -- Obsoleted due to Control Tower no longer checking this --
 	# This part will find and delete the Default VPCs in each region for the child account. We only delete if you provided that in the parameters list.
@@ -260,7 +261,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 	If you're really interested in the code that used to be here - check out the "ALZ_CheckAccount.py" script; the code is still in there.
 	
 	"""
-	
+
 	# Step 2
 	# This part will check the Config Recorder and  Delivery Channel. If they have one, we need to delete it, so we can create another. We'll ask whether this is ok before we delete.
 	Step = 'Step2'
@@ -283,28 +284,28 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 			logging.debug("Tried to capture Config Recorder")
 			if len(ConfigRecorder['ConfigurationRecorders']) > 0:
 				ConfigList.append({
-					'Name': ConfigRecorder['ConfigurationRecorders'][0]['name'],
-					'roleARN': ConfigRecorder['ConfigurationRecorders'][0]['roleARN'],
+					'Name'     : ConfigRecorder['ConfigurationRecorders'][0]['name'],
+					'roleARN'  : ConfigRecorder['ConfigurationRecorders'][0]['roleARN'],
 					'AccountID': fChildAccountId,
-					'Region': region
-					})
+					'Region'   : region
+				})
 			print(f"{ERASE_LINE}Checking account {fChildAccountId} in region {region} for Delivery Channel", end='\r')
 			DeliveryChannel = Inventory_Modules.find_delivery_channels2(account_credentials, region)
 			logging.debug("Tried to capture Delivery Channel")
 			if len(DeliveryChannel['DeliveryChannels']) > 0:
 				DeliveryChanList.append({
-					'Name': DeliveryChannel['DeliveryChannels'][0]['name'],
+					'Name'     : DeliveryChannel['DeliveryChannels'][0]['name'],
 					'AccountID': fChildAccountId,
-					'Region': region
-					})
-		logging.warning(f"Checked account {fChildAccountId} in {len(fRegionList)} regions. Found {len(ConfigList)+len(DeliveryChanList)} issues with Config Recorders and Delivery Channels")
+					'Region'   : region
+				})
+		logging.warning(f"Checked account {fChildAccountId} in {len(fRegionList)} regions. Found {len(ConfigList) + len(DeliveryChanList)} issues with Config Recorders and Delivery Channels")
 	except ClientError as my_Error:
 		logging.warning("Failed to capture Config Recorder and Delivery Channels")
 		ProcessStatus[Step]['Success'] = False
 		print(my_Error)
-	
+
 	for _ in range(len(ConfigList)):
-		logging.warning(f"{Fore.RED}Found a config recorder for account %s in region %s", ConfigList[_]['AccountID'], ConfigList[_]['Region']+Fore.RESET)
+		logging.warning(f"{Fore.RED}Found a config recorder for account %s in region %s", ConfigList[_]['AccountID'], ConfigList[_]['Region'] + Fore.RESET)
 		ProcessStatus[Step]['Success'] = False
 		ProcessStatus[Step]['IssuesFound'] += 1
 		ProcessStatus[Step]['ProblemsFound'].extend(ConfigList)
@@ -326,7 +327,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 
 	if ProcessStatus[Step]['Success']:
 		print(f"{ERASE_LINE + Fore.GREEN}** Step 2 completed with no issues{Fore.RESET}")
-	elif ProcessStatus[Step]['IssuesFound']-ProcessStatus[Step]['IssuesFixed'] == 0:
+	elif ProcessStatus[Step]['IssuesFound'] - ProcessStatus[Step]['IssuesFixed'] == 0:
 		print(f"{ERASE_LINE + Fore.GREEN}** Step 2 found {ProcessStatus[Step]['IssuesFound']} issues, but they were fixed by deleting the existing Config Recorders and Delivery Channels{Fore.RESET}")
 		ProcessStatus[Step]['Success'] = True
 	elif ProcessStatus[Step]['IssuesFound'] > ProcessStatus[Step]['IssuesFixed']:
@@ -334,7 +335,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 	else:
 		print(f"{ERASE_LINE + Fore.RED}** Step 2 completed with blockers found{Fore.RESET}")
 	print()
-	
+
 	# Step 3
 	# 3. The account must not have a Cloudtrail Trail name the same name as the CT Trail ("AWS-Landing-Zone-BaselineCloudTrail")
 	Step = 'Step3'
@@ -347,13 +348,13 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 			CTtrails = Inventory_Modules.find_cloudtrails2(account_credentials, region, ['aws-controltower-BaselineCloudTrail'])
 			if len(CTtrails) > 0:
 				logging.warning(f"Unfortunately, we've found a CloudTrail log named {CTtrails[0]['Name']} in account {fChildAccountId} "
-				              f"in the {region} region, which means we'll have to delete it before this account can be adopted.")
+								f"in the {region} region, which means we'll have to delete it before this account can be adopted.")
 				CTtrails2.append(CTtrails[0])
 				ProcessStatus[Step]['Success'] = False
 	except ClientError as my_Error:
 		print(my_Error)
 		ProcessStatus[Step]['Success'] = False
-	
+
 	for _ in range(len(CTtrails2)):
 		logging.warning(f"{Fore.RED}Found a CloudTrail trail for account {fChildAccountId} in region {CTtrails2[_]['HomeRegion']} named {CTtrails2[_]['Name']}{Fore.RESET}")
 		ProcessStatus[Step]['IssuesFound'] += 1
@@ -365,10 +366,10 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 				ProcessStatus[Step]['IssuesFixed'] += 1
 			except ClientError as my_Error:
 				print(my_Error)
-	
+
 	if ProcessStatus[Step]['Success']:
 		print(f"{ERASE_LINE + Fore.GREEN}** {Step} completed with no issues{Fore.RESET}")
-	elif ProcessStatus[Step]['IssuesFound']-ProcessStatus[Step]['IssuesFixed'] == 0:
+	elif ProcessStatus[Step]['IssuesFound'] - ProcessStatus[Step]['IssuesFixed'] == 0:
 		print(f"{ERASE_LINE + Fore.GREEN}** {Step} found {ProcessStatus[Step]['IssuesFound']} issues, but they were fixed by deleting the existing CloudTrail trail names{Fore.RESET}")
 		ProcessStatus[Step]['Success'] = True
 	elif ProcessStatus[Step]['IssuesFound'] > ProcessStatus[Step]['IssuesFixed']:
@@ -376,7 +377,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 	else:
 		print(f"{ERASE_LINE + Fore.RED}** {Step} completed with blockers found{Fore.RESET}")
 	print()
-	
+
 	""" Step 4
 	# Step 4 -- The lack of or use of GuardDuty isn't a pre-requisite for Control Tower --
 	# 4. This section checks for a pending guard duty invite. You can also check from the Guard Duty Console
@@ -428,7 +429,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		print(ERASE_LINE+Fore.RED+"** {} completed with blockers found".format(Step)+Fore.RESET)
 	print()
 	"""
-	
+
 	# Step 4a
 	# 4a. STS must be active in all regions. You can check from the Account Settings page in IAM.
 	"""
@@ -437,7 +438,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 	We would have already verified this - since we've used STS to connect to each region already for the previous steps.
 	- Except for the "quick" shortcut - which means we probably need to point that out in this section. 
 	"""
-	
+
 	# Step 5
 	'''
 	5. The account must be part of the Organization and the email address being entered into the CT parameters must match the account. If 	you try to add an email from an account which is not part of the Org, you will get an error that you are not using a unique email address. If it’s part of the Org, CT just finds the account and uses the CFN roles.
@@ -455,10 +456,10 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		print("This is easiest done manually right now.")
 		ProcessStatus[Step]['Success'] = False
 		ProcessStatus[Step]['IssuesFound'] += 1
-	
+
 	if ProcessStatus[Step]['Success']:
 		print(f"{ERASE_LINE + Fore.GREEN}** {Step} completed with no issues{Fore.RESET}")
-	elif ProcessStatus[Step]['IssuesFound']-ProcessStatus[Step]['IssuesFixed'] == 0:
+	elif ProcessStatus[Step]['IssuesFound'] - ProcessStatus[Step]['IssuesFixed'] == 0:
 		print(f"{ERASE_LINE + Fore.GREEN}** {Step} found {ProcessStatus[Step]['IssuesFound']} issue, but we were able to fix it{Fore.RESET}")
 		ProcessStatus[Step]['Success'] = True
 	elif ProcessStatus[Step]['IssuesFound'] > ProcessStatus[Step]['IssuesFixed']:
@@ -466,7 +467,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 	else:
 		print(f"{ERASE_LINE + Fore.RED}** {Step} completed with blockers found{Fore.RESET}")
 	print()
-	
+
 	# Step 6
 	# 6. The existing account can not be in any of the CT-managed Organizations OUs. By default, these OUs are Core and Applications, but the customer may have chosen different or additional OUs to manage by CT.
 	"""
@@ -483,7 +484,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		print(my_Error)
 		ProcessStatus[Step]['Success'] = False
 	print()
-	
+
 	# Step 7 - Check for other resources which have 'controltower' in the name
 	# Checking for SNS Topics
 	Step = 'Step7'
@@ -503,17 +504,17 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 					ProcessStatus[Step]['IssuesFound'] += 1
 					SNSTopics2.append({
 						'AccountId': fChildAccountId,
-						'TopicArn': SNSTopics[x],
-						'Region': region
-						})
+						'TopicArn' : SNSTopics[x],
+						'Region'   : region
+					})
 					ProcessStatus[Step]['ProblemsFound'].extend(SNSTopics2)
 	except ClientError as my_Error:
 		print(my_Error)
 		ProcessStatus[Step]['Success'] = False
-	
+
 	if ProcessStatus[Step]['Success']:
 		print(f"{ERASE_LINE + Fore.GREEN}** {Step} completed with no issues{Fore.RESET}")
-	elif ProcessStatus[Step]['IssuesFound']-ProcessStatus[Step]['IssuesFixed'] == 0:
+	elif ProcessStatus[Step]['IssuesFound'] - ProcessStatus[Step]['IssuesFixed'] == 0:
 		print(f"{ERASE_LINE + Fore.GREEN}** {Step} found {ProcessStatus[Step]['IssuesFound']} issues, but we were able to remove the offending SNS Topics{Fore.RESET}")
 		ProcessStatus[Step]['Success'] = True
 	elif ProcessStatus[Step]['IssuesFound'] > ProcessStatus[Step]['IssuesFixed']:
@@ -521,7 +522,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 	else:
 		print(f"{ERASE_LINE + Fore.RED}** {Step} completed with blockers found{Fore.RESET}")
 	print()
-	
+
 	# Step 8
 	# Checking for Lambda functions
 	Step = 'Step8'
@@ -535,18 +536,18 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 			LambdaFunctions = Inventory_Modules.find_lambda_functions2(account_credentials, region, ['controltower', 'CpntrolTower'])
 			if len(LambdaFunctions) > 0:
 				logging.info(
-					"Unfortunately, account %s contains %s functions with reserved names, which means we'll have to delete them before this account can be adopted.",	fChildAccountId, len(LambdaFunctions))
+					"Unfortunately, account %s contains %s functions with reserved names, which means we'll have to delete them before this account can be adopted.", fChildAccountId, len(LambdaFunctions))
 				for x in range(len(LambdaFunctions)):
 					logging.warning("Found Lambda function %s in region %s", LambdaFunctions[x]['FunctionName'], region)
 					ProcessStatus[Step]['Success'] = False
 					ProcessStatus[Step]['IssuesFound'] += 1
 					LambdaFunctions2.append({
-						'AccountId': fChildAccountId,
+						'AccountId'   : fChildAccountId,
 						'FunctionName': LambdaFunctions[x]['FunctionName'],
-						'FunctionArn': LambdaFunctions[x]['FunctionArn'],
-						'Role': LambdaFunctions[x]['Role'],
-						'Region' : region
-						})
+						'FunctionArn' : LambdaFunctions[x]['FunctionArn'],
+						'Role'        : LambdaFunctions[x]['Role'],
+						'Region'      : region
+					})
 					ProcessStatus[Step]['ProblemsFound'].extend(LambdaFunctions2)
 	except ClientError as my_Error:
 		print(my_Error)
@@ -554,7 +555,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 
 	if ProcessStatus[Step]['Success']:
 		print(f"{ERASE_LINE + Fore.GREEN}** {Step} completed with no issues{Fore.RESET}")
-	elif ProcessStatus[Step]['IssuesFound']-ProcessStatus[Step]['IssuesFixed'] == 0:
+	elif ProcessStatus[Step]['IssuesFound'] - ProcessStatus[Step]['IssuesFixed'] == 0:
 		print(f"{ERASE_LINE + Fore.GREEN}** {Step} found {ProcessStatus[Step]['IssuesFound']} issues, but we were able to remove the offending Lambda Functions{Fore.RESET}")
 		ProcessStatus[Step]['Success'] = True
 	elif ProcessStatus[Step]['IssuesFound'] > ProcessStatus[Step]['IssuesFixed']:
@@ -562,7 +563,7 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 	else:
 		print(f"{ERASE_LINE + Fore.RED}** {Step} completed with blockers found{Fore.RESET}")
 	print()
-	
+
 	# Step 9
 	# Checking for Role names
 	Step = 'Step9'
@@ -574,23 +575,23 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		RoleNames = Inventory_Modules.find_role_names2(account_credentials, 'us-east-1', ['controltower', 'ControlTower'])
 		if len(RoleNames) > 0:
 			logging.info(f"Unfortunately, account {fChildAccountId} contains {len(RoleNames)} roles with reserved names,"
-			             f" which means we'll have to delete them before this account can be adopted.")
+						 f" which means we'll have to delete them before this account can be adopted.")
 			for x in range(len(RoleNames)):
 				logging.warning(f"Role Name: {str(RoleNames[x])}")
 				ProcessStatus[Step]['Success'] = False
 				ProcessStatus[Step]['IssuesFound'] += 1
 				RoleNames2.append({
 					'AccountId': fChildAccountId,
-					'RoleName': RoleNames[x]
-					})
+					'RoleName' : RoleNames[x]
+				})
 			ProcessStatus[Step]['ProblemsFound'].extend(RoleNames2)
 	except ClientError as my_Error:
 		print(my_Error)
 		ProcessStatus[Step]['Success'] = False
-	
+
 	if ProcessStatus[Step]['Success']:
 		print(f"{ERASE_LINE + Fore.GREEN}** {Step} completed with no issues{Fore.RESET}")
-	elif ProcessStatus[Step]['IssuesFound']-ProcessStatus[Step]['IssuesFixed'] == 0:
+	elif ProcessStatus[Step]['IssuesFound'] - ProcessStatus[Step]['IssuesFixed'] == 0:
 		print(f"{ERASE_LINE + Fore.GREEN}** {Step} found {ProcessStatus[Step]['IssuesFound']} issues, but we were able to remove the offending IAM roles{Fore.RESET}")
 		ProcessStatus[Step]['Success'] = True
 	elif ProcessStatus[Step]['IssuesFound'] > ProcessStatus[Step]['IssuesFixed']:
@@ -616,15 +617,15 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 			LogGroupNames = Inventory_Modules.find_cw_log_group_names2(account_credentials, region, ['controltower', 'ControlTower'])
 			if len(LogGroupNames) > 0:
 				logging.info(f"Unfortunately, account {fChildAccountId} contains {len(LogGroupNames)} log groups with reserved names,"
-				             f" which means we'll have to delete them before this account can be adopted.")
+							 f" which means we'll have to delete them before this account can be adopted.")
 				for _ in range(len(LogGroupNames)):
 					logging.warning(f"Log Group Name: {str(LogGroupNames[_])}")
 					ProcessStatus[Step]['Success'] = False
 					ProcessStatus[Step]['IssuesFound'] += 1
 					LogGroupNames2.append({
-						'AccountId': fChildAccountId,
+						'AccountId'   : fChildAccountId,
 						'LogGroupName': LogGroupNames[_]
-						})
+					})
 				ProcessStatus[Step]['ProblemsFound'].extend(LogGroupNames2)
 	except ClientError as my_Error:
 		print(my_Error)
@@ -654,7 +655,9 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 	ProcessStatus['Ready'] = MemberReady
 	ProcessStatus['IssuesFound'] = TotalIssuesFound
 	ProcessStatus['IssuesFixed'] = TotalIssuesFixed
-	return(ProcessStatus)
+	return (ProcessStatus)
+
+
 ####
 # Summary at the end
 ####
@@ -663,8 +666,12 @@ def DoSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 Results = []
 OrgResults = []
 for MemberAccount in ChildAccountList:
-	Results = DoSteps(MemberAccount, aws_acct, FixRun, RegionList)
+	Results = DoAccountSteps(MemberAccount, aws_acct, FixRun, RegionList)
 	OrgResults.append(Results.copy())
+
+for MemberAccount in pSkipAccounts:
+	OrgResults.append({'AccountId'  : MemberAccount, 'IssuesFound': 'N/A',
+					   'IssuesFixed': 'N/A', 'Ready': 'Skipped'})
 
 print()
 x = PrettyTable()
@@ -674,20 +681,27 @@ x.field_names = ['Account', 'Issues Found', 'Issues Fixed', 'Ready?']
 # The following headers represent Step0, Step2,
 y.field_names = ['Account', 'Account Access', 'Config', 'CloudTrail', 'GuardDuty', 'Org Member', 'CT OU', 'SNS Topics', 'Lambda', 'Roles', 'CW Log Groups', 'Ready?']
 for i in OrgResults:
-	x.add_row([i['AccountId'], i['IssuesFound'], i['IssuesFixed'], i['Ready']])
-	y.add_row([
-		i['AccountId'],
-		i['Step0']['IssuesFound'] - i['Step0']['IssuesFixed'],
-		i['Step2']['IssuesFound'] - i['Step2']['IssuesFixed'],
-		i['Step3']['IssuesFound'] - i['Step3']['IssuesFixed'],
-		i['Step4']['IssuesFound'] - i['Step4']['IssuesFixed'],
-		i['Step5']['IssuesFound'] - i['Step5']['IssuesFixed'],
-		i['Step6']['IssuesFound'] - i['Step6']['IssuesFixed'],
-		i['Step7']['IssuesFound'] - i['Step7']['IssuesFixed'],
-		i['Step8']['IssuesFound'] - i['Step8']['IssuesFixed'],
-		i['Step9']['IssuesFound'] - i['Step9']['IssuesFixed'],
-		i['Step10']['IssuesFound'] - i['Step10']['IssuesFixed'],
-		i['Step0']['Success'] and i['Step2']['Success'] and i['Step3']['Success'] and i['Step4']['Success'] and i['Step5']['Success'] and i['Step6']['Success'] and i['Step7']['Success'] and i['Step8']['Success'] and i['Step9']['Success'] and i['Step10']['Success']
+	if i['AccountId'] in pSkipAccounts:
+		x.add_row([i['AccountId'], i['IssuesFound'], i['IssuesFixed'], i['Ready']])
+		y.add_row([i['AccountId'],
+				   'N/A', 'N/A', 'N/A', 'N/A',
+				   'N/A', 'N/A', 'N/A', 'N/A',
+				   'N/A', 'N/A', 'Skipped'])
+	else:
+		x.add_row([i['AccountId'], i['IssuesFound'], i['IssuesFixed'], i['Ready']])
+		y.add_row([
+			i['AccountId'],
+			i['Step0']['IssuesFound'] - i['Step0']['IssuesFixed'],
+			i['Step2']['IssuesFound'] - i['Step2']['IssuesFixed'],
+			i['Step3']['IssuesFound'] - i['Step3']['IssuesFixed'],
+			i['Step4']['IssuesFound'] - i['Step4']['IssuesFixed'],
+			i['Step5']['IssuesFound'] - i['Step5']['IssuesFixed'],
+			i['Step6']['IssuesFound'] - i['Step6']['IssuesFixed'],
+			i['Step7']['IssuesFound'] - i['Step7']['IssuesFixed'],
+			i['Step8']['IssuesFound'] - i['Step8']['IssuesFixed'],
+			i['Step9']['IssuesFound'] - i['Step9']['IssuesFixed'],
+			i['Step10']['IssuesFound'] - i['Step10']['IssuesFixed'],
+			i['Step0']['Success'] and i['Step2']['Success'] and i['Step3']['Success'] and i['Step4']['Success'] and i['Step5']['Success'] and i['Step6']['Success'] and i['Step7']['Success'] and i['Step8']['Success'] and i['Step9']['Success'] and i['Step10']['Success']
 		])
 print("The following table represents the accounts looked at, and whether they are ready to be incorporated into a Control Tower environment.")
 print(x)
@@ -712,6 +726,6 @@ if verbose < 50:
 
 if pTiming:
 	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script took {time()-begin_time} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
 print("Thanks for using this script...")
 print()
