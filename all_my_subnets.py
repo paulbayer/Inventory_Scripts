@@ -92,13 +92,13 @@ def check_accounts_for_subnets(CredentialList, fRegionList=None, fip=None):
 					print(f"{ERASE_LINE}Finished finding subnets in account {c_account_credentials['AccountId']} in region {c_region} - {c_PlaceCount} / {c_PlacesToLook}", end='\r')
 					self.queue.task_done()
 
-	AllSubnets = []
-	PlaceCount = 0
-	PlacesToLook = len(CredentialList) * len(fRegionList)
-
 	if fRegionList is None:
 		fRegionList = ['us-east-1']
 	checkqueue = Queue()
+
+	AllSubnets = []
+	PlaceCount = 0
+	PlacesToLook = len(CredentialList) * len(fRegionList)
 
 	for x in range(WorkerThreads):
 		worker = FindSubnets(checkqueue)
