@@ -101,8 +101,8 @@ Objective: This script aims to identify issues and make it easier to "adopt" an 
 
 1. Previously - this was a default VPC check, but this is no longer needed.
 
-2. There must be no active config channel and recorder in the account as “there can be only one” of each. This must also be deleted via CLI, not console, switching config off in the console is NOT good enough and just disables it. 
-	To Delete the delivery channel and the configuration recorder (can be done via CLI and Python script only):
+2. There must be no active config channel and recorder in the account as “there can be only one” of each. 
+	This must also be deleted via CLI, not console, switching config off in the console is NOT good enough and just disables it. To Delete the delivery channel and the configuration recorder (can be done via CLI and Python script only):
 aws configservice describe-delivery-channels
 aws configservice describe-delivery-channel-status
 aws configservice describe-configuration-recorders
@@ -203,14 +203,11 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		return (fProcessStatus)
 
 	NumOfSteps = 11
+
+	# Step 0
 	ProcessStatus = InitDict(NumOfSteps)
-	CTRoles = ['AWSControlTowerExecution', 'AWSCloudFormationStackSetExecutionRole', 'Owner']
-
-	logging.info(f"Starting thread for account {fChildAccountId}")
-
-	# Step 0 -
-	# 0. The Child account MUST allow the Management account access into the Child IAM role called "AWSControlTowerExecution"
 	Step = 'Step0'
+	CTRoles = ['AWSControlTowerExecution', 'AWSCloudFormationStackSetExecutionRole', 'Owner']
 	# TODO: I don't use this next variable, but eventually I intend to supply the JSON code needed to update a role with.
 	json_formatted_str_TP = ""
 	logging.info(f"{Fore.BLUE}{Step}:{Fore.RESET}")
@@ -531,7 +528,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		LambdaFunctions2 = []
 		for region in fRegionList:
 			logging.warning(f"Checking account %s in region %s for {Fore.RED}Lambda functions{Fore.RESET}", fChildAccountId, region)
-			logging.info(f"Checking account {fChildAccountId} in region {region} for Lambda Functions")
+			print(ERASE_LINE, f"Checking account {fChildAccountId} in region {region} for Lambda Functions", end='\r')
 			LambdaFunctions = Inventory_Modules.find_lambda_functions2(account_credentials, region, ['controltower', 'ControlTower'])
 			if len(LambdaFunctions) > 0:
 				logging.info(
