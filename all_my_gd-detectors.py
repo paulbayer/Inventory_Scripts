@@ -49,7 +49,7 @@ session_gd = aws_acct.session
 if pRegions is None:
     gd_regions = session_gd.get_available_regions(service_name='guardduty')
 else:
-    gd_regions = Inventory_Modules.get_regions3(session_gd, pRegions)
+    gd_regions = Inventory_Modules.get_regions3(aws_acct, pRegions)
 all_gd_detectors = []
 all_gd_invites = []
 GD_Admin_Accounts = []
