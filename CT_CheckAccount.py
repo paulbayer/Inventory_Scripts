@@ -101,7 +101,8 @@ Objective: This script aims to identify issues and make it easier to "adopt" an 
 
 1. Previously - this was a default VPC check, but this is no longer needed.
 
-2. There must be no active config channel and recorder in the account as “there can be only one” of each. This must also be deleted via CLI, not console, switching config off in the console is NOT good enough and just disables it. To Delete the delivery channel and the configuration recorder (can be done via CLI and Python script only):
+2. There must be no active config channel and recorder in the account as “there can be only one” of each. 
+	This must also be deleted via CLI, not console, switching config off in the console is NOT good enough and just disables it. To Delete the delivery channel and the configuration recorder (can be done via CLI and Python script only):
 aws configservice describe-delivery-channels
 aws configservice describe-delivery-channel-status
 aws configservice describe-configuration-recorders
@@ -113,7 +114,8 @@ aws configservice delete-configuration-recorder --configuration-recorder-name <N
 
 4. The account must not have a pending guard duty invite. You can check from the Guard Duty Console
 
-5. The account must be part of the Organization and the email address being entered into the CT parameters must match the account. If you try to add an email from an account which is not part of the Org, you will get an error that you are not using a unique email address. If it’s part of the Org, CT just finds the account and uses the CFN roles.
+5. The account must be part of the Organization and the email address being entered into the CT parameters must match the account. 
+	If you try to add an email from an account which is not part of the Org, you will get an error that you are not using a unique email address. If it’s part of the Org, CT just finds the account and uses the CFN roles.
 ** TODO ** - If the existing account will be a child account in the Organization, use the Account Factory and enter the appropriate email address.
 
 6. The existing account can not be in any of the CT-managed Organizations OUs. By default, these OUs are Core and Applications, but the customer may have chosen different or additional OUs to manage by CT.
@@ -441,7 +443,8 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 
 	# Step 5
 	'''
-	5. The account must be part of the Organization and the email address being entered into the CT parameters must match the account. If 	you try to add an email from an account which is not part of the Org, you will get an error that you are not using a unique email address. If it’s part of the Org, CT just finds the account and uses the CFN roles.
+	5. The account must be part of the Organization and the email address being entered into the CT parameters must match the account. 
+		If you try to add an email from an account which is not part of the Org, you will get an error that you are not using a unique email address. If it’s part of the Org, CT just finds the account and uses the CFN roles.
 	- If the existing account is to be imported as a Core Account, modify the manifest.yaml file to use it.
 	- If the existing account will be a child account in the Organization, use the AVM launch template through Service Catalog and enter the appropriate configuration parameters.
 	'''
@@ -533,7 +536,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 		for region in fRegionList:
 			logging.warning(f"Checking account %s in region %s for {Fore.RED}Lambda functions{Fore.RESET}", fChildAccountId, region)
 			print(ERASE_LINE, f"Checking account {fChildAccountId} in region {region} for Lambda Functions", end='\r')
-			LambdaFunctions = Inventory_Modules.find_lambda_functions2(account_credentials, region, ['controltower', 'CpntrolTower'])
+			LambdaFunctions = Inventory_Modules.find_lambda_functions2(account_credentials, region, ['controltower', 'ControlTower'])
 			if len(LambdaFunctions) > 0:
 				logging.info(
 					"Unfortunately, account %s contains %s functions with reserved names, which means we'll have to delete them before this account can be adopted.", fChildAccountId, len(LambdaFunctions))
