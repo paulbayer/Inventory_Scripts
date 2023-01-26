@@ -49,6 +49,7 @@ do
   echo $(date) > "$output_file"
 #  echo $(tool_to_test) >> "$summary_file"
 #  echo $(date) >> "$summary_file"
-  $(begin_date=$(date) ; python "$item" >> "$output_file" ; echo $? >> "$output_file" ; echo $(date) >> "$output_file" ; echo $item >> "$summary_file"; echo $begin_date >> "$summary_file"; echo $(date) >> "$summary_file") &
+  $(begin_date=$(date) ; python "$item" >> "$output_file" ; echo $? >> "$output_file" ; echo $(date) >> "$output_file" ) &
+  $(begin_date=$(date) ; echo -n $item >> "$summary_file"; echo -n " | " >> "$summary_file"; echo -n $begin_date >> "$summary_file"; echo -n " | " >> "$summary_file"; echo $(date) >> "$summary_file") &
 done
 
