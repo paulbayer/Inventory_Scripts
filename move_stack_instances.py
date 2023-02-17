@@ -212,7 +212,7 @@ def check_stack_set_drift_status(faws_acct, fStack_set_name, fOperation_id=None)
 					Checked_Instances = In_Sync_Instances + Drifted_Instances + Check_Failed
 					Time_Left = (Time_Taken / Checked_Instances) * Currently_Checking
 					print(f"{ERASE_LINE} It's taken {Time_Taken} to detect on {Checked_Instances} "
-						  f"instances, which means we probably have {Time_Left} left to go for {Currently_Checking} stack instances", end='\r')
+						  f"instances, which means we probably have {Time_Left} left to go for {Currently_Checking} more stack instances", end='\r')
 					logging.info(f"{response}")
 					return_response = {'OperationStatus'      : Operation_Status,
 									   'StartTime'            : Start_Time,
@@ -747,7 +747,7 @@ if pDriftCheck:
 	if drift_check_response['Success']:
 		drift_check_response2 = check_stack_set_drift_status(aws_acct, pOldStackSet, drift_check_response['OperationId'])
 		Total_Stacksets = drift_check_response2['StackInstancesChecked']
-		Drifted_Stacksets = drift_check_response2['DriftedInstances']
+		Drifted_Stacksets = drift_check_response2['DriftedInstances'] if 'DriftedInstances' in drift_check_response2.keys() else None
 		Failed_Stacksets = drift_check_response2['FailedInstances']
 		Duration = drift_check_response2['EndTime'] - drift_check_response2['StartTime']
 		print()
