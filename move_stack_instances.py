@@ -465,7 +465,7 @@ def write_info_to_file(faws_acct, fstack_ids):
 		}
 		logging.info(f"Writing data to the file {InfoFilename}")
 		logging.debug(f"Here's the data we're writing: {StackSetsInfo}")
-		file_data = json.dumps(StackSetsInfo, sort_keys=True, indent=4 * ' ')
+		file_data = json.dumps(StackSetsInfo, sort_keys=True, indent=4 * ' ', default=str)
 		with open(InfoFilename, 'w') as out:
 			print(file_data, file=out)
 		return_response = {'Success': True}
