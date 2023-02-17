@@ -159,17 +159,22 @@ def display_stack_set_health(combined_stack_set_instances):
 			summary[stack_set_name] = {}
 		if stack_status not in summary[stack_set_name]:
 			summary[stack_set_name][stack_status] = []
-		# if stack_region not in summary[stack_set_name]:
-		# 	summary[stack_set_name][stack_region] = 0
 		summary[stack_set_name][stack_status].append({'Account': record['ChildAccount'], 'Region': stack_region})
-	# summary[stack_set_name][stack_region] += 1
 
 	# Print the summary
 	for stack_set_name, status_counts in summary.items():
 		print(f"{stack_set_name}:")
 		for stack_status, instances in status_counts.items():
-			logging.error(f"\t{stack_status}: {len(instances)} instances")
-			logging.info(f"{instances}")
+			print(f"\t{stack_status}: {len(instances)} instances") if verbose < 50 else None
+			if verbose < 40:
+				stack_instances = {}
+				for stack_instance in instances:
+					if stack_instance['Account'] not in stack_instances.keys():
+						stack_instances[stack_instance['Account']] = []
+					stack_instances[stack_instance['Account']].append(stack_instance['Region'])
+				for k, v in stack_instances.items():
+					print(f"\t\t{k}: {v}")
+
 
 ##########################
 
@@ -263,12 +268,8 @@ for i in range(len(StackSetNames['StackSets'])):
 			logging.info(f"Found a stack instance, but the account didn't match {pAccountRemoveList}... exiting")
 			continue
 
-
 print(ERASE_LINE)
 logging.error(f"Found {len(combined_stack_set_instances)} stack instances.")
-
-# for i in range(len(AllInstances)):
-# 	logging.info("Account %s in Region %s has Stack %s in status %s", AllInstances[i]['ChildAccount'], AllInstances[i]['ChildRegion'], AllInstances[i]['StackName'], AllInstances[i]['StackStatus'])
 
 AccountList = []
 ApplicableStackSetsList = []
@@ -294,21 +295,6 @@ AccountList = sorted(list(set([item for item in AccountList if item is not None]
 RegionList = sorted(list(set([item for item in RegionList if item is not None])))
 
 ApplicableStackSetsList = sorted(list(set(ApplicableStackSetsList)))
-
-# StackSet Health
-# for stackset in ApplicableStackSetsList:
-# 	StackSetHealth = [record for record in AllInstances if record['StackSetName'] == stackset]
-
-
-# ApplicableStackSetsList_enriched = {}
-# for StackSetName in ApplicableStackSetsList:
-# 	ApplicableStackSetsList_enriched[StackSetName]['Health'] = 'CURRENT by default'
-# 	NumOfStackInstances = 0
-# 	for stackinstance in AllInstances:
-# 		if stackinstance['StackSetName'] == StackSetName and stackinstance['StackStatus'] != 'CURRENT':
-# 			ApplicableStackSetsList_enriched[StackSetName]['ChildAccount']['Region'] = stackinstance['StackStatus']
-# 		NumOfStackInstances += 1
-# 	ApplicableStackSetsList_enriched[StackSetName]['InstanceCount'] = NumOfStackInstances
 
 if pCheckAccount:
 	OrgAccounts = aws_acct.ChildAccounts
@@ -359,12 +345,7 @@ The next section is broken up into a few pieces. I should try to re-write this t
 if pdryrun and pAccountRemoveList is None:
 	print(f"Found {len(StackSetNames['StackSets'])} StackSets that matched, with {len(combined_stack_set_instances)} total instances across {len(AccountList)} accounts, across {len(RegionList)} regions")
 	print(f"We found the following StackSets with the fragment you provided {pStackfrag}:")
-	for n in range(len(StackSetNames['StackSets'])):
-		print(f"{StackSetNames['StackSets'][n]['StackSetName']}")
-	if args.loglevel < 50:
-		print()
-		print("We found the following unique accounts across all StackSets found")
-		display_stack_set_health(AllInstances)
+	display_stack_set_health(combined_stack_set_instances)
 		# for accountid in AccountList:
 		# 	print(f"|{accountid}", end=' ')
 		# 	JustThisRegion = []
