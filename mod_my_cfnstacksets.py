@@ -148,14 +148,43 @@ def _delete_stack_instances(faws_acct, fRegion, fAccountList, fRegionList, fStac
 			return_response = {'Success': False, 'ErrorMessage': "Failed-Other"}
 			return(return_response)
 
+
+def display_stack_set_health(combined_stack_set_instances):
+	summary = {}
+	for record in combined_stack_set_instances:
+		stack_set_name = record['StackSetName']
+		stack_status = record['StackStatus']
+		stack_region = record['ChildRegion']
+		if stack_set_name not in summary:
+			summary[stack_set_name] = {}
+		if stack_status not in summary[stack_set_name]:
+			summary[stack_set_name][stack_status] = []
+		summary[stack_set_name][stack_status].append({'Account': record['ChildAccount'], 'Region': stack_region})
+
+	# Print the summary
+	for stack_set_name, status_counts in summary.items():
+		print(f"{stack_set_name}:")
+		for stack_status, instances in status_counts.items():
+			print(f"\t{stack_status}: {len(instances)} instances") if verbose < 50 else None
+			if verbose < 40:
+				stack_instances = {}
+				for stack_instance in instances:
+					if stack_instance['Account'] not in stack_instances.keys():
+						stack_instances[stack_instance['Account']] = []
+					stack_instances[stack_instance['Account']].append(stack_instance['Region'])
+				for k, v in stack_instances.items():
+					print(f"\t\t{k}: {v}")
+
+
 ##########################
+
 
 if pTiming:
 	begin_time = time()
 
 ERASE_LINE = '\x1b[2K'
 sleep_interval = 5
-AllInstances = []
+combined_stack_set_instances = []
 
 aws_acct = aws_acct_access(pProfile)
 if pRegion.lower() == 'all':
@@ -199,7 +228,7 @@ for i in range(len(StackSetNames['StackSets'])):
 	logging.warning(f"Found {len(StackInstances)} Stack Instances within the StackSet {StackSetNames['StackSets'][i]['StackSetName']}")
 	if len(StackInstances) == 0 and not pdryrun and pAccountRemoveList is None and pRegionRemove is None:
 		logging.warning(f"While we didn't find any stack instances within {StackSetNames['StackSets'][i]['StackSetName']}, we assume you want to delete it, even when it's empty")
-		AllInstances.append({
+		combined_stack_set_instances.append({
 			'ParentAccountNumber': aws_acct.acct_number,
 			'ChildAccount'       : None,
 			'ChildRegion'        : None,
@@ -223,7 +252,7 @@ for i in range(len(StackSetNames['StackSets'])):
 			# logging.debug("This is StackId: %s", str(StackInstance['StackId']))
 
 			if pRegionRemove is None or (StackInstance['Region'] in pRegionRemove):
-				AllInstances.append({
+				combined_stack_set_instances.append({
 					'ParentAccountNumber': aws_acct.acct_number,
 					'ChildAccount'       : StackInstance['Account'],
 					'ChildRegion'        : StackInstance['Region'],
@@ -239,27 +268,24 @@ for i in range(len(StackSetNames['StackSets'])):
 			logging.info(f"Found a stack instance, but the account didn't match {pAccountRemoveList}... exiting")
 			continue
 
-
 print(ERASE_LINE)
-logging.error(f"Found {len(AllInstances)} stack instances.")
-
-# for i in range(len(AllInstances)):
-# 	logging.info("Account %s in Region %s has Stack %s in status %s", AllInstances[i]['ChildAccount'], AllInstances[i]['ChildRegion'], AllInstances[i]['StackName'], AllInstances[i]['StackStatus'])
+logging.error(f"Found {len(combined_stack_set_instances)} stack instances.")
 
 AccountList = []
 ApplicableStackSetsList = []
 RegionList = []
 
-for _ in range(len(AllInstances)):
+for _ in range(len(combined_stack_set_instances)):
 	if pAccountRemoveList is None:  # Means we want to skip this account when removing
-		ApplicableStackSetsList.append(AllInstances[_]['StackSetName'])
-		AccountList.append(AllInstances[_]['ChildAccount'])
-		RegionList.append(AllInstances[_]['ChildRegion'])
+		ApplicableStackSetsList.append(combined_stack_set_instances[_]['StackSetName'])
+		AccountList.append(combined_stack_set_instances[_]['ChildAccount'])
+		RegionList.append(combined_stack_set_instances[_]['ChildRegion'])
 	elif pAccountRemoveList is not None:
-		if AllInstances[_]['ChildAccount'] in pAccountRemoveList:
-			ApplicableStackSetsList.append(AllInstances[_]['StackSetName'])
-			AccountList.append(AllInstances[_]['ChildAccount'])
-			RegionList.append(AllInstances[_]['ChildRegion'])
+		if combined_stack_set_instances[_]['ChildAccount'] in pAccountRemoveList:
+			ApplicableStackSetsList.append(combined_stack_set_instances[_]['StackSetName'])
+			AccountList.append(combined_stack_set_instances[_]['ChildAccount'])
+			RegionList.append(combined_stack_set_instances[_]['ChildRegion'])
+
 
 # I had to add this list comprehension to filter out the "None" types that happen when there are no stack-instances within a stack-set
 AccountList = sorted(list(set([item for item in AccountList if item is not None])))
@@ -317,32 +343,28 @@ The next section is broken up into a few pieces. I should try to re-write this t
 '''
 
 if pdryrun and pAccountRemoveList is None:
-	print(f"Found {len(StackSetNames['StackSets'])} StackSets that matched, with {len(AllInstances)} total instances across {len(AccountList)} accounts, across {len(RegionList)} regions")
+	print(f"Found {len(StackSetNames['StackSets'])} StackSets that matched, with {len(combined_stack_set_instances)} total instances across {len(AccountList)} accounts, across {len(RegionList)} regions")
 	print(f"We found the following StackSets with the fragment you provided {pStackfrag}:")
-	for n in range(len(StackSetNames['StackSets'])):
-		print(f"{StackSetNames['StackSets'][n]['StackSetName']}")
-	if args.loglevel < 50:
-		print()
-		print("We found the following unique accounts across all StackSets found")
-		for accountid in AccountList:
-			print(f"|{accountid}", end=' ')
-			JustThisRegion = []
-			for _ in range(len(AllInstances)):
-				if AllInstances[_]['ChildAccount'] == accountid:
-					JustThisRegion.append(AllInstances[_]['ChildRegion'])
-			JustThisRegion = list(set(JustThisRegion))
-			for _ in JustThisRegion:
-				print(f"|{_}", end='')
-			print()
+	display_stack_set_health(combined_stack_set_instances)
+		# for accountid in AccountList:
+		# 	print(f"|{accountid}", end=' ')
+		# 	JustThisRegion = []
+		# 	for _ in range(len(combined_stack_set_instances)):
+		# 		if combined_stack_set_instances[_]['ChildAccount'] == accountid:
+		# 			JustThisRegion.append(combined_stack_set_instances[_]['ChildRegion'])
+		# 	JustThisRegion = list(set(JustThisRegion))
+		# 	for _ in JustThisRegion:
+		# 		print(f"|{_}", end='')
+		# 	print()
 elif pdryrun:
 	print()
 	print(f"We found that stacks that match these accounts {pAccountRemoveList} show up in these regions:")
-	for i in range(len(AllInstances)):
-		if AllInstances[i]['ChildAccount'] in pAccountRemoveList:
-			print(f"\t{AllInstances[i]['StackSetName']} \t {AllInstances[i]['ChildRegion']} \t {AllInstances[i]['ChildAccount']}")
+	for i in range(len(combined_stack_set_instances)):
+		if combined_stack_set_instances[i]['ChildAccount'] in pAccountRemoveList:
+			print(f"\t{combined_stack_set_instances[i]['StackSetName']} \t {combined_stack_set_instances[i]['ChildRegion']} \t {combined_stack_set_instances[i]['ChildAccount']}")
 elif not pdryrun:
 	print()
-	print(f"Removing {len(AllInstances)} stack instances from the {len(StackSetNames['StackSets'])} StackSets found")
+	print(f"Removing {len(combined_stack_set_instances)} stack instances from the {len(StackSetNames['StackSets'])} StackSets found")
 	StackInstanceItem = 0
 	for StackSetName in ApplicableStackSetsList:
 		StackInstanceItem += 1
@@ -364,7 +386,7 @@ elif not pdryrun:
 			RemoveStackSet = False
 			RemoveStackInstanceResult = _delete_stack_instances(aws_acct, pRegion, AccountList, RegionList, StackSetName, pForce)
 		if RemoveStackInstanceResult['Success']:
-			Instances = [item for item in AllInstances if item['StackSetName'] == StackSetName]
+			Instances = [item for item in combined_stack_set_instances if item['StackSetName'] == StackSetName]
 			print(f"{ERASE_LINE}Successfully initiated removal of {len(Instances)} instances from StackSet {StackSetName}")
 		elif RemoveStackInstanceResult['ErrorMessage'] == 'Failed-ForceIt' and pForce:
 			print("We tried to force the deletion, but some other problem happened.")
