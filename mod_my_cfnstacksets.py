@@ -192,7 +192,7 @@ def find_stack_set_instances(fStackSetNames, fRegion):
 
 	f_combined_stack_set_instances = []
 	PlaceCount = 0
-	WorkerThreads = len(fStackSetNames)
+	WorkerThreads = min(len(fStackSetNames), 5)
 
 	for x in range(WorkerThreads):
 		worker = FindStackSets(checkqueue)
