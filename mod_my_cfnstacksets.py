@@ -9,6 +9,7 @@ from colorama import init, Fore, Style
 from queue import Queue
 from threading import Thread
 from time import sleep, time
+from botocore.exceptions import ClientError
 
 '''
 TODO:
@@ -102,6 +103,118 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(fu
 
 ###################
 
+def find_stack_set_instances(fStackSetNames, fRegion):
+	"""
+	Note that this function takes a list of stack set names and finds the stack instances within them
+	"""
+
+	class FindStackSets(Thread):
+
+		def __init__(self, queue):
+			Thread.__init__(self)
+			self.queue = queue
+
+		def run(self):
+			while True:
+				# Get the work from the queue and expand the tuple
+				c_stacksetname, c_region, c_PlaceCount = self.queue.get()
+				logging.info(f"De-queued info for stack set name {c_stacksetname}")
+				try:
+					# Now go through those stacksets and determine the instances, made up of accounts and regions
+					# Most time spent in this loop
+					# for i in range(len(fStackSetNames['StackSets'])):
+					print(f"{ERASE_LINE}Looking through {c_PlaceCount} of {len(fStackSetNames)} stacksets found with {pStackfrag} string in them", end='\r')
+					# TODO: Creating the list to delete this way prohibits this script from including stacksets that are already empty. This should be fixed.
+					StackInstances = Inventory_Modules.find_stack_instances3(aws_acct, c_region, c_stacksetname)
+					logging.warning(f"Found {len(StackInstances)} Stack Instances within the StackSet {c_stacksetname}")
+					if len(StackInstances) == 0 and not pdryrun and pAccountRemoveList is None and pRegionRemove is None:
+						logging.warning(f"While we didn't find any stack instances within {fStackSetNames['StackSets'][i]['StackSetName']}, we assume you want to delete it, even when it's empty")
+						f_combined_stack_set_instances.append({
+							'ParentAccountNumber': aws_acct.acct_number,
+							'ChildAccount'       : None,
+							'ChildRegion'        : None,
+							# This next line finds the value of the Child StackName (which includes a random GUID) and assigns it within our dict
+							# 'StackName': StackInstance['StackId'][StackInstance['StackId'].find('/')+1:StackInstance['StackId'].find('/', StackInstance['StackId'].find('/')+1)],
+							'StackStatus'        : None,
+							'StackSetName'       : c_stacksetname
+						})
+					for StackInstance in StackInstances:
+						if 'StackId' not in StackInstance.keys():
+							logging.info(f"The stack instance found {StackInstance} doesn't have a stackid associated. Which means it's never been deployed and probably OUTDATED")
+							pass
+						if pAccountRemoveList is None or StackInstance['Account'] in pAccountRemoveList:
+							# This stack instance will be reported if it matches the account they provided,
+							# or reported on if they didn't provide an account list at all.
+							# OR - it will be removed if they also provided the "+delete" parameter...
+							logging.debug(f"This is Instance #: {str(StackInstance)}")
+							logging.debug(f"This is instance status: {str(StackInstance['Status'])}")
+							logging.debug(f"This is ChildAccount: {StackInstance['Account']}")
+							logging.debug(f"This is ChildRegion: {StackInstance['Region']}")
+							# logging.debug("This is StackId: %s", str(StackInstance['StackId']))
+
+							if pRegionRemove is None or (StackInstance['Region'] in pRegionRemove):
+								f_combined_stack_set_instances.append({
+									'ParentAccountNumber': aws_acct.acct_number,
+									'ChildAccount'       : StackInstance['Account'],
+									'ChildRegion'        : StackInstance['Region'],
+									# This next line finds the value of the Child StackName (which includes a random GUID) and assigns it within our dict
+									# 'StackName': StackInstance['StackId'][StackInstance['StackId'].find('/')+1:StackInstance['StackId'].find('/', StackInstance['StackId'].find('/')+1)],
+									'StackStatus'        : StackInstance['Status'],
+									'StackSetName'       : c_stacksetname
+								})
+						elif not (StackInstance['Account'] in pAccountRemoveList):
+							# If the user only wants to remove the stack instances associated with specific accounts,
+							# then we only want to capture those stack instances where the account number shows up.
+							# The following code captures this scenario
+							logging.info(f"Found a stack instance, but the account didn't match {pAccountRemoveList}... exiting")
+							continue
+				except KeyError as my_Error:
+					logging.error(f"Account Access failed - trying to access {c_stacksetname}")
+					logging.info(f"Actual Error: {my_Error}")
+					pass
+				except AttributeError as my_Error:
+					logging.error(f"Error: Likely that one of the supplied profiles was wrong")
+					logging.warning(my_Error)
+					continue
+				except ClientError as my_Error:
+					logging.error(f"Error: Likely throttling errors from too much activity")
+					logging.warning(my_Error)
+					continue
+				finally:
+					print(f"{ERASE_LINE}Finished finding stack instances in stackset {c_stacksetname} in region {c_region} - {c_PlaceCount} / {len(fStackSetNames)}", end='\r')
+					self.queue.task_done()
+
+					###########
+
+	if fRegion is None:
+		fRegion = 'us-east-1'
+	checkqueue = Queue()
+
+	f_combined_stack_set_instances = []
+	PlaceCount = 0
+	WorkerThreads = len(fStackSetNames)
+
+	for x in range(WorkerThreads):
+		worker = FindStackSets(checkqueue)
+		# Setting daemon to True will let the main thread exit even though the workers are blocking
+		worker.daemon = True
+		worker.start()
+
+	for stacksetname in fStackSetNames:
+		logging.debug(f"Beginning to queue data - starting with {stacksetname['StackSetName']}")
+		try:
+			# I don't know why - but double parens are necessary below. If you remove them, only the first parameter is queued.
+			checkqueue.put((stacksetname['StackSetName'], fRegion, PlaceCount))
+			PlaceCount += 1
+		except ClientError as my_Error:
+			if str(my_Error).find("AuthFailure") > 0:
+				logging.error(f"Authorization Failure accessing stack set {stacksetname['StackSetName']} in {fRegion} region")
+				logging.warning(f"It's possible that the region {fRegion} hasn't been opted-into")
+				pass
+	checkqueue.join()
+	return (f_combined_stack_set_instances)
+
+
 def random_string(stringLength=10):
 	import random
 	import string
@@ -165,7 +278,7 @@ def display_stack_set_health(combined_stack_set_instances):
 	for stack_set_name, status_counts in summary.items():
 		print(f"{stack_set_name}:")
 		for stack_status, instances in status_counts.items():
-			print(f"\t{stack_status}: {len(instances)} instances") if verbose < 50 else None
+			print(f"\t{Fore.RED if stack_status != 'CURRENT' else ''}{stack_status}: {len(instances)} instances {Fore.RESET}") if verbose < 50 else None
 			if verbose < 40:
 				stack_instances = {}
 				for stack_instance in instances:
@@ -184,7 +297,6 @@ if pTiming:
 
 ERASE_LINE = '\x1b[2K'
 sleep_interval = 5
-combined_stack_set_instances = []
 
 aws_acct = aws_acct_access(pProfile)
 if pRegion.lower() == 'all':
@@ -219,54 +331,56 @@ if not StackSetNames['Success']:
 	sys.exit(StackSetNames)
 logging.error(f"Found {len(StackSetNames['StackSets'])} StackSetNames that matched your fragment")
 
+combined_stack_set_instances = find_stack_set_instances(StackSetNames['StackSets'], pRegion)
+
 # Now go through those stacksets and determine the instances, made up of accounts and regions
 # Most time spent in this loop
-for i in range(len(StackSetNames['StackSets'])):
-	print(f"{ERASE_LINE}Looking through {i+1} of {len(StackSetNames['StackSets'])} stacksets found with {pStackfrag} string in them", end='\r')
-	# TODO: Creating the list to delete this way prohibits this script from including stacksets that are already empty. This should be fixed.
-	StackInstances = Inventory_Modules.find_stack_instances3(aws_acct, pRegion, StackSetNames['StackSets'][i]['StackSetName'])
-	logging.warning(f"Found {len(StackInstances)} Stack Instances within the StackSet {StackSetNames['StackSets'][i]['StackSetName']}")
-	if len(StackInstances) == 0 and not pdryrun and pAccountRemoveList is None and pRegionRemove is None:
-		logging.warning(f"While we didn't find any stack instances within {StackSetNames['StackSets'][i]['StackSetName']}, we assume you want to delete it, even when it's empty")
-		combined_stack_set_instances.append({
-			'ParentAccountNumber': aws_acct.acct_number,
-			'ChildAccount'       : None,
-			'ChildRegion'        : None,
-			# This next line finds the value of the Child StackName (which includes a random GUID) and assigns it within our dict
-			# 'StackName': StackInstance['StackId'][StackInstance['StackId'].find('/')+1:StackInstance['StackId'].find('/', StackInstance['StackId'].find('/')+1)],
-			'StackStatus'        : None,
-			'StackSetName'       : StackSetNames['StackSets'][i]['StackSetName']
-			})
-	for StackInstance in StackInstances:
-		if 'StackId' not in StackInstance.keys():
-			logging.info(f"The stack instance found {StackInstance} doesn't have a stackid associated. Which means it's never been deployed and probably OUTDATED")
-			pass
-		if pAccountRemoveList is None or StackInstance['Account'] in pAccountRemoveList:
-			# This stack instance will be reported if it matches the account they provided,
-			# or reported on if they didn't provide an account list at all.
-			# OR - it will be removed if they also provided the "+delete" parameter...
-			logging.debug(f"This is Instance #: {str(StackInstance)}")
-			logging.debug(f"This is instance status: {str(StackInstance['Status'])}")
-			logging.debug(f"This is ChildAccount: {StackInstance['Account']}")
-			logging.debug(f"This is ChildRegion: {StackInstance['Region']}")
-			# logging.debug("This is StackId: %s", str(StackInstance['StackId']))
-
-			if pRegionRemove is None or (StackInstance['Region'] in pRegionRemove):
-				combined_stack_set_instances.append({
-					'ParentAccountNumber': aws_acct.acct_number,
-					'ChildAccount'       : StackInstance['Account'],
-					'ChildRegion'        : StackInstance['Region'],
-					# This next line finds the value of the Child StackName (which includes a random GUID) and assigns it within our dict
-					# 'StackName': StackInstance['StackId'][StackInstance['StackId'].find('/')+1:StackInstance['StackId'].find('/', StackInstance['StackId'].find('/')+1)],
-					'StackStatus'        : StackInstance['Status'],
-					'StackSetName'       : StackSetNames['StackSets'][i]['StackSetName']
-					})
-		elif not (StackInstance['Account'] in pAccountRemoveList):
-			# If the user only wants to remove the stack instances associated with specific accounts,
-			# then we only want to capture those stack instances where the account number shows up.
-			# The following code captures this scenario
-			logging.info(f"Found a stack instance, but the account didn't match {pAccountRemoveList}... exiting")
-			continue
+# for i in range(len(StackSetNames['StackSets'])):
+# 	print(f"{ERASE_LINE}Looking through {i+1} of {len(StackSetNames['StackSets'])} stacksets found with {pStackfrag} string in them", end='\r')
+# 	# TODO: Creating the list to delete this way prohibits this script from including stacksets that are already empty. This should be fixed.
+# 	StackInstances = Inventory_Modules.find_stack_instances3(aws_acct, pRegion, StackSetNames['StackSets'][i]['StackSetName'])
+# 	logging.warning(f"Found {len(StackInstances)} Stack Instances within the StackSet {StackSetNames['StackSets'][i]['StackSetName']}")
+# 	if len(StackInstances) == 0 and not pdryrun and pAccountRemoveList is None and pRegionRemove is None:
+# 		logging.warning(f"While we didn't find any stack instances within {StackSetNames['StackSets'][i]['StackSetName']}, we assume you want to delete it, even when it's empty")
+# 		combined_stack_set_instances.append({
+# 			'ParentAccountNumber': aws_acct.acct_number,
+# 			'ChildAccount'       : None,
+# 			'ChildRegion'        : None,
+# 			# This next line finds the value of the Child StackName (which includes a random GUID) and assigns it within our dict
+# 			# 'StackName': StackInstance['StackId'][StackInstance['StackId'].find('/')+1:StackInstance['StackId'].find('/', StackInstance['StackId'].find('/')+1)],
+# 			'StackStatus'        : None,
+# 			'StackSetName'       : StackSetNames['StackSets'][i]['StackSetName']
+# 			})
+# 	for StackInstance in StackInstances:
+# 		if 'StackId' not in StackInstance.keys():
+# 			logging.info(f"The stack instance found {StackInstance} doesn't have a stackid associated. Which means it's never been deployed and probably OUTDATED")
+# 			pass
+# 		if pAccountRemoveList is None or StackInstance['Account'] in pAccountRemoveList:
+# 			# This stack instance will be reported if it matches the account they provided,
+# 			# or reported on if they didn't provide an account list at all.
+# 			# OR - it will be removed if they also provided the "+delete" parameter...
+# 			logging.debug(f"This is Instance #: {str(StackInstance)}")
+# 			logging.debug(f"This is instance status: {str(StackInstance['Status'])}")
+# 			logging.debug(f"This is ChildAccount: {StackInstance['Account']}")
+# 			logging.debug(f"This is ChildRegion: {StackInstance['Region']}")
+# 			# logging.debug("This is StackId: %s", str(StackInstance['StackId']))
+#
+# 			if pRegionRemove is None or (StackInstance['Region'] in pRegionRemove):
+# 				combined_stack_set_instances.append({
+# 					'ParentAccountNumber': aws_acct.acct_number,
+# 					'ChildAccount'       : StackInstance['Account'],
+# 					'ChildRegion'        : StackInstance['Region'],
+# 					# This next line finds the value of the Child StackName (which includes a random GUID) and assigns it within our dict
+# 					# 'StackName': StackInstance['StackId'][StackInstance['StackId'].find('/')+1:StackInstance['StackId'].find('/', StackInstance['StackId'].find('/')+1)],
+# 					'StackStatus'        : StackInstance['Status'],
+# 					'StackSetName'       : StackSetNames['StackSets'][i]['StackSetName']
+# 					})
+# 		elif not (StackInstance['Account'] in pAccountRemoveList):
+# 			# If the user only wants to remove the stack instances associated with specific accounts,
+# 			# then we only want to capture those stack instances where the account number shows up.
+# 			# The following code captures this scenario
+# 			logging.info(f"Found a stack instance, but the account didn't match {pAccountRemoveList}... exiting")
+# 			continue
 
 print(ERASE_LINE)
 logging.error(f"Found {len(combined_stack_set_instances)} stack instances.")
