@@ -668,7 +668,9 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegionList):
 
 Results = []
 OrgResults = []
+# This is where we need to implement multi-threading
 for MemberAccount in ChildAccountList:
+	# Put all of this info on a queue, then read this info off the queue and call "Do Account"
 	Results = DoAccountSteps(MemberAccount, aws_acct, FixRun, RegionList)
 	OrgResults.append(Results.copy())
 
