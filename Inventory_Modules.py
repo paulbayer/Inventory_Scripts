@@ -183,7 +183,7 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 	my_Session = boto3.Session()
 	my_profiles = my_Session._session.available_profiles
 	for profile in my_profiles:
-		if ("skipplus" in fSkipProfiles and y.find("+") >= 0) or profile in fSkipProfiles:
+		if ("skipplus" in fSkipProfiles and profile.find("+") >= 0) or profile in fSkipProfiles:
 			my_profiles.remove(profile)
 	if "all" in fprofiles or "ALL" in fprofiles or "All" in fprofiles:
 		return (my_profiles)
