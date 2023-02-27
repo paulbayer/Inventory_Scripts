@@ -744,11 +744,8 @@ def DoThreadedAccountSteps(fChildAccountList, aws_account, fFixRun, fRegionList=
 ####
 
 # This is where we need to implement multi-threading
-# for MemberAccount in ChildAccountList:
 # Put all of this info on a queue, then read this info off the queue and call "Do Account"
-# Results = DoAccountSteps(MemberAccount, aws_acct, FixRun, RegionList)
 OrgResults = DoThreadedAccountSteps(ChildAccountList, aws_acct, FixRun, RegionList)
-# OrgResults.append(Results.copy())
 
 for MemberAccount in pSkipAccounts:
 	OrgResults.append({'AccountId'  : MemberAccount, 'Region': 'None', 'IssuesFound': 'N/A',
