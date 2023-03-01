@@ -39,8 +39,14 @@ def check_accounts_for_instances(faws_acct, fRegionList=None):
 		logging.info(f"Connecting to account {account['AccountId']}")
 		try:
 			account_credentials = Inventory_Modules.get_child_access3(faws_acct, account['AccountId'])
-			logging.info(f"Connected to account {account['AccountId']} using role {account_credentials['Role']}")
+			if account_credentials['Success']:
+				logging.info(f"Connected to account {account['AccountId']} using role {account_credentials['Role']}")
+			else:
+				logging.error(f"There was a problem connecting to account {account['AccountId']} as it's {account['AccountStatus']}. Continuing past... ")
+				continue
 		# TODO: We shouldn't refer to "account_credentials['Role']" below, if there was an error.
+		except KeyError as my_Error:
+			logging.error(f"Error: {my_Error}")
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				logging.error(
@@ -89,7 +95,7 @@ def check_accounts_for_instances(faws_acct, fRegionList=None):
 						print(fmt % (
 						faws_acct.acct_number, account['AccountId'], region, InstanceType, Name, InstanceId,
 						PublicDnsName, State))
-		AllInstances.extend(Instances['Reservations'])
+			AllInstances.extend(Instances['Reservations'])
 	return (AllInstances)
 
 

@@ -2830,7 +2830,7 @@ def get_org_accounts_from_profiles(fProfileList, progress_bar=False):
 		def run(self):
 			Account = dict()
 			Account['ErrorFlag'] = Account['Success'] = Account['RootAcct'] = False
-			Account['MgmtAcct'] = Account['Email'] = Account['ErrorMessage'] = Account['OrgId'] = None
+			Account['MgmtAcct'] = Account['profile'] = Account['Email'] = Account['ErrorMessage'] = Account['OrgId'] = None
 			while True:
 				# Get the work from the queue and expand the tuple
 				profile = self.queue.get()
