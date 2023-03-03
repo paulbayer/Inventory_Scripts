@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 
 import Inventory_Modules
+from Inventory_Modules import get_credentials_for_accounts_in_org
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 from colorama import init, Fore
 from botocore.exceptions import ClientError
+from queue import Queue
+from threading import Thread
+from time import time
 
 import logging
 
@@ -14,10 +18,16 @@ parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
 parser.verbosity()
+parser.rootOnly()
+parser.extendedargs()
 args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
 pRegionList = args.Regions
+pTiming = args.Time
+pSkipAccounts = args.SkipAccounts
+pSkipProfiles = args.SkipProfiles
+pRootOnly = args.RootOnly
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
@@ -28,74 +38,141 @@ ERASE_LINE = '\x1b[2K'
 
 logging.info(f"Profiles: {pProfiles}")
 
+if pTiming:
+	begin_time = time()
+
 
 ##################
-def check_accounts_for_instances(faws_acct, fRegionList=None):
-	ChildAccounts = faws_acct.ChildAccounts
-	AllInstances = []
+
+def display_instances(instances_list):
+	"""
+	Note that this function simply formats the output of the data within the list provided
+	"""
+	fmt = '%-12s %-12s %-10s %-15s %-20s %-20s %-42s %-12s'
+	print(fmt % ("Root Acct #", "Account #", "Region", "InstanceType", "Name", "Instance ID", "Public DNS Name", "State"))
+	print(fmt % ("-----------", "---------", "------", "------------", "----", "-----------", "---------------", "-----"))
+	for instance in instances_list:
+		# print(f"{subnet['MgmtAccount']:12s} {subnet['AccountId']:12s} {subnet['Region']:15s} {subnet['SubnetName']:40s} {subnet['CidrBlock']:18s} {subnet['AvailableIpAddressCount']:5d}")
+		if instance['State'] == 'running':
+			fmt = f"%-12s %-12s %-10s %-15s %-20s %-20s %-42s {Fore.RED}%-12s{Fore.RESET}"
+		else:
+			fmt = '%-12s %-12s %-10s %-15s %-20s %-20s %-42s %-12s'
+		print(fmt % (
+			instance['MgmtAcct'], instance['AccountId'], instance['Region'], instance['InstanceType'], instance['Name'], instance['InstanceId'],	instance['PublicDNSName'], instance['State']))
+
+
+## The point here is to templatize the multi-threading of a script...
+
+
+# The parameters passed to this function should be the dictionary of attributes that will be examined within the thread.
+def find_all_instances(fAllCredentials, fRegionList):
+	"""
+	Note that this function takes a list of stack set names and finds the stack instances within them
+
+	The way
+
+	"""
+
+	# This function is called
+	class FindInstances(Thread):
+
+		def __init__(self, queue):
+			Thread.__init__(self)
+			self.queue = queue
+
+		def run(self):
+			while True:
+				# Get the work from the queue and expand the tuple
+				c_account_credentials, c_region, c_PlaceCount = self.queue.get()
+				logging.info(f"De-queued info for account number {c_account_credentials['AccountId']}")
+				try:
+					# Now go through those stacksets and determine the instances, made up of accounts and regions
+					# Most time spent in this loop
+					# for i in range(len(fStackSetNames['StackSets'])):
+					print(f"{ERASE_LINE}Checking account {c_account_credentials['AccountId']} in region {c_region}", end='\r')
+					Instances = Inventory_Modules.find_account_instances2(c_account_credentials, c_region)
+					logging.info(f"Account: {c_account_credentials['AccountId']} Region: {c_region} | Found {len(Instances['Reservations'])} instances")
+					State = InstanceType = InstanceId = PublicDnsName = Name = ""
+					if 'Reservations' in Instances.keys():
+						for y in range(len(Instances['Reservations'])):
+							for z in range(len(Instances['Reservations'][y]['Instances'])):
+								InstanceType = Instances['Reservations'][y]['Instances'][z]['InstanceType']
+								InstanceId = Instances['Reservations'][y]['Instances'][z]['InstanceId']
+								PublicDnsName = Instances['Reservations'][y]['Instances'][z]['PublicDnsName']
+								State = Instances['Reservations'][y]['Instances'][z]['State']['Name']
+								Name = "No Name Tag"
+								try:
+									for x in range(len(Instances['Reservations'][y]['Instances'][z]['Tags'])):
+										if Instances['Reservations'][y]['Instances'][z]['Tags'][x]['Key'] == "Name":
+											Name = Instances['Reservations'][y]['Instances'][z]['Tags'][x]['Value']
+								except KeyError as my_Error:  # This is needed for when there is no "Tags" key within the describe-instances output
+									logging.info(my_Error)
+									pass
+								# if State == 'running':
+								# 	fmt = f"%-12s %-12s %-10s %-15s %-20s %-20s %-42s {Fore.RED}%-12s{Fore.RESET}"
+								# else:
+								# 	fmt = '%-12s %-12s %-10s %-15s %-20s %-20s %-42s %-12s'
+								# print(fmt % (
+								# 	c_account_credentials['MgmtAccount'], c_account_credentials['AccountId'], c_region, InstanceType, Name, InstanceId,
+								# 	PublicDnsName, State))
+								AllInstances.append({'MgmtAcct'     : c_account_credentials['MgmtAccount'],
+													 'AccountId'    : c_account_credentials['AccountId'],
+													 'Region'       : c_region,
+													 'State'        : State,
+													 'InstanceType' : InstanceType,
+													 'InstanceId'   : InstanceId,
+													 'PublicDNSName': PublicDnsName,
+													 'Name'         : Name, })
+				except KeyError as my_Error:
+					logging.error(f"Account Access failed - trying to access {c_account_credentials['AccountId']}")
+					logging.info(f"Actual Error: {my_Error}")
+					pass
+				except AttributeError as my_Error:
+					logging.error(f"Error: Likely that one of the supplied profiles was wrong")
+					logging.warning(my_Error)
+					continue
+				except ClientError as my_Error:
+					if str(my_Error).find("AuthFailure") > 0:
+						logging.error(f"Authorization Failure accessing account {c_account_credentials['AccountId']} in {c_region} region")
+						logging.warning(f"It's possible that the region {c_region} hasn't been opted-into")
+						continue
+					else:
+						logging.error(f"Error: Likely throttling errors from too much activity")
+						logging.warning(my_Error)
+						continue
+				finally:
+					print(f"{ERASE_LINE}Finished finding instances in account {c_account_credentials['AccountId']} in region {c_region} - {c_PlaceCount} / {len(AllCredentials)}", end='\r')
+					self.queue.task_done()
+
+				###########
+
 	if fRegionList is None:
 		fRegionList = ['us-east-1']
-	for account in ChildAccounts:
-		logging.info(f"Connecting to account {account['AccountId']}")
-		try:
-			account_credentials = Inventory_Modules.get_child_access3(faws_acct, account['AccountId'])
-			if account_credentials['Success']:
-				logging.info(f"Connected to account {account['AccountId']} using role {account_credentials['Role']}")
-			else:
-				logging.error(f"There was a problem connecting to account {account['AccountId']} as it's {account['AccountStatus']}. Continuing past... ")
-				continue
-		# TODO: We shouldn't refer to "account_credentials['Role']" below, if there was an error.
-		except KeyError as my_Error:
-			logging.error(f"Error: {my_Error}")
-		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
-				logging.error(
-					f"{account['AccountId']}: Authorization failure using role: {account_credentials['Role']}")
-				logging.warning(my_Error)
-			elif str(my_Error).find("AccessDenied") > 0:
-				logging.error(
-					f"{account['AccountId']}: Access Denied failure using role: {account_credentials['Role']}")
-				logging.warning(my_Error)
-			else:
-				logging.error(
-					f"{account['AccountId']}: Other kind of failure using role: {account_credentials['Role']}")
-				logging.warning(my_Error)
-			continue
+	checkqueue = Queue()
+
+	AllInstances = []
+	PlaceCount = 0
+	WorkerThreads = min(len(fAllCredentials), 25)
+
+	for x in range(WorkerThreads):
+		worker = FindInstances(checkqueue)
+		# Setting daemon to True will let the main thread exit even though the workers are blocking
+		worker.daemon = True
+		worker.start()
+
+	for credential in fAllCredentials:
+		logging.debug(f"Beginning to queue data - starting with {credential['AccountId']}")
 		for region in fRegionList:
 			try:
-				Instances = None
-				print(f"{ERASE_LINE}Checking account {account['AccountId']} in region {region}", end='\r')
-				Instances = Inventory_Modules.find_account_instances2(account_credentials, region)
-				logging.info(
-					f"Root Account: {faws_acct.acct_number} Account: {account['AccountId']} Region: {region} | Found {len(Instances['Reservations'])} instances")
+				# I don't know why - but double parens are necessary below. If you remove them, only the first parameter is queued.
+				checkqueue.put((credential, region, PlaceCount))
+				PlaceCount += 1
 			except ClientError as my_Error:
 				if str(my_Error).find("AuthFailure") > 0:
-					logging.error(f"Authorization Failure accessing account {account['AccountId']} in {region} region")
+					logging.error(f"Authorization Failure accessing account {credential['AccountId']} in {region} region")
 					logging.warning(f"It's possible that the region {region} hasn't been opted-into")
 					pass
-			if 'Reservations' in Instances.keys():
-				for y in range(len(Instances['Reservations'])):
-					for z in range(len(Instances['Reservations'][y]['Instances'])):
-						InstanceType = Instances['Reservations'][y]['Instances'][z]['InstanceType']
-						InstanceId = Instances['Reservations'][y]['Instances'][z]['InstanceId']
-						PublicDnsName = Instances['Reservations'][y]['Instances'][z]['PublicDnsName']
-						State = Instances['Reservations'][y]['Instances'][z]['State']['Name']
-						Name = "No Name Tag"
-						try:
-							for x in range(len(Instances['Reservations'][y]['Instances'][z]['Tags'])):
-								if Instances['Reservations'][y]['Instances'][z]['Tags'][x]['Key'] == "Name":
-									Name = Instances['Reservations'][y]['Instances'][z]['Tags'][x]['Value']
-						except KeyError as my_Error:  # This is needed for when there is no "Tags" key within the describe-instances output
-							logging.info(my_Error)
-							pass
-						if State == 'running':
-							fmt = f"%-12s %-12s %-10s %-15s %-20s %-20s %-42s {Fore.RED}%-12s{Fore.RESET}"
-						else:
-							fmt = '%-12s %-12s %-10s %-15s %-20s %-20s %-42s %-12s'
-						print(fmt % (
-						faws_acct.acct_number, account['AccountId'], region, InstanceType, Name, InstanceId,
-						PublicDnsName, State))
-			AllInstances.extend(Instances['Reservations'])
+	checkqueue.join()
 	return (AllInstances)
 
 
@@ -107,33 +184,47 @@ print(f"Checking for instances... ")
 print()
 
 print()
-fmt = '%-12s %-12s %-10s %-15s %-20s %-20s %-42s %-12s'
-print(fmt % ("Root Acct #", "Account #", "Region", "InstanceType", "Name", "Instance ID", "Public DNS Name", "State"))
-print(fmt % ("-----------", "---------", "------", "------------", "----", "-----------", "---------------", "-----"))
 
-InstancesFound = []
-AllChildAccounts = []
+AllInstances = []
+AllCredentials = []
+RegionList = ['us-east-1']
 
 if pProfiles is None:  # Default use case from the classes
-	logging.info("Using whatever the default profile is")
+	print("Using the default profile - gathering ")
 	aws_acct = aws_acct_access()
 	RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
-	logging.warning(f"Default profile will be used")
-	InstancesFound.extend(check_accounts_for_instances(aws_acct, RegionList))
-	AllChildAccounts.extend(aws_acct.ChildAccounts)
+	# WorkerThreads = len(aws_acct.ChildAccounts)+4
+	if pTiming:
+		logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
+	# This should populate the list "AllCreds" with the credentials for the relevant accounts.
+	logging.info(f"Queueing default profile for credentials")
+	AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly))
+
 else:
-	logging.warning(f"These profiles are being checked {pProfiles}.")
-	ProfileList = Inventory_Modules.get_profiles(fprofiles=pProfiles, fSkipProfiles="skipplus")
-	logging.warning(ProfileList)
+	ProfileList = Inventory_Modules.get_profiles(fprofiles=pProfiles)
+	print(f"Capturing info for supplied profiles")
+	logging.warning(f"These profiles are being checked {ProfileList}.")
 	for profile in ProfileList:
 		aws_acct = aws_acct_access(profile)
-		logging.warning(f"Looking at {profile} account now... ")
+		# WorkerThreads = len(aws_acct.ChildAccounts) + 4
 		RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
-		InstancesFound.extend(check_accounts_for_instances(aws_acct, RegionList))
-		AllChildAccounts.extend(aws_acct.ChildAccounts)
+		if pTiming:
+			logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
+		logging.warning(f"Looking at {profile} account now... ")
+		logging.info(f"Queueing {profile} for credentials")
+		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
+		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly))
 
+AllInstances = find_all_instances(AllCredentials, RegionList)
+display_instances(AllInstances)
+
+if pTiming:
+	print(ERASE_LINE)
+	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
 print(ERASE_LINE)
-print(f"Found {len(InstancesFound)} instances across {len(AllChildAccounts)} accounts across {len(RegionList)} regions")
+OrgNum = len(set([x['MgmtAccount'] for x in AllCredentials if x['OrgType'] == 'Root']))
+
+print(f"Found {len(AllInstances)} instances across {len(AllCredentials)} accounts across {len(RegionList)} regions")
 print()
 print("Thank you for using this script")
 print()
