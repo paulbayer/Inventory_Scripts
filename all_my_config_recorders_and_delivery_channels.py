@@ -118,7 +118,7 @@ def check_accounts_for_delivery_channels_and_config_recorders(CredentialList, fR
 		fRegionList = ['us-east-1']
 	checkqueue = Queue()
 
-	for x in range(WorkerThreads):
+	for x in range(PlacesToLook):
 		worker = Find_Config_Recorders_and_Delivery_Channels(checkqueue)
 		# Setting daemon to True will let the main thread exit even though the workers are blocking
 		worker.daemon = True
@@ -196,9 +196,7 @@ if pTiming:
 NumObjectsFound = 0
 NumAccountsInvestigated = 0
 AllCredentials = []
-aws_acct = aws_acct_access(pProfiles)
-AllCredentials = []
-# aws_acct = aws_acct_access(pProfiles)
+RegionList = ['us-east-1']
 
 if pProfiles is None:  # Default use case from the classes
 	print("Using the default profile - gathering ")
@@ -215,26 +213,25 @@ else:
 	print(f"Capturing info for supplied profiles")
 	logging.warning(f"These profiles are being checked {ProfileList}.")
 	for profile in ProfileList:
+		# Eventually - getting credentials for a single account may require passing in the region in which it's valid, but not yet.
 		aws_acct = aws_acct_access(profile)
-		# WorkerThreads = len(aws_acct.ChildAccounts) + 4
 		RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
 		if pTiming:
 			logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
-		logging.warning(f"Looking at {profile} account now... ")
+		logging.warning(f"Looking at {profile} profile now... ")
 		logging.info(f"Queueing {profile} for credentials")
-		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
+		# This should populate the list "AllCredentials" with the credentials for the relevant accounts.
 		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly))
 
-ChildAccounts = Inventory_Modules.RemoveCoreAccounts(AllCredentials, pSkipAccounts)
-# ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, pSkipAccounts)
+AllCredentials = Inventory_Modules.RemoveCoreAccounts(AllCredentials, pSkipAccounts)
 
-cf_regions = Inventory_Modules.get_service_regions('config', pRegionList)
+cf_regions = Inventory_Modules.get_service_regions('config', RegionList)
 all_config_recorders = []
 all_config_delivery_channels = []
-all_config_recorders_and_delivery_channels = check_accounts_for_delivery_channels_and_config_recorders(AllCredentials, cf_regions, )
-print(f"Searching {len(ChildAccounts)} accounts and {len(cf_regions)} regions")
+print(f"Searching {len(AllCredentials)} accounts and {len(cf_regions)} regions")
+all_config_recorders_and_delivery_channels = check_accounts_for_delivery_channels_and_config_recorders(AllCredentials, cf_regions, DeletionRun)
 
-sts_client = aws_acct.session.client('sts')
+# sts_client = aws_acct.session.client('sts')
 # for account in ChildAccounts:
 # 	NumProfilesInvestigated = 0  # I only care about the last run - so I don't get profiles * regions.
 # 	try:
@@ -307,9 +304,9 @@ if args.loglevel < 50:
 		             all_config_delivery_channels[i]['DeliveryChannel']))
 
 print(ERASE_LINE)
-print(f"We scanned {len(ChildAccounts)} accounts and {len(cf_regions)} regions totalling {len(ChildAccounts) * len(cf_regions)} possible areas for resources.")
-print(f"Found {len(all_config_recorders)} Configuration Recorders across {len(ChildAccounts)} accounts across {len(cf_regions)} regions")
-print(f"Found {len(all_config_delivery_channels)} Delivery Channels across {len(ChildAccounts)} profiles across {len(cf_regions)} regions")
+print(f"We scanned {len(AllCredentials)} accounts and {len(cf_regions)} regions totalling {len(AllCredentials) * len(cf_regions)} possible areas for resources.")
+print(f"Found {len(all_config_recorders)} Configuration Recorders across {len(AllCredentials)} accounts across {len(cf_regions)} regions")
+print(f"Found {len(all_config_delivery_channels)} Delivery Channels across {len(AllCredentials)} profiles across {len(cf_regions)} regions")
 print()
 
 if DeletionRun and not ForceDelete:
