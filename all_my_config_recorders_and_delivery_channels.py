@@ -222,13 +222,6 @@ else:
 		logging.info(f"Queueing {profile} for credentials")
 		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly))
-#
-# if pAccounts is None:
-# 	ChildAccounts = aws_acct.ChildAccounts
-# else:
-# 	ChildAccounts = []
-# 	for item in pAccounts:
-# 		ChildAccounts.append({'AccountId': item})
 
 ChildAccounts = Inventory_Modules.RemoveCoreAccounts(AllCredentials, pSkipAccounts)
 
@@ -385,3 +378,4 @@ if pTiming:
 	print(f"{Fore.GREEN}This script took {duration} seconds{Fore.RESET}")
 print()
 print("Thank you for using this tool")
+print()
