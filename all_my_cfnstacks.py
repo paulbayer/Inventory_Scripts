@@ -70,12 +70,12 @@ if DeletionRun:
 print()
 if pStackIdFlag:
 	fmt = '%-20s %-15s %-15s %-50s %-50s'
-	print(fmt % ("Account", "Region", "Stack Status", "Stack Name", "Stack ID"))
-	print(fmt % ("-------", "------", "------------", "----------", "--------"))
+	print(fmt % ("Account", "Region", "Stack Status", "Stack Name", "Create Date", "Stack ID"))
+	print(fmt % ("-------", "------", "------------", "----------", "-----------", "--------"))
 else:
 	fmt = '%-20s %-15s %-15s %-50s'
-	print(fmt % ("Account", "Region", "Stack Status", "Stack Name"))
-	print(fmt % ("-------", "------", "------------", "----------"))
+	print(fmt % ("Account", "Region", "Stack Status", "Create Date", "Stack Name"))
+	print(fmt % ("-------", "------", "------------", "-----------", "----------"))
 
 StacksFound = []
 aws_session = aws_acct.session
@@ -109,6 +109,7 @@ for account_number in AccountList:
 				StackName = Stacks[y]['StackName']
 				StackStatus = Stacks[y]['StackStatus']
 				StackID = Stacks[y]['StackId']
+				StackCreate = Stacks[y]['CreationTime']
 				if pStackIdFlag:
 					print(fmt % (account_number, region, StackStatus, StackName, StackID))
 				else:

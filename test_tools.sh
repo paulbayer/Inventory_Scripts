@@ -2,6 +2,7 @@
 
 # Script to test out and time the various python shell scripts in this directory
 
+echo "The whole command line: $@"
 tool_to_test=$1
 
 function exists_in_list() {
@@ -24,22 +25,28 @@ recover_stack_ids.py setup.py"
 
 declare -a arrScripts
 
-if [[ -n "$tool_to_test" ]]
-  then
-    arrScripts=("$tool_to_test")
-  else
-    for file in *.py
-    do
-      if exists_in_list "$scripts_to_not_test" " " "$file" ;
-        then
-          echo "Not trying to run $file"
-        else
-          echo "Will test run $file"
-          arrScripts=("${arrScripts[@]}" "$file")
-      fi
-    done
+if [[ -n "$tool_to_test" && "$tool_to_test" = "all" ]]; then
+  arrScripts=("$tool_to_test")
+elif [[ -n "$tool_to_test" && "$tool_to_test" != "all" ]]; then 
+  shift
+  test_params=$@
+  echo "Running $tool_to_test with params: $test_params"
+  output_file="test_output_$tool_to_test.txt"
+  echo $(date) > "$output_file"
+  echo python "$tool_to_test" "$test_params" >> "$output_file"
+#  $(python "$tool_to_test" "$test_params" >> "$output_file" ; echo $? >> "$output_file" ; echo $(date) >> "$output_file" ) &
+  $(python "$tool_to_test" $test_params >> "$output_file" ; echo $? >> "$output_file" ; echo $(date) >> "$output_file" ) &
+else
+  for file in *.py
+  do
+    if exists_in_list "$scripts_to_not_test" " " "$file" ; then
+        echo "Not trying to run $file"
+    else
+      echo "Will test run $file"
+      arrScripts=("${arrScripts[@]}" "$file")
+    fi
+  done
 fi
-
 
 for item in "${arrScripts[@]}"
 do
@@ -47,8 +54,7 @@ do
   output_file="test_output_$item.txt"
   summary_file="test_output_summary.$(date).txt"
   echo $(date) > "$output_file"
-#  echo $(tool_to_test) >> "$summary_file"
-#  echo $(date) >> "$summary_file"
-  $(begin_date=$(date) ; python "$item" >> "$output_file" ; echo $? >> "$output_file" ; echo $(date) >> "$output_file" ; echo $item >> "$summary_file"; echo $begin_date >> "$summary_file"; echo $(date) >> "$summary_file") &
+  $(python "$item" >> "$output_file" ; echo $? >> "$output_file" ; echo $(date) >> "$output_file" ) &
+  $(begin_date=$(date) ; echo -n $item >> "$summary_file"; echo -n " | " >> "$summary_file"; echo -n $begin_date >> "$summary_file"; echo -n " | " >> "$summary_file"; echo $(date) >> "$summary_file") &
 done
 

@@ -2,7 +2,6 @@
 import sys
 
 import Inventory_Modules
-import argparse
 from ArgumentsClass import CommonArguments
 import boto3
 from colorama import init
@@ -33,9 +32,9 @@ elif 'all' in pProfiles or 'ALL' in pProfiles or 'All' in pProfiles:
 	logging.info(f"You specified 'all' as the profile, so we're going to check ALL of the profiles to find all of the management accounts, and list out all of their ALZ versions.")
 	print("You've specified multiple profiles, so we've got to find them, determine which profiles represent Management Accounts, \n"
 		  "and then parse through those. This will take a few moments.")
-	AllProfiles = Inventory_Modules.get_profiles()
+	AllProfiles = Inventory_Modules.get_profiles(fSkipProfiles=SkipProfiles, fprofiles=pProfiles)
 else:
-	AllProfiles = pProfiles
+	AllProfiles = Inventory_Modules.get_profiles(fSkipProfiles=SkipProfiles, fprofiles=pProfiles)
 
 ALZProfiles = []
 for profile in AllProfiles:
