@@ -22,7 +22,7 @@ TODO:
 - Enable the deletion of the config recorders / delivery channels from specific accounts (or all?) at the end.
 """
 parser = CommonArguments()
-parser.singleprofile()
+parser.multiprofile()
 parser.multiregion()
 parser.extendedargs()  # This adds additional *optional* arguments to the listing
 parser.rootOnly()
@@ -41,7 +41,7 @@ parser.my_parser.add_argument(
 		help="Just the accounts you want to check")
 args = parser.my_parser.parse_args()
 
-pProfiles = args.Profile
+pProfiles = args.Profiles
 pRegionList = args.Regions
 pAccounts = args.pAccounts
 pSkipAccounts = args.SkipAccounts
@@ -195,7 +195,8 @@ if pTiming:
 
 NumObjectsFound = 0
 NumAccountsInvestigated = 0
-aws_acct = aws_acct_access(pProfiles)
+AllCredentials = []
+# aws_acct = aws_acct_access(pProfiles)
 
 if pProfiles is None:  # Default use case from the classes
 	print("Using the default profile - gathering ")
@@ -229,7 +230,7 @@ else:
 # 	for item in pAccounts:
 # 		ChildAccounts.append({'AccountId': item})
 
-ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, pSkipAccounts)
+ChildAccounts = Inventory_Modules.RemoveCoreAccounts(AllCredentials, pSkipAccounts)
 
 cf_regions = Inventory_Modules.get_service_regions('config', pRegionList)
 all_config_recorders = []
