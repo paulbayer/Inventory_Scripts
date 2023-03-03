@@ -138,9 +138,9 @@ def get_service_regions(service, fkey=None):
 	RegionNames = []
 	for x in fkey:
 		for y in regions:
-			logging.info('Have %s | Looking for %s', y, x)
+			logging.info(f"Have {y} | Looking for {x}")
 			if y.find(x) >= 0:
-				logging.info('Found %s', y)
+				logging.info(f"Found {y}")
 				RegionNames.append(y)
 	return (RegionNames)
 
@@ -2790,7 +2790,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=[], fRootOnly=F
 	AccountNum = 0
 	AllCreds = []
 	credqueue = Queue()
-	WorkerThreads = len(ChildAccounts) + 4
+	WorkerThreads = len(ChildAccounts)
 
 	# Create x worker threads
 	for x in range(WorkerThreads):
