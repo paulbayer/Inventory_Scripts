@@ -14,7 +14,7 @@
 
 What does a script need to satisfy credentials? It needs a boto3 session. From the session, everything else can derive... yes?
 
-So if we created a class object that represented the account:
+So if we create a class object that represented the account:
 	Attributes:
 		AccountID: Its 12 digit account number
 		botoClient: Access into the account (profile, or access via a root path)
@@ -33,6 +33,7 @@ So if we created a class object that represented the account:
 import boto3
 import logging
 from botocore.exceptions import ProfileNotFound, ClientError
+from json.decoder import JSONDecodeError
 
 
 def _validate_region(faws_prelim_session, fRegion=None):
@@ -45,6 +46,14 @@ def _validate_region(faws_prelim_session, fRegion=None):
 	except ClientError as myError:
 		message = (f"Access using these credentials didn't work. "
 		           f"Error Message: {myError}")
+		result = {
+			'Success': False,
+			'Message': message,
+			'Region': fRegion}
+		return (result)
+	except JSONDecodeError as my_Error:
+		message = (f"Access using these credentials didn't work. "
+		           f"Error Message: {my_Error}")
 		result = {
 			'Success': False,
 			'Message': message,
