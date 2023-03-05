@@ -192,7 +192,7 @@ print(f"Searching total of {AccountNum} accounts and {len(cf_regions)} regions")
 if pTiming:
 	print()
 	milestone_time1 = time()
-	print(f"{Fore.GREEN}\t\tFiguring out what regions are available to your accounts, and capturing credentials for all accounts in those regions took: {milestone_time1 - begin_time} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}\t\tFiguring out what regions are available to your accounts, and capturing credentials for all accounts in those regions took: {(milestone_time1 - begin_time):.3f} seconds{Fore.RESET}")
 	print()
 print(f"Now running through all accounts and regions identified to find resources...")
 all_config_recorders_and_delivery_channels = check_accounts_for_delivery_channels_and_config_recorders(AllCredentials, cf_regions, DeletionRun)
@@ -200,7 +200,7 @@ all_config_recorders_and_delivery_channels = check_accounts_for_delivery_channel
 if pTiming:
 	print()
 	milestone_time2 = time()
-	print(f"{Fore.GREEN}\t\tChecking {len(AllCredentials)} places took: {milestone_time2 - milestone_time1} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}\t\tChecking {len(AllCredentials)} places took: {(milestone_time2 - milestone_time1):.3f} seconds{Fore.RESET}")
 	print()
 cr = dc = 0
 for item in all_config_recorders_and_delivery_channels:
@@ -264,7 +264,7 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 	if pTiming:
 		print()
 		milestone_time3 = time()
-		print(f"{Fore.GREEN}\t\tDeleting {len(AllCredentials)} places took: {milestone_time3 - milestone_time2} seconds{Fore.RESET}")
+		print(f"{Fore.GREEN}\t\tDeleting {len(AllCredentials)} places took: {(milestone_time3 - milestone_time2):.3f} seconds{Fore.RESET}")
 		print()
 	print(f"Removed {len(all_config_recorders_and_delivery_channels)} config recorders and delivery channels")
 
@@ -272,7 +272,7 @@ if pTiming:
 	end_time = time()
 	duration = end_time - begin_time
 	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This whole script took {duration} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}This whole script took {duration:.3f} seconds{Fore.RESET}")
 print()
 print("Thank you for using this tool")
 print()
