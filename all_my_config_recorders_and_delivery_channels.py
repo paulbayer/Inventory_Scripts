@@ -172,95 +172,44 @@ else:
 	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=pSkipProfiles, fprofiles=pProfiles)
 	print(f"Capturing info for {len(ProfileList)} requested profiles {ProfileList}")
 	for profile in ProfileList:
-		aws_acct = aws_acct_access(profile)
-		# WorkerThreads = len(aws_acct.ChildAccounts) + 4
-		RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
-		if pTiming:
-			logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
-		logging.warning(f"Looking at {profile} account now... ")
-		logging.info(f"Queueing {profile} for credentials")
-		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
-		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly))
-#
-# if pAccounts is None:
-# 	ChildAccounts = aws_acct.ChildAccounts
-# else:
-# 	ChildAccounts = []
-# 	for item in pAccounts:
-# 		ChildAccounts.append({'AccountId': item})
+		# Eventually - getting credentials for a single account may require passing in the region in which it's valid, but not yet.
+		try:
+			aws_acct = aws_acct_access(profile)
+			print(f"Validating {len(aws_acct.ChildAccounts)} accounts within {profile} profile now... ")
+			RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
+			logging.info(f"Queueing {profile} for credentials")
+			# This should populate the list "AllCredentials" with the credentials for the relevant accounts.
+			AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, profile, RegionList))
+		except AttributeError as my_Error:
+			logging.error(f"Profile {profile} didn't work... Skipping")
+			continue
 
-# ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, pSkipAccounts)
+AccountNum = len(set([acct['AccountId'] for acct in AllCredentials]))
 
 cf_regions = Inventory_Modules.get_service_regions('config', RegionList)
-all_config_recorders = []
-all_config_delivery_channels = []
-print(f"Searching {len(AllCredentials)} accounts and {len(cf_regions)} regions")
+print()
+print(f"Searching total of {AccountNum} accounts and {len(cf_regions)} regions")
+if pTiming:
+	print()
+	milestone_time1 = time()
+	print(f"{Fore.GREEN}\t\tFiguring out what regions are available to your accounts, and capturing credentials for all accounts in those regions took: {(milestone_time1 - begin_time):.3f} seconds{Fore.RESET}")
+	print()
+print(f"Now running through all accounts and regions identified to find resources...")
 all_config_recorders_and_delivery_channels = check_accounts_for_delivery_channels_and_config_recorders(AllCredentials, cf_regions, DeletionRun)
 
-# sts_client = aws_acct.session.client('sts')
-# for account in ChildAccounts:
-# 	NumProfilesInvestigated = 0  # I only care about the last run - so I don't get profiles * regions.
-# 	try:
-# 		account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'])
-# 	except ClientError as my_Error:
-# 		if str(my_Error).find("AuthFailure") > 0:
-# 			print(f"Authorization Failure for account {account['AccountId']}")
-# 		continue
-# 	for region in cf_regions:
-# 		NumAccountsInvestigated += 1
-# 		session_aws = boto3.Session(
-# 				aws_access_key_id=account_credentials['AccessKeyId'],
-# 				aws_secret_access_key=account_credentials['SecretAccessKey'],
-# 				aws_session_token=account_credentials['SessionToken'],
-# 				region_name=region)
-# 		client_aws = session_aws.client('config')
-# 		# List Configuration_Recorders
-# 		try:  # Looking for Configuration Recorders
-# 			print(ERASE_LINE, f"Trying account {account['AccountId']} in region {region}", end='\r')
-# 			response = client_aws.describe_configuration_recorders()
-# 			logging.error("Successfully described config recorders")
-# 		except ClientError as my_Error:
-# 			if str(my_Error).find("AuthFailure") > 0:
-# 				print(f"Authorization Failure for account {account['AccountId']}")
-# 			response = {}
-# 		if 'ConfigurationRecorders' in response.keys():
-# 			for i in range(len(response['ConfigurationRecorders'])):
-# 				NumObjectsFound = NumObjectsFound + len(response['ConfigurationRecorders'])
-# 				all_config_recorders.append({
-# 					'AccountId'            : account['AccountId'],
-# 					'ConfigurationRecorder': response['ConfigurationRecorders'][i]['name'],
-# 					'Region'               : region,
-# 					'AccessKeyId'          : account_credentials['AccessKeyId'],
-# 					'SecretAccessKey'      : account_credentials['SecretAccessKey'],
-# 					'SessionToken'         : account_credentials['SessionToken']
-# 					})
-# 				print(
-# 						f"Found another config recorder {str(response['ConfigurationRecorders'][i]['name'])} in account {account['AccountId']} in region {region} bringing the total found to {str(NumObjectsFound)} ")
-# 		try:  # Looking for Delivery Channels
-# 			print(ERASE_LINE, f"Trying account {account['AccountId']} in region {region}", end='\r')
-# 			response = client_aws.describe_delivery_channels()
-# 			if len(response['DeliveryChannels']) > 0 and response['DeliveryChannels'][0]['name'][
-# 			                                             -13:] != "DO-NOT-DELETE":
-# 				NumObjectsFound = NumObjectsFound + len(response['DeliveryChannels'])
-# 				all_config_delivery_channels.append({
-# 					'AccountId'      : account['AccountId'],
-# 					'Region'         : region,
-# 					'DeliveryChannel': response['DeliveryChannels'][0]['name'],
-# 					'AccessKeyId'    : account_credentials['AccessKeyId'],
-# 					'SecretAccessKey': account_credentials['SecretAccessKey'],
-# 					'SessionToken'   : account_credentials['SessionToken']
-# 					})
-# 				print(
-# 						f"Found another delivery_channel {str(response['DeliveryChannels'][0]['name'])} in account {account['AccountId']} in region {region} bringing the total found to {str(NumObjectsFound)} ")
-# 			# logging.info("Found another detector ("+str(response['DeliveryChannels'][0])+") in account "+account['AccountId']+" in region "+account['AccountId']+" bringing the total found to "+str(NumObjectsFound))
-# 			else:
-# 				print(ERASE_LINE,
-# 				      f"{Fore.RED}No luck in account: {account['AccountId']} in region {region}{Fore.RESET}", end='\r')
-# 		except ClientError as my_Error:
-# 			if str(my_Error).find("AuthFailure") > 0:
-# 				print(f"Authorization Failure for account {account['AccountId']}")
+if pTiming:
+	print()
+	milestone_time2 = time()
+	print(f"{Fore.GREEN}\t\tChecking {len(AllCredentials)} places took: {(milestone_time2 - milestone_time1):.3f} seconds{Fore.RESET}")
+	print()
+cr = dc = 0
+for item in all_config_recorders_and_delivery_channels:
+	if item['Type'] == 'Delivery Channel':
+		dc += 1
+	elif item['Type'] == 'Config Recorder':
+		cr += 1
 
-if args.loglevel < 50:
+if verbose < 50:
 	print()
 	fmt = '%-24s %-15s %-15s %-15s %-20s %-30s'
 	print(fmt % ("Parent Profile", "Mgmt Account", "Account ID", "Region", "Type", "Name"))
@@ -275,9 +224,8 @@ if args.loglevel < 50:
 					 item['name']))
 
 print(ERASE_LINE)
-print(f"We scanned {len(AllCredentials)} accounts and {len(cf_regions)} regions totalling {len(AllCredentials) * len(cf_regions)} possible areas for resources.")
-print(f"Found {len(all_config_recorders)} Configuration Recorders across {len(AllCredentials)} accounts across {len(cf_regions)} regions")
-print(f"Found {len(all_config_delivery_channels)} Delivery Channels across {len(AllCredentials)} profiles across {len(cf_regions)} regions")
+print(f"We scanned {AccountNum} accounts and {len(RegionList)} regions totalling {len(AllCredentials)} possible areas for resources.")
+print(f"We Found {cr} Configuration Recorders and {dc} Delivery Channels")
 print()
 
 if DeletionRun and not ForceDelete:
@@ -316,7 +264,7 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 	if pTiming:
 		print()
 		milestone_time3 = time()
-		print(f"{Fore.GREEN}\t\tDeleting {len(AllCredentials)} places took: {milestone_time3 - milestone_time2} seconds{Fore.RESET}")
+		print(f"{Fore.GREEN}\t\tDeleting {len(AllCredentials)} places took: {(milestone_time3 - milestone_time2):.3f} seconds{Fore.RESET}")
 		print()
 	print(f"Removed {len(all_config_recorders_and_delivery_channels)} config recorders and delivery channels")
 
@@ -324,7 +272,7 @@ if pTiming:
 	end_time = time()
 	duration = end_time - begin_time
 	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This whole script took {duration} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}This whole script took {duration:.3f} seconds{Fore.RESET}")
 print()
 print("Thank you for using this tool")
 print()
