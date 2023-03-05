@@ -685,7 +685,7 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 
 	if not isinstance(fChildAccount, str):  # Make sure the passed in account number is a string
 		fChildAccount = str(fChildAccount)
-	org_status = faws_acct.AccountType
+	org_type = faws_acct.AccountType
 	ParentAccountId = faws_acct.acct_number
 	sts_client = faws_acct.session.client('sts', region_name=fRegion)
 	if fChildAccount == ParentAccountId:
@@ -696,8 +696,8 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 		logging.info(explain_string)
 		# TODO: Wrap this in a try/except loop on the off-chance that the class doesn't work properly
 		account_credentials = {'ParentAcctId'   : ParentAccountId,
-							   'MgmtAccount'    : ParentAccountId,
-							   'OrgType'        : org_status,
+							   'MgmtAccount'    : faws_acct.MgmtAccount,
+							   'OrgType'        : org_type,
 							   'AccessKeyId'    : faws_acct.creds.access_key,
 							   'SecretAccessKey': faws_acct.creds.secret_key,
 							   'SessionToken'   : faws_acct.creds.token,
