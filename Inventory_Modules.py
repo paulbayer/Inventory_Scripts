@@ -2316,7 +2316,7 @@ def find_stacksets2(ocredentials, fRegion='us-east-1', fStackFragment=None, fSta
 	return (stacksetsCopy)
 
 
-def find_stacksets3(faws_acct, fRegion=None, fStackFragment=None):
+def find_stacksets3(faws_acct, fRegion=None, fStackFragment=None, fExact=False):
 	"""
 	faws_acct is a class containing the account information
 	fRegion is a string
@@ -2369,10 +2369,15 @@ def find_stacksets3(faws_acct, fRegion=None, fStackFragment=None):
 	else:
 		for stack in stacksets:
 			for fragment in fStackFragment:
-				if fragment in stack['StackSetName']:
+				if fExact:
+					if fragment == stack['StackSetName']:
+						stacksetsCopy.append(stack)
+						logging.warning(
+							f"Found stackset {stack['StackSetName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fragment}")
+				elif fragment in stack['StackSetName']:
+					stacksetsCopy.append(stack)
 					logging.warning(
 						f"Found stackset {stack['StackSetName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fragment}")
-					stacksetsCopy.append(stack)
 		return_response = {'Success': True, 'StackSets': stacksetsCopy}
 	return (return_response)
 
@@ -2825,7 +2830,7 @@ def find_ssm_parameters(fProfile, fRegion):
 # 	return (AllCreds)
 
 
-def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, fprofile="default", fregions=None):
+def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, accountlist=None, fprofile="default", fregions=None):
 	"""
 	Note that this function returns the credentials of all the accounts underneath the Org passed to it.
 	"""
@@ -2883,6 +2888,8 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 
 	if fSkipAccounts is None:
 		fSkipAccounts = []
+	if accountlist is None:
+		accountlist = []
 	if fregions is None:
 		fregions = ['us-east-1']
 	ChildAccounts = faws_acct.ChildAccounts
@@ -2906,6 +2913,8 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		if account['AccountId'] in fSkipAccounts:
 			continue
 		elif fRootOnly and not account['AccountId'] == account['MgmtAccount']:
+			continue
+		elif accountlist and account['AccountId'] not in accountlist:
 			continue
 		logging.info(f"Queuing account info for {AccountNum} / {len(ChildAccounts)} accounts")
 		for region in fregions:

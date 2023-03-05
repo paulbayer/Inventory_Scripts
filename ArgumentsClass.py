@@ -114,6 +114,11 @@ class CommonArguments():
 			metavar="CloudFormation stack fragment",
 			default=["all"],
 			help="List of fragments of the cloudformation stackset(s) you want to check for.")
+		self.my_parser.add_argument(
+			"-e", "--exact",
+			dest="Exact",
+			action="store_true",
+			help="Use this flag to make sure that ONLY the string you specified will be identified")
 
 	def singleprofile(self):
 		self.my_parser.add_argument(
