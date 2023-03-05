@@ -138,9 +138,9 @@ def get_service_regions(service, fkey=None):
 	RegionNames = []
 	for x in fkey:
 		for y in regions:
-			logging.info('Have %s | Looking for %s', y, x)
+			logging.info(f"Have {y} | Looking for {x}")
 			if y.find(x) >= 0:
-				logging.info('Found %s', y)
+				logging.info(f"Found {y}")
 				RegionNames.append(y)
 	return (RegionNames)
 
@@ -759,7 +759,7 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 			account_credentials['Success'] = True
 			return (account_credentials)
 		except ClientError as my_Error:
-			logging.info(my_Error)
+			logging.info(f"In Region {fRegion}, we got error message: {my_Error}")
 			continue
 		except Exception as my_Error:
 			logging.info(my_Error)
@@ -1062,15 +1062,24 @@ def find_delivery_channels2(ocredentials, fRegion):
 	Pagination isn't an issue here since delivery channels are limited to only one / account / region
 	"""
 	import boto3
+	from botocore.exceptions import ClientError
 	import logging
 
-	session_cfg = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
-		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	session_cfg = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+								aws_secret_access_key=ocredentials['SecretAccessKey'],
+								aws_session_token=ocredentials['SessionToken'],
+								region_name=fRegion)
 	client_cfg = session_cfg.client('config')
-	logging.warning("Looking for Delivery Channels in account %s from Region %s",
-					ocredentials['AccountNumber'], fRegion)
+	logging.warning(f"Looking for Delivery Channels in account {ocredentials['AccountNumber']} from Region {fRegion}")
+	response = {'Success': False, 'ErrorMessage': None}
 
-	response = client_cfg.describe_delivery_channels()
+	try:
+		response.update(client_cfg.describe_delivery_channels())
+		response.update({'Success': True})
+	except ClientError as my_Error:
+		logging.error(f"Error accessing {ocredentials['AccountId']} in region {fRegion}\n"
+					  f"Error Message: {my_Error}")
+		response.update({'ErrorMessage': my_Error})
 	return (response)
 
 
@@ -1460,7 +1469,8 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 							AllSubnets['Subnets'].append(subnet)
 		except ClientError as my_Error:
 			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
-						  f"This is likely due to '{fRegion}' not being enabled for your account")
+						  f"This is likely due to '{fRegion}' not being enabled for your account\n"
+						  f"Error Message: {my_Error}")
 			continue
 	return (AllSubnets)
 
@@ -2319,7 +2329,7 @@ def find_stacksets3(faws_acct, fRegion=None, fStackFragment=None):
 	from botocore.exceptions import EndpointConnectionError
 
 	# Logging Settings
-	LOGGER = logging.getLogger()
+	# LOGGER = logging.getLogger()
 	logging.getLogger("boto3").setLevel(logging.CRITICAL)
 	logging.getLogger("botocore").setLevel(logging.CRITICAL)
 	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
@@ -2742,13 +2752,84 @@ def find_ssm_parameters(fProfile, fRegion):
 ############
 
 
-def get_credentials_for_multiple_orgs(fProfileList, fSkipAccounts=[], fRootOnly=False):
+# def get_credentials_for_multiple_orgs(fProfileList, fSkipAccounts=[], fRootOnly=False):
+# 	"""
+# 	Note that this function returns the credentials of all the accounts underneath the Org passed to it.
+# 	"""
+# 	import logging
+# 	import boto3
+# 	from account_class import aws_acct_access
+# 	from datetime import datetime
+# 	from queue import Queue
+# 	from threading import Thread
+# 	from botocore.exceptions import ClientError
+#
+# 	class AssembleCredentials(Thread):
+#
+# 		def __init__(self, queue):
+# 			Thread.__init__(self)
+# 			self.queue = queue
+#
+# 		def run(self):
+# 			while True:
+# 				# Get the work from the queue and expand the tuple
+# 				c_profile = self.queue.get()
+# 				logging.info(f"De-queued info for account {c_profile}")
+# 				try:
+# 					aws_acct = aws_acct_access(c_profile)
+# 				except ClientError as my_Error:
+# 					if str(my_Error).find("AuthFailure") > 0:
+# 						logging.error(f"{account['AccountId']}: Authorization failure using role: {account_credentials['Role']}")
+# 						logging.warning(my_Error)
+# 					elif str(my_Error).find("AccessDenied") > 0:
+# 						logging.error(f"{account['AccountId']}: Access Denied failure using role: {account_credentials['Role']}")
+# 						logging.warning(my_Error)
+# 					else:
+# 						logging.error(f"{account['AccountId']}: Other kind of failure using role: {account_credentials['Role']}")
+# 						logging.warning(my_Error)
+# 					continue
+# 				except KeyError as my_Error:
+# 					logging.error(f"Account Access failed - trying to access {account['AccountId']}")
+# 					logging.info(f"Actual Error: {my_Error}")
+# 					pass
+# 				except AttributeError as my_Error:
+# 					logging.error(f"Error: Likely that one of the supplied profiles was wrong")
+# 					logging.warning(my_Error)
+# 					continue
+# 				finally:
+# 					self.queue.task_done()
+#
+#
+# 	account_credentials = {'Role': 'Nothing'}
+# 	AccountNum = 0
+# 	AllCreds = []
+# 	credqueue = Queue()
+# 	WorkerThreads = len(fProfileList)
+#
+# 	# Create x worker threads
+# 	for x in range(WorkerThreads):
+# 		worker = AssembleCredentials(credqueue)
+# 		# Setting daemon to True will let the main thread exit even though the workers are blocking
+# 		worker.daemon = True
+# 		worker.start()
+#
+# 	for profile in fProfileList:
+# 		if profile in fSkipAccounts:
+# 			continue
+# 		AccountNum += 1
+# 		logging.info(f"Queuing account info for {AccountNum} / {len(ChildAccounts)} accounts")
+# 		credqueue.put((profile))
+# 		print(f"Profile: {profile} | {datetime.now()}")
+# 	print(f"Profile: {faws_acct.session.profile_name} | {datetime.now()}")
+# 	credqueue.join()
+# 	return (AllCreds)
+
+
+def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, fprofile="default", fregions=None):
 	"""
 	Note that this function returns the credentials of all the accounts underneath the Org passed to it.
 	"""
 	import logging
-	import boto3
-	from account_class import aws_acct_access
 	from datetime import datetime
 	from queue import Queue
 	from threading import Thread
@@ -2763,83 +2844,11 @@ def get_credentials_for_multiple_orgs(fProfileList, fSkipAccounts=[], fRootOnly=
 		def run(self):
 			while True:
 				# Get the work from the queue and expand the tuple
-				c_profile = self.queue.get()
-				logging.info(f"De-queued info for account {c_profile}")
-				try:
-					aws_acct = aws_acct_access(c_profile)
-				except ClientError as my_Error:
-					if str(my_Error).find("AuthFailure") > 0:
-						logging.error(f"{account['AccountId']}: Authorization failure using role: {account_credentials['Role']}")
-						logging.warning(my_Error)
-					elif str(my_Error).find("AccessDenied") > 0:
-						logging.error(f"{account['AccountId']}: Access Denied failure using role: {account_credentials['Role']}")
-						logging.warning(my_Error)
-					else:
-						logging.error(f"{account['AccountId']}: Other kind of failure using role: {account_credentials['Role']}")
-						logging.warning(my_Error)
-					continue
-				except KeyError as my_Error:
-					logging.error(f"Account Access failed - trying to access {account['AccountId']}")
-					logging.info(f"Actual Error: {my_Error}")
-					pass
-				except AttributeError as my_Error:
-					logging.error(f"Error: Likely that one of the supplied profiles was wrong")
-					logging.warning(my_Error)
-					continue
-				finally:
-					self.queue.task_done()
-
-
-	account_credentials = {'Role': 'Nothing'}
-	AccountNum = 0
-	AllCreds = []
-	credqueue = Queue()
-	WorkerThreads = len(fProfileList)
-
-	# Create x worker threads
-	for x in range(WorkerThreads):
-		worker = AssembleCredentials(credqueue)
-		# Setting daemon to True will let the main thread exit even though the workers are blocking
-		worker.daemon = True
-		worker.start()
-
-	for profile in fProfileList:
-		if profile in fSkipAccounts:
-			continue
-		AccountNum += 1
-		logging.info(f"Queuing account info for {AccountNum} / {len(ChildAccounts)} accounts")
-		credqueue.put((profile))
-		print(f"Profile: {profile} | {datetime.now()}")
-	print(f"Profile: {faws_acct.session.profile_name} | {datetime.now()}")
-	credqueue.join()
-	return (AllCreds)
-
-
-
-def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=[], fRootOnly=False, fprofile="default"):
-	"""
-	Note that this function returns the credentials of all the accounts underneath the Org passed to it.
-	"""
-	import logging
-	from datetime import datetime, time
-	from queue import Queue
-	from threading import Thread
-	from botocore.exceptions import ClientError
-
-	class AssembleCredentials(Thread):
-
-		def __init__(self, queue):
-			Thread.__init__(self)
-			self.queue = queue
-
-		def run(self):
-			while True:
-				# Get the work from the queue and expand the tuple
-				c_account_info, c_profile = self.queue.get()
+				c_account_info, c_profile, c_region = self.queue.get()
 				logging.info(f"De-queued info for account {c_account_info['AccountId']}")
 				try:
 					logging.info(f"Attempting to connect to {c_account_info['AccountId']}")
-					faccount_credentials = get_child_access3(faws_acct, c_account_info['AccountId'])
+					faccount_credentials = get_child_access3(faws_acct, c_account_info['AccountId'], c_region)
 					if faccount_credentials['Success']:
 						logging.info(f"Successfully connected to account {c_account_info['AccountId']}")
 						faccount_credentials['ParentProfile'] = c_profile
@@ -2847,7 +2856,8 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=[], fRootOnly=F
 					# elif faccount_credentials['Success']:
 					# 	pass
 					else:
-						logging.error(f"Error connecting to account {c_account_info['AccountId']}.\n"
+						logging.error(f"Error connecting to account {c_account_info['AccountId']} in region {c_region}.\n"
+									  f"Parent Profile was {c_profile}\n"
 									  f"Error Message: {faccount_credentials['ErrorMessage']}")
 				except ClientError as my_Error:
 					if str(my_Error).find("AuthFailure") > 0:
@@ -2871,12 +2881,17 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=[], fRootOnly=F
 				finally:
 					self.queue.task_done()
 
+	if fSkipAccounts is None:
+		fSkipAccounts = []
+	if fregions is None:
+		fregions = ['us-east-1']
 	ChildAccounts = faws_acct.ChildAccounts
+
 	account_credentials = {'Role': 'Nothing'}
-	AccountNum = 0
+	AccountNum = RegionNum = 0
 	AllCreds = []
 	credqueue = Queue()
-	WorkerThreads = len(ChildAccounts) + 4
+	WorkerThreads = len(ChildAccounts) + len(fregions)
 
 	# Create x worker threads
 	for x in range(WorkerThreads):
@@ -2886,15 +2901,19 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=[], fRootOnly=F
 		worker.start()
 
 	for account in ChildAccounts:
+		AccountNum += 1
+		RegionNum = 0
 		if account['AccountId'] in fSkipAccounts:
 			continue
 		elif fRootOnly and not account['AccountId'] == account['MgmtAccount']:
 			continue
-		AccountNum += 1
 		logging.info(f"Queuing account info for {AccountNum} / {len(ChildAccounts)} accounts")
-		credqueue.put((account, fprofile))
-		print(f"Account: {account} | {datetime.now()}")
-	print(f"Profile: {faws_acct.session.profile_name} | {datetime.now()}")
+		for region in fregions:
+			RegionNum += 1
+			logging.info(f"\t\tRegion {RegionNum} of {len(fregions)}")
+			credqueue.put((account, fprofile, region))
+			logging.info(f"Account / Region: {account} / {region} | {datetime.now()}")
+	logging.info(f"Profile: {fprofile} | {datetime.now()}")
 	credqueue.join()
 	return (AllCreds)
 
