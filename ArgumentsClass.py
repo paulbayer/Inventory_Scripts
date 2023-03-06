@@ -101,6 +101,13 @@ class CommonArguments():
 			default=[],
 			help="These are the profiles you don't want to examine. You can specify 'skipplus' to skip over all profiles using a plus in them.")
 		self.my_parser.add_argument(
+			"-a", "--account",
+			dest="Accounts",
+			default=[],
+			nargs="*",
+			metavar="Account",
+			help="Just the accounts you want to check")
+		self.my_parser.add_argument(
 			"--timing", "--time",
 			dest="Time",
 			action="store_true",

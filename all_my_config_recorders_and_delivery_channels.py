@@ -32,18 +32,11 @@ parser.my_parser.add_argument(
 	dest="flagDelete",
 	action="store_true",  # If the parameter is supplied, it will be true, otherwise it's false
 	help="Whether to delete the configuration recorders and delivery channels it finds.")
-parser.my_parser.add_argument(
-	"-a", "--account",
-	dest="pAccounts",
-	default=None,
-	nargs="*",
-	metavar="Account",
-	help="Just the accounts you want to check")
 args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
 pRegionList = args.Regions
-pAccounts = args.pAccounts
+pAccounts = args.Accounts
 pSkipAccounts = args.SkipAccounts
 pSkipProfiles = args.SkipProfiles
 pRootOnly = args.RootOnly
@@ -92,7 +85,8 @@ def check_accounts_for_delivery_channels_and_config_recorders(CredentialList, fR
 																   'SessionToken'   : c_account_credentials['SessionToken'],
 																   'Region'         : c_account_credentials['Region'],
 																   'MgmtAccount'    : c_account_credentials['MgmtAccount'],
-																   'ParentProfile'  : c_account_credentials['ParentProfile']})
+																   'ParentProfile'  : c_account_credentials['ParentProfile'],
+																   'Deleted'        : False})
 						account_crs_and_dcs.extend(account_dcs['DeliveryChannels'])
 					account_crs = Inventory_Modules.find_config_recorders2(c_account_credentials, c_account_credentials['Region'])
 					if len(account_crs['ConfigurationRecorders']) > 0:
@@ -103,7 +97,8 @@ def check_accounts_for_delivery_channels_and_config_recorders(CredentialList, fR
 																		 'SessionToken'   : c_account_credentials['SessionToken'],
 																		 'Region'         : c_account_credentials['Region'],
 																		 'MgmtAccount'    : c_account_credentials['MgmtAccount'],
-																		 'ParentProfile'  : c_account_credentials['ParentProfile']})
+																		 'ParentProfile'  : c_account_credentials['ParentProfile'],
+																		 'Deleted'        : False})
 						account_crs_and_dcs.extend(account_crs['ConfigurationRecorders'])
 					logging.info(f"Successfully connected to account {c_account_credentials['AccountId']} in region {c_account_credentials['Region']}")
 				except KeyError as my_Error:
@@ -116,7 +111,7 @@ def check_accounts_for_delivery_channels_and_config_recorders(CredentialList, fR
 					continue
 				finally:
 					logging.info(f"{ERASE_LINE}Finished finding items in account {c_account_credentials['AccountId']} in region {c_account_credentials['Region']} - {c_PlaceCount} / {c_PlacesToLook}")
-					print(".", end='')
+					print("\b!\b", end='')
 					self.queue.task_done()
 
 	account_crs_and_dcs = []
@@ -136,6 +131,7 @@ def check_accounts_for_delivery_channels_and_config_recorders(CredentialList, fR
 	# Since the list of credentials (in CredentialList) already includes the regions, I only have to go through this list, and not *per* region.
 	for credential in CredentialList:
 		logging.info(f"Connecting to account {credential['AccountId']} in region {credential['Region']}")
+		print(".", end='')
 		try:
 			# print(f"{ERASE_LINE}Queuing account {credential['AccountId']} in region {credential['Region']}", end='\r')
 			# I don't know why - but double parens are necessary below. If you remove them, only the first parameter is queued.
@@ -167,7 +163,7 @@ if pProfiles is None:  # Default use case from the classes
 	# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 	logging.info(f"Queueing default profile for credentials")
 	profile = 'default'
-	AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, profile, RegionList))
+	AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList))
 else:
 	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=pSkipProfiles, fprofiles=pProfiles)
 	print(f"Capturing info for {len(ProfileList)} requested profiles {ProfileList}")
@@ -179,7 +175,7 @@ else:
 			RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
 			logging.info(f"Queueing {profile} for credentials")
 			# This should populate the list "AllCredentials" with the credentials for the relevant accounts.
-			AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, profile, RegionList))
+			AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList))
 		except AttributeError as my_Error:
 			logging.error(f"Profile {profile} didn't work... Skipping")
 			continue
@@ -235,36 +231,29 @@ else:
 	ReallyDelete = False
 
 if DeletionRun and (ReallyDelete or ForceDelete):
-	MemberList = []
+	config_recorders_and_delivery_channels_to_delete = sorted(all_config_recorders_and_delivery_channels, key=lambda d: (d['Type'], d['ParentProfile'], d['MgmtAccount'], d['AccountId']))
 	logging.warning("Deleting all Config Recorders")
-	for deletion_item in all_config_recorders_and_delivery_channels:
-		session_cf_child = boto3.Session(
-			aws_access_key_id=deletion_item['AccessKeyId'],
-			aws_secret_access_key=deletion_item['SecretAccessKey'],
-			aws_session_token=deletion_item['SessionToken'],
-			region_name=deletion_item['Region'])
-		client_cf_child = session_cf_child.client('config')
+	i = 0
+	while i < len(config_recorders_and_delivery_channels_to_delete):
+		deletion_item = config_recorders_and_delivery_channels_to_delete[i]
 		# Delete ConfigurationRecorders
 		try:
-			print(ERASE_LINE,
-				  f"Deleting recorder from Account {deletion_item['AccountId']} in region {deletion_item['Region']}",
-				  end="\r")
-			if deletion_item['Type'] == 'Config Recorder':
-				Output = client_cf_child.delete_configuration_recorder(
-					ConfigurationRecorderName=deletion_item['name']
-				)
-			elif deletion_item['Type'] == 'Delivery Channel':
-				Output = client_cf_child.delete_delivery_channel(
-					DeliveryChannelName=deletion_item['name']
-				)
+			print(ERASE_LINE, f"Deleting {deletion_item['Type']} from Account {deletion_item['AccountId']} in region {deletion_item['Region']}", end="\r")
+			Output = Inventory_Modules.del_config_recorder_or_delivery_channel2(deletion_item)
+			all_config_recorders_and_delivery_channels[i].update({'Deleted': Output['Success']})
+
+			# Verify Config Recorder is gone first
+			i += 1
 		except Exception as my_Error:
+			print()
 			print("Caught unexpected error while deleting. Exiting...")
 			logging.error(f"Error: {my_Error}")
 			sys.exit(9)
+
 	if pTiming:
 		print()
 		milestone_time3 = time()
-		print(f"{Fore.GREEN}\t\tDeleting {len(AllCredentials)} places took: {(milestone_time3 - milestone_time2):.3f} seconds{Fore.RESET}")
+		print(f"{Fore.GREEN}\t\tDeleting {len(all_config_recorders_and_delivery_channels)} places took: {(milestone_time3 - milestone_time2):.3f} seconds{Fore.RESET}")
 		print()
 	print(f"Removed {len(all_config_recorders_and_delivery_channels)} config recorders and delivery channels")
 
