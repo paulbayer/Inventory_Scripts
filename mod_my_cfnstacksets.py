@@ -300,8 +300,14 @@ print(f"\t\tIn this Region: {pRegion}")
 
 RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionRemove)
 
-if pRegionRemove is not None:
-	print(f"\t\tLimiting targets to Region: {RegionList}")
+
+if pRegionRemove is None:
+	print(f"\t\tFor stack instances across all enabled Regions")
+elif len(RegionList) == 1:
+	print(f"\t\tLimiting instance targets to Region: {RegionList}")
+else:
+	print(f"\t\tLimiting instance targets to Regions: {RegionList}")
+
 if pExact:
 	print(f"\t\tFor stacksets that {Fore.RED}exactly match{Fore.RESET} these fragments: {pStackfrag}")
 else:
