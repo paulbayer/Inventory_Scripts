@@ -288,8 +288,8 @@ if pRegion.lower() == 'all':
 	logging.critical(f"{Fore.RED}You specified 'all' as the region, but this script only works with a single region.\n"
 	                 f"Please run the command again and specify only a single region{Fore.RESET}")
 	sys.exit(9)
-print()
 
+print()
 if pdryrun:
 	print("You asked me to find (but not delete) stacksets that match the following:")
 else:
@@ -299,7 +299,6 @@ print(f"\t\tIn the {aws_acct.AccountType} account {aws_acct.acct_number}")
 print(f"\t\tIn this Region: {pRegion}")
 
 RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionRemove)
-
 
 if pRegionRemove is None:
 	print(f"\t\tFor stack instances across all enabled Regions")
