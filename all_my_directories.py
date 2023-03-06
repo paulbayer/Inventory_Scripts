@@ -14,15 +14,16 @@ init()
 parser = CommonArguments()
 parser.multiprofile()  # Allows for multiple profiles to be specified
 parser.multiregion()  # Allows for multiple regions to be specified at the command line
-parser.fragment()   # Allows for specifying a string fragment to be looked for
+parser.fragment()  # Allows for specifying a string fragment to be looked for
 parser.extendedargs()  # Allows for SkipAccounts and Timing
 parser.verbosity()  # Allows for the verbosity to be handled.
-parser.rootOnly()   # Looks for the directories in the root account of the profile only
+parser.rootOnly()  # Looks for the directories in the root account of the profile only
 args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
 pRegionList = args.Regions
 pFragments = args.Fragments
+pAccounts = args.Accounts
 pSkipAccounts = args.SkipAccounts
 pTiming = args.Time
 pRootOnly = args.RootOnly
@@ -51,9 +52,10 @@ if pProfiles is None:
 		aws_acct = aws_acct_access()
 		# print(f"You've asked us to look through {len(pProfiles)} profiles")
 		# print(f"{ERASE_LINE}Looking at account {aws_acct.acct_number} within profile: {profile}", end='\r')
-		CredentialList = get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly)
-		# credentials = Inventory_Modules.get_child_access3(aws_acct, aws_acct.acct_number)
-		# credential_list.append(credentials)
+		profile = 'None'
+		CredentialList = get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList)
+	# credentials = Inventory_Modules.get_child_access3(aws_acct, aws_acct.acct_number)
+	# credential_list.append(credentials)
 	except AttributeError as myError:
 		print(f"Failed on account: {aws_acct.acct_number}, but continuing on...")
 		pass
@@ -61,10 +63,10 @@ else:
 	for profile in ProfileList:
 		try:
 			aws_acct = aws_acct_access(profile)
-			CredentialList.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly))
-			# print(f"{ERASE_LINE}Looking at account {aws_acct.acct_number} within profile: {profile}", end='\r')
-			# credentials = Inventory_Modules.get_child_access3(aws_acct, aws_acct.acct_number)
-			# credential_list.append(credentials)
+			CredentialList.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList))
+		# print(f"{ERASE_LINE}Looking at account {aws_acct.acct_number} within profile: {profile}", end='\r')
+		# credentials = Inventory_Modules.get_child_access3(aws_acct, aws_acct.acct_number)
+		# credential_list.append(credentials)
 		except AttributeError as myError:
 			print(f"Failed on profile: {profile}, but continuing on...")
 			continue
