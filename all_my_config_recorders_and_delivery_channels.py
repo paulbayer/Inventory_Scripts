@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 import sys
-import pprint
-import boto3
 import Inventory_Modules
 from Inventory_Modules import get_credentials_for_accounts_in_org
 from ArgumentsClass import CommonArguments
