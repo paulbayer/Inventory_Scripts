@@ -1066,7 +1066,7 @@ def find_account_instances2(ocredentials, fRegion='us-east-1'):
 		logging.info(
 			f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
 		if ProfileAccountNumber == ocredentials['AccountNumber']:
-			session_ec2 = boto3.Session(profile_name=ocredentials['Profile'], 
+			session_ec2 = boto3.Session(profile_name=ocredentials['Profile'],
 										region_name=fRegion)
 		else:
 			session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
@@ -1075,8 +1075,8 @@ def find_account_instances2(ocredentials, fRegion='us-east-1'):
 										region_name=fRegion)
 	else:
 		session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-									aws_secret_access_key=ocredentials['SecretAccessKey'], 
-									aws_session_token=ocredentials['SessionToken'], 
+									aws_secret_access_key=ocredentials['SecretAccessKey'],
+									aws_session_token=ocredentials['SessionToken'],
 									region_name=fRegion)
 	instance_info = session_ec2.client('ec2')
 	logging.info(f"Looking for instances in account # {ocredentials['AccountNumber']} in region {fRegion}")
@@ -1306,18 +1306,22 @@ def find_lambda_functions2(ocredentials, fRegion='us-east-1', fSearchStrings=Non
 	"""
 	import boto3
 	import logging
+
+	if fSearchStrings is None:
+		fSearchStrings = ['all']
 	session_lambda = boto3.Session(region_name=fRegion, aws_access_key_id=ocredentials[
 		'AccessKeyId'], aws_secret_access_key=ocredentials['SecretAccessKey'], aws_session_token=ocredentials[
 		'SessionToken'])
 	client_lambda = session_lambda.client('lambda')
 	functions = client_lambda.list_functions()['Functions']
 	functions2 = []
-	if fSearchStrings is None or 'all' in fSearchStrings:
+	if 'all' in fSearchStrings:
 		for i in range(len(functions)):
 			logging.info(f"Found function {functions[i]['FunctionName']}")
 			functions2.append({'FunctionName': functions[i]['FunctionName'],
 							   'FunctionArn' : functions[i]['FunctionArn'],
-							   'Role'        : functions[i]['Role'], 'Runtime': functions[i]['Runtime']})
+							   'Role'        : functions[i]['Role'],
+							   'Runtime'     : functions[i]['Runtime']})
 		return (functions2)
 	else:
 		for i in range(len(functions)):
@@ -1470,19 +1474,19 @@ def find_load_balancers(fProfile, fRegion, fStackFragment='all', fStatus='all'):
 	load_balancers_Copy = []
 	if fStackFragment.lower() == 'all' and (fStatus.lower() == 'active' or fStatus.lower() == 'all'):
 		logging.info("Found all the lbs in Profile: %s in Region: %s with Fragment: %s and Status: %s", fProfile,
-						fRegion, fStackFragment, fStatus)
+					 fRegion, fStackFragment, fStatus)
 		return (load_balancers['LoadBalancers'])
 	elif (fStackFragment.lower() == 'all'):
 		for load_balancer in load_balancers['LoadBalancers']:
 			if fStatus in load_balancer['State']['Code']:
 				logging.info("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s",
-								load_balancers['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
+							 load_balancers['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
 				load_balancers_Copy.append(load_balancer)
 	elif fStatus.lower() == 'active':
 		for load_balancer in load_balancers['LoadBalancers']:
 			if fStackFragment in load_balancer['LoadBalancerName']:
 				logging.info("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s",
-								load_balancers['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
+							 load_balancers['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
 				load_balancers_Copy.append(load_balancer)
 	return (load_balancers_Copy)
 
@@ -1578,7 +1582,7 @@ def find_stacks(fProfile, fRegion, fStackFragment="all", fStatus="active"):
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match
 				logging.info("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s",
-								stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
+							 stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
 	elif fStatus.lower() == 'active' and fStackFragment.lower() == 'all':
 		# Send back all stacks regardless of fragment, check the status further down.
@@ -1591,7 +1595,7 @@ def find_stacks(fProfile, fRegion, fStackFragment="all", fStatus="active"):
 			# Check the status now - only send back those that match a single status
 			# I don't see this happening unless someone wants Stacks in a "Deleted" or "Rollback" type status
 			logging.info("Found stack %s in Profile: %s in Region: %s regardless of fragment and Status: %s",
-							stack['StackName'], fProfile, fRegion, fStatus)
+						 stack['StackName'], fProfile, fRegion, fStatus)
 			stacksCopy.append(stack)
 	elif fStatus.lower() == 'all' and fStackFragment.lower() == 'all':
 		# Send back all stacks.
@@ -1637,7 +1641,7 @@ def find_stacks(fProfile, fRegion, fStackFragment="all", fStatus="active"):
 				if fStackFragment in stack['StackName']:
 					# Check the fragment now - only send back those that match
 					logging.info("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s",
-									stack['StackName'], fProfile, fRegion, fStackFragment, stack['StackStatus'])
+								 stack['StackName'], fProfile, fRegion, fStackFragment, stack['StackStatus'])
 					stacksCopy.append(stack)
 	return (stacksCopy)
 
@@ -1674,14 +1678,14 @@ def find_stacks2(ocredentials, fRegion, fStackFragment="all", fStatus="active"):
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match
 				logging.info(f"1-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
-								f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+							 f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 				stacksCopy.append(stack)
 	elif fStackFragment.lower() == 'all' and fStatus.lower() == 'all':
 		# Send back all stacks.
 		# TODO: Need paging here
 		stacks = client_cfn.list_stacks()
 		logging.info(f"4-Found {len(stacks)} the stacks in Account: {ocredentials['AccountNumber']} in "
-						f"Region: {fRegion}")
+					 f"Region: {fRegion}")
 		return (stacks['StackSummaries'])
 	elif fStackFragment.lower() == 'all' and fStatus.lower() == 'active':
 		# Send back all stacks regardless of fragment, check the status further down.
@@ -1690,7 +1694,7 @@ def find_stacks2(ocredentials, fRegion, fStackFragment="all", fStatus="active"):
 														   "UPDATE_ROLLBACK_COMPLETE"])
 		for stack in stacks['StackSummaries']:
 			logging.info(f"2-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
-							f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+						 f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 			stacksCopy.append(stack)
 	elif fStatus.lower() == 'all':
 		# Send back all stacks that match the fragment, including all statuses
@@ -1712,7 +1716,7 @@ def find_stacks2(ocredentials, fRegion, fStackFragment="all", fStatus="active"):
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match, regardless of status
 				logging.info(f"1-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
-								f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+							 f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 				stacksCopy.append(stack)
 
 	elif not fStatus.lower() == 'active':
@@ -1728,7 +1732,7 @@ def find_stacks2(ocredentials, fRegion, fStackFragment="all", fStatus="active"):
 				if fStackFragment in stack['StackName'] and fStatus in stack['StackStatus']:
 					# Check the fragment now - only send back those that match
 					logging.info(f"5-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']}"
-									f" in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+								 f" in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 					stacksCopy.append(stack)
 	return (stacksCopy)
 
@@ -1913,9 +1917,9 @@ def delete_stack2(ocredentials, fRegion, fStackName, **kwargs):
 		response = client_cfn.delete_stack(StackName=fStackName, RetainResources=ResourcesToRetain)
 	else:
 		logging.info("Account: %s | Region: %s | StackName: %s",
-						ocredentials['AccountNumber'],
-						fRegion,
-						fStackName)
+					 ocredentials['AccountNumber'],
+					 fRegion,
+					 fStackName)
 		response = client_cfn.delete_stack(StackName=fStackName)
 	return (response)
 
@@ -1965,7 +1969,7 @@ def find_stacks_in_acct3(faws_acct, fRegion, fStackFragment="all", fStatus="acti
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match
 				logging.info(f"1-Found stack {stack['StackName']} in Account: {faws_acct.acct_number} in "
-								f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+							 f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 				stacksCopy.append(stack)
 	elif fStatus.lower() == 'active' and fStackFragment.lower() == 'all':
 		# Send back all stacks regardless of fragment, check the status further down.
@@ -1973,14 +1977,14 @@ def find_stacks_in_acct3(faws_acct, fRegion, fStackFragment="all", fStatus="acti
 		stacks = client_cfn.list_stacks(StackStatusFilter=StackStatusFilter_active)
 		for stack in stacks['StackSummaries']:
 			logging.info(f"2-Found stack {stack['StackName']} in Account: {faws_acct.acct_number} in "
-							f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+						 f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 			stacksCopy.append(stack)
 	elif fStatus.lower() == 'all' and fStackFragment.lower() == 'all':
 		# Send back all stacks.
 		# TODO: Need paging here
 		stacks = client_cfn.list_stacks(StackStatusFilter=StackStatusFilter_all)
 		logging.info(f"4-Found {len(stacks)} stacks in Account: {faws_acct.acct_number} in "
-						f"Region: {fRegion}")
+					 f"Region: {fRegion}")
 		return (stacks['StackSummaries'])
 	elif fStatus.lower() == 'all':
 		# Send back all stacks that match the fragment, including all statuses
@@ -1989,7 +1993,7 @@ def find_stacks_in_acct3(faws_acct, fRegion, fStackFragment="all", fStatus="acti
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match, regardless of status
 				logging.info(f"3-Found stack {stack['StackName']} in Account: {faws_acct.acct_number} in "
-								f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+							 f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 				stacksCopy.append(stack)
 	elif not fStatus.lower() == 'active':
 		# Send back stacks that match the single status, check the fragment further down.
@@ -2004,7 +2008,7 @@ def find_stacks_in_acct3(faws_acct, fRegion, fStackFragment="all", fStatus="acti
 				if fStackFragment in stack['StackName'] and fStatus in stack['StackStatus']:
 					# Check the fragment now - only send back those that match
 					logging.info(f"5-Found stack {stack['StackName']} in Account: {faws_acct.acct_number}"
-									f" in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+								 f" in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 					stacksCopy.append(stack)
 	return (stacksCopy)
 
