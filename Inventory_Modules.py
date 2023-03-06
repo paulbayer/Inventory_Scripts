@@ -590,6 +590,10 @@ def RemoveCoreAccounts(MainList, AccountsToRemove=None):
 # 	return(return_string)
 
 
+def make_creds(faws_acct):
+	return ({'AccessKeyId': faws_acct.creds.access_key, 'SecretAccessKey': faws_acct.creds.secret_key, 'SessionToken': faws_acct.creds.token, 'AccountNumber': faws_acct.acct_number})
+
+
 def get_child_access(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleList=None):
 	"""
 	- fRootProfile is a string
@@ -704,7 +708,7 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 							   'AccountNumber'  : fChildAccount,
 							   'AccountId'      : fChildAccount,
 							   'Region'         : fRegion,
-							   'AccountStatus'	: faws_acct.AccountStatus,
+							   'AccountStatus'  : faws_acct.AccountStatus,
 							   'Role'           : 'Use Profile',
 							   'Profile'        : faws_acct.session.profile_name if faws_acct.session.profile_name else None,
 							   'AccessError'    : False,
@@ -726,7 +730,7 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 						   'AccountNumber'  : None,
 						   'AccountId'      : None,
 						   'Region'         : fRegion,
-						   'AccountStatus': faws_acct.AccountStatus,
+						   'AccountStatus'  : faws_acct.AccountStatus,
 						   'Role'           : None,
 						   'Profile'        : None,
 						   'AccessError'    : False,
@@ -1006,8 +1010,10 @@ def find_config_recorders2(ocredentials, fRegion):
 	"""
 	import boto3
 	import logging
-	session_cfg = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
-		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	session_cfg = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+								aws_secret_access_key=ocredentials['SecretAccessKey'],
+								aws_session_token=ocredentials['SessionToken'],
+								region_name=fRegion)
 	client_cfg = session_cfg.client('config')
 	logging.warning("Looking for Config Recorders in account %s from Region %s", ocredentials['AccountNumber'], fRegion)
 	response = client_cfg.describe_configuration_recorders()
@@ -1103,6 +1109,36 @@ def del_delivery_channel2(ocredentials, fRegion, fDelivery_channel_name):
 				  ocredentials['AccountNumber'])
 	response = client_cfg.delete_delivery_channel(DeliveryChannelName=fDelivery_channel_name)
 	return (response)
+
+
+def del_config_recorder_or_delivery_channel2(deletion_item):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+	fRegion = region
+	fConfig_recorder_name = Config Recorder Name
+	"""
+	import boto3
+	import logging
+	session_cfg = boto3.Session(aws_access_key_id=deletion_item['AccessKeyId'],
+								aws_secret_access_key=deletion_item['SecretAccessKey'],
+								aws_session_token=deletion_item['SessionToken'],
+								region_name=deletion_item['Region'])
+	client_cfg = session_cfg.client('config')
+	logging.error(f"Deleting {deletion_item['Type']} '{deletion_item['name']}' from Region {deletion_item['Region']} in account {deletion_item['AccountId']}")
+	response = {'Success': False, 'ErrorMessage': None}
+	try:
+		if deletion_item['Type'] == 'Config Recorder':
+			response.update(client_cfg.delete_configuration_recorder(ConfigurationRecorderName=deletion_item['name']))
+		elif deletion_item['Type'] == 'Delivery Channel':
+			response.update(client_cfg.delete_delivery_channel(DeliveryChannelName=deletion_item['name']))
+		response.update({'Success': True})
+	except Exception as my_Error:
+		response.update({'ErrorMessage': my_Error})
+	return (response)  # There is no response to send back
 
 
 def find_cloudtrails2(ocredentials, fRegion, fCloudTrailnames=None):
