@@ -91,19 +91,19 @@ class CommonArguments():
 			dest="SkipAccounts",
 			nargs="*",
 			metavar="Accounts to leave alone",
-			default=[],
+			default=None,
 			help="These are the account numbers you don't want to screw with. Likely the core accounts.")
 		self.my_parser.add_argument(
 			"-kp", "--skipprofile",
 			dest="SkipProfiles",
 			nargs="*",
 			metavar="Profile names",
-			default=[],
+			default=None,
 			help="These are the profiles you don't want to examine. You can specify 'skipplus' to skip over all profiles using a plus in them.")
 		self.my_parser.add_argument(
 			"-a", "--account",
 			dest="Accounts",
-			default=[],
+			default=None,
 			nargs="*",
 			metavar="Account",
 			help="Just the accounts you want to check")
