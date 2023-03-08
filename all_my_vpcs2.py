@@ -84,7 +84,7 @@ if pProfiles is None:
 		NumOfRootProfiles += 1
 else:
 	for profile in pProfiles:
-		aws_acct = aws_acct_access()
+		aws_acct = aws_acct_access(profile)
 		AllChildAccounts.extend(aws_acct.ChildAccounts)
 		print(ERASE_LINE, f"Gathering all account data from account # {aws_acct.acct_number}", end="\r")
 		if aws_acct.AccountType.lower() == 'root':
