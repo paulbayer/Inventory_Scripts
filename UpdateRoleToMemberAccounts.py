@@ -27,13 +27,13 @@ parser.verbosity()
 # 		default=None,
 # 		metavar="Single account to check/ update",
 # 		help="To specify a specific account to check/ update, use this parameter. Default is to update all accounts within an Org.")
-parser.my_parser.add_argument(
-	"--roles", "--RolesToUse",
-	dest="pRolesToUse",
-	default=None,
-	nargs='*',
-	metavar="Role name",
-	help="Role that should be used to access child accounts")
+# parser.my_parser.add_argument(
+# 	"--roles", "--RolesToUse",
+# 	dest="pRolesToUse",
+# 	default=None,
+# 	nargs='*',
+# 	metavar="Role name",
+# 	help="Role that should be used to access child accounts")
 
 group = parser.my_parser.add_mutually_exclusive_group(required=True)
 group.add_argument(
