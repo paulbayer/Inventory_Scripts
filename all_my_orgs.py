@@ -25,7 +25,7 @@ parser.my_parser.add_argument(
 		const=True,
 		default=False)
 parser.my_parser.add_argument(
-		'-A', '--account',
+		'-A', '--acct',
 		help="Find which Org this account is a part of",
 		nargs="*",
 		dest="accountList",
