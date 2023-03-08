@@ -113,6 +113,14 @@ class CommonArguments():
 			action="store_true",
 			help="Use this parameter to add a timing for the scripts")
 
+	def timing(self):
+		self.my_parser.add_argument(
+			"--timing", "--time",
+			dest="Time",
+			action="store_true",
+			help="Use this parameter to add a timing for the scripts")
+
+
 	def fragment(self):
 		self.my_parser.add_argument(
 			"-f", "--fragment",
