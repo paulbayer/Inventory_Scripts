@@ -31,18 +31,27 @@ class CommonArguments():
 
 	def version(self):
 		self.my_parser.add_argument(
-				"--version",
-				dest="Version",
-				action="store_true",
-				default="store_false",  # Defaults to not providing the version
-				help="Version #")
+			"--version",
+			dest="Version",
+			action="store_true",
+			default="store_false",  # Defaults to not providing the version
+			help="Version #")
 
 	def rootOnly(self):
 		self.my_parser.add_argument(
-				"--rootonly",
-				dest="RootOnly",
-				action="store_true",  # Defaults to False, so the script would continue to run
-				help="Only run this code for the root account, not the children")
+			"--rootonly",
+			dest="RootOnly",
+			action="store_true",  # Defaults to False, so the script would continue to run
+			help="Only run this code for the root account, not the children")
+
+	def roles_to_use(self):
+		self.my_parser.add_argument(
+			"--roles", "--RolesToUse",
+			dest="RolesToUse",
+			default=None,
+			nargs='*',
+			metavar="Role name",
+			help="Role that should be used to access child accounts")
 
 	def verbosity(self):
 		import logging

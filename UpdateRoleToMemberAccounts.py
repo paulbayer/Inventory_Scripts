@@ -17,6 +17,7 @@ init()
 parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
+parser.roles_to_use()
 parser.extendedargs()
 parser.rootOnly()
 parser.verbosity()
@@ -62,7 +63,7 @@ pSkipAccounts = args.SkipAccounts
 pSkipProfiles = args.SkipProfiles
 pRootOnly = args.RootOnly
 pAccounts = args.Accounts
-pRolesToUse = args.pRolesToUse
+pRolesToUse = args.RolesToUse
 pRoleNameToAdd = args.pRoleNameToAdd
 pRoleNameToRemove = args.pRoleNameToRemove
 pRoleNameToCheck = args.pRoleNameToCheck
