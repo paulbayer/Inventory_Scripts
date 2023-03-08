@@ -49,7 +49,7 @@ group.add_argument(
 	default=None,
 	help="Rolename to be checked for existence")
 group.add_argument(
-	"+R", "--RoleToRemove",
+	"--RoleToRemove",
 	dest="pRoleNameToRemove",
 	metavar="role to remove",
 	default=None,
@@ -58,7 +58,6 @@ args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
 pTiming = args.Time
-pAccount = args.Accounts
 pSkipAccounts = args.SkipAccounts
 pSkipProfiles = args.SkipProfiles
 pRootOnly = args.RootOnly
@@ -74,7 +73,7 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(fu
 ##########################
 
 
-def createrole(ocredentials, fRootAccount, frole):
+def createrole(ocredentials, frole):
 	import simplejson as json
 	import boto3
 	"""
@@ -90,8 +89,7 @@ def createrole(ocredentials, fRootAccount, frole):
 							"Effect"   : "Allow",
 							"Principal": {
 								"AWS": [
-									f"arn:aws:iam::{fRootAccount}:root"
-									# "arn:aws:sts::"+fRootAccount+":assumed-role/Admin/*"
+									f"arn:aws:iam::{ocredentials['MgmtAccount']}:root"
 								]
 							},
 							"Action"   : "sts:AssumeRole"
@@ -143,7 +141,7 @@ def createrole(ocredentials, fRootAccount, frole):
 		response1 = client_iam.attach_role_policy(RoleName=frole, PolicyArn=AdminPolicy)
 		print(f"{ERASE_LINE}We've successfully added the role{Fore.GREEN} {frole} {Fore.RESET}to account"
 			  f"{Fore.GREEN} {ocredentials['AccountId']} {Fore.RESET}with admin rights, "
-			  f"trusting the Management Account {Fore.GREEN}{fRootAccount}{Fore.RESET} "
+			  f"trusting the Management Account {Fore.GREEN}{ocredentials['MgmtAccount']}{Fore.RESET} "
 			  f"in profile {Fore.GREEN}{ocredentials['ParentProfile']}{Fore.RESET}.")
 	except client_iam.exceptions.NoSuchEntityException as my_Error:
 		ErrorMessage = f"No such policy: {my_Error}"
@@ -353,10 +351,12 @@ AccountNum = len(set([acct['AccountId'] for acct in AllCredentials if 'AccountId
 # 	ChildAccounts = [{'AccountId': pAccount}]
 
 print()
-RootAccountNumber = aws_acct.MgmtAccount
 UpdatedAccounts = 0
 # if the user supplied a role to use, this parameter will cause the Inventory_Modules function to use it.
 # If the parameter wasn't supplied, the default value is None, where it will be translated into a number of commonly used role names inside the function
+
+if not AllCredentials:
+	print(f"{Fore.RED}The account{'' if len(pAccounts) == 1 else 's'} you requested to check {pAccounts} doesn't appear to be within the profiles you specified.{Fore.RESET}")
 
 for cred in AllCredentials:
 	# account_credentials = Inventory_Modules.get_child_access3(aws_acct, cred['AccountId'], fRoleList=pRolesToUse)
@@ -389,23 +389,25 @@ for cred in AllCredentials:
 		UpdatedAccounts += 1
 	# If we're supposed to add the role
 	elif pRoleNameToAdd is not None:
-		createrole(cred, RootAccountNumber, pRoleNameToAdd)
-		Results.append({'AccountId': cred['AccountId'], 'Role': pRoleNameToRemove, 'Result': 'Role Created'})
+		createrole(cred, pRoleNameToAdd)
+		Results.append({'AccountId': cred['AccountId'], 'Role': pRoleNameToAdd, 'Result': 'Role Created'})
 		UpdatedAccounts += 1
 
+sorted_Results = sorted(Results, key=lambda d: (d['AccountId']))
 print()
-print(f"You supplied profiles including the following {len(AccountList)} accounts: {[item['AccountId'] for item in AccountList]}")
+# if verbose < 50:
+# 	print(f"You supplied profiles including the following {len(AccountList)} accounts: {[item['AccountId'] for item in AccountList]}")
 print()
-if pAccount is not None:
-	print(f"You asked to check account{'' if len(pAccount) == 1 else 's'} {pAccount} under your supplied profiles")
+if pAccounts is not None:
+	print(f"You asked to check account{'' if len(pAccounts) == 1 else 's'} {pAccounts} under your supplied profiles")
 else:
 	print(f"We found {AccountNum} accounts provided within the profiles you provided")
 	if verbose < 50:
-		print(f"Of these, we successfully found creds for {len(Results)} accounts using", end='')
+		print(f"Of these, we successfully found creds for {len(Results)} accounts using ", end='')
 		if pRolesToUse:
-			print(f"The roles '{pRolesToUse}' you supplied")
+			print(f"the roles '{pRolesToUse}' you supplied")
 		else:
-			print(f"The roles we commonly use for access")
+			print(f"the roles we commonly use for access")
 
 MissingAccounts = [item['AccountId'] for item in AllCredentials if not item['Success']]
 if len(MissingAccounts) > 0:
@@ -418,11 +420,13 @@ if len(MissingAccounts) > 0:
 		logging.info(f"\t\t\t\tRegions: {item['Region']}")
 
 if pRoleNameToCheck is not None:
-	print(f"We found {UpdatedAccounts} accounts that included the {pRoleNameToCheck} role")
+	print(f"We found {UpdatedAccounts} accounts that included the '{pRoleNameToCheck}' role")
 	if verbose <= 40:
-		MissingAccounts = [item['AccountId'] for item in Results if not (item['Result'] == 'Role Exists')]
-		if len(MissingAccounts) > 0:
-			print(f"{Fore.RED}We didn't find {pRoleNameToCheck} in the following accounts: {MissingAccounts}{Fore.RESET}")
+		for i in sorted_Results:
+			print(f"\tLooking for role '{i['Role']}' in Account '{i['AccountId']}': {i['Result']}")
+		# MissingAccounts = [item['AccountId'] for item in Results if not (item['Result'] == 'Role Exists')]
+		# if len(MissingAccounts) > 0:
+		# 	print(f"{Fore.RED}We didn't find {pRoleNameToCheck} in the following accounts: {MissingAccounts}{Fore.RESET}")
 elif pRoleNameToAdd is not None:
 	print(f"We updated {UpdatedAccounts} accounts to add the {pRoleNameToAdd} role")
 elif pRoleNameToRemove is not None:

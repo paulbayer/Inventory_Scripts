@@ -2676,6 +2676,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 								  f"Error: {my_Error}")
 					continue
 				finally:
+					print(".", end='')
 					self.queue.task_done()
 
 	if fSkipAccounts is None:
