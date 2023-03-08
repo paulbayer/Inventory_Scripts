@@ -2,68 +2,73 @@
 
 
 import Inventory_Modules
+from Inventory_Modules import get_credentials_for_accounts_in_org
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
+from time import time
 from colorama import init, Fore
 from botocore.exceptions import ClientError
 
 import logging
+import sys
 
 init()
 
 parser = CommonArguments()
-parser.singleprofile()
+parser.multiprofile()
+parser.multiregion()
+parser.extendedargs()
+parser.rootOnly()
 parser.verbosity()
+# parser.my_parser.add_argument(
+# 		"-a", "--account",
+# 		dest="pAccount",
+# 		default=None,
+# 		metavar="Single account to check/ update",
+# 		help="To specify a specific account to check/ update, use this parameter. Default is to update all accounts within an Org.")
 parser.my_parser.add_argument(
-		"-a", "--account",
-		dest="pAccount",
-		default=None,
-		metavar="Single account to check/ update",
-		help="To specify a specific account to check/ update, use this parameter. Default is to update all accounts within an Org.")
-parser.my_parser.add_argument(
-		"--RoleToUse",
-		dest="pRoleToUse",
-		default=None,
-		metavar="Role name",
-		help="Role that should be used to access child accounts")
+	"--roles", "--RolesToUse",
+	dest="pRolesToUse",
+	default=None,
+	nargs='*',
+	metavar="Role name",
+	help="Role that should be used to access child accounts")
+
 group = parser.my_parser.add_mutually_exclusive_group(required=True)
 group.add_argument(
-		"+r", "--RoleToAdd",
-		dest="pRoleNameToAdd",
-		metavar="role to create",
-		default=None,
-		help="Rolename to be added to a number of accounts")
+	"+r", "--RoleToAdd",
+	dest="pRoleNameToAdd",
+	metavar="role to create",
+	default=None,
+	help="Rolename to be added to a number of accounts")
 group.add_argument(
-		"-c", "--rolecheck",
-		dest="pRoleNameToCheck",
-		metavar="role to check to see if it exists",
-		default=None,
-		help="Rolename to be checked for existence")
+	"-c", "--rolecheck",
+	dest="pRoleNameToCheck",
+	metavar="role to check to see if it exists",
+	default=None,
+	help="Rolename to be checked for existence")
 group.add_argument(
-		"+R", "--RoleToRemove",
-		dest="pRoleNameToRemove",
-		metavar="role to remove",
-		default=None,
-		help="Rolename to be removed from a number of accounts")
+	"+R", "--RoleToRemove",
+	dest="pRoleNameToRemove",
+	metavar="role to remove",
+	default=None,
+	help="Rolename to be removed from a number of accounts")
 args = parser.my_parser.parse_args()
 
-pProfile = args.Profile
-pAccount = args.pAccount
-pRoleToUse = args.pRoleToUse
+pProfiles = args.Profiles
+pTiming = args.Time
+pAccount = args.Accounts
+pSkipAccounts = args.SkipAccounts
+pSkipProfiles = args.SkipProfiles
+pRootOnly = args.RootOnly
+pAccounts = args.Accounts
+pRolesToUse = args.pRolesToUse
 pRoleNameToAdd = args.pRoleNameToAdd
 pRoleNameToRemove = args.pRoleNameToRemove
 pRoleNameToCheck = args.pRoleNameToCheck
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
-aws_acct = aws_acct_access(pProfile)
-if pAccount is None:
-	ChildAccounts = aws_acct.ChildAccounts
-else:
-	ChildAccounts = [{'AccountId': pAccount}]
-
-##########################
-ERASE_LINE = '\x1b[2K'
 
 ##########################
 
@@ -71,8 +76,6 @@ ERASE_LINE = '\x1b[2K'
 def createrole(ocredentials, fRootAccount, frole):
 	import simplejson as json
 	import boto3
-	from colorama import init, Fore
-	init()
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -81,29 +84,30 @@ def createrole(ocredentials, fRootAccount, frole):
 		- ['AccountId'] holds the account number you're connecting to
 	"""
 	Trust_Policy = {"Version"  : "2012-10-17",
-	                "Statement": [
-		                {
-			                "Effect"   : "Allow",
-			                "Principal": {
-				                "AWS": [
-					                f"arn:aws:iam::{fRootAccount}:root"
-					                # "arn:aws:sts::"+fRootAccount+":assumed-role/Admin/*"
-					                ]
-				                },
-			                "Action"   : "sts:AssumeRole"
-			                }
-		                ]
-	                }
+					"Statement": [
+						{
+							"Effect"   : "Allow",
+							"Principal": {
+								"AWS": [
+									f"arn:aws:iam::{fRootAccount}:root"
+									# "arn:aws:sts::"+fRootAccount+":assumed-role/Admin/*"
+								]
+							},
+							"Action"   : "sts:AssumeRole"
+						}
+					]
+					}
 
 	AdminPolicy = 'arn:aws:iam::aws:policy/AdministratorAccess'
 
 	Trust_Policy_json = json.dumps(Trust_Policy)
 
 	session_iam = boto3.Session(
-			aws_access_key_id=ocredentials['AccessKeyId'],
-			aws_secret_access_key=ocredentials['SecretAccessKey'],
-			aws_session_token=ocredentials['SessionToken']
-			)
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken'],
+		region_name=ocredentials['Region']
+	)
 
 	client_iam = session_iam.client('iam')
 	try:
@@ -137,8 +141,9 @@ def createrole(ocredentials, fRootAccount, frole):
 	try:
 		response1 = client_iam.attach_role_policy(RoleName=frole, PolicyArn=AdminPolicy)
 		print(f"{ERASE_LINE}We've successfully added the role{Fore.GREEN} {frole} {Fore.RESET}to account"
-		      f"{Fore.GREEN} {ocredentials['AccountId']} {Fore.RESET}with admin rights, "
-		      f"trusting the Management Account{Fore.GREEN} {fRootAccount}.{Fore.RESET}")
+			  f"{Fore.GREEN} {ocredentials['AccountId']} {Fore.RESET}with admin rights, "
+			  f"trusting the Management Account {Fore.GREEN}{fRootAccount}{Fore.RESET} "
+			  f"in profile {Fore.GREEN}{ocredentials['ParentProfile']}{Fore.RESET}.")
 	except client_iam.exceptions.NoSuchEntityException as my_Error:
 		ErrorMessage = f"No such policy: {my_Error}"
 		logging.error(ErrorMessage)
@@ -181,10 +186,10 @@ def removerole(ocredentials, frole):
 	"""
 	return_response = {'Success': False, 'ErrorMessage': ''}
 	session_iam = boto3.Session(
-			aws_access_key_id=ocredentials['AccessKeyId'],
-			aws_secret_access_key=ocredentials['SecretAccessKey'],
-			aws_session_token=ocredentials['SessionToken']
-			)
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken']
+	)
 
 	client_iam = session_iam.client('iam')
 	AdminPolicy = 'arn:aws:iam::aws:policy/AdministratorAccess'
@@ -223,39 +228,39 @@ def removerole(ocredentials, frole):
 				response1 = client_iam.detach_role_policy(
 					RoleName=frole,
 					PolicyArn=managed_policy['PolicyArn']
-					)
+				)
 				logging.info(f"Successfully removed the managed policy {managed_policy['PolicyName']} from role {frole}")
 				return_response['Success'] = True
 			except (client_iam.exceptions.NoSuchEntityException,
-			        client_iam.exceptions.InvalidInputException,
-			        client_iam.exceptions.ServiceFailureException) as my_Error:
+					client_iam.exceptions.InvalidInputException,
+					client_iam.exceptions.ServiceFailureException) as my_Error:
 				logging.error(f"Error Message: {my_Error}")
 				return_response['ErrorMessage'] = str(my_Error)
 				return_response['Success'] = False
 			if return_response['Success']:
 				continue
 			else:
-				return(return_response)
+				return (return_response)
 
 		for inline_policy in attached_inline_policies['PolicyNames']:
 			try:
 				inline_role_deletion = client_iam.delete_role_policy(
 					RoleName=frole,
 					PolicyName=inline_policy
-					)
+				)
 				logging.info(f"Successfully removed the inline policy {inline_policy} from role {frole}")
 				return_response['Success'] = True
 			except (client_iam.exceptions.NoSuchEntityException,
-			        client_iam.exceptions.LimitExceededException,
-			        client_iam.exceptions.UnmodifiableEntityException,
-			        client_iam.exceptions.ServiceFailureException) as my_Error:
+					client_iam.exceptions.LimitExceededException,
+					client_iam.exceptions.UnmodifiableEntityException,
+					client_iam.exceptions.ServiceFailureException) as my_Error:
 				logging.error(f"Error Message: {my_Error}")
 				return_response['ErrorMessage'] = str(my_Error)
 				return_response['Success'] = False
 			if return_response['Success']:
 				continue
 			else:
-				return(return_response)
+				return (return_response)
 
 		# Only then we can we delete the role
 		try:
@@ -263,21 +268,21 @@ def removerole(ocredentials, frole):
 			logging.info(f"Successfully removed the role {frole}")
 			return_response['Success'] = True
 		except (client_iam.exceptions.NoSuchEntityException,
-		        client_iam.exceptions.DeleteConflictException,
-		        client_iam.exceptions.LimitExceededException,
-		        client_iam.exceptions.UnmodifiableEntityException,
-		        client_iam.exceptions.ConcurrentModificationException,
-		        client_iam.exceptions.ServiceFailureException) as my_Error:
+				client_iam.exceptions.DeleteConflictException,
+				client_iam.exceptions.LimitExceededException,
+				client_iam.exceptions.UnmodifiableEntityException,
+				client_iam.exceptions.ConcurrentModificationException,
+				client_iam.exceptions.ServiceFailureException) as my_Error:
 			logging.error(f"Error Message: {my_Error}")
 			return_response['ErrorMessage'] = str(my_Error)
 			return_response['Success'] = False
 			if return_response['Success']:
 				pass
 			else:
-				return(return_response)
+				return (return_response)
 
 		print(f"{ERASE_LINE}We've successfully removed the role{Fore.GREEN} {frole} {Fore.RESET}"
-		      f"from account{Fore.GREEN} {ocredentials['AccountId']} {Fore.RESET}")
+			  f"from account{Fore.GREEN} {ocredentials['AccountId']} {Fore.RESET}")
 	except ClientError as my_Error:
 		print(my_Error)
 		pass
@@ -287,10 +292,10 @@ def roleexists(ocredentials, frole):
 	import boto3
 
 	session_iam = boto3.Session(
-			aws_access_key_id=ocredentials['AccessKeyId'],
-			aws_secret_access_key=ocredentials['SecretAccessKey'],
-			aws_session_token=ocredentials['SessionToken']
-			)
+		aws_access_key_id=ocredentials['AccessKeyId'],
+		aws_secret_access_key=ocredentials['SecretAccessKey'],
+		aws_session_token=ocredentials['SessionToken']
+	)
 
 	client_iam = session_iam.client('iam')
 	try:
@@ -304,66 +309,116 @@ def roleexists(ocredentials, frole):
 
 
 ##########################
+
+ERASE_LINE = '\x1b[2K'
+
+if pTiming:
+	begin_time = time()
+
+AllCredentials = []
+RegionList = ['us-east-1']
+Results = []
+AccountList = []
+
+if pProfiles is None:  # Default use case from the classes
+	print("Using the default profile - gathering info")
+	aws_acct = aws_acct_access()
+	# This should populate the list "AllCreds" with the credentials for the relevant accounts.
+	logging.info(f"Queueing default profile for credentials")
+	profile = 'default'
+	AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList, pRolesToUse))
+	AccountList = aws_acct.ChildAccounts
+else:
+	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=pSkipProfiles, fprofiles=pProfiles)
+	print(f"Capturing info for {len(ProfileList)} requested profiles {ProfileList}")
+	for profile in ProfileList:
+		# Eventually - getting credentials for a single account may require passing in the region in which it's valid, but not yet.
+		try:
+			aws_acct = aws_acct_access(profile)
+			print(f"Validating {len(aws_acct.ChildAccounts)} accounts within {profile} profile now... ")
+			logging.info(f"Queueing {profile} for credentials")
+			# This should populate the list "AllCredentials" with the credentials for the relevant accounts.
+			AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList, pRolesToUse))
+			AccountList.extend(aws_acct.ChildAccounts)
+		except AttributeError as my_Error:
+			logging.error(f"Profile {profile} didn't work... Skipping")
+			continue
+
+AccountNum = len(set([acct['AccountId'] for acct in AllCredentials if 'AccountId' in acct]))
+
+# if pAccount is None:
+# 	ChildAccounts = aws_acct.ChildAccounts
+# else:
+# 	ChildAccounts = [{'AccountId': pAccount}]
+
 print()
 RootAccountNumber = aws_acct.MgmtAccount
-sts_client = aws_acct.session.client('sts')
 UpdatedAccounts = 0
-Results = []
 # if the user supplied a role to use, this parameter will cause the Inventory_Modules function to use it.
 # If the parameter wasn't supplied, the default value is None, where it will be translated into a number of commonly used role names inside the function
-if pRoleToUse is not None:
-	RoleList = [pRoleToUse]
-for account in ChildAccounts:
-	account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'], fRoleList=[pRoleToUse])
-	if not account_credentials['Success']:
-		logging.error(f"Something failed in getting credentials for account {account['AccountId']}\n"
-		              f"Error Message: {account_credentials['ErrorMessage']}")
+
+for cred in AllCredentials:
+	# account_credentials = Inventory_Modules.get_child_access3(aws_acct, cred['AccountId'], fRoleList=pRolesToUse)
+	if not cred['Success']:
+		print(f"Something failed in getting credentials for account {cred['AccountId']}\n"
+			  f"We tried this list of roles '{cred['RolesTried']}', but none worked\n"
+			  f"Error Message: {cred['ErrorMessage']}")
 		continue
-	print(f"Checking account {account_credentials['AccountId']} using role {account_credentials['Role']}", end='\r')
-	if account_credentials['Role'] == pRoleNameToRemove:
-		logging.error(f"{Fore.RED}We gained access to this account using the role you specified to remove.\n"
-		              f"Is this definitely what you want to do?{Fore.RESET}")
+	# print(f"Checking account {cred['AccountId']} using role {cred['Role']}", end='\r')
+	if cred['Role'] == pRoleNameToRemove:
+		print(f"{Fore.RED}We gained access to this account using the role you specified to remove.\n"
+			  f"Is this definitely what you want to do?{Fore.RESET}")
 	# Checking to see if the role already exists
 	if pRoleNameToCheck is not None:
-		logging.info(f"Checking to see if role {pRoleNameToCheck} exists in account {account['AccountId']}")
-		if roleexists(account_credentials, pRoleNameToCheck):
-			Results.append({'AccountId': account['AccountId'], 'Role': pRoleNameToCheck, 'Result': 'Role Exists'})
+		logging.info(f"Checking to see if role {pRoleNameToCheck} exists in account {cred['AccountId']}")
+		if roleexists(cred, pRoleNameToCheck):
+			Results.append({'AccountId': cred['AccountId'], 'Role': pRoleNameToCheck, 'Result': 'Role Exists'})
 			UpdatedAccounts += 1
 		else:
-			Results.append({'AccountId': account['AccountId'], 'Role': pRoleNameToCheck, 'Result': 'Nonexistent Role'})
+			Results.append({'AccountId': cred['AccountId'], 'Role': pRoleNameToCheck, 'Result': 'Nonexistent Role'})
 	# If we're supposed to add the role and it already exists
-	elif pRoleNameToAdd is not None and roleexists(account_credentials, pRoleNameToAdd):
+	elif pRoleNameToAdd is not None and roleexists(cred, pRoleNameToAdd):
 		logging.warning(f"Role {pRoleNameToAdd} already exists")
 		continue
-	# If we're supposed to remove the role and the role exists AND it's not the role we used to access the account
-	elif pRoleNameToRemove is not None and roleexists(account_credentials, pRoleNameToRemove) and not (account_credentials['Role'] == pRoleNameToAdd):
-		logging.warning(f"Removing role {pRoleNameToRemove} from account {account['AccountId']}")
-		removerole(account_credentials, pRoleNameToRemove)
-		Results.append({'AccountId': account['AccountId'], 'Role': pRoleNameToRemove, 'Result': 'Role Removed'})
+	# If we're supposed to remove the role and the role exists AND it's not the role we used to access the cred
+	elif pRoleNameToRemove is not None and roleexists(cred, pRoleNameToRemove) and not (cred['Role'] == pRoleNameToAdd):
+		logging.warning(f"Removing role {pRoleNameToRemove} from account {cred['AccountId']}")
+		removerole(cred, pRoleNameToRemove)
+		Results.append({'AccountId': cred['AccountId'], 'Role': pRoleNameToRemove, 'Result': 'Role Removed'})
 		UpdatedAccounts += 1
 	# If we're supposed to add the role
 	elif pRoleNameToAdd is not None:
-		createrole(account_credentials, RootAccountNumber, pRoleNameToAdd)
-		Results.append({'AccountId': account['AccountId'], 'Role': pRoleNameToRemove, 'Result': 'Role Created'})
+		createrole(cred, RootAccountNumber, pRoleNameToAdd)
+		Results.append({'AccountId': cred['AccountId'], 'Role': pRoleNameToRemove, 'Result': 'Role Created'})
 		UpdatedAccounts += 1
 
 print()
+print(f"You supplied profiles including the following {len(AccountList)} accounts: {[item['AccountId'] for item in AccountList]}")
 print()
 if pAccount is not None:
-	print(f"You asked to check account {pAccount} under your organization")
+	print(f"You asked to check account{'' if len(pAccount) == 1 else 's'} {pAccount} under your supplied profiles")
 else:
-	print(f"We found {len(ChildAccounts)} accounts under your organization")
-	print(f"Of these, we checked {len(Results)} accounts")
+	print(f"We found {AccountNum} accounts provided within the profiles you provided")
+	if verbose < 50:
+		print(f"Of these, we successfully found creds for {len(Results)} accounts using", end='')
+		if pRolesToUse:
+			print(f"The roles '{pRolesToUse}' you supplied")
+		else:
+			print(f"The roles we commonly use for access")
 
-AccountList = [item['AccountId'] for item in Results]
-print(f"{Fore.GREEN}We checked the following accounts: {AccountList}{Fore.RESET}")
-MissingAccounts = [item['AccountId'] for item in ChildAccounts if item['AccountId'] not in AccountList]
+MissingAccounts = [item['AccountId'] for item in AllCredentials if not item['Success']]
 if len(MissingAccounts) > 0:
-	print(f"{Fore.RED}We failed to check the following accounts: {MissingAccounts}{Fore.RESET}")
+	print()
+	print(f"{Fore.RED}We were unsuccessful when checking the following {len(MissingAccounts)} accounts: {MissingAccounts}{Fore.RESET}")
+	logging.warning(f"List of failed accounts:")
+	for item in AllCredentials:
+		logging.error(f"\t\t{item['AccountId']}")
+		logging.warning(f"\t\t\tRoles Tried: {item['RolesTried']}")
+		logging.info(f"\t\t\t\tRegions: {item['Region']}")
 
 if pRoleNameToCheck is not None:
 	print(f"We found {UpdatedAccounts} accounts that included the {pRoleNameToCheck} role")
-	if verbose < 41:
+	if verbose <= 40:
 		MissingAccounts = [item['AccountId'] for item in Results if not (item['Result'] == 'Role Exists')]
 		if len(MissingAccounts) > 0:
 			print(f"{Fore.RED}We didn't find {pRoleNameToCheck} in the following accounts: {MissingAccounts}{Fore.RESET}")
@@ -372,6 +427,9 @@ elif pRoleNameToAdd is not None:
 elif pRoleNameToRemove is not None:
 	print(f"We updated {UpdatedAccounts} accounts to remove the {pRoleNameToRemove} role")
 
+if pTiming:
+	print(ERASE_LINE)
+	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
 
 print()
 print("Thanks for using the tool.")

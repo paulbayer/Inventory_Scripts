@@ -436,6 +436,9 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 	org_type = faws_acct.AccountType
 	ParentAccountId = faws_acct.acct_number
 	sts_client = faws_acct.session.client('sts', region_name=fRegion)
+	if fRoleList is None or fRoleList == []:
+		fRoleList = ['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution',
+					 'OrganizationAccountAccessRole', 'AdministratorAccess', 'Owner']
 	if fChildAccount == ParentAccountId:
 		explain_string = (f"We're trying to get access to either the Root Account (which we already have access "
 						  f"to via the profile) or we're trying to gain access to a Standalone account. "
@@ -453,15 +456,13 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 							   'AccountId'      : fChildAccount,
 							   'Region'         : fRegion,
 							   'AccountStatus'  : faws_acct.AccountStatus,
+							   'RolesTried'     : fRoleList,
 							   'Role'           : 'Use Profile',
 							   'Profile'        : faws_acct.session.profile_name if faws_acct.session.profile_name else None,
 							   'AccessError'    : False,
 							   'Success'        : True,
 							   'ErrorMessage'   : None}
 		return (account_credentials)
-	if fRoleList is None:
-		fRoleList = ['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution',
-					 'OrganizationAccountAccessRole', 'AdministratorAccess', 'Owner']
 	# Initializing the "Negative Use Case" string, returning the whole list instead of only the last role it tried.
 	# This way the operator knows that NONE of the roles supplied worked.
 	return_string = f"{str(fRoleList)} failed. Try Again"
@@ -475,6 +476,7 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 						   'AccountId'      : None,
 						   'Region'         : fRegion,
 						   'AccountStatus'  : faws_acct.AccountStatus,
+						   'RolesTried'     : fRoleList,
 						   'Role'           : None,
 						   'Profile'        : None,
 						   'AccessError'    : False,
@@ -500,6 +502,7 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 			account_credentials['AccountId'] = fChildAccount
 			account_credentials['Region'] = fRegion
 			account_credentials['AccountStatus'] = faws_acct.AccountStatus
+			account_credentials['RolesTried'] = fRoleList
 			account_credentials['Role'] = role
 			account_credentials['Profile'] = None
 			account_credentials['AccessError'] = False
@@ -517,7 +520,7 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 	logging.debug(f"Failure:\n"
 				  f"Role list: {fRoleList}\n"
 				  f"account credentials: {account_credentials}")
-	account_credentials = {'AccessError': True, 'Success': False, 'ErrorMessage': "Access Failed"}
+	account_credentials = {'AccessError': True, 'Success': False, 'ErrorMessage': "Access Failed", 'RolesTried': fRoleList}
 	return (account_credentials)
 
 
@@ -2615,7 +2618,7 @@ def find_ssm_parameters(fProfile, fRegion):
 # 	return (AllCreds)
 
 
-def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, accountlist=None, fprofile="default", fregions=None):
+def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, accountlist=None, fprofile="default", fregions=None, fRoleNames=None):
 	"""
 	Note that this function returns the credentials of all the accounts underneath the Org passed to it.
 	"""
@@ -2638,17 +2641,21 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 				logging.info(f"De-queued info for account {c_account_info['AccountId']}")
 				try:
 					logging.info(f"Attempting to connect to {c_account_info['AccountId']}")
-					faccount_credentials = get_child_access3(faws_acct, c_account_info['AccountId'], c_region)
+					faccount_credentials = get_child_access3(faws_acct, c_account_info['AccountId'], c_region, fRoleNames)
 					if faccount_credentials['Success']:
 						logging.info(f"Successfully connected to account {c_account_info['AccountId']}")
-						faccount_credentials['ParentProfile'] = c_profile
-						AllCreds.append(faccount_credentials)
+						faccount_credentials.update({'ParentProfile': c_profile,
+													 'RolesTried'   : fRoleNames})
 					# elif faccount_credentials['Success']:
 					# 	pass
 					else:
 						logging.error(f"Error connecting to account {c_account_info['AccountId']} in region {c_region}.\n"
 									  f"Parent Profile was {c_profile}\n"
 									  f"Error Message: {faccount_credentials['ErrorMessage']}")
+						faccount_credentials.update({'AccountId'    : c_account_info['AccountId'],
+													 'ParentProfile': c_profile,
+													 'Region'       : c_region})
+					AllCreds.append(faccount_credentials)
 				except ClientError as my_Error:
 					if str(my_Error).find("AuthFailure") > 0:
 						logging.error(f"{account['AccountId']}: Authorization failure using role: {account_credentials['Role']}\n"
