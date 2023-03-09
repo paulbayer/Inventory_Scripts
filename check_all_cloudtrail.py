@@ -126,6 +126,8 @@ print(fmt % ("-----------", "---------", "------", "----------", "---------", "-
 TrailsFound = []
 AllChildAccounts = []
 RegionList = ['us-east-1']
+if pSkipAccounts is None:
+	pSkipAccounts = []
 
 if pProfiles is None:  # Default use case from the classes
 	logging.info("Using whatever the default profile is")
