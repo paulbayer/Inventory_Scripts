@@ -180,11 +180,15 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 		fSkipProfiles = []
 	if fprofiles is None:
 		fprofiles = ['all']
+	profiles_to_remove = []
 	my_Session = boto3.Session()
 	my_profiles = my_Session._session.available_profiles
 	for profile in my_profiles:
+		logging.info(f"Found profile {profile}")
 		if ("skipplus" in fSkipProfiles and profile.find("+") >= 0) or profile in fSkipProfiles:
-			my_profiles.remove(profile)
+			logging.info(f"Removing profile: {profile} since it's in the fSkipProfiles parameter {fSkipProfiles}")
+			profiles_to_remove.append(profile)
+	my_profiles = list(set(my_profiles) - set(profiles_to_remove))
 	if "all" in fprofiles or "ALL" in fprofiles or "All" in fprofiles:
 		return (my_profiles)
 
