@@ -96,14 +96,14 @@ class CommonArguments():
 			action="store_true",
 			dest="Force")  # Default to Dry Run (no changes)
 		self.my_parser.add_argument(
-			"-k", "-ka", "--skip", "--skipaccount",
+			"-k", "-ka", "--skip", "--skipaccount", "--skipaccounts",
 			dest="SkipAccounts",
 			nargs="*",
 			metavar="Accounts to leave alone",
 			default=None,
 			help="These are the account numbers you don't want to screw with. Likely the core accounts.")
 		self.my_parser.add_argument(
-			"-kp", "--skipprofile",
+			"-kp", "--skipprofile", "--skipprofiles",
 			dest="SkipProfiles",
 			nargs="*",
 			metavar="Profile names",
@@ -150,7 +150,7 @@ class CommonArguments():
 				dest="Profile",
 				metavar="Profile",
 				default=None,  # Default to boto3 defaults
-				help="Which single profile do you want to run against?")
+				help="Which *single* profile do you want to run against?")
 
 	def multiprofile(self):
 		self.my_parser.add_argument(
@@ -185,4 +185,4 @@ class CommonArguments():
 				dest="Region",
 				metavar="region name string",
 				default="us-east-1",
-				help="Name of the single region(s) you want to check for resources.")
+				help="Name of the *single* region you want to check for resources.")

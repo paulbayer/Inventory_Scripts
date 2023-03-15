@@ -1263,6 +1263,121 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 	return (AllSubnets)
 
 
+def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+		- ['Profile'] can hold the profile, instead of the session credentials
+	"""
+	import boto3
+	from botocore.exceptions import ClientError
+	import logging
+
+	if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
+		ProfileAccountNumber = find_account_number(ocredentials['Profile'])
+		logging.info(
+			f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
+		if ProfileAccountNumber == ocredentials['AccountNumber']:
+			session_iam = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
+		else:
+			session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+										aws_secret_access_key=ocredentials['SecretAccessKey'],
+										aws_session_token=ocredentials['SessionToken'],
+										region_name=fRegion)
+	else:
+		session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
+			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	policy_info = session_iam.client('iam')
+	Policies = {'IsTruncated': True}
+	AllPolicies = []
+	first_time = True
+
+	while Policies['IsTruncated']:
+		# Had to add this so that a failure of the describe_policy function doesn't cause a race condition
+		try:
+			logging.info(f"Looking for all policies that exist within account #{ocredentials['AccountNumber']}")
+			if first_time:
+				Policies = policy_info.list_policies()
+				first_time = False
+			else:
+				Policies = policy_info.list_policies(Marker=Policies['Marker'])
+			for policy in Policies['Policies']:
+				if fFragments is None:
+					AllPolicies.append(policy)
+				else:
+					for fragment in fFragments:
+						if fragment in policy['PolicyName']:
+							# Run through each of the policies, and determine if the passed in action fits within any of them
+							# If it does - then include that data within the array, otherwise next...
+							AllPolicies.append(policy)
+		except ClientError as my_Error:
+			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
+						  f"This is likely due to '{fRegion}' not being enabled for your account\n"
+						  f"Error Message: {my_Error}")
+			continue
+	return (AllPolicies)
+
+
+def find_policy_action(ocredentials, fpolicy, f_action):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+		- ['Profile'] can hold the profile, instead of the session credentials
+	"""
+	import boto3
+	from botocore.exceptions import ClientError
+	import logging
+
+	fRegion = 'us-east-1'
+	if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
+		ProfileAccountNumber = find_account_number(ocredentials['Profile'])
+		logging.info(
+			f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
+		if ProfileAccountNumber == ocredentials['AccountNumber']:
+			session_iam = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
+		else:
+			session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+										aws_secret_access_key=ocredentials['SecretAccessKey'],
+										aws_session_token=ocredentials['SessionToken'],
+										region_name=fRegion)
+	else:
+		session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
+			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	policy_info = session_iam.client('iam')
+	result = dict()
+	results = list()
+
+	try:
+		logging.info(f"Getting policy statements for policy {fpolicy} that exists within account #{ocredentials['AccountNumber']}")
+		Policy_statements = policy_info.get_policy_version(PolicyArn=fpolicy['Arn'], VersionId=fpolicy['DefaultVersionId'])['PolicyVersion']
+		# Run through each of the policies, and determine if the passed in action fits within any of them
+		# If it does - then include that data within the array, otherwise next...
+		for key, statement in Policy_statements['Document']['Statement'].items():
+			if key == 'Action':
+				try:
+					for action in statement:
+						for action_to_find in f_action:
+							if action.find(action_to_find) >= 0:
+								result.update({'message': f"Found action '{f_action}' in {fpolicy['PolicyName']}",
+											   'PolicyName': fpolicy['PolicyName'],
+											   'Statement': statement})
+
+					results.append(result)
+				except Exception as my_Error:
+					print(f"Error in statements: {my_Error}")
+		return (results)
+	except ClientError as my_Error:
+		logging.error(f"Error connecting to account {ocredentials['AccountNumber']}\n"
+					  f"Error Message: {my_Error}")
+	return (result)
+
+
 def find_users2(ocredentials):
 	"""
 	ocredentials is an object with the following structure:
@@ -2317,10 +2432,10 @@ def delete_stack_instances(fProfile, fRegion, lAccounts, lRegions, fStackSetName
 	return (response)  # There is no response to send back
 
 
-def delete_stack_instances3(faws_acct, fRegion, lAccounts, lRegions, fStackSetName, fRetainStacks=False,
-							fOperationName=None):
+def delete_stack_instances3(faws_acct, fRegion, lRegions, fStackSetName, fRetainStacks=False,
+							fOperationName=None, lAccounts=None, fPermissionModel='SELF_MANAGED', fDeploymentTarget=None):
 	"""
-	fProfile is the Root Profile that owns the stackset
+	faws_acct is the Root account class object that owns the stackset (This function doesn't yet support Delegated Admin permissions)
 	fRegion is the region where the stackset resides
 	lAccounts is a list of accounts
 	lRegion is a list of regions
@@ -2330,8 +2445,12 @@ def delete_stack_instances3(faws_acct, fRegion, lAccounts, lRegions, fStackSetNa
 	import logging
 	from random import choices
 	from string import ascii_letters
+	from botocore.exceptions import ValidationError
 
 	result = validate_region3(faws_acct, fRegion)
+	response = {'Success': True, 'ErrorMessage': None, 'OperationId': None}
+	errormessage = "Error hasn't been initialized yet"
+	return_response = {'Success': False, 'ErrorMessage': errormessage}
 	if not result['Success']:
 		return (result['Message'])
 	else:
@@ -2340,36 +2459,61 @@ def delete_stack_instances3(faws_acct, fRegion, lAccounts, lRegions, fStackSetNa
 		fOperationName = f"StackDelete-{choices(ascii_letters, k=6)}"
 	logging.info(f"Deleting {fStackSetName} stackset over {len(lAccounts)} accounts across {len(lRegions)} regions")
 	client_cfn = faws_acct.session.client('cloudformation', region_name=fRegion)
+	# The following code is only valid for "Self-Managed StackSets"
 	try:
-		response = client_cfn.delete_stack_instances(StackSetName=fStackSetName,
+		if fPermissionModel == 'SELF_MANAGED':
+			response.update(client_cfn.delete_stack_instances(StackSetName=fStackSetName,
 													 Accounts=lAccounts,
 													 Regions=lRegions,
 													 RetainStacks=fRetainStacks,
 													 OperationPreferences={
 														 'RegionConcurrencyType'     : 'PARALLEL',
-														 'FailureTolerancePercentage': 100,
+														 'FailureTolerancePercentage': 0,
 														 'MaxConcurrentPercentage'   : 100
 													 },
-													 OperationId=fOperationName)
-		return_response = {'Success': True, 'OperationId': response['OperationId']}
+													 OperationId=fOperationName))
+
+			return_response = {'Success': True, 'OperationId': response['OperationId']}
+		elif fPermissionModel == 'SERVICE_MANAGED':
+			response.update(client_cfn.delete_stack_instances(StackSetName=fStackSetName,
+														 DeploymentTargets=fDeploymentTarget,
+														 Regions=lRegions,
+														 RetainStacks=fRetainStacks,
+														 OperationPreferences={
+															 'RegionConcurrencyType'     : 'PARALLEL',
+															 'FailureTolerancePercentage': 0,
+															 'MaxConcurrentPercentage'   : 100
+														 },
+														 OperationId=fOperationName))
+			return_response = {'Success': True, 'OperationId': response['OperationId']}
 	except client_cfn.exceptions.StackSetNotFoundException as myError:
-		logging.error(f"StackSet not found: {myError}")
-		return_response = {'Success': False, 'ErrorMessage': myError}
+		errormessage = f"StackSet not found: {myError}"
+		logging.error(errormessage)
+		return_response = {'Success': False, 'ErrorMessage': errormessage}
 	except client_cfn.exceptions.OperationInProgressException as myError:
-		logging.error(f"Operation in progress: {myError}")
-		return_response = {'Success': False, 'ErrorMessage': myError}
+		errormessage = f"Operation in progress: {myError}"
+		logging.error(errormessage)
+		return_response = {'Success': False, 'ErrorMessage': errormessage}
 	except client_cfn.exceptions.OperationIdAlreadyExistsException as myError:
-		logging.error(f"Operation Id already exists: {myError}")
-		return_response = {'Success': False, 'ErrorMessage': myError}
+		errormessage = f"Operation Id already exists: {myError}"
+		logging.error(errormessage)
+		return_response = {'Success': False, 'ErrorMessage': errormessage}
 	except client_cfn.exceptions.StaleRequestException as myError:
-		logging.error(f"Stale Request: {myError}")
-		return_response = {'Success': False, 'ErrorMessage': myError}
+		errormessage = f"Stale Request: {myError}"
+		logging.error(errormessage)
+		return_response = {'Success': False, 'ErrorMessage': errormessage}
 	except client_cfn.exceptions.InvalidOperationException as myError:
-		logging.error(f"Invalid Operation: {myError}")
-		return_response = {'Success': False, 'ErrorMessage': myError}
+		errormessage = f"Invalid Operation: {myError}"
+		logging.error(errormessage)
+		return_response = {'Success': False, 'ErrorMessage': errormessage}
+	except ValidationError as myError:
+		errormessage = f"Validation Error: {myError}"
+		logging.error(errormessage)
+		return_response = {'Success': False, 'ErrorMessage': errormessage}
 	except Exception as myError:
-		logging.error(f"Other problem: {myError}")
-		return_response = {'Success': False, 'ErrorMessage': myError}
+		errormessage = f"Other problem: {myError}"
+		logging.error(errormessage)
+		return_response = {'Success': False, 'ErrorMessage': errormessage}
 	return (return_response)  # The response will be the Operation ID of the delete operation or an Error Message
 
 
@@ -2475,6 +2619,58 @@ def find_sc_products(fProfile, fRegion, fStatus="ERROR", flimit=100):
 	response2 = []
 	session_sc = boto3.Session(profile_name=fProfile, region_name=fRegion)
 	client_sc = session_sc.client('servicecatalog')
+	if fStatus.lower() == 'all':
+		response = client_sc.search_provisioned_products(PageSize=flimit)
+		while 'NextPageToken' in response.keys():
+			response2.extend(response['ProvisionedProducts'])
+			response = client_sc.search_provisioned_products(PageToken=response['NextPageToken'], PageSize=flimit)
+	else:  # We filter down to only the statuses asked for
+		response = client_sc.search_provisioned_products(PageSize=flimit, Filters={
+			'SearchQuery': [f"status:{fStatus}"]})
+		while 'NextPageToken' in response.keys():
+			response2.extend(response['ProvisionedProducts'])
+			response = client_sc.search_provisioned_products(PageSize=flimit, Filters={
+				'SearchQuery': [f"status:{fStatus}"]}, PageToken=response['NextPageToken'])
+	response2.extend(response['ProvisionedProducts'])
+	return (response2)
+
+
+def find_sc_products3(faws_acct, fStatus="ERROR", flimit=100):
+	"""
+	fProfile is the Root Profile that owns the Account we're interrogating
+	fRegion is the region we're interrogating
+	fStatus is the status of SC products we're looking for. Defaults to "ERROR"
+	flimit is the max number of products to find. This is used for debugging, mainly
+
+	Returned list looks like this:
+	[
+		{
+			"Arn": "string",
+			"CreatedTime": number,
+			"Id": "string",
+			"IdempotencyToken": "string",
+			"LastRecordId": "string",
+			"Name": "string",
+			"PhysicalId": "string",
+			"ProductId": "string",
+			"ProvisioningArtifactId": "string",
+			"Status": "string",
+			"StatusMessage": "string",
+			"Tags": [
+				{
+					"Key": "string",
+					"Value": "string"
+				}
+			],
+			"Type": "string",
+			"UserArn": "string",
+			"UserArnSession": "string"
+		}
+	]
+	"""
+
+	response2 = []
+	client_sc = faws_acct.session.client('servicecatalog')
 	if fStatus.lower() == 'all':
 		response = client_sc.search_provisioned_products(PageSize=flimit)
 		while 'NextPageToken' in response.keys():

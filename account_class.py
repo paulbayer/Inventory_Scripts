@@ -32,70 +32,58 @@ So if we create a class object that represented the account:
 """
 import boto3
 import logging
-from botocore.exceptions import ProfileNotFound, ClientError
+from botocore.exceptions import ProfileNotFound, ClientError, ConnectionError, EndpointConnectionError, CredentialRetrievalError, UnknownRegionError
+from urllib3.exceptions import NewConnectionError
 from json.decoder import JSONDecodeError
 
 
 def _validate_region(faws_prelim_session, fRegion=None):
-	import logging
-	from botocore.exceptions import CredentialRetrievalError, ClientError
-
-	try:
-		client_region = faws_prelim_session.client('ec2')
-		all_regions_list = [region_name['RegionName'] for region_name in client_region.describe_regions(AllRegions=True)['Regions']]
-	except ClientError as myError:
-		message = (f"Access using these credentials didn't work. "
-		           f"Error Message: {myError}")
-		result = {
-			'Success': False,
-			'Message': message,
-			'Region': fRegion}
-		return (result)
-	except JSONDecodeError as my_Error:
-		message = (f"Access using these credentials didn't work. "
-		           f"Error Message: {my_Error}")
-		result = {
-			'Success': False,
-			'Message': message,
-			'Region': fRegion}
-		return (result)
-	except CredentialRetrievalError as myError:
-		message = (f"Error getting access credentials. "
-		           f"Error Message: {myError}")
-		result = {
-			'Success': False,
-			'Message': message,
-			'Region': fRegion}
-		return (result)
-	if fRegion is None:  # Why are you trying to validate a region, and then didn't supply a region?
-		logging.info(f"No region supplied to check. Defaulting to 'us-east-1'")
-		fRegion = 'us-east-1'
-	if fRegion in all_regions_list:
-		logging.info(f"{fRegion} is a valid region within AWS")
-		valid_region = True
-	else:
-		logging.info(f"{fRegion} is not a valid region within AWS. Maybe check the spelling?")
-		valid_region = False
-	region_info = client_region.describe_regions(Filters=[{'Name': 'region-name', 'Values': [fRegion]}])['Regions']
-	if len(region_info) == 0:
-		if valid_region:
-			message = f"While '{fRegion}' is a valid AWS region, this account has not opted into this region"
-		else:
-			message = f"'{fRegion}' is not a valid AWS region name"
-		logging.error(message)
-		result = {
-			'Success': False,
-			'Message': message,
-			'Region': fRegion}
-		return (result)
-	else:
-		message = f"'{fRegion}' is a valid region for this account"
+	# Why are you trying to validate a region, and then didn't supply a region?
+	# Or - common case - you supplied 'us-east-1' which we know to be valid, so we can just immediately return Success
+	if fRegion is None or fRegion == 'us-east-1':
+		message = (f"Either no region supplied to check or region is 'us-east-1'. Defaulting to 'us-east-1'")
 		logging.info(message)
+		fRegion = 'us-east-1'
 		result = {
 			'Success': True,
 			'Message': message,
-			'Region': fRegion}
+			'Region' : fRegion}
 		return (result)
+	else:
+		try:
+			# Since we have to run this command to get a listing of the possible regions, we have to use a region we know will work today...
+			client_region = faws_prelim_session.client('ec2', region_name='us-east-1')
+			# all_regions_list = [region_name['RegionName'] for region_name in client_region.describe_regions(AllRegions=True)['Regions']]
+			matching_regions = client_region.describe_regions(Filters=[{'Name': 'region-name', 'Values': [fRegion]}])['Regions']
+		except Exception as my_Error:
+			message = (f"Problem happened.\n"
+					   f"Error Message: {my_Error}")
+			result = {
+				'Success': False,
+				'Message': message,
+				'Region' : fRegion}
+			return (result)
+	if matching_regions:
+		message = (f"{fRegion} is a valid region within AWS")
+		result = {
+			'Success': True,
+			'Message': message,
+			'Region' : fRegion}
+		if matching_regions[0]['OptInStatus'] == 'not-opted-in':
+			message = (f"{fRegion} is a valid region within AWS, but this account hasn't opted into this region")
+			result = {
+				'Success': False,
+				'Message': message,
+				'Region' : fRegion}
+		logging.info(message)
+	else:
+		message = (f"{fRegion} is not valid region within this AWS partition")
+		logging.info(message)
+		result = {
+			'Success': False,
+			'Message': message,
+			'Region' : fRegion}
+	return (result)
 
 
 class aws_acct_access:
@@ -113,6 +101,7 @@ class aws_acct_access:
 		Region: The region used to authenticate into this account. Important to find out if certain regions are allowed (opted-in).
 		ChildAccounts: If the account is a "Root", this is a listing of the child accounts
 	"""
+
 	def __init__(self, fProfile=None, fRegion='us-east-1', ocredentials=None):
 		logging.basicConfig(format="[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s")
 		# First thing's first: We need to validate that the region they sent us to use is valid for this account.
@@ -129,61 +118,62 @@ class aws_acct_access:
 				# Using a token-based role
 				UsingSessionToken = True
 				prelim_session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-				                               aws_secret_access_key=ocredentials['SecretAccessKey'],
-				                               aws_session_token=ocredentials['SessionToken'],
-				                               region_name='us-east-1')
+											   aws_secret_access_key=ocredentials['SecretAccessKey'],
+											   aws_session_token=ocredentials['SessionToken'],
+											   region_name='us-east-1')
 				account_access_successful = True
 			else:
 				# Not using a token-based role
 				prelim_session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-				                               aws_secret_access_key=ocredentials['SecretAccessKey'],
-				                               region_name='us-east-1')
+											   aws_secret_access_key=ocredentials['SecretAccessKey'],
+											   region_name='us-east-1')
 				account_access_successful = True
 		else:
 			# Not trying to use account_key_credentials
 			try:
-				prelim_session = boto3.Session(profile_name=fProfile, region_name='us-east-1')
+				prelim_session = boto3.Session(profile_name=fProfile, region_name=fRegion)
 				account_access_successful = True
 			except ProfileNotFound as my_Error:
-				ErrorMessage = (f"The profile '{fProfile}' wasn't found. Perhaps there was a typo?\n"
-				                f"Error Message: {my_Error}")
+				ErrorMessage = (f"The profile '{fProfile}' wasn't found. Perhaps there was a typo? Error Message: {my_Error}")
 				account_access_successful = False
-				raise ConnectionError(f"Profile '{fProfile}' not found")
-		if account_access_successful:
-			try:
-				result = _validate_region(prelim_session, fRegion)
-				if result['Success'] is True:
-					if UsingSessionToken:
-						logging.debug("Credentials are using SessionToken")
-						self.session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-						                             aws_secret_access_key=ocredentials['SecretAccessKey'],
-						                             aws_session_token=ocredentials['SessionToken'],
-						                             region_name=result['Region'])
-					elif UsingKeys:
-						logging.debug("Credentials are using Keys, but no SessionToken")
-						self.session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-						                             aws_secret_access_key=ocredentials['SecretAccessKey'],
-						                             region_name=result['Region'])
-					else:
-						logging.debug("Credentials are using a profile")
-						self.session = boto3.Session(profile_name=fProfile, region_name=result['Region'])
-					account_and_region_access_successful = True
-					self.AccountStatus = 'ACTIVE'
-				else:
-					logging.error(result['Message'])
-					account_and_region_access_successful = False
-					self.AccountStatus = 'INACTIVE'
-			except ProfileNotFound as my_Error:
-				logging.error(f"Profile {fProfile} not found. Please ensure this profile is valid within your system.")
-				logging.info(f"Error: {my_Error}")
-				account_and_region_access_successful = False
 
-		logging.info(f"Capturing Account Information for profile {fProfile}...")
-		if not account_and_region_access_successful:
-			logging.error(f"Didn't find information for profile {fProfile} as something failed")
-		else:
-			logging.info(f"Successfully validated access to account in region {fRegion}")
+		if account_access_successful:
+			# try:
+			result = _validate_region(prelim_session, fRegion)
+			if result['Success'] is True:
+				if UsingSessionToken:
+					logging.debug("Credentials are using SessionToken")
+					self.session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+												 aws_secret_access_key=ocredentials['SecretAccessKey'],
+												 aws_session_token=ocredentials['SessionToken'],
+												 region_name=result['Region'])
+				elif UsingKeys:
+					logging.debug("Credentials are using Keys, but no SessionToken")
+					self.session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+												 aws_secret_access_key=ocredentials['SecretAccessKey'],
+												 region_name=result['Region'])
+				else:
+					logging.debug("Credentials are using a profile")
+					self.session = boto3.Session(profile_name=fProfile, region_name=result['Region'])
+				account_and_region_access_successful = True
+				self.AccountStatus = 'ACTIVE'
+			else:
+				logging.error(result['Message'])
+				account_and_region_access_successful = False
+			# self.AccountStatus = 'INACTIVE'
+			# raise UnknownRegionError
+		# except UnknownRegionError as my_Error:
+		# 	logging.error(f"Profile {fProfile} not found. Please ensure this profile is valid within your system.")
+		# 	logging.info(f"Error: {my_Error}")
+		# 	account_and_region_access_successful = False
+		# except ProfileNotFound as my_Error:
+		# 	logging.error(f"Profile {fProfile} not found. Please ensure this profile is valid within your system.")
+		# 	logging.info(f"Error: {my_Error}")
+		# 	account_and_region_access_successful = False
+
+		# logging.info(f"Capturing Account Information for profile {fProfile}...")
 		if account_and_region_access_successful:
+			logging.info(f"Successfully validated access to account in region {fRegion}")
 			self.acct_number = self.acct_num()
 			self._AccountAttributes = self.find_account_attr()
 			logging.info(f"Found {len(self._AccountAttributes)} attributes in this account")
@@ -193,6 +183,12 @@ class aws_acct_access:
 			self.MgmtEmail = self._AccountAttributes['ManagementEmail']
 			logging.info(f"Account {self.acct_number} is a {self.AccountType} account")
 			self.creds = self.session._session._credentials.get_frozen_credentials()
+			self.credentials = dict()
+			self.credentials.update({'AccessKeyId'    : self.creds[0],
+									 'SecretAccessKey': self.creds[1],
+									 'SessionToken'   : self.creds[2],
+									 'AccountNumber'  : self.acct_number,
+									 'Profile'        : None})
 			if self.AccountType.lower() == 'root':
 				logging.info("Enumerating all of the child accounts")
 				self.ChildAccounts = self.find_child_accounts()
@@ -200,13 +196,26 @@ class aws_acct_access:
 
 			else:
 				self.ChildAccounts = self.find_child_accounts()
-		elif fProfile is not None:
+		elif fProfile is not None and not account_access_successful:  # Likely the problem was the profile passed in
 			logging.error(f"Profile {fProfile} failed to successfully access an account")
 			self.AccountType = 'Unknown'
 			self.MgmtAccount = 'Unknown'
 			self.OrgID = 'Unknown'
 			self.MgmtEmail = 'Unknown'
 			self.creds = 'Unknown'
+			self.credentials = 'Unknown'
+			self.ErrorType = 'Invalid profile'
+		# raise ProfileNotFound
+		elif fProfile is not None and account_access_successful:  # Likely the problem was the region passed in
+			logging.error(f"Region '{fRegion}' wasn't valid. Please specify a valid region.")
+			self.AccountType = 'Unknown'
+			self.MgmtAccount = 'Unknown'
+			self.OrgID = 'Unknown'
+			self.MgmtEmail = 'Unknown'
+			self.creds = 'Unknown'
+			self.credentials = 'Unknown'
+			self.ErrorType = 'Invalid region'
+		# raise UnknownRegionError
 		elif ocredentials is not None:
 			logging.error(f"Credentials for access_key {ocredentials['AccountNum']} failed to successfully access an account")
 			self.AccountType = 'Unknown'
@@ -214,6 +223,17 @@ class aws_acct_access:
 			self.OrgID = 'Unknown'
 			self.MgmtEmail = 'Unknown'
 			self.creds = 'Unknown'
+			self.credentials = 'Unknown'
+			self.ErrorType = 'Invalid credentials'
+		# raise CredentialRetrievalError
+		else:
+			logging.error(f"Not sure how we got here... Call your admin for help?")
+			self.AccountType = 'Unknown'
+			self.MgmtAccount = 'Unknown'
+			self.OrgID = 'Unknown'
+			self.MgmtEmail = 'Unknown'
+			self.creds = 'Unknown'
+			self.credentials = 'Unknown'
 
 	def acct_num(self):
 		"""
@@ -258,13 +278,13 @@ class aws_acct_access:
 		In the case of an Org Root or Child account, I use the response directly from the AWS SDK. 
 		You can find the output format here: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/organizations.html#Organizations.Client.describe_organization
 		"""
-		function_response = {'AccountType': 'Unknown',
-		                     'AccountNumber': None,
-		                     'OrgId': None,
-		                     'Id': None,
-		                     'MasterAccountId': None,
-		                     'MgmtAccountId': None,
-		                     'ManagementEmail': None}
+		function_response = {'AccountType'    : 'Unknown',
+							 'AccountNumber'  : None,
+							 'OrgId'          : None,
+							 'Id'             : None,
+							 'MasterAccountId': None,
+							 'MgmtAccountId'  : None,
+							 'ManagementEmail': None}
 		try:
 			session_org = self.session
 			client_org = session_org.client('organizations')
@@ -329,10 +349,10 @@ class aws_acct_access:
 				logging.info(f"Enumerating Account info for account: {self.acct_number}")
 				while theresmore:
 					for account in response['Accounts']:
-						child_accounts.append({'MgmtAccount': self.acct_number,
-						                       'AccountId': account['Id'],
-						                       'AccountEmail': account['Email'],
-						                       'AccountStatus': account['Status']})
+						child_accounts.append({'MgmtAccount'  : self.acct_number,
+											   'AccountId'    : account['Id'],
+											   'AccountEmail' : account['Email'],
+											   'AccountStatus': account['Status']})
 					if 'NextToken' in response:
 						theresmore = True
 						response = client_org.list_accounts(NextToken=response['NextToken'])
@@ -344,18 +364,18 @@ class aws_acct_access:
 				logging.debug(my_Error)
 				return ()
 		elif self.find_account_attr()['AccountType'].lower() in ['standalone', 'child']:
-			child_accounts.append({'MgmtAccount': self.acct_num(),
-			                       'AccountId': self.acct_num(),
-			                       'AccountEmail': 'Not an Org Management Account',
-			                       # We know the account is ACTIVE because if it was SUSPENDED, we wouldn't have gotten a valid response from the org_root check
-			                       'AccountStatus': 'ACTIVE'})
+			child_accounts.append({'MgmtAccount'  : self.acct_num(),
+								   'AccountId'    : self.acct_num(),
+								   'AccountEmail' : 'Not an Org Management Account',
+								   # We know the account is ACTIVE because if it was SUSPENDED, we wouldn't have gotten a valid response from the org_root check
+								   'AccountStatus': 'ACTIVE'})
 			return (child_accounts)
 		else:
 			logging.warning(f"Account {self.acct_num()} suffered a crisis of identity")
 			return ()
 
 	def __str__(self):
-		return(f"Account #{self.acct_number} is a {self.AccountType} account with {len(self.ChildAccounts)-1} child accounts")
+		return (f"Account #{self.acct_number} is a {self.AccountType} account with {len(self.ChildAccounts) - 1} child accounts")
 
 	def __repr__(self):
-		return(f"Account #{self.acct_number} is a {self.AccountType} account with {len(self.ChildAccounts)-1} child accounts")
+		return (f"Account #{self.acct_number} is a {self.AccountType} account with {len(self.ChildAccounts) - 1} child accounts")
