@@ -19,21 +19,22 @@ Common Parameters
   - -vvv for even more logging (level: INFO)
     - This is generally the lowest level I would recommend anyone use.
     - I started changing most scripts over from "-d" for INFO, to "-vvv" to align with standard practices 
-  - -d for lots of logging (level: INFO)
-    - In the scripts where I changed over to the "-vvv", the single "-d" now means "debug"; but in the scripts which haven't moved over yet, it's still "-dd".
     - This is generally the lowest level I would recommend anyone use.
-  - -dd for crazy amount of logging (level: DEBUG)
-    - I would avoid the "debug" level because Python itself tends to bombard you with so much screen-spam that it's not useful. I've used DEBUG level for when I was writing the code and needed to debug it myself.
-
-Additional common parameters:
-------------------
+  - -d for lots of logging (level: DEBUG)
+    - I've updated the DEBUG to be the -d. Beware - this is a crazy amount of debugging, and it includes a lot of the open-source libraries that I use, since I don't disable that functionality within my scripts.
   - -h: Provide "-h" or "--help" on the command line and get a nicely formatted screen that describes all possible parameters.
-  - -p: to specify the profile which the script will work with. In most cases, this could/ should be a Master Profile, but doesn't always have to be.
+  - -p: to specify the profile which the script will work with. In most cases, this could/ should be a Master Profile, but doesn't always have to be. Additionally - in many scripts, this parameter takes more than one possible profile AND ALSO allows you to specify a fragment of a profile, so it you have 3 profiles all with the same fragment, it will include all 3.
   - -r: to specify the single region for the script to work in. Most scripts take "all" as a valid parameter. Most scripts also assume "us-east-1" as a default if nothing is specified. 
   - -rs: In many of the scripts, you can specify a fragment - so you can specify "us-east" and get both "us-east-1" and "us-east-2". Specify "us-" and you'll get all four "us-" regions.
   - -f: string fragment - some scripts (specifically ones dealing with CFN stacks and stacksets) take a parameter that allows you to specify a fragment of the stack name, so you can find that stack you can't quite remember the whole name of.
-  - +delete: I've tried to make it difficult to **accidentally** delete any resources, so that's why it's a "+" instead of a "-".
 
+Less used common parameters:
+------------------
+  - --exact: It's possible that some fragments will exist both as a stackname, as well as part of other stacknames (think "xxx" and "xxx-global"). In these cases, you can use the "--exact" parameter, and it will only use the string you've entered. *Note that this means you must enter the entire string, and not just a fragment anymore.*
+  - --skipprofile: Cometimes you want to specify a fragment of a profile, and you want 5 of the 6 profiles that fragment shows up in, but not the 6th. You can use this parameter to exclude that 6th profile (space delimited).
+  - --skipaccount: Sometimes you want to exclude the production accounts from any script you're running. You can use this parameter to exclude a list of accounts (space delimited).
+  - +delete: I've tried to make it difficult to **accidentally** delete any resources, so that's why it's a "+" instead of a "-".
+  
 
 Purpose Built Scripts
 ------------------
@@ -81,8 +82,8 @@ Purpose Built Scripts
 
 
 
-    Generic Scripts
-    ------------------
+Generic Scripts
+------------------
 - **all_my_cfnstacks.py**
   - The objective of this script is to find that CloudFormation stack you know you created in some account within your Organization - but you just can't remember which one (and God forbid - in which region!). So here you can specify a stack fragment, and a region fragment and the script will search through all accounts within your Org (assuming you provided a profile of the Master Account-with appropriate rights) in only those regions that match your fragment, and find the stacks that match the fragment you provided.
   - If you provide the "+delete" parameter - it will DELETE those stacks WITHOUT ADDITIONAL CONFIRMATION! So please be careful about using this.
@@ -151,7 +152,8 @@ Purpose Built Scripts
   - So, originally, when I was creating this library, I had the idea that I would create scripts that found resources - and different scripts that deleted those resources. Hence - both the "all_my_cfnstacksets" as well as "del_my_cfnstacksets". However, I quickly realized that you had to do the finding before you could do the deleting - so I decided to put more effort into the "del\*" tool instead of the "find\*" tool. Of course - then I realized that having the "deletion" be action in the find script made way more sense, so I tried to put everything I had done from one script into the other. At the end of it all - I had a mish-mash of useful and stale features in both scripts.
   - The truth is that I need to go through this script and make sure everything useful here has gotten into the "all_my_cfnstacksets.py" script and simply move forward with that one only. Still a work in progress, I guess.
   - This script goes through the stacksets in the Management Account and looks for stacksets that match the fragment you supplied.
-  - The usefulness of this script is that it can remove specific accounts from all the stacksets it finds, so that if you know you've closed an account, but forgotten to remove it from existing stacksets, this script will remove that account from the stacksets found.  
+  - The usefulness of this script is that it can remove specific accounts from all the stacksets it finds, so that if you know you've closed an account, but forgotten to remove it from existing stacksets, this script will remove that account from the stacksets found.
+  - Most recent update - this script can now affect stacksets that are tied to a specific OU and use the "SERVICE_MANAGED" permission model. 
 
 - **my_org_users.py**
   - The objective of this script is to go through all of your child accounts within an Org and pull out any IAM users you have - to ensure it's only what you expect.
