@@ -1263,7 +1263,7 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 	return (AllSubnets)
 
 
-def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None):
+def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None, fExact=False):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -1314,11 +1314,20 @@ def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None):
 								   'MgmtAccount': ocredentials['MgmtAccount'],
 								   'Region': ocredentials['Region']})
 					AllPolicies.append(policy)
-				else:
+				elif fExact:
+					for fragment in fFragments:
+						if fragment == policy['PolicyName']:
+							# Run through each of the policies, and determine if the passed in policy fragment matches the policy name
+							# If it does - then include that policy within the returned list, otherwise next...
+							policy.update({'AccountNumber': ocredentials['AccountNumber'],
+										   'MgmtAccount'  : ocredentials['MgmtAccount'],
+										   'Region'       : ocredentials['Region']})
+							AllPolicies.append(policy)
+				elif not fExact:
 					for fragment in fFragments:
 						if fragment in policy['PolicyName']:
-							# Run through each of the policies, and determine if the passed in action fits within any of them
-							# If it does - then include that data within the array, otherwise next...
+							# Run through each of the policies, and determine if the passed in policy fragment matches any part of the policy name
+							# If it does - then include that policy within the returned list, otherwise next...
 							policy.update({'AccountNumber': ocredentials['AccountNumber'],
 										   'MgmtAccount'  : ocredentials['MgmtAccount'],
 										   'Region'       : ocredentials['Region']})
@@ -2957,8 +2966,6 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		# Setting daemon to True will let the main thread exit even though the workers are blocking
 		worker.daemon = True
 		worker.start()
-
-	print("Getting Accounts: ", end='')
 
 	for account in ChildAccounts:
 		AccountNum += 1

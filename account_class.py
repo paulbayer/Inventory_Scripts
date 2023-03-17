@@ -160,8 +160,8 @@ class aws_acct_access:
 			else:
 				logging.error(result['Message'])
 				account_and_region_access_successful = False
-			# self.AccountStatus = 'INACTIVE'
-			# raise UnknownRegionError
+		# self.AccountStatus = 'INACTIVE'
+		# raise UnknownRegionError
 		# except UnknownRegionError as my_Error:
 		# 	logging.error(f"Profile {fProfile} not found. Please ensure this profile is valid within your system.")
 		# 	logging.info(f"Error: {my_Error}")
@@ -171,7 +171,7 @@ class aws_acct_access:
 		# 	logging.info(f"Error: {my_Error}")
 		# 	account_and_region_access_successful = False
 
-		# logging.info(f"Capturing Account Information for profile {fProfile}...")
+		logging.info(f"Capturing Account Information for profile {fProfile}...")
 		if account_and_region_access_successful:
 			logging.info(f"Successfully validated access to account in region {fRegion}")
 			self.acct_number = self.acct_num()
@@ -189,7 +189,7 @@ class aws_acct_access:
 									 'SecretAccessKey': self.creds[1],
 									 'SessionToken'   : self.creds[2],
 									 'AccountNumber'  : self.acct_number,
-									 'Region': fRegion,
+									 'Region'         : fRegion,
 									 'Profile'        : None})
 			if self.AccountType.lower() == 'root':
 				logging.info("Enumerating all of the child accounts")
@@ -255,6 +255,10 @@ class aws_acct_access:
 			client_sts = aws_session.client('sts')
 			response = client_sts.get_caller_identity()
 			creds = response['Account']
+		except JSONDecodeError as my_Error:
+			error_message = (f"There was a JSON Decode Error while using sts to gain access from account {self.acct_number}")
+			logging.error(f"{error_message}\n"
+						  f"Error Message: {my_Error}")
 		except ClientError as my_Error:
 			if str(my_Error).find("UnrecognizedClientException") > 0:
 				logging.info(f"Security Issue")
