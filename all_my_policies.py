@@ -2,6 +2,7 @@
 
 # import boto3
 import Inventory_Modules
+from Inventory_Modules import display_results
 from Inventory_Modules import get_credentials_for_accounts_in_org
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
@@ -48,7 +49,6 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(fu
 ERASE_LINE = '\x1b[2K'
 
 logging.info(f"Profiles: {pProfiles}")
-
 
 ##################
 
@@ -129,34 +129,6 @@ def check_accounts_for_policies(CredentialList, fRegionList=None, fAction=None, 
 	return (AllPolicies)
 
 
-def display_policies(policies_list, fdisplay_dict, defaultAction=None):
-	"""
-	Note that this function simply formats the output of the data within the list provided
-	"""
-	# fmt = '%-12s %-12s %-15s %-40s %-18s'
-	# print()
-	# print(fmt % ("Root Acct #", "Account #", "Region", "Policy Name", "Action", ))
-	# print(fmt % ("-----------", "---------", "------", "-----------", "------", ))
-	for field, value in fdisplay_dict.items():
-		print(f"{field:{value}} ", end='')
-	print()
-	for field, value in fdisplay_dict.items():
-		repeatvalue = int(value[:value.find('s')])
-		print(f"{'-' * repeatvalue} ", end='')
-	print()
-
-	for policy in policies_list:
-		for field, value in fdisplay_dict.items():
-			if field not in policy.keys():
-				policy[field] = defaultAction
-			if policy[field] is None:
-				print(f"{'':{value}} ", end='')
-			else:
-				print(f"{policy[field]:{value}} ", end='')
-		print()
-	print()
-
-
 ##################
 
 begin_time = time()
@@ -202,16 +174,15 @@ else:
 		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList))
 
 PoliciesFound.extend(check_accounts_for_policies(AllCredentials, RegionList, pAction, pFragment))
-display_policies(PoliciesFound, display_dict)
+display_results(PoliciesFound, display_dict, pAction)
 
 if pTiming:
 	print(ERASE_LINE)
 	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
-print()
-print(f"These accounts were skipped - as requested: {pSkipAccounts}")
+print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else print()
 print()
 print(f"Found {len(PoliciesFound)} policies across {len(AllCredentials)} accounts across {len(RegionList)} regions\n"
-	  f"that matched the fragment(s) that you specified: {pFragment}")
+	  f"	that matched the fragment{s if len(pFragment) > 1 else ''} that you specified: {pFragment}")
 print()
 print("Thank you for using this script")
 print()

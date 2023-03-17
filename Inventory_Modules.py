@@ -541,6 +541,34 @@ def enable_drift_on_stacks2(ocredentials, fRegion, fStackName):
 	return (response)  # Since this is an async process, there is no response to send back
 
 
+def display_policies(policies_list, fdisplay_dict, defaultAction=None):
+	"""
+	Note that this function simply formats the output of the data within the list provided
+	"""
+	# This writes out the headings
+	for field, value in fdisplay_dict.items():
+		print(f"{field:{value}} ", end='')
+	print()
+	# This writes out the dashes (separators)
+	for field, value in fdisplay_dict.items():
+		repeatvalue = int(value[:value.find('s')])
+		print(f"{'-' * repeatvalue} ", end='')
+	print()
+
+	# This writes out the data
+	for policy in policies_list:
+		for field, value in fdisplay_dict.items():
+			# This just makes sure we don't get a 'KeyError'
+			if field not in policy.keys():
+				policy[field] = defaultAction
+			if policy[field] is None:
+				print(f"{'':{value}} ", end='')
+			else:
+				print(f"{policy[field]:{value}} ", end='')
+		print()		# This is the end of line character needed at the end of every line
+	print()			# This is the new line needed at the end of the script.
+
+
 """
 Above - Generic functions
 Below - Specific functions to specific features
@@ -1309,7 +1337,7 @@ def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None, f
 			else:
 				Policies = policy_info.list_policies(Marker=Policies['Marker'])
 			for policy in Policies['Policies']:
-				if fFragments is None:
+				if fFragments is None or 'all' in fFragments:
 					policy.update({'AccountNumber': ocredentials['AccountNumber'],
 								   'MgmtAccount': ocredentials['MgmtAccount'],
 								   'Region': ocredentials['Region']})
@@ -2883,6 +2911,41 @@ def find_ssm_parameters(fProfile, fRegion):
 # 	print(f"Profile: {faws_acct.session.profile_name} | {datetime.now()}")
 # 	credqueue.join()
 # 	return (AllCreds)
+
+def display_results(results_list, fdisplay_dict, defaultAction=None):
+	"""
+	Note that this function simply formats the output of the data within the list provided
+	- results_list: This should be a list of dictionaries, matching to the fields in fdisplay_dict
+	- fdisplay_dict: Should look like the below. It's simply a list of fields and formats
+	- defaultAction: this is a default string or type to assign to fields that (for some reason) don't exist within the results_list.
+	display_dict = {'MgmtAccount'  	: '12s',
+				'AccountNumber'		: '12s',
+				'Region'       		: '15s',
+				'PolicyName'   		: '40s',
+				'Action'       		: '10s'}
+	"""
+	# This writes out the headings
+	for field, value in fdisplay_dict.items():
+		print(f"{field:{value}} ", end='')
+	print()
+	# This writes out the dashes (separators)
+	for field, value in fdisplay_dict.items():
+		repeatvalue = int(value[:value.find('s')])
+		print(f"{'-' * repeatvalue} ", end='')
+	print()
+
+	# This writes out the data
+	for policy in results_list:
+		for field, value in fdisplay_dict.items():
+			# This just makes sure we don't get a 'KeyError'
+			if field not in policy.keys():
+				policy[field] = defaultAction
+			if policy[field] is None:
+				print(f"{'':{value}} ", end='')
+			else:
+				print(f"{policy[field]:{value}} ", end='')
+		print()		# This is the end of line character needed at the end of every line
+	print()			# This is the new line needed at the end of the script.
 
 
 def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, accountlist=None, fprofile="default", fregions=None, fRoleNames=None):
