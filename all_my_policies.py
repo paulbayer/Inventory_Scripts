@@ -2,10 +2,9 @@
 
 # import boto3
 import Inventory_Modules
-from Inventory_Modules import display_results
-from Inventory_Modules import get_credentials_for_accounts_in_org
+from Inventory_Modules import display_results, get_all_credentials
 from ArgumentsClass import CommonArguments
-from account_class import aws_acct_access
+# from account_class import aws_acct_access
 from colorama import init, Fore
 from botocore.exceptions import ClientError
 from queue import Queue
@@ -136,45 +135,25 @@ print()
 print(f"Checking for matching Policies... ")
 print()
 
-display_dict = {'MgmtAccount'  : '12s',
-				'AccountNumber': '12s',
-				'Region'       : '15s',
-				'PolicyName'   : '40s',
-				'Action'       : '10s'}
+display_dict = {'MgmtAccount'  : {'Format': '12s', 'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
+				'AccountNumber': {'Format': '12s', 'DisplayOrder': 2, 'Heading': 'Acct Number'},
+				'Region'       : {'Format': '15s', 'DisplayOrder': 3, 'Heading': 'Region'},
+				'PolicyName'   : {'Format': '40s', 'DisplayOrder': 4, 'Heading': 'Policy Name'},
+				'Action'       : {'Format': '10s', 'DisplayOrder': 5, 'Heading': 'Action'}}
+
 PoliciesFound = []
 AllChildAccounts = []
 # TODO: Will have to be changed to support single region-only accounts, but that's a ways off yet.
 pRegionList = RegionList = ['us-east-1']
-subnet_list = []
-AllCredentials = []
 
-if pProfiles is None:  # Default use case from the classes
-	print("Getting Accounts to check: ", end='')
-	aws_acct = aws_acct_access()
-	profile = 'default'
-	# RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
-	if pTiming:
-		logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
-	# This should populate the list "AllCreds" with the credentials for the relevant accounts.
-	logging.info(f"Queueing default profile for credentials")
-	AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList))
+AllCredentials = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
 
-else:
-	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=pSkipProfiles, fprofiles=pProfiles)
-	logging.warning(f"These profiles are being checked {ProfileList}.")
-	print("Getting Accounts to check: ", end='')
-	for profile in ProfileList:
-		aws_acct = aws_acct_access(profile)
-		# RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
-		if pTiming:
-			logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
-		logging.warning(f"Looking at {profile} account now across these regions {RegionList}... ")
-		logging.info(f"Queueing {profile} for credentials")
-		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
-		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList))
+if pTiming:
+	logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
 
 PoliciesFound.extend(check_accounts_for_policies(AllCredentials, RegionList, pAction, pFragment))
-display_results(PoliciesFound, display_dict, pAction)
+sorted_policies = sorted(PoliciesFound, key=lambda x: (x['MgmtAccount'], x['AccountNumber'], x['Region'], x['PolicyName']))
+display_results(sorted_policies, display_dict, pAction)
 
 if pTiming:
 	print(ERASE_LINE)
@@ -182,7 +161,7 @@ if pTiming:
 print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else print()
 print()
 print(f"Found {len(PoliciesFound)} policies across {len(AllCredentials)} accounts across {len(RegionList)} regions\n"
-	  f"	that matched the fragment{s if len(pFragment) > 1 else ''} that you specified: {pFragment}")
+	  f"	that matched the fragment{'s' if len(pFragment) > 1 else ''} that you specified: {pFragment}")
 print()
 print("Thank you for using this script")
 print()
