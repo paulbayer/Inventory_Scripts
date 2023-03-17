@@ -1271,25 +1271,29 @@ def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None):
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the account number
 		- ['Profile'] can hold the profile, instead of the session credentials
+	fRegion is the region in which you're looking for policies
+	fFragments is a list of fragments you might be looking for in the policy name
 	"""
 	import boto3
 	from botocore.exceptions import ClientError
 	import logging
 
-	if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
-		ProfileAccountNumber = find_account_number(ocredentials['Profile'])
-		logging.info(
-			f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
-		if ProfileAccountNumber == ocredentials['AccountNumber']:
-			session_iam = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
-		else:
-			session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-										aws_secret_access_key=ocredentials['SecretAccessKey'],
-										aws_session_token=ocredentials['SessionToken'],
-										region_name=fRegion)
-	else:
-		session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
-			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	# if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
+	# 	ProfileAccountNumber = find_account_number(ocredentials['Profile'])
+	# 	logging.info(
+	# 		f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
+	# 	if ProfileAccountNumber == ocredentials['AccountNumber']:
+	# 		session_iam = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
+	# 	else:
+	# 		session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	# 									aws_secret_access_key=ocredentials['SecretAccessKey'],
+	# 									aws_session_token=ocredentials['SessionToken'],
+	# 									region_name=fRegion)
+	# else:
+	session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+								aws_secret_access_key=ocredentials['SecretAccessKey'],
+								aws_session_token=ocredentials['SessionToken'],
+								region_name=ocredentials['Region'])
 	policy_info = session_iam.client('iam')
 	Policies = {'IsTruncated': True}
 	AllPolicies = []
@@ -1306,15 +1310,69 @@ def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None):
 				Policies = policy_info.list_policies(Marker=Policies['Marker'])
 			for policy in Policies['Policies']:
 				if fFragments is None:
+					policy.update({'AccountNumber': ocredentials['AccountNumber'],
+								   'MgmtAccount': ocredentials['MgmtAccount'],
+								   'Region': ocredentials['Region']})
 					AllPolicies.append(policy)
 				else:
 					for fragment in fFragments:
 						if fragment in policy['PolicyName']:
 							# Run through each of the policies, and determine if the passed in action fits within any of them
 							# If it does - then include that data within the array, otherwise next...
+							policy.update({'AccountNumber': ocredentials['AccountNumber'],
+										   'MgmtAccount'  : ocredentials['MgmtAccount'],
+										   'Region'       : ocredentials['Region']})
 							AllPolicies.append(policy)
 		except ClientError as my_Error:
 			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
+						  f"This is likely due to '{fRegion}' not being enabled for your account\n"
+						  f"Error Message: {my_Error}")
+			continue
+	return (AllPolicies)
+
+
+def find_account_policies3(faws_acct, fRegion='us-east-1', fFragments=None):
+	"""
+	faws_acct is an aws_acct object
+	fRegion is the region in which you're looking for policies
+	fFragments is a list of fragments you might be looking for in the policy name
+	"""
+	import boto3
+	from botocore.exceptions import ClientError
+	import logging
+
+	logging.info(f"Account: {faws_acct.acct_number}")
+	client_iam = faws_acct.session.client('iam')
+	Policies = {'IsTruncated': True}
+	AllPolicies = []
+	first_time = True
+
+	while Policies['IsTruncated']:
+		# Had to add this so that a failure of the describe_policy function doesn't cause a race condition
+		try:
+			logging.info(f"Looking for all policies that exist within account #{ocredentials['AccountNumber']}")
+			if first_time:
+				Policies = client_iam.list_policies()
+				first_time = False
+			else:
+				Policies = client_iam.list_policies(Marker=Policies['Marker'])
+			for policy in Policies['Policies']:
+				if fFragments is None:
+					policy.update({'AccountNumber': faws_acct.acct_number,
+								   'MgmtAccount': faws_acct.MgmtAccount,
+								   'Region': fRegion})
+					AllPolicies.append(policy)
+				else:
+					for fragment in fFragments:
+						if fragment in policy['PolicyName']:
+							# Run through each of the policies, and determine if the passed in action fits within any of them
+							# If it does - then include that data within the array, otherwise next...
+							policy.update({'AccountNumber': faws_acct.acct_number,
+										   'MgmtAccount'  : faws_acct.MgmtAccount,
+										   'Region'       : fRegion})
+							AllPolicies.append(policy)
+		except ClientError as my_Error:
+			logging.error(f"Error connecting to account {faws_acct.acct_number} in region {fRegion}\n"
 						  f"This is likely due to '{fRegion}' not being enabled for your account\n"
 						  f"Error Message: {my_Error}")
 			continue
@@ -2900,6 +2958,8 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		# Setting daemon to True will let the main thread exit even though the workers are blocking
 		worker.daemon = True
 		worker.start()
+
+	print("Getting Accounts: ", end='')
 
 	for account in ChildAccounts:
 		AccountNum += 1
