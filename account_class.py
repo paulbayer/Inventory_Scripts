@@ -182,12 +182,14 @@ class aws_acct_access:
 			self.OrgID = self._AccountAttributes['OrgId']
 			self.MgmtEmail = self._AccountAttributes['ManagementEmail']
 			logging.info(f"Account {self.acct_number} is a {self.AccountType} account")
+			self.Region = fRegion
 			self.creds = self.session._session._credentials.get_frozen_credentials()
 			self.credentials = dict()
 			self.credentials.update({'AccessKeyId'    : self.creds[0],
 									 'SecretAccessKey': self.creds[1],
 									 'SessionToken'   : self.creds[2],
 									 'AccountNumber'  : self.acct_number,
+									 'Region': fRegion,
 									 'Profile'        : None})
 			if self.AccountType.lower() == 'root':
 				logging.info("Enumerating all of the child accounts")
@@ -202,6 +204,7 @@ class aws_acct_access:
 			self.MgmtAccount = 'Unknown'
 			self.OrgID = 'Unknown'
 			self.MgmtEmail = 'Unknown'
+			self.Region = fRegion
 			self.creds = 'Unknown'
 			self.credentials = 'Unknown'
 			self.ErrorType = 'Invalid profile'
@@ -212,6 +215,7 @@ class aws_acct_access:
 			self.MgmtAccount = 'Unknown'
 			self.OrgID = 'Unknown'
 			self.MgmtEmail = 'Unknown'
+			self.Region = fRegion
 			self.creds = 'Unknown'
 			self.credentials = 'Unknown'
 			self.ErrorType = 'Invalid region'
@@ -222,6 +226,7 @@ class aws_acct_access:
 			self.MgmtAccount = 'Unknown'
 			self.OrgID = 'Unknown'
 			self.MgmtEmail = 'Unknown'
+			self.Region = fRegion
 			self.creds = 'Unknown'
 			self.credentials = 'Unknown'
 			self.ErrorType = 'Invalid credentials'
@@ -232,8 +237,10 @@ class aws_acct_access:
 			self.MgmtAccount = 'Unknown'
 			self.OrgID = 'Unknown'
 			self.MgmtEmail = 'Unknown'
+			self.Region = fRegion
 			self.creds = 'Unknown'
 			self.credentials = 'Unknown'
+			self.ErrorType = 'Unknown'
 
 	def acct_num(self):
 		"""
@@ -300,16 +307,16 @@ class aws_acct_access:
 			else:
 				function_response['AccountType'] = 'Child'
 			return (function_response)
+		except client_org.exceptions.AWSOrganizationsNotInUseException as my_Error:
+			function_response['AccountType'] = 'StandAlone'
+			function_response['Id'] = self.acct_number
+			function_response['OrgId'] = None
+			function_response['ManagementEmail'] = 'Email not available'
+			function_response['AccountNumber'] = self.acct_number
+			function_response['MasterAccountId'] = self.acct_number
+			function_response['MgmtAccountId'] = self.acct_number
 		except ClientError as my_Error:
-			if str(my_Error).find("AWSOrganizationsNotInUseException") > 0:
-				function_response['AccountType'] = 'StandAlone'
-				function_response['Id'] = self.acct_number
-				function_response['OrgId'] = None
-				function_response['ManagementEmail'] = 'Email not available'
-				function_response['AccountNumber'] = self.acct_number
-				function_response['MasterAccountId'] = self.acct_number
-				function_response['MgmtAccountId'] = self.acct_number
-			elif str(my_Error).find("UnrecognizedClientException") > 0:
+			if str(my_Error).find("UnrecognizedClientException") > 0:
 				logging.error(f"Security Issue with account {self.acct_number}")
 			elif str(my_Error).find("InvalidClientTokenId") > 0:
 				logging.error(f"Security Token is bad - probably a bad entry in config for account {self.acct_number}")
