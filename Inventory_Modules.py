@@ -541,34 +541,6 @@ def enable_drift_on_stacks2(ocredentials, fRegion, fStackName):
 	return (response)  # Since this is an async process, there is no response to send back
 
 
-def display_policies(policies_list, fdisplay_dict, defaultAction=None):
-	"""
-	Note that this function simply formats the output of the data within the list provided
-	"""
-	# This writes out the headings
-	for field, value in fdisplay_dict.items():
-		print(f"{field:{value}} ", end='')
-	print()
-	# This writes out the dashes (separators)
-	for field, value in fdisplay_dict.items():
-		repeatvalue = int(value[:value.find('s')])
-		print(f"{'-' * repeatvalue} ", end='')
-	print()
-
-	# This writes out the data
-	for policy in policies_list:
-		for field, value in fdisplay_dict.items():
-			# This just makes sure we don't get a 'KeyError'
-			if field not in policy.keys():
-				policy[field] = defaultAction
-			if policy[field] is None:
-				print(f"{'':{value}} ", end='')
-			else:
-				print(f"{policy[field]:{value}} ", end='')
-		print()		# This is the end of line character needed at the end of every line
-	print()			# This is the new line needed at the end of the script.
-
-
 """
 Above - Generic functions
 Below - Specific functions to specific features
@@ -2918,34 +2890,83 @@ def display_results(results_list, fdisplay_dict, defaultAction=None):
 	- results_list: This should be a list of dictionaries, matching to the fields in fdisplay_dict
 	- fdisplay_dict: Should look like the below. It's simply a list of fields and formats
 	- defaultAction: this is a default string or type to assign to fields that (for some reason) don't exist within the results_list.
-	display_dict = {'MgmtAccount'  	: '12s',
-				'AccountNumber'		: '12s',
-				'Region'       		: '15s',
-				'PolicyName'   		: '40s',
-				'Action'       		: '10s'}
+	display_dict = {'MgmtAccount'            : {'Format': '12s', 'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
+					'AccountId'              : {'Format': '12s', 'DisplayOrder': 2, 'Heading': 'Acct Number'},
+					'Region'                 : {'Format': '15s', 'DisplayOrder': 3, 'Heading': 'Region'},
+					'SubnetName'             : {'Format': '40s', 'DisplayOrder': 4, 'Heading': 'Subnet Name'},
+					'CidrBlock'              : {'Format': '18s', 'DisplayOrder': 5, 'Heading': 'CIDR Block'},
+					'AvailableIpAddressCount': {'Format': '5d', 'DisplayOrder': 6, 'Heading': 'Available IPs'}}
+		- The first field ("MgmtAccount") should match the field name within the list of dictionaries you're passing in (results_list)
+		- The first field within the nested dictionary is the format you want to use to display the result of that field - generally a width
+		- The second field within the nested dictionary is the SortOrder you want the results to show up in
+		- The third field within the nested dictionary is the heading you want to display at the top of the column (which allows spaces)
+		The dictionary doesn't have to be ordered, as long as the 'SortOrder' field is correct.
 	"""
+	# TODO:
+	# 	Probably have to do a pre-emptive error-check to ensure the SortOrder is unique within the Dictionary
+	# 	Also need to enclose this whole thing in a try...except to trap errors.
+	# 	Also need to find a way to order the data within this function.
+
+	sorted_display_dict = dict(sorted(fdisplay_dict.items(), key=lambda x: x[1]['DisplayOrder']))
+
 	# This writes out the headings
-	for field, value in fdisplay_dict.items():
-		print(f"{field:{value}} ", end='')
+	for field, value in sorted_display_dict.items():
+		header_format = int(value['Format'][:-1])
+		print(f"{value['Heading']:{header_format}s} ", end='')
 	print()
 	# This writes out the dashes (separators)
-	for field, value in fdisplay_dict.items():
-		repeatvalue = int(value[:value.find('s')])
+	for field, value in sorted_display_dict.items():
+		repeatvalue = max(int(value['Format'][:-1]), len(value['Heading']))
 		print(f"{'-' * repeatvalue} ", end='')
 	print()
 
+	# sort_order =
+	# sorted_results = sorted(results, key=lambda d: (d['MgmtAccount'], d['AccountNumber'], d['Region'], d[]))
+
 	# This writes out the data
-	for policy in results_list:
-		for field, value in fdisplay_dict.items():
+	for result in results_list:
+		for field, value in sorted_display_dict.items():
 			# This just makes sure we don't get a 'KeyError'
-			if field not in policy.keys():
-				policy[field] = defaultAction
-			if policy[field] is None:
-				print(f"{'':{value}} ", end='')
+			data_format = max(int(value['Format'][:-1]), len(value['Heading']))
+			if field not in result.keys():
+				result[field] = defaultAction
+			if result[field] is None:
+				print(f"{'':{data_format}} ", end='')
 			else:
-				print(f"{policy[field]:{value}} ", end='')
+				print(f"{result[field]:{data_format}{value['Format'][-1:]}} ", end='')
 		print()		# This is the end of line character needed at the end of every line
 	print()			# This is the new line needed at the end of the script.
+
+
+def get_all_credentials(fProfiles, fTiming, fSkipProfiles, fSkipAccounts, fRootOnly, fAccounts, fRegionList):
+	import logging
+	from account_class import aws_acct_access
+	from colorama import init, Fore
+	from datetime import time
+
+	init()
+
+	AllCredentials = []
+	if fProfiles is None:  # Default use case from the classes
+		print("Getting Accounts to check: ", end='')
+		aws_acct = aws_acct_access()
+		profile = 'default'
+		RegionList = get_regions3(aws_acct, fRegionList)
+		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
+		logging.info(f"Queueing default profile for credentials")
+		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList))
+	else:
+		ProfileList = get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
+		logging.warning(f"These profiles are being checked {ProfileList}.")
+		print("Getting Accounts to check: ", end='')
+		for profile in ProfileList:
+			aws_acct = aws_acct_access(profile)
+			RegionList = get_regions3(aws_acct, fRegionList)
+			logging.warning(f"Looking at {profile} account now across these regions {RegionList}... ")
+			logging.info(f"Queueing {profile} for credentials")
+			# This should populate the list "AllCreds" with the credentials for the relevant accounts.
+			AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList))
+	return (AllCredentials)
 
 
 def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, accountlist=None, fprofile="default", fregions=None, fRoleNames=None):

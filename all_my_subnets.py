@@ -2,7 +2,7 @@
 
 # import boto3
 import Inventory_Modules
-from Inventory_Modules import get_credentials_for_accounts_in_org
+from Inventory_Modules import get_credentials_for_accounts_in_org, display_results
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 from colorama import init, Fore
@@ -98,7 +98,7 @@ def check_accounts_for_subnets(CredentialList, fRegionList=None, fip=None):
 
 	AllSubnets = []
 	PlaceCount = 0
-	PlacesToLook = len(CredentialList) * len(fRegionList)
+	PlacesToLook = WorkerThreads = len(CredentialList)
 
 	for x in range(WorkerThreads):
 		worker = FindSubnets(checkqueue)
@@ -146,6 +146,13 @@ RegionList = ['us-east-1']
 subnet_list = []
 AllCredentials = []
 
+display_dict = {'MgmtAccount'            : {'Format': '12s', 'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
+				'AccountId'              : {'Format': '12s', 'DisplayOrder': 2, 'Heading': 'Acct Number'},
+				'Region'                 : {'Format': '15s', 'DisplayOrder': 3, 'Heading': 'Region'},
+				'SubnetName'             : {'Format': '40s', 'DisplayOrder': 4, 'Heading': 'Subnet Name'},
+				'CidrBlock'              : {'Format': '18s', 'DisplayOrder': 5, 'Heading': 'CIDR Block'},
+				'AvailableIpAddressCount': {'Format': '5d', 'DisplayOrder': 6, 'Heading': 'Available IPs'}}
+
 if pProfiles is None:  # Default use case from the classes
 	print("Using the default profile - gathering ")
 	aws_acct = aws_acct_access()
@@ -172,12 +179,14 @@ else:
 		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly))
 
-fmt = '%-12s %-12s %-15s %-40s %-18s %-5s'
-print(fmt % ("Root Acct #", "Account #", "Region", "Subnet Name", "CIDR", "Available IPs"))
-print(fmt % ("-----------", "---------", "------", "-----------", "----", "-------------"))
+# fmt = '%-12s %-12s %-15s %-40s %-18s %-5s'
+# print()
+# print(fmt % ("Root Acct #", "Account #", "Region", "Subnet Name", "CIDR", "Available IPs"))
+# print(fmt % ("-----------", "---------", "------", "-----------", "----", "-------------"))
 
 SubnetsFound.extend(check_accounts_for_subnets(AllCredentials, RegionList, fip=pIPaddressList))
-display_subnets(SubnetsFound)
+
+display_results(SubnetsFound, display_dict)
 
 if pTiming:
 	print(ERASE_LINE)
