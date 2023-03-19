@@ -1346,7 +1346,6 @@ def find_account_policies3(faws_acct, fRegion='us-east-1', fFragments=None):
 	fRegion is the region in which you're looking for policies
 	fFragments is a list of fragments you might be looking for in the policy name
 	"""
-	import boto3
 	from botocore.exceptions import ClientError
 	import logging
 
@@ -1359,7 +1358,7 @@ def find_account_policies3(faws_acct, fRegion='us-east-1', fFragments=None):
 	while Policies['IsTruncated']:
 		# Had to add this so that a failure of the describe_policy function doesn't cause a race condition
 		try:
-			logging.info(f"Looking for all policies that exist within account #{ocredentials['AccountNumber']}")
+			logging.info(f"Looking for all policies that exist within account #{faws_acct.acct_number}")
 			if first_time:
 				Policies = client_iam.list_policies()
 				first_time = False
@@ -2941,10 +2940,6 @@ def display_results(results_list, fdisplay_dict, defaultAction=None):
 def get_all_credentials(fProfiles, fTiming, fSkipProfiles, fSkipAccounts, fRootOnly, fAccounts, fRegionList):
 	import logging
 	from account_class import aws_acct_access
-	from colorama import init, Fore
-	from datetime import time
-
-	init()
 
 	AllCredentials = []
 	if fProfiles is None:  # Default use case from the classes

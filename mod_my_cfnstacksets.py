@@ -12,12 +12,7 @@ from time import sleep, time
 from botocore.exceptions import ClientError
 
 '''
-TODO:
-	- Pythonize the whole thing
-	- More Commenting throughout script
-	Make deleting multiple closed accounts easier - needs a parameter that comprises "+delete +force -A -check" all in one - to delete all closed accounts at one time... 
-
-	- There are four possible use-cases:
+	- There are four possible use-cases when trying to modify or remove a stack instance from a stack set:
 		- The stack exists as an association within the stackset AND it exists within the child account (typical)
 			- We should remove the stackset-association with "--RetainStacks=False" and that will remove the child stack in the child account.
 		- The stack exists as an association within the stackset, but has been manually deleted within the child account
@@ -27,9 +22,19 @@ TODO:
 			- The only way to remove this is to remove the stack from the child account. This would have to be done after having found the stack within the child account. This will be a ToDo for later...
 		- The stack doesn't exist within the child account, nor within the stack-set
 			- Nothing to do here
+			
+TODO:
+	- Pythonize the whole thing
+	- More Commenting throughout script
+	- Make deleting multiple closed accounts easier - needs a parameter that comprises "+delete +force -A -check" all in one - to remove all closed accounts at one time... 
+	- Add a stackset status, instead of just the status for the instances
+	- Add a "tail" option, so it runs over and over until the stackset is finished
+	- Make sure that the part where it removes stack instances and WAITS till they're done it working... 
 '''
 
 init()
+
+__version__ = "2023.03.18.02"
 
 parser = CommonArguments()
 parser.verbosity()
@@ -37,6 +42,7 @@ parser.singleprofile()
 parser.singleregion()
 parser.extendedargs()
 parser.fragment()
+parser.version(__version__)
 parser.my_parser.add_argument(
 	'-R', "--RemoveRegion",
 	help="The region(s) you want to remove from all the stacksets.",
@@ -71,10 +77,10 @@ pCheckAccount = args.AccountCheck
 pdryrun = args.DryRun
 pRegionRemove = args.pRegionRemove
 pForce = args.Force
+# version = args.Version
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 DefaultMaxWorkerThreads = 5
-
 
 ###################
 
