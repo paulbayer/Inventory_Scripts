@@ -661,9 +661,6 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 	return (ProcessStatus)
 
 
-## The point here is to templatize the multi-threading of a script...
-
-
 # The parameters passed to this function should be the dictionary of attributes that will be examined within the thread.
 def DoThreadedAccountSteps(fChildAccountList, aws_account, fFixRun, fRegionList=None):
 	"""
