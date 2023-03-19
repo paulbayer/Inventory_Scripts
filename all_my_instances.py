@@ -70,9 +70,6 @@ def display_instances(instances_list):
 					 instance['State']))
 
 
-## The point here is to templatize the multi-threading of a script...
-
-
 # The parameters passed to this function should be the dictionary of attributes that will be examined within the thread.
 def find_all_instances(fAllCredentials, fRegionList):
 	"""
