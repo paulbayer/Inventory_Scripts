@@ -162,9 +162,6 @@ if not shortform:
 	print()
 
 if pAccountList is not None:
-	# AccountList = (x for x in AllAccounts if x['Success'])
-	# for x in AccountList:
-		# print(x)
 	for acct in AccountList:
 		if acct['AccountId'] in pAccountList:
 			print("Found the requested account number:")
