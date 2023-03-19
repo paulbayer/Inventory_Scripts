@@ -2955,12 +2955,16 @@ def get_all_credentials(fProfiles, fTiming, fSkipProfiles, fSkipAccounts, fRootO
 		logging.warning(f"These profiles are being checked {ProfileList}.")
 		print("Getting Accounts to check: ", end='')
 		for profile in ProfileList:
-			aws_acct = aws_acct_access(profile)
-			RegionList = get_regions3(aws_acct, fRegionList)
-			logging.warning(f"Looking at {profile} account now across these regions {RegionList}... ")
-			logging.info(f"Queueing {profile} for credentials")
-			# This should populate the list "AllCreds" with the credentials for the relevant accounts.
-			AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList))
+			try:
+				aws_acct = aws_acct_access(profile)
+				RegionList = get_regions3(aws_acct, fRegionList)
+				logging.warning(f"Looking at {profile} account now across these regions {RegionList}... ")
+				logging.info(f"Queueing {profile} for credentials")
+				# This should populate the list "AllCreds" with the credentials for the relevant accounts.
+				AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList))
+			except AttributeError as my_Error:
+				logging.error(f"Profile {profile} didn't work... Skipping")
+				continue
 	return (AllCredentials)
 
 
