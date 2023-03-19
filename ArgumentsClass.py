@@ -29,13 +29,13 @@ class CommonArguments():
 				allow_abbrev=True,
 				prefix_chars='-+')
 
-	def version(self):
-		self.my_parser.add_argument(
-			"--version",
-			dest="Version",
-			action="store_true",
-			default="store_false",  # Defaults to not providing the version
-			help="Version #")
+	def version(self, script_version):
+		# self.my_parser.add_argument(
+		# 	"--version", "-V",
+		# 	dest="Version",
+		# 	default=None,
+		# 	help="Version #")
+		self.my_parser.add_argument("--version", action="version", version=f"Version: {script_version}")
 
 	def rootOnly(self):
 		self.my_parser.add_argument(
@@ -128,7 +128,6 @@ class CommonArguments():
 			dest="Time",
 			action="store_true",
 			help="Use this parameter to add a timing for the scripts")
-
 
 	def fragment(self):
 		self.my_parser.add_argument(
