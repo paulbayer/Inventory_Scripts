@@ -2,7 +2,7 @@
 
 import sys
 import Inventory_Modules
-from Inventory_Modules import get_credentials_for_accounts_in_org
+from Inventory_Modules import get_credentials_for_accounts_in_org, display_results, get_all_credentials
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 from colorama import init, Fore
@@ -46,16 +46,6 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(fu
 
 
 ##########################
-
-
-def display_found_resources(resources_list):
-	"""
-	Note that this function simply formats the output of the data within the list provided
-	"""
-	for found_resource in resources_list:
-		print(f"{found_resource['MgmtAccount']:12s} {found_resource['AccountId']:12s} {found_resource['Region']:15s} {found_resource['SubnetName']:40s} {found_resource['CidrBlock']:18s} {found_resource['AvailableIpAddressCount']:5d}")
-
-
 def check_accounts_for_delivery_channels_and_config_recorders(CredentialList, fRegionList=None, fFixRun=False):
 	"""
 	Note that this function takes a list of Credentials and checks for config recorder and delivery channel in every account it has creds for
@@ -109,7 +99,7 @@ def check_accounts_for_delivery_channels_and_config_recorders(CredentialList, fR
 					continue
 				finally:
 					logging.info(f"{ERASE_LINE}Finished finding items in account {c_account_credentials['AccountId']} in region {c_account_credentials['Region']} - {c_PlaceCount} / {c_PlacesToLook}")
-					print("\b!\b", end='')
+					# print(".", end='')
 					self.queue.task_done()
 
 	account_crs_and_dcs = []
@@ -149,34 +139,44 @@ ERASE_LINE = '\x1b[2K'
 if pTiming:
 	begin_time = time()
 
+display_dict = {'ParentProfile': {'Format': '24s', 'DisplayOrder': 1, 'Heading': 'Parent Profile'},
+				'MgmtAccount'  : {'Format': '15s', 'DisplayOrder': 2, 'Heading': 'Mgmt Acct'},
+				'AccountId'    : {'Format': '15s', 'DisplayOrder': 3, 'Heading': 'Acct Number'},
+				'Region'       : {'Format': '15s', 'DisplayOrder': 4, 'Heading': 'Region'},
+				'Type'         : {'Format': '20s', 'DisplayOrder': 5, 'Heading': 'Type'},
+				'name'         : {'Format': '30s', 'DisplayOrder': 6, 'Heading': 'Name'}}
+
 NumObjectsFound = 0
 NumAccountsInvestigated = 0
-AllCredentials = []
+# AllCredentials = []
 RegionList = ['us-east-1']
 
-if pProfiles is None:  # Default use case from the classes
-	print("Using the default profile - gathering info")
-	aws_acct = aws_acct_access()
-	RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
-	# This should populate the list "AllCreds" with the credentials for the relevant accounts.
-	logging.info(f"Queueing default profile for credentials")
-	profile = 'default'
-	AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList))
-else:
-	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=pSkipProfiles, fprofiles=pProfiles)
-	print(f"Capturing info for {len(ProfileList)} requested profiles {ProfileList}")
-	for profile in ProfileList:
-		# Eventually - getting credentials for a single account may require passing in the region in which it's valid, but not yet.
-		try:
-			aws_acct = aws_acct_access(profile)
-			print(f"Validating {len(aws_acct.ChildAccounts)} accounts within {profile} profile now... ")
-			RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
-			logging.info(f"Queueing {profile} for credentials")
-			# This should populate the list "AllCredentials" with the credentials for the relevant accounts.
-			AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList))
-		except AttributeError as my_Error:
-			logging.error(f"Profile {profile} didn't work... Skipping")
-			continue
+# if pProfiles is None:  # Default use case from the classes
+# 	print("Using the default profile - gathering info")
+# 	aws_acct = aws_acct_access()
+# 	RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
+# 	# This should populate the list "AllCreds" with the credentials for the relevant accounts.
+# 	logging.info(f"Queueing default profile for credentials")
+# 	profile = 'default'
+# 	AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList))
+# else:
+# 	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=pSkipProfiles, fprofiles=pProfiles)
+# 	print(f"Capturing info for {len(ProfileList)} requested profiles {ProfileList}")
+# 	for profile in ProfileList:
+# 		# Eventually - getting credentials for a single account may require passing in the region in which it's valid, but not yet.
+# 		try:
+# 			aws_acct = aws_acct_access(profile)
+# 			print(f"Validating {len(aws_acct.ChildAccounts)} accounts within {profile} profile now... ")
+# 			RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
+# 			logging.info(f"Queueing {profile} for credentials")
+# 			# This should populate the list "AllCredentials" with the credentials for the relevant accounts.
+# 			AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList))
+# 		except AttributeError as my_Error:
+# 			logging.error(f"Profile {profile} didn't work... Skipping")
+# 			continue
+
+AllCredentials = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
+RegionList = list(set([x['Region'] for x in AllCredentials]))
 
 AccountNum = len(set([acct['AccountId'] for acct in AllCredentials]))
 
@@ -203,19 +203,13 @@ for item in all_config_recorders_and_delivery_channels:
 	elif item['Type'] == 'Config Recorder':
 		cr += 1
 
-if verbose < 50:
+all_sorted_config_recorders_and_delivery_channels = sorted(all_config_recorders_and_delivery_channels, key=lambda d: (d['ParentProfile'], d['MgmtAccount'], d['AccountId'], d['Region'], d['Type']))
+if pTiming:
 	print()
-	fmt = '%-24s %-15s %-15s %-15s %-20s %-30s'
-	print(fmt % ("Parent Profile", "Mgmt Account", "Account ID", "Region", "Type", "Name"))
-	print(fmt % ("--------------", "------------", "----------", "------", "----", "----"))
-	all_sorted_config_recorders_and_delivery_channels = sorted(all_config_recorders_and_delivery_channels, key=lambda d: (d['ParentProfile'], d['MgmtAccount'], d['AccountId']))
-	for item in all_sorted_config_recorders_and_delivery_channels:
-		print(fmt % (item['ParentProfile'],
-					 item['MgmtAccount'],
-					 item['AccountId'],
-					 item['Region'],
-					 item['Type'],
-					 item['name']))
+	milestone_time3 = time()
+	print(f"{Fore.GREEN}\t\tSorting the list of places took: {(milestone_time3 - milestone_time2):.3f} seconds{Fore.RESET}")
+	print()
+display_results(all_sorted_config_recorders_and_delivery_channels, display_dict)
 
 print(ERASE_LINE)
 print(f"We scanned {AccountNum} accounts and {len(RegionList)} regions totalling {len(AllCredentials)} possible areas for resources.")
@@ -250,8 +244,8 @@ if DeletionRun and (ReallyDelete or ForceDelete):
 
 	if pTiming:
 		print()
-		milestone_time3 = time()
-		print(f"{Fore.GREEN}\t\tDeleting {len(all_config_recorders_and_delivery_channels)} places took: {(milestone_time3 - milestone_time2):.3f} seconds{Fore.RESET}")
+		milestone_time4 = time()
+		print(f"{Fore.GREEN}\t\tDeleting {len(all_config_recorders_and_delivery_channels)} places took: {(milestone_time4 - milestone_time3):.3f} seconds{Fore.RESET}")
 		print()
 	print(f"Removed {len(all_config_recorders_and_delivery_channels)} config recorders and delivery channels")
 
