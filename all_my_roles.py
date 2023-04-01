@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-__script_version__ = '2023-03-31'
+__script_version__ = '2023-04-01'
 
 from Inventory_Modules import display_results, get_all_credentials, find_in
 import boto3
@@ -8,7 +8,6 @@ from ArgumentsClass import CommonArguments
 from time import sleep, time
 from colorama import init, Fore
 from botocore.exceptions import ClientError
-
 import logging
 
 init()
