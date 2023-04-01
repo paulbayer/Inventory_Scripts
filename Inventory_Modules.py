@@ -202,6 +202,23 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 	return (ProfileList)
 
 
+def find_in(list_to_search, list_to_find=None):
+	import logging
+
+	if list_to_find is None or None in list_to_find:
+		return (list_to_search)
+	elif 'all' in list_to_find or 'All' in list_to_find or 'ALL' in list_to_find:
+		return (list_to_search)
+	list_to_return = []
+	for x in list_to_search:
+		for y in list_to_find:
+			logging.info(f"Have {x} | Looking for {y}")
+			if x.find(y) >= 0:
+				logging.info(f"Found {y}")
+				list_to_return.append(y)
+	return (list_to_return)
+
+
 def find_if_alz(fProfile):
 	import boto3
 

@@ -90,6 +90,13 @@ class CommonArguments():
 		# 	help="By default, we report results without changing anything. If you want to remediate or change your environment - include this parameter",
 		# 	action="store_false",
 		# 	dest="DryRun")              # Default to Dry Run (no changes)
+		"""
+		pTiming = args.Time
+		pSkipAccounts = args.SkipAccounts
+		pSkipProfiles = args.SkipProfiles
+		pAccounts = args.Accounts
+		pForce = args.Force
+		"""
 		self.my_parser.add_argument(
 			"--force", "+force",
 			help="To force a change - despite indications to the contrary",
@@ -116,11 +123,11 @@ class CommonArguments():
 			nargs="*",
 			metavar="Account",
 			help="Just the accounts you want to check")
-		self.my_parser.add_argument(
-			"--timing", "--time",
-			dest="Time",
-			action="store_true",
-			help="Use this parameter to add a timing for the scripts")
+		# self.my_parser.add_argument(
+		# 	"--timing", "--time",
+		# 	dest="Time",
+		# 	action="store_true",
+		# 	help="Use this parameter to add a timing for the scripts")
 
 	def timing(self):
 		self.my_parser.add_argument(
