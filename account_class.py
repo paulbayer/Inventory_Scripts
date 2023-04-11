@@ -183,6 +183,7 @@ class aws_acct_access:
 			self.MgmtEmail = self._AccountAttributes['ManagementEmail']
 			logging.info(f"Account {self.acct_number} is a {self.AccountType} account")
 			self.Region = fRegion
+			self.ErrorType = None
 			self.creds = self.session._session._credentials.get_frozen_credentials()
 			self.credentials = dict()
 			self.credentials.update({'AccessKeyId'    : self.creds[0],
