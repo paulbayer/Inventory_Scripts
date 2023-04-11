@@ -83,6 +83,7 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(fu
 
 DefaultMaxWorkerThreads = 5
 
+
 ###################
 
 def find_stack_set_instances(fStackSetNames, fRegion):
@@ -166,7 +167,7 @@ def find_stack_set_instances(fStackSetNames, fRegion):
 					print(f"{ERASE_LINE}Finished finding stack instances in stackset {c_stacksetname} in region {c_region} - {c_PlaceCount} / {len(fStackSetNames)}", end='\r')
 					self.queue.task_done()
 
-		###########
+	###########
 
 	if fRegion is None:
 		fRegion = 'us-east-1'
@@ -239,7 +240,7 @@ def _delete_stack_instances(faws_acct, fRegion, fStackSetName, fForce, fAccountL
 		# def delete_stack_instances3(faws_acct, fRegion, lRegions, fStackSetName, fRetainStacks=False,
 		# 							fOperationName=None, lAccounts=None, fPermissionModel='SELF', fDeploymentTarget=None)
 		delete_stack_instance_response = Inventory_Modules.delete_stack_instances3(faws_acct, fRegion, fRegionList, fStackSetName, fForce, StackSetOpId,
-																				   fAccountList, fPermissionModel, fDeploymentTargets)
+		                                                                           fAccountList, fPermissionModel, fDeploymentTargets)
 		if delete_stack_instance_response['Success']:
 			return_response = {'Success': True, 'OperationId': delete_stack_instance_response['OperationId']}
 		else:
@@ -283,7 +284,10 @@ def display_stack_set_health(combined_stack_set_instances):
 						stack_instances[stack_instance['Account']] = []
 					stack_instances[stack_instance['Account']].append(stack_instance['Region'])
 				for k, v in stack_instances.items():
-					print(f"\t\t{k}: {v}")
+					if k in RemovedAccounts:
+						print(f"{Style.BRIGHT}{Fore.MAGENTA}\t\t{k}: {v}{Style.RESET_ALL}\t <----- Look here!!! ")
+					else:
+						print(f"\t\t{k}: {v}")
 
 
 def get_stack_set_deployment_target_info(faws_acct, fRegion, fStackSetName):
@@ -326,7 +330,7 @@ except ConnectionError as my_Error:
 
 if pRegion.lower() == 'all':
 	logging.critical(f"{Fore.RED}You specified 'all' as the region, but this script only works with a single region.\n"
-					 f"Please run the command again and specify only a single region{Fore.RESET}")
+	                 f"Please run the command again and specify only a single region{Fore.RESET}")
 	sys.exit(9)
 
 print()
@@ -398,30 +402,31 @@ AccountList = sorted(list(set([item for item in AccountList if item is not None]
 FoundRegionList = sorted(list(set([item for item in FoundRegionList if item is not None])))
 
 ApplicableStackSetsList = sorted(list(set(ApplicableStackSetsList)))
+RemovedAccounts = []
 
 if pCheckAccount:
-	OrgAccounts = aws_acct.ChildAccounts
-	OrgAccountList = []
-	for i in range(len(OrgAccounts)):
-		OrgAccountList.append(OrgAccounts[i]['AccountId'])
+	OrgAccountList = [i['AccountId'] for i in aws_acct.ChildAccounts]
 	print("Displaying accounts within the stacksets that aren't a part of the Organization")
 	logging.info(f"There are {len(OrgAccountList)} accounts in the Org, and {len(AccountList)} unique accounts in all stacksets found")
-	ClosedAccounts = list(set(AccountList) - set(OrgAccountList))
+	RemovedAccounts = list(set(AccountList) - set(OrgAccountList))
 	InaccessibleAccounts = []
 	for accountnum in AccountList:
 		if verbose < 50:
 			print(f"{ERASE_LINE}Trying to gain access to account number {accountnum}", end='\r')
 		my_creds = Inventory_Modules.get_child_access3(aws_acct, accountnum)
-		if 'AccessError' in my_creds.keys():
-			InaccessibleAccounts.append(accountnum)
+		if my_creds['AccessError']:
+			InaccessibleAccounts.append({'AccountId' : accountnum,
+			                             'Success'   : my_creds['Success'],
+			                             'RolesTried': my_creds['RolesTried']})
 	print()
-	logging.info(f"Found {len(InaccessibleAccounts) + len(ClosedAccounts)} accounts that don't belong")
-	print(f"There were {len(ClosedAccounts)} accounts found in the {len(StackSetNames['StackSets'])} Stacksets we looked through, that are not a part of the Organization")
+	logging.info(f"Found {len(InaccessibleAccounts) + len(RemovedAccounts)} accounts that don't belong")
+	print(f"There were {len(RemovedAccounts)} accounts found in the {len(StackSetNames['StackSets'])} Stacksets we looked through, that are not a part of the Organization")
 	print(f"There are {len(InaccessibleAccounts)} accounts that appear inaccessible, using typical role names")
-	for item in ClosedAccounts:
+	for item in RemovedAccounts:
 		print(f"Account {item} is not in the Organization")
 	for item in InaccessibleAccounts:
-		print(f"Account {item} is unreachable using known roles")
+		print(f"Account {item['AccountId']} is unreachable using these roles:\n"
+		      f"\t\t{item['RolesTried']}")
 	print()
 
 '''
@@ -489,7 +494,7 @@ elif not pdryrun:
 				print(f"About to remove account {pAccountRemoveList} from stackset {StackSetName} in regions {str(FoundRegionList)}")
 				RemoveStackSet = False
 			RemoveStackInstanceResult = _delete_stack_instances(aws_acct, pRegion, StackSetName, pForce, AccountList,
-																FoundRegionList, StackSet['PermissionModel'], DeploymentTargets['Results'])
+			                                                    FoundRegionList, StackSet['PermissionModel'], DeploymentTargets['Results'])
 		else:
 			if FoundRegionList is None:
 				print(f"There appear to be no stack instances for this stack-set")
@@ -545,13 +550,13 @@ elif not pdryrun:
 				logging.debug(f"The operation id {RemoveStackInstanceResult['OperationId']} is {StackInstancesAreGone['StackSetStatus']}")
 			if not StackInstancesAreGone['Success']:
 				logging.critical(f"There was a problem with removing the stack instances from stackset {StackSetName}."
-								 f"Moving to the next stackset in the list")
+				                 f"Moving to the next stackset in the list")
 				break
 			intervals_waited = 1
 			while StackInstancesAreGone['StackSetStatus'] in ['RUNNING']:
 				print(f"Waiting for operation {RemoveStackInstanceResult['OperationId']} to finish",
-					  # f"." * intervals_waited,
-					  f"{sleep_interval * intervals_waited} seconds waited so far", end='\r')
+				      # f"." * intervals_waited,
+				      f"{sleep_interval * intervals_waited} seconds waited so far", end='\r')
 				sleep(sleep_interval)
 				intervals_waited += 1
 				StackInstancesAreGone = Inventory_Modules.check_stack_set_status3(aws_acct, StackSetName, RemoveStackInstanceResult['OperationId'])
