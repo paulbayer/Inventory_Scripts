@@ -34,7 +34,7 @@ TODO:
 
 init()
 
-__version__ = "2023.03.18.02"
+__version__ = "2023.04.11"
 
 parser = CommonArguments()
 parser.verbosity()
@@ -42,6 +42,7 @@ parser.singleprofile()
 parser.singleregion()
 parser.extendedargs()
 parser.fragment()
+parser.timing()
 parser.version(__version__)
 parser.my_parser.add_argument(
 	'-R', "--RemoveRegion",
