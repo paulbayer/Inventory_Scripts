@@ -219,6 +219,62 @@ def find_in(list_to_search, list_to_find=None):
 	return (list_to_return)
 
 
+def timing():
+	if pTiming:
+		print(f"{Fore.GREEN}It's been {time()-begin_time} seconds thus far{Fore.RESET}")
+
+
+def addLoggingLevel(levelName, levelNum, methodName=None):
+	import logging
+	"""
+	Comprehensively adds a new logging level to the `logging` module and the
+	currently configured logging class.
+
+	`levelName` becomes an attribute of the `logging` module with the value
+	`levelNum`. `methodName` becomes a convenience method for both `logging`
+	itself and the class returned by `logging.getLoggerClass()` (usually just
+	`logging.Logger`). If `methodName` is not specified, `levelName.lower()` is
+	used.
+
+	To avoid accidental clobberings of existing attributes, this method will
+	raise an `AttributeError` if the level name is already an attribute of the
+	`logging` module or if the method name is already present 
+
+	Example
+	-------
+	>>> addLoggingLevel('TRACE', logging.DEBUG - 5)
+	>>> logging.getLogger(__name__).setLevel("TRACE")
+	>>> logging.getLogger(__name__).trace('that worked')
+	>>> logging.trace('so did this')
+	>>> logging.TRACE
+	5
+
+	"""
+	if not methodName:
+		methodName = levelName.lower()
+
+	if hasattr(logging, levelName):
+		raise AttributeError('{} already defined in logging module'.format(levelName))
+	if hasattr(logging, methodName):
+		raise AttributeError('{} already defined in logging module'.format(methodName))
+	if hasattr(logging.getLoggerClass(), methodName):
+		raise AttributeError('{} already defined in logger class'.format(methodName))
+
+	# This method was inspired by the answers to Stack Overflow post
+	# http://stackoverflow.com/q/2183233/2988730, especially
+	# http://stackoverflow.com/a/13638084/2988730
+	def logForLevel(self, message, *args, **kwargs):
+		if self.isEnabledFor(levelNum):
+			self._log(levelNum, message, args, **kwargs)
+	def logToRoot(message, *args, **kwargs):
+		logging.log(levelNum, message, *args, **kwargs)
+
+	logging.addLevelName(levelNum, levelName)
+	setattr(logging, levelName, levelNum)
+	setattr(logging.getLoggerClass(), methodName, logForLevel)
+	setattr(logging, methodName, logToRoot)
+
+
 def find_if_alz(fProfile):
 	import boto3
 
@@ -1580,6 +1636,65 @@ def get_lambda_code_url(fprofile, fregion, fFunctionName):
 	client_lambda = session_lambda.client('lambda')
 	code_url = client_lambda.get_function(FunctionName=fFunctionName)['Code']['Location']
 	return (code_url)
+
+
+def find_directories2(ocredentials, fRegion='us-east-1', fSearchStrings=None):
+	"""
+	ocredentials is an aws_acct object
+	fRegion is a string
+	fSearchString is a list of strings
+	"""
+	import logging
+	import boto3
+
+	directories2 = []
+	# TODO: Add pagination here
+	try:
+		session_ds = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+								   aws_secret_access_key=ocredentials['SecretAccessKey'],
+								   region_name=ocredentials['Region'],
+								   aws_session_token=ocredentials['SessionToken'])
+		client_ds = session_ds.client('ds', region_name=fRegion)
+		directories = client_ds.describe_directories()['DirectoryDescriptions']
+		logging.info(f"Found {len(directories)} directories: {directories}")
+	except AttributeError as my_Error:
+		logging.info(f"Error: {my_Error}")
+	if fSearchStrings is None or 'all' in fSearchStrings:
+		for directory in directories:
+			logging.info(f"Found directory {directory['Name']}")
+			response_dict = {'DirectoryName': directory['Name'],
+							 'DirectoryId'  : directory['DirectoryId'],
+							 'Status'       : directory.get('ShareStatus', 'Owned'),
+							 'Type'         : directory['Type'], }
+			if 'RegionsInfo' in directory:
+				response_dict.update({'HomeRegion': directory['RegionsInfo'].get('PrimaryRegion', None)})
+			else:
+				response_dict.update({'HomeRegion': fRegion})
+			if 'OwnerDirectoryDescription' in directory:
+				response_dict.update({'Owner': directory['OwnerDirectoryDescription'].get('AccountId', None)})
+			else:
+				response_dict.update({'Owner': ocredentials['AccountId']})
+			directories2.append(response_dict)
+		return(directories2)
+	else:
+		for directory in directories:
+			for searchitem in fSearchStrings:
+				if searchitem in directory['Name'] or searchitem in directory['DirectoryId']:
+					logging.info(f"Found fragment {searchitem} in directory {directory['Name']} in account {ocredentials['AccountId']}")
+					response_dict = {'DirectoryName': directory['Name'],
+									 'DirectoryId'  : directory['DirectoryId'],
+									 'Status'       : directory.get('ShareStatus', 'Owned'),
+									 'Type'         : directory['Type'], }
+					if 'RegionsInfo' in directory:
+						response_dict.update({'HomeRegion': directory['RegionsInfo'].get('PrimaryRegion', None)})
+					else:
+						response_dict.update({'HomeRegion': fRegion})
+					if 'OwnerDirectoryDescription' in directory:
+						response_dict.update({'Owner': directory['OwnerDirectoryDescription'].get('AccountId', None)})
+					else:
+						response_dict.update({'Owner': ocredentials['AccountId']})
+					directories2.append(response_dict)
+		return (directories2)
 
 
 def find_directories3(faws_acct, fRegion='us-east-1', fSearchStrings=None):
@@ -2957,6 +3072,14 @@ def display_results(results_list, fdisplay_dict, defaultAction=None):
 def get_all_credentials(fProfiles, fTiming, fSkipProfiles, fSkipAccounts, fRootOnly, fAccounts, fRegionList):
 	import logging
 	from account_class import aws_acct_access
+	from time import time
+	from colorama import init, Fore
+
+	init()
+	ERASE_LINE = '\x1b[2K'
+	if fTiming:
+		begin_time = time()
+		print(f"{Fore.GREEN}Timing is enabled{Fore.RESET}")
 
 	AllCredentials = []
 	if fProfiles is None:  # Default use case from the classes
@@ -2969,6 +3092,8 @@ def get_all_credentials(fProfiles, fTiming, fSkipProfiles, fSkipAccounts, fRootO
 		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList))
 	else:
 		ProfileList = get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
+		if fTiming:
+			print(f"{ERASE_LINE}{Fore.GREEN}Finding {len(ProfileList)} profiles has taken {time() - begin_time} seconds{Fore.RESET}")
 		logging.warning(f"These profiles are being checked {ProfileList}.")
 		print("Getting Accounts to check: ", end='')
 		for profile in ProfileList:
@@ -2979,6 +3104,8 @@ def get_all_credentials(fProfiles, fTiming, fSkipProfiles, fSkipAccounts, fRootO
 				logging.info(f"Queueing {profile} for credentials")
 				# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 				AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList))
+				if fTiming:
+					print(f"{ERASE_LINE}{Fore.GREEN}Finding credentials for {len(AllCredentials)} accounts and regions in profile {Fore.RED}'{profile}'{Fore.GREEN} has taken {time()-begin_time} seconds{Fore.RESET}")
 			except AttributeError as my_Error:
 				logging.error(f"Profile {profile} didn't work... Skipping")
 				continue

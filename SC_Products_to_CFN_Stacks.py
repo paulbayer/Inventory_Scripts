@@ -5,16 +5,20 @@ from account_class import aws_acct_access
 from ArgumentsClass import CommonArguments
 from colorama import init, Fore
 from time import time
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, ProfileNotFound, UnknownRegionError, UnknownCredentialError
 import logging
+import sys
 
 init()
+__version__ = '2023-04-11'
 
 parser = CommonArguments()
 parser.singleprofile()
 parser.singleregion()
 parser.extendedargs()
 parser.verbosity()
+parser.timing()
+parser.version(__version__)
 parser.my_parser.add_argument(
 	"+d", "+delete",
 	dest="DeletionRun",
@@ -61,6 +65,7 @@ def define_pretty_headings(fSCP2Stacks):
 
 ##########################
 
+
 '''
 TODO: 
 - Need to add a parameter that allows the user to close / terminate the SC products for only the closed / suspended accounts (very safe)
@@ -82,31 +87,59 @@ begin_time = time()
 
 ERASE_LINE = '\x1b[2K'
 
-aws_acct = aws_acct_access(fProfile=pProfile, fRegion=pRegion)
 
 print()
 
 SCP2Stacks = []
 SCProducts = []
-ErroredSCPExists = False
-# try:
-# 	session_aws = aws_acct.session
-# except AttributeError as my_Error:
-# 	print(f"Profile '{pProfile}' doesn't seem to exist, or work. Please check your credentials.")
-# 	print()
-# 	sys.exit(1)
+ErroredSCProductExists = False
+try:
+	if pProfile is None:
+		aws_acct = aws_acct_access()
+	else:
+		aws_acct = aws_acct_access(fProfile=pProfile, fRegion=pRegion)
+	if aws_acct.ErrorType is not None and aws_acct.ErrorType.lower() == 'invalid region':
+		raise UnknownRegionError(region_name=pRegion, error_msg=aws_acct.ErrorType)
+	session_aws = aws_acct.session
+except UnknownCredentialError as my_Error:
+	print(f"Single profile '{pProfile}' doesn't seem to exist, or work. Please check your credentials-1.\n"
+		  f"Error Message: {my_Error}")
+	print()
+	sys.exit(1)
+except ProfileNotFound as my_Error:
+	print(f"Single profile '{pProfile}' doesn't seem to exist, or work. Please check your credentials-1.\n"
+		  f"Error Message: {my_Error}")
+	print()
+	sys.exit(1)
+except AttributeError as my_Error:
+	print(f"Single profile '{pProfile}' doesn't seem to exist, or work. Please check your credentials-2.\n"
+		  f"Error Message: {my_Error}")
+	print()
+	sys.exit(1)
+except (ConnectionError, UnknownRegionError) as my_Error:
+	print(f"There is no single region '{pRegion}'. Please re-run and specify a valid AWS region for this Org account.\n"
+		  f"Error Message: {my_Error}")
+	print()
+	sys.exit(1)
 client_org = aws_acct.session.client('organizations')
 client_cfn = aws_acct.session.client('cloudformation')
 
 AccountHistogram = {}
 SuspendedAccounts = []
 ClosedAccts = []
+
+# Creates AccountHistogram which tracks which accounts have SC Products built for them, and which do not.
+# The Historgram is initialized with ALL accounts and their status.
+# It's then later overwritten with the count of how many SC Products relate to that account.
+# So the accounts which only have a status as their value - are missing the SC Product
 for account in aws_acct.ChildAccounts:
 	AccountHistogram[account['AccountId']] = account['AccountStatus']
 	if account['AccountStatus'] == 'SUSPENDED':
 		SuspendedAccounts.append(account['AccountId'])
+
+# Finds Service Catalog Products and reconciles them to the account they belong to
 try:
-	SCresponse = Inventory_Modules.find_sc_products(pProfile, pRegion, "All", 10)
+	SCresponse = Inventory_Modules.find_sc_products3(aws_acct, "All", 10)
 	logging.warning("A list of the SC Products found:")
 	for i in range(len(SCresponse)):
 		logging.warning(f"SC Product Name {SCresponse[i]['Name']} | SC Product Status {SCresponse[i]['Status']}")
@@ -118,7 +151,7 @@ try:
 			'ProvisioningArtifactName': SCresponse[i]['ProvisioningArtifactName']
 			})
 		if SCresponse[i]['Status'] == 'ERROR' or SCresponse[i]['Status'] == 'TAINTED':
-			ErroredSCPExists = True
+			ErroredSCProductExists = True
 
 	CFNStacks = Inventory_Modules.find_stacks3(aws_acct, pRegion, f"SC-{aws_acct.acct_number}")
 
@@ -211,6 +244,7 @@ try:
 	#  both a provisioned product, but are also suspended.
 	# Do any of the account numbers show up more than once in this list?
 	# We initialize the listing from the full list of accounts in the Org.
+
 	# TODO: This might not be a good idea, if it misses the stacks which are associated with accounts no longer within the Org.
 	# We add a one to each account which is represented within the Stacks listing. This allows us to catch duplicates
 	# and also accounts which do not have a stack associated.
@@ -280,7 +314,7 @@ for acctnum in AccountHistogram.keys():
 	elif AccountHistogram[acctnum] > 1:
 		print(f"Account Number {Fore.RED}{acctnum}{Fore.RESET} appears to have multiple SC Products associated with it. This can be a problem")
 
-if ErroredSCPExists:
+if ErroredSCProductExists:
 	print()
 	print("You probably want to remove the following SC Products:")
 	session_sc = aws_acct.session
@@ -306,7 +340,7 @@ if ErroredSCPExists:
 
 print()
 for i in AccountHistogram:
-	logging.info(f"Account ID: {i} is {AccountHistogram[i]}")
+	logging.info(f"There are {AccountHistogram[i] if isinstance(AccountHistogram[i], int) else '0'} active SC products for Account ID: {i}")
 end_time = time()
 duration = end_time - begin_time
 if pTiming:
