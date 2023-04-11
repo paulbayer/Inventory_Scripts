@@ -16,7 +16,7 @@ parser.multiprofile()
 parser.rootOnly()
 parser.extendedargs()
 parser.verbosity()
-
+parser.timing()
 parser.my_parser.add_argument(
 		'-s', '--q', '--short',
 		help="Display only brief listing of the root accounts, and not the Child Accounts under them",
