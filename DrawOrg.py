@@ -3,7 +3,7 @@ import logging
 from graphviz import Digraph
 from ArgumentsClass import CommonArguments
 
-__script_version__ = '2023-04-07'
+__script_version__ = '2023-04-16'
 
 parser = CommonArguments()
 parser.my_parser.description = ("To draw the Organization.")
@@ -13,7 +13,8 @@ parser.version(__script_version__)
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(""message)s")
+verbose = args.loglevel
+logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(""message)s")
 
 # Create an AWS Organizations client
 org_client = boto3.Session(profile_name=pProfile).client('organizations')
@@ -44,7 +45,7 @@ def traverse_ous_and_accounts(ou_id, dot):
 	accounts = org_client.list_accounts_for_parent(ParentId=ou_id)
 
 	# Add the current OU as a node in the diagram
-	dot.node(ou_id, label=f"{ou_name} | {len(accounts['Accounts'])} ", shape='box')
+	dot.node(ou_id, label=f"{ou_name} | {len(accounts['Accounts'])} ", shape='box', style='filled', fillcolor='darkgrey')
 
 	for account in accounts['Accounts']:
 		account_id = account['Id']

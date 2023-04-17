@@ -1336,6 +1336,70 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 	return (AllSubnets)
 
 
+def find_account_enis2(ocredentials, fRegion=None, fipaddresses=None):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['Region'] holds the region
+		- ['AccountNumber'] holds the account number
+		- ['Profile'] can hold the profile, instead of the session credentials
+	"""
+	import boto3
+	from botocore.exceptions import ClientError
+	import logging
+
+	if fRegion is None and 'Region' in ocredentials.keys():
+		fRegion = ocredentials['Region']
+	elif fRegion is None:
+		fRegion = 'us-east-1'
+
+	session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=fRegion)
+	eni_info = session_ec2.client('ec2')
+	ENIs = {'NextToken': None}
+	AllENIs = {'ENIs': []}
+
+	while 'NextToken' in ENIs.keys():
+		# Had to add this so that a failure of the describe_subnet function doesn't cause a race condition
+		ENIs = dict()
+		try:
+			logging.info(f"Looking for ENIs that match any of {fipaddresses} in account #{ocredentials['AccountNumber']} in region {fRegion}")
+			ENIs = eni_info.describe_network_interfaces()
+			# Run through each of the subnets, and determine if the passed in IP address fits within any of them
+			# If it does - then include that data within the array, otherwise next...
+			for interface in ENIs['NetworkInterfaces']:
+				if fipaddresses is not None:
+					for address in fipaddresses:
+						if address == interface['PrivateIPAddress']:
+							pass
+						elif 'Association' in interface.keys() and 'PublicIp' in interface['Association'].keys() and address == interface['Association']['PublicIp']:
+							pass
+						else:
+							continue
+				AllENIs[interface['NetworkInterfaceId']] = dict()
+				AllENIs[interface['NetworkInterfaceId']]['AccountId'] = ocredentials['AccountNumber']
+				AllENIs[interface['NetworkInterfaceId']]['Region'] = ocredentials['Region']
+				AllENIs[interface['NetworkInterfaceId']]['InterfaceType'] = interface['InterfaceType']
+				AllENIs[interface['NetworkInterfaceId']]['PrivateDnsName'] = interface['PrivateDnsName']
+				AllENIs[interface['NetworkInterfaceId']]['PrivateIPAddress'] = interface['PrivateIpAddress']
+				AllENIs[interface['NetworkInterfaceId']]['Status'] = interface['Status']
+				AllENIs[interface['NetworkInterfaceId']]['VpcId'] = interface['VpcId'] if 'VpcId' in interface.keys() else "No VPC Associated"
+				AllENIs[interface['NetworkInterfaceId']]['InstanceId'] = interface['Attachment']['InstanceId'] if 'InstanceId' in interface['Attachment'].keys() else "No instance association"
+				AllENIs[interface['NetworkInterfaceId']]['AttachmentStatus'] = interface['Attachment']['Status']
+				AllENIs[interface['NetworkInterfaceId']]['PublicIp'] = interface['Association']['PublicIp'] if 'Association' in interface.keys() and 'PublicIp' in interface['Association'].keys() else "No Public IP"
+
+		except ClientError as my_Error:
+			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
+						  f"This is likely due to '{fRegion}' not being enabled for your account\n"
+						  f"Error Message: {my_Error}")
+			continue
+	return (AllENIs)
+
+
 def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None, fExact=False):
 	"""
 	ocredentials is an object with the following structure:

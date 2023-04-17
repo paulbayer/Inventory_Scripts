@@ -47,6 +47,9 @@ Purpose Built Scripts
   - This script takes an Organization Master Account profile, and checks additional accounts to see if they meet the pre-reqs to be "adopted" by Control Tower.
   - If there are blockers to the adoption (like the Config Recorder already being enabled), it can rectify those blockers it finds. However - to avoid mistakes - it only does this if you specifically select that in the submitted parameters. This script is still being worked on.
  
+- **DrawOrg.py**
+  - This script can take a single profile and create a graphviz representation of the Org, with OUs (and the number of accounts under them), and the accounts shown as well. Eventually, I'll make showing the accounts optional, but for now - it does both.
+
 - **find_my_LZ_versions.py**
   - I wrote this script because I've noticed that many customers find it difficult to find their own ALZ versions, and some customers have multiple Landing Zones (like me), so it makes it even harder to keep track. This script will take either a single profile, or the keyword "all" and determine whether your profile is the Management Account of a Landing Zone - or in the case of "all", go through all of your profiles and find those accounts which are Landing Zones roots, and tell you the version of the ALZ in that account.  
 
