@@ -31,7 +31,7 @@ Common Parameters
 Less used common parameters:
 ------------------
   - --exact: It's possible that some fragments will exist both as a stackname, as well as part of other stacknames (think "xxx" and "xxx-global"). In these cases, you can use the "--exact" parameter, and it will only use the string you've entered. *Note that this means you must enter the entire string, and not just a fragment anymore.*
-  - --skipprofile: Cometimes you want to specify a fragment of a profile, and you want 5 of the 6 profiles that fragment shows up in, but not the 6th. You can use this parameter to exclude that 6th profile (space delimited).
+  - --skipprofile: Sometimes you want to specify a fragment of a profile, and you want 5 of the 6 profiles that fragment shows up in, but not the 6th. You can use this parameter to exclude that 6th profile (space delimited).
   - --skipaccount: Sometimes you want to exclude the production accounts from any script you're running. You can use this parameter to exclude a list of accounts (space delimited).
   - +delete: I've tried to make it difficult to **accidentally** delete any resources, so that's why it's a "+" instead of a "-".
   
@@ -42,6 +42,9 @@ Purpose Built Scripts
   - This script takes an Organization Master Account profile, and checks additional accounts to see if they meet the pre-reqs to be "adopted" by either Landing Zone or Control Tower.
   - If there are blockers to the adoption (like the default VPCs being present, or Config Recorder already being enabled), it can rectify those blockers it finds. However - to avoid mistakes - it only does this if you specifically select that in the submitted parameters.
   - While this script was focused on ALZ, it also *sort of* supports an account being adopted by Control Tower too.
+
+- **ce_monthly.py**
+  - So I wanted to find a way to easily get the charges for my multiple accounts and organizations. This script is the effort I put into doing that - but doesn't *really* add a lot of value over and above the aws cli command for "ce". I may come back to look further at this eventually, but for now - it works (just), and I've left it in. 
 
 - **CT_CheckAccount.py**
   - This script takes an Organization Master Account profile, and checks additional accounts to see if they meet the pre-reqs to be "adopted" by Control Tower.
