@@ -126,20 +126,20 @@ if not shortform:
 	account = dict()
 	for item in AllProfileAccounts:
 		if item['Success'] and not item['RootAcct']:
-			account.update(item['aws_acct'].ChildAccounts[0])
+			account.update(item['aws_acct'].AllCredentials[0])
 			account.update({'Profile': item['profile']})
 			# print(account)
 			AccountList.append(account.copy())
-			NumOfNonOrgAccounts += len(item['aws_acct'].ChildAccounts)
+			NumOfNonOrgAccounts += len(item['aws_acct'].AllCredentials)
 		elif item['Success'] and item['RootAcct']:
 			# account = dict()
 			# landing_zone = Inventory_Modules.find_if_alz(item['profile'])['ALZ']
-			for i in item['aws_acct'].ChildAccounts:
+			for i in item['aws_acct'].AllCredentials:
 				account.update(i)
 				account.update({'Profile': item['profile']})
 				# print(account)
 				AccountList.append(account.copy())
-			NumOfOrgAccounts += len(item['aws_acct'].ChildAccounts)
+			NumOfOrgAccounts += len(item['aws_acct'].AllCredentials)
 			# if landing_zone:
 			# 	fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}{Fore.RED}%-6s {Fore.RESET}"
 			# else:
@@ -147,7 +147,7 @@ if not shortform:
 			print(f"{item['profile']:23s}{Style.BRIGHT} {item['MgmtAcct']:15s}{Style.RESET_ALL} {Fore.RED if landing_zone else Fore.RESET}{landing_zone}{Fore.RESET}")
 			print(f"\t\t{'Child Account Number':20s} {'Child Account Status':20s} {'Child Email Address':20s}")
 			# for account in sorted(child_accounts):
-			for child_acct in item['aws_acct'].ChildAccounts:
+			for child_acct in item['aws_acct'].AllCredentials:
 				print(f"\t\t{child_acct['AccountId']:20s} {child_acct['AccountStatus']:20s} {child_acct['AccountEmail']:20s}")
 		elif not item['Success']:
 			FailedAccounts += 1
