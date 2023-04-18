@@ -53,7 +53,7 @@ account_number_format = "12s"
 
 
 def check_cw_groups_retention(faws_acct, fRegionList=None):
-	ChildAccounts = faws_acct.ChildAccounts
+	ChildAccounts = faws_acct.AllCredentials
 	AllCWLogGroups = []
 	account_credentials = {'Role': 'unset'}
 	if fRegionList is None:

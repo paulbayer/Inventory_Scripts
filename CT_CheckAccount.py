@@ -461,7 +461,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 	Step = 'Step5'
 	print(f"{Fore.BLUE}{Step}:{Fore.RESET}")
 	print(" Checking that the account is part of the AWS Organization.")
-	OrgAccountList = [d['AccountId'] for d in aws_account.ChildAccounts]
+	OrgAccountList = [d['AccountId'] for d in aws_account.AllCredentials]
 	if not (fChildAccountId in OrgAccountList):
 		print()
 		print(f"Account # {fChildAccountId} is not a part of the Organization. This account needs to be moved into the Organization to be adopted into the Landing Zone tool")

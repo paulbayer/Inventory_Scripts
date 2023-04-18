@@ -75,7 +75,7 @@ def check_accounts_for_cloudtrail(faws_acct, fRegionList=None):
 	"""
 	Note that this function checks the account AND any children accounts in the Org.
 	"""
-	ChildAccounts = faws_acct.ChildAccounts
+	ChildAccounts = faws_acct.AllCredentials
 	AllTrails = []
 	account_credentials = {'Role': 'Nothing'}
 	Trails = dict()

@@ -1361,7 +1361,7 @@ def find_account_enis2(ocredentials, fRegion=None, fipaddresses=None):
 	                            region_name=fRegion)
 	eni_info = session_ec2.client('ec2')
 	ENIs = {'NextToken': None}
-	AllENIs = {'ENIs': []}
+	AllENIs = {}
 
 	while 'NextToken' in ENIs.keys():
 		# Had to add this so that a failure of the describe_subnet function doesn't cause a race condition
@@ -1383,15 +1383,19 @@ def find_account_enis2(ocredentials, fRegion=None, fipaddresses=None):
 				AllENIs[interface['NetworkInterfaceId']] = dict()
 				AllENIs[interface['NetworkInterfaceId']]['AccountId'] = ocredentials['AccountNumber']
 				AllENIs[interface['NetworkInterfaceId']]['Region'] = ocredentials['Region']
+				AllENIs[interface['NetworkInterfaceId']]['ENIId'] = interface['NetworkInterfaceId']
 				AllENIs[interface['NetworkInterfaceId']]['InterfaceType'] = interface['InterfaceType']
 				AllENIs[interface['NetworkInterfaceId']]['PrivateDnsName'] = interface['PrivateDnsName']
-				AllENIs[interface['NetworkInterfaceId']]['PrivateIPAddress'] = interface['PrivateIpAddress']
+				AllENIs[interface['NetworkInterfaceId']]['PrivateIpAddress'] = interface['PrivateIpAddress']
 				AllENIs[interface['NetworkInterfaceId']]['Status'] = interface['Status']
 				AllENIs[interface['NetworkInterfaceId']]['VpcId'] = interface['VpcId'] if 'VpcId' in interface.keys() else "No VPC Associated"
 				AllENIs[interface['NetworkInterfaceId']]['InstanceId'] = interface['Attachment']['InstanceId'] if 'InstanceId' in interface['Attachment'].keys() else "No instance association"
 				AllENIs[interface['NetworkInterfaceId']]['AttachmentStatus'] = interface['Attachment']['Status']
 				AllENIs[interface['NetworkInterfaceId']]['PublicIp'] = interface['Association']['PublicIp'] if 'Association' in interface.keys() and 'PublicIp' in interface['Association'].keys() else "No Public IP"
-
+				if 'TagSet' in interface.keys():
+					for tag in interface['TagSet']:
+						if tag['Key'] == 'Name':
+							AllENIs[interface['NetworkInterfaceId']]['Name'] = tag['Value']
 		except ClientError as my_Error:
 			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
 						  f"This is likely due to '{fRegion}' not being enabled for your account\n"
@@ -3243,7 +3247,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		accountlist = []
 	if fregions is None:
 		fregions = ['us-east-1']
-	ChildAccounts = faws_acct.ChildAccounts
+	ChildAccounts = faws_acct.AllCredentials
 
 	account_credentials = {'Role': 'Nothing'}
 	AccountNum = RegionNum = 0
