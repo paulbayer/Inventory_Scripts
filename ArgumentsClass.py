@@ -90,13 +90,6 @@ class CommonArguments():
 		# 	help="By default, we report results without changing anything. If you want to remediate or change your environment - include this parameter",
 		# 	action="store_false",
 		# 	dest="DryRun")              # Default to Dry Run (no changes)
-		"""
-		pTiming = args.Time
-		pSkipAccounts = args.SkipAccounts
-		pSkipProfiles = args.SkipProfiles
-		pAccounts = args.Accounts
-		pForce = args.Force
-		"""
 		self.my_parser.add_argument(
 			"--force", "+force",
 			help="To force a change - despite indications to the contrary",
