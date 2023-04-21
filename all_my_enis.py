@@ -15,7 +15,7 @@ import logging
 
 init()
 
-__version__ = '2023-04-14'
+__version__ = '2023-04-20'
 
 parser = CommonArguments()
 parser.multiprofile()
@@ -55,7 +55,7 @@ logging.info(f"Profiles: {pProfiles}")
 ##################
 
 
-def check_accounts_for_subnets(fCredentialList, fip=None):
+def check_accounts_for_enis(fCredentialList, fip=None):
 	"""
 	Note that this function takes a list of Credentials and checks for ENIs in every account and region it has creds for
 	"""
@@ -75,9 +75,9 @@ def check_accounts_for_subnets(fCredentialList, fip=None):
 					logging.info(f"Attempting to connect to {c_account_credentials['AccountId']}")
 					account_enis = Inventory_Modules.find_account_enis2(c_account_credentials, c_region, c_fip)
 					logging.info(f"Successfully connected to account {c_account_credentials['AccountId']} in region {c_region}")
-					for k, v in account_enis.items():
-						v['MgmtAccount'] = c_account_credentials['MgmtAccount']
-					Results.append(account_enis)
+					for eni in account_enis:
+						eni['MgmtAccount'] = c_account_credentials['MgmtAccount']
+					Results.extend(account_enis)
 				except KeyError as my_Error:
 					logging.error(f"Account Access failed - trying to access {c_account_credentials['AccountId']}")
 					logging.info(f"Actual Error: {my_Error}")
@@ -87,7 +87,7 @@ def check_accounts_for_subnets(fCredentialList, fip=None):
 					logging.warning(my_Error)
 					continue
 				finally:
-					print(f"{ERASE_LINE}Finished finding subnets in account {c_account_credentials['AccountId']} in region {c_region} - {c_PlaceCount} / {c_PlacesToLook}", end='\r')
+					print(f"{ERASE_LINE}Finished finding ENIs in account {c_account_credentials['AccountId']} in region {c_region} - {c_PlaceCount} / {c_PlacesToLook}", end='\r')
 					self.queue.task_done()
 
 	checkqueue = Queue()
@@ -117,53 +117,40 @@ def check_accounts_for_subnets(fCredentialList, fip=None):
 	return (Results)
 
 
-def display_enis(subnets_list):
-	"""
-	Note that this function simply formats the output of the data within the list provided
-	"""
-	for subnet in subnets_list:
-		# print(subnet)
-		print(f"{subnet['MgmtAccount']:12s} {subnet['AccountId']:12s} {subnet['Region']:15s} {subnet['SubnetName']:40s} {subnet['CidrBlock']:18s} {subnet['AvailableIpAddressCount']:5d}")
-
-
-# AllSubnets.extend(subnets['Subnets'])
-# AccountNum += 1
-
-
 ##################
 
 begin_time = time()
 print()
-print(f"Checking for Subnets... ")
+print(f"Checking for Elastic Network Interfaces... ")
 print()
 
 ENIsFound = []
-AllChildAccounts = []
-RegionList = ['us-east-1']
 subnet_list = []
-AllCredentials = []
 
 CredentialList = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
+RegionList = list(set([x['Region'] for x in CredentialList]))
+AccountList = list(set([x['AccountId'] for x in CredentialList]))
 
-display_dict = {'MgmtAccount': {'Format': '12s', 'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
-                'AccountId'  : {'Format': '12s', 'DisplayOrder': 2, 'Heading': 'Acct Number'},
-                'Region'     : {'Format': '15s', 'DisplayOrder': 3, 'Heading': 'Region'},
-                'ENIName'    : {'Format': '40s', 'DisplayOrder': 4, 'Heading': 'ENI Name'},
-                'IPAddress'  : {'Format': '18s', 'DisplayOrder': 5, 'Heading': 'Public IP Address'},
-                'ENIType'    : {'Format': '8s',  'DisplayOrder': 6, 'Heading': 'ENIType'},
-                'PrivateIP'  : {'Format': '15s', 'DisplayOrder': 7, 'Heading': 'Assoc. IP'}}
+display_dict = {'MgmtAccount'     : {'Format': '12s', 'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
+                'AccountId'       : {'Format': '12s', 'DisplayOrder': 2, 'Heading': 'Acct Number'},
+                'Region'          : {'Format': '15s', 'DisplayOrder': 3, 'Heading': 'Region'},
+                'Name'            : {'Format': '25s', 'DisplayOrder': 4, 'Heading': 'ENI Name'},
+                'PublicIp'        : {'Format': '18s', 'DisplayOrder': 5, 'Heading': 'Public IP Address'},
+                'ENIId'           : {'Format': '22s', 'DisplayOrder': 6, 'Heading': 'ENI Id'},
+                'PrivateIpAddress': {'Format': '15s', 'DisplayOrder': 7, 'Heading': 'Assoc. IP'}}
 
-ENIsFound.extend(check_accounts_for_subnets(CredentialList, fip=pIPaddressList))
-
-display_results(ENIsFound, display_dict)
+ENIsFound.extend(check_accounts_for_enis(CredentialList, fip=pIPaddressList))
+sorted_ENIs_Found = sorted(ENIsFound, key=lambda d: (d['MgmtAccount'], d['AccountId'], d['Region'], d['VpcId']))
+display_results(sorted_ENIs_Found, display_dict)
 
 if pTiming:
 	print(ERASE_LINE)
 	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
 print()
-print(f"These accounts were skipped - as requested: {pSkipAccounts}")
+print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else ""
+print(f"These profiles were skipped - as requested: {pSkipProfiles}") if pSkipProfiles is not None else ""
 print()
-print(f"Found {len(ENIsFound)} ENIs across {len(AllCredentials)} accounts across {len(RegionList)} regions")
+print(f"Found {len(ENIsFound)} ENIs across {len(AccountList)} accounts and regions across {len(RegionList)} regions")
 print()
 print("Thank you for using this script")
 print()

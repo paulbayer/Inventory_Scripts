@@ -43,9 +43,6 @@ Purpose Built Scripts
   - If there are blockers to the adoption (like the default VPCs being present, or Config Recorder already being enabled), it can rectify those blockers it finds. However - to avoid mistakes - it only does this if you specifically select that in the submitted parameters.
   - While this script was focused on ALZ, it also *sort of* supports an account being adopted by Control Tower too.
 
-- **ce_monthly.py**
-  - So I wanted to find a way to easily get the charges for my multiple accounts and organizations. This script is the effort I put into doing that - but doesn't *really* add a lot of value over and above the aws cli command for "ce". I may come back to look further at this eventually, but for now - it works (just), and I've left it in. 
-
 - **CT_CheckAccount.py**
   - This script takes an Organization Master Account profile, and checks additional accounts to see if they meet the pre-reqs to be "adopted" by Control Tower.
   - If there are blockers to the adoption (like the Config Recorder already being enabled), it can rectify those blockers it finds. However - to avoid mistakes - it only does this if you specifically select that in the submitted parameters. This script is still being worked on.

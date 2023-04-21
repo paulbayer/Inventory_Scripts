@@ -1361,7 +1361,8 @@ def find_account_enis2(ocredentials, fRegion=None, fipaddresses=None):
 	                            region_name=fRegion)
 	eni_info = session_ec2.client('ec2')
 	ENIs = {'NextToken': None}
-	AllENIs = {}
+	AllENIs = []
+	return_this_result = True if fipaddresses is None else False
 
 	while 'NextToken' in ENIs.keys():
 		# Had to add this so that a failure of the describe_subnet function doesn't cause a race condition
@@ -1373,32 +1374,42 @@ def find_account_enis2(ocredentials, fRegion=None, fipaddresses=None):
 			# If it does - then include that data within the array, otherwise next...
 			for interface in ENIs['NetworkInterfaces']:
 				if fipaddresses is not None:
+					return_this_result = False
 					for address in fipaddresses:
-						if address == interface['PrivateIPAddress']:
-							pass
+						if address == interface['PrivateIpAddress']:
+							logging.info(f"Found it - {interface['PrivateIpAddress']} - ENI: {interface['NetworkInterfaceId']}")
+							return_this_result = True
 						elif 'Association' in interface.keys() and 'PublicIp' in interface['Association'].keys() and address == interface['Association']['PublicIp']:
-							pass
+							logging.info(f"Found it - {interface['Association']['PublicIp']} - ENI: {interface['NetworkInterfaceId']}")
+							return_this_result = True
 						else:
 							continue
-				AllENIs[interface['NetworkInterfaceId']] = dict()
-				AllENIs[interface['NetworkInterfaceId']]['AccountId'] = ocredentials['AccountNumber']
-				AllENIs[interface['NetworkInterfaceId']]['Region'] = ocredentials['Region']
-				AllENIs[interface['NetworkInterfaceId']]['ENIId'] = interface['NetworkInterfaceId']
-				AllENIs[interface['NetworkInterfaceId']]['InterfaceType'] = interface['InterfaceType']
-				AllENIs[interface['NetworkInterfaceId']]['PrivateDnsName'] = interface['PrivateDnsName']
-				AllENIs[interface['NetworkInterfaceId']]['PrivateIpAddress'] = interface['PrivateIpAddress']
-				AllENIs[interface['NetworkInterfaceId']]['Status'] = interface['Status']
-				AllENIs[interface['NetworkInterfaceId']]['VpcId'] = interface['VpcId'] if 'VpcId' in interface.keys() else "No VPC Associated"
-				AllENIs[interface['NetworkInterfaceId']]['InstanceId'] = interface['Attachment']['InstanceId'] if 'InstanceId' in interface['Attachment'].keys() else "No instance association"
-				AllENIs[interface['NetworkInterfaceId']]['AttachmentStatus'] = interface['Attachment']['Status']
-				AllENIs[interface['NetworkInterfaceId']]['PublicIp'] = interface['Association']['PublicIp'] if 'Association' in interface.keys() and 'PublicIp' in interface['Association'].keys() else "No Public IP"
-				if 'TagSet' in interface.keys():
-					for tag in interface['TagSet']:
-						if tag['Key'] == 'Name':
-							AllENIs[interface['NetworkInterfaceId']]['Name'] = tag['Value']
+				if return_this_result:
+					Name = None
+					if 'TagSet' in interface.keys():
+						for tag in interface['TagSet']:
+							if tag['Key'] == 'Name':
+								Name = tag['Value']
+					AllENIs.append({
+						'Name'            : Name,
+						'AccountId'       : ocredentials['AccountNumber'],
+						'Region'          : ocredentials['Region'],
+						'ENIId'           : interface['NetworkInterfaceId'],
+						'InterfaceType'   : interface['InterfaceType'],
+						'PrivateDnsName'  : interface['PrivateDnsName'],
+						'PrivateIpAddress': interface['PrivateIpAddress'],
+						'Status'          : interface['Status'],
+						'VpcId'           : interface['VpcId'] if 'VpcId' in interface.keys() else "No VPC Associated",
+						'InstanceId'      : interface['Attachment']['InstanceId'] if 'InstanceId' in interface['Attachment'].keys() else "No instance association",
+						'AttachmentStatus': interface['Attachment']['Status'],
+						'PublicIp'        : interface['Association']['PublicIp'] if 'Association' in interface.keys() and 'PublicIp' in interface['Association'].keys() else "No Public IP", })
 		except ClientError as my_Error:
 			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
 						  f"This is likely due to '{fRegion}' not being enabled for your account\n"
+						  f"Error Message: {my_Error}")
+			continue
+		except KeyError as my_Error:
+			logging.error(f"Some kind of KeyError\n"
 						  f"Error Message: {my_Error}")
 			continue
 	return (AllENIs)
@@ -3155,13 +3166,13 @@ def get_all_credentials(fProfiles, fTiming, fSkipProfiles, fSkipAccounts, fRootO
 		aws_acct = aws_acct_access()
 		profile = 'default'
 		RegionList = get_regions3(aws_acct, fRegionList)
-		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 		logging.info(f"Queueing default profile for credentials")
+		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList))
 	else:
 		ProfileList = get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
 		if fTiming:
-			print(f"{ERASE_LINE}{Fore.GREEN}Finding {len(ProfileList)} profiles has taken {time() - begin_time} seconds{Fore.RESET}")
+			print(f"{ERASE_LINE}{Fore.GREEN}Finding {len(ProfileList)} profiles has taken {time() - begin_time:.2f} seconds{Fore.RESET}")
 		logging.warning(f"These profiles are being checked {ProfileList}.")
 		print("Getting Accounts to check: ", end='')
 		for profile in ProfileList:
@@ -3173,14 +3184,14 @@ def get_all_credentials(fProfiles, fTiming, fSkipProfiles, fSkipAccounts, fRootO
 				# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 				AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList))
 				if fTiming:
-					print(f"{ERASE_LINE}{Fore.GREEN}Finding credentials for {len(AllCredentials)} accounts and regions in profile {Fore.RED}'{profile}'{Fore.GREEN} has taken {time()-begin_time} seconds{Fore.RESET}")
+					print(f"{ERASE_LINE}{Fore.GREEN}Finished profile {Fore.RED}'{profile}'{Fore.GREEN}. Finding credentials for {len(AllCredentials)} accounts and regions has taken {time()-begin_time:.2f} seconds{Fore.RESET}")
 			except AttributeError as my_Error:
 				logging.error(f"Profile {profile} didn't work... Skipping")
 				continue
 	return (AllCredentials)
 
 
-def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, accountlist=None, fprofile="default", fregions=None, fRoleNames=None):
+def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, accountlist=None, fprofile="default", fregions=None, fRoleNames=None, fTiming=False):
 	"""
 	Note that this function returns the credentials of all the accounts underneath the Org passed to it.
 	"""
@@ -3189,6 +3200,12 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 	from queue import Queue
 	from threading import Thread
 	from botocore.exceptions import ClientError
+	from time import time
+	from colorama import init, Fore
+
+	init()
+	if fTiming:
+		begin_time = time()
 
 	class AssembleCredentials(Thread):
 
@@ -3247,7 +3264,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		accountlist = []
 	if fregions is None:
 		fregions = ['us-east-1']
-	ChildAccounts = faws_acct.AllCredentials
+	ChildAccounts = faws_acct.ChildAccounts
 
 	account_credentials = {'Role': 'Nothing'}
 	AccountNum = RegionNum = 0
@@ -3262,6 +3279,8 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		worker.daemon = True
 		worker.start()
 
+	print(f"You asked to check {WorkerThreads} places... It's going to take a moment")
+	print(f"{Fore.GREEN}It's taken {time - begin_time} seconds to prep WorkerThreads and such{Fore.RESET}") if fTiming else None
 	for account in ChildAccounts:
 		AccountNum += 1
 		RegionNum = 0
@@ -3278,6 +3297,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 			credqueue.put((account, fprofile, region))
 			logging.info(f"Account / Region: {account} / {region} | {datetime.now()}")
 	logging.info(f"Profile: {fprofile} | {datetime.now()}")
+	print(f"{Fore.GREEN}Going through all {WorkerThreads} accounts and regions took {time - begin_time} seconds {Fore.RESET}") if fTiming else None
 	credqueue.join()
 	return (AllCreds)
 
