@@ -219,11 +219,6 @@ def find_in(list_to_search, list_to_find=None):
 	return (list_to_return)
 
 
-def timing():
-	if pTiming:
-		print(f"{Fore.GREEN}It's been {time()-begin_time} seconds thus far{Fore.RESET}")
-
-
 def addLoggingLevel(levelName, levelNum, methodName=None):
 	import logging
 	"""
@@ -266,6 +261,7 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
 	def logForLevel(self, message, *args, **kwargs):
 		if self.isEnabledFor(levelNum):
 			self._log(levelNum, message, args, **kwargs)
+
 	def logToRoot(message, *args, **kwargs):
 		logging.log(levelNum, message, *args, **kwargs)
 
@@ -3156,9 +3152,8 @@ def get_all_credentials(fProfiles, fTiming, fSkipProfiles, fSkipAccounts, fRootO
 
 	init()
 	ERASE_LINE = '\x1b[2K'
-	if fTiming:
-		begin_time = time()
-		print(f"{Fore.GREEN}Timing is enabled{Fore.RESET}")
+	begin_time = time()
+	print(f"{Fore.GREEN}Timing is enabled{Fore.RESET}") if fTiming else None
 
 	AllCredentials = []
 	if fProfiles is None:  # Default use case from the classes
@@ -3171,8 +3166,8 @@ def get_all_credentials(fProfiles, fTiming, fSkipProfiles, fSkipAccounts, fRootO
 		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList))
 	else:
 		ProfileList = get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
-		if fTiming:
-			print(f"{ERASE_LINE}{Fore.GREEN}Finding {len(ProfileList)} profiles has taken {time() - begin_time:.2f} seconds{Fore.RESET}")
+		print(f"{ERASE_LINE}{Fore.GREEN}Finding {len(ProfileList)} profiles has taken {time() - begin_time:.2f} seconds{Fore.RESET}") if fTiming else None
+
 		logging.warning(f"These profiles are being checked {ProfileList}.")
 		print("Getting Accounts to check: ", end='')
 		for profile in ProfileList:
@@ -3204,8 +3199,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 	from colorama import init, Fore
 
 	init()
-	if fTiming:
-		begin_time = time()
+	begin_time = time()
 
 	class AssembleCredentials(Thread):
 
@@ -3270,7 +3264,10 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 	AccountNum = RegionNum = 0
 	AllCreds = []
 	credqueue = Queue()
-	WorkerThreads = len(ChildAccounts) * len(fregions)
+	if len(accountlist) > 0:
+		WorkerThreads = min(len(accountlist) * len(fregions), 50)
+	else:
+		WorkerThreads = min(len(ChildAccounts) * len(fregions), 100)
 	# WorkerThreads = len(ChildAccounts)
 
 	# Create x worker threads
@@ -3280,8 +3277,8 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		worker.daemon = True
 		worker.start()
 
-	print(f"You asked to check {WorkerThreads} places... It's going to take a moment")
-	print(f"{Fore.GREEN}It's taken {time - begin_time} seconds to prep WorkerThreads and such{Fore.RESET}") if fTiming else None
+	print(f"You asked to check {len(ChildAccounts) * len(fregions)} places... It's going to take a moment")
+	print(f"{Fore.GREEN}It's taken {time - begin_time:.2f} seconds to prep WorkerThreads and such{Fore.RESET}") if fTiming else None
 	for account in ChildAccounts:
 		AccountNum += 1
 		RegionNum = 0
@@ -3298,7 +3295,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 			credqueue.put((account, fprofile, region))
 			logging.info(f"Account / Region: {account} / {region} | {datetime.now()}")
 	logging.info(f"Profile: {fprofile} | {datetime.now()}")
-	print(f"{Fore.GREEN}Going through all {WorkerThreads} accounts and regions took {time - begin_time} seconds {Fore.RESET}") if fTiming else None
+	print(f"{Fore.GREEN}Going through all {WorkerThreads} accounts and regions took {time - begin_time:.2f} seconds {Fore.RESET}") if fTiming else None
 	credqueue.join()
 	return (AllCreds)
 
