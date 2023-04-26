@@ -28,7 +28,7 @@ parser.my_parser.add_argument(
 	default=False,
 	help="Whether you'd like to delete that specified role.")
 parser.multiprofile()
-parser.singleregion()
+parser.multiregion()
 parser.extendedargs()  # This adds the "DryRun" and "Force" objects
 parser.rootOnly()
 parser.verbosity()
@@ -37,15 +37,15 @@ parser.version(__script_version__)
 args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
+pRegionList = args.Regions
 pRole = args.pRole
-pDelete = args.pDelete
-pRegionList = [args.Region]
-pTiming = args.Time
+pAccounts = args.Accounts
 pSkipAccounts = args.SkipAccounts
 pSkipProfiles = args.SkipProfiles
-pAccounts = args.Accounts
+pDelete = args.pDelete
 pForce = args.Force
 pRootOnly = args.RootOnly
+pTiming = args.Time
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(""message)s")
 
 ##########################
@@ -90,23 +90,23 @@ def my_delete_role(fRoleList):
 ##########################
 
 
-ChildAccounts = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
+AllCredentials = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
 
 print()
 if pRole is not None:
-	print(f"Looking for a specific role called '{pRole}' across {len(ChildAccounts)} accounts")
+	print(f"Looking for a specific role called '{pRole}' across {len(AllCredentials)} accounts")
 	print()
 else:
-	print(f"Listing out all roles across {len(ChildAccounts)} accounts")
+	print(f"Listing out all roles across {len(AllCredentials)} accounts")
 	print()
 
 Roles = []
-for account in ChildAccounts:
+for account in AllCredentials:
 	if account['Success']:
 		iam_session = boto3.Session(aws_access_key_id=account['AccessKeyId'],
-									aws_secret_access_key=account['SecretAccessKey'],
-									aws_session_token=account['SessionToken'],
-									region_name=account['Region'])
+		                            aws_secret_access_key=account['SecretAccessKey'],
+		                            aws_session_token=account['SessionToken'],
+		                            region_name=account['Region'])
 		iam_client = iam_session.client('iam')
 	else:
 		continue
@@ -117,7 +117,7 @@ for account in ChildAccounts:
 				'AccessKeyId'    : account['AccessKeyId'],
 				'SecretAccessKey': account['SecretAccessKey'],
 				'SessionToken'   : account['SessionToken'],
-				'MgmtAcctId'     : account['MgmtAccount'],
+				'MgmtAcct'       : account['MgmtAccount'],
 				'Region'         : account['Region'],
 				'AccountId'      : account['AccountNumber'],
 				'RoleName'       : response['Roles'][i]['RoleName']
@@ -142,18 +142,18 @@ time_to_sleep = 5
 confirm = False
 
 DisplayList = [x for x in Roles if find_in([x['RoleName']], [pRole])]
-sorted_Results = sorted(DisplayList, key=lambda d: (d['MgmtAcctId'], d['AccountId'], d['RoleName']))
+sorted_Results = sorted(DisplayList, key=lambda d: (d['MgmtAcct'], d['AccountId'], d['RoleName']))
 
 if pDelete:
 	if pRole is None:
 		print(f"You asked to delete roles, but didn't give a specific role to delete, so we're not going to delete anything.")
 	elif len(sorted_Results) > 0 and not pForce:
 		print(f"Your specified role fragment matched at least 1 role.\n"
-			  f"Please confirm you want to really delete all {len(sorted_Results)} roles found")
-		confirm = (input(f"Really delete {len(sorted_Results)} across {len(ChildAccounts)} accounts. Are you still sure? (y/n): ").lower() == 'y')
+		      f"Please confirm you want to really delete all {len(sorted_Results)} roles found")
+		confirm = (input(f"Really delete {len(sorted_Results)} across {len(AllCredentials)} accounts. Are you still sure? (y/n): ").lower() == 'y')
 	elif pForce and len(sorted_Results) > 0:
 		print(f"You specified a fragment that matched multiple roles.\n"
-			  f"And you specified the 'FORCE' parameter - so we're not asking again, BUT we'll wait {time_to_sleep} seconds to give you the option to Ctrl-C here...")
+		      f"And you specified the 'FORCE' parameter - so we're not asking again, BUT we'll wait {time_to_sleep} seconds to give you the option to Ctrl-C here...")
 		sleep(5)
 
 if (pDelete and confirm) or (pDelete and pForce):
@@ -165,19 +165,18 @@ if (pDelete and confirm) or (pDelete and pForce):
 		else:
 			sorted_Results[i].update({'Action': 'delete failed'})
 
-display_dict = {'AccountId' : {'Format': '15s', 'DisplayOrder': 2, 'Heading': 'Account Number'},
-				'MgmtAcctId': {'Format': '15s', 'DisplayOrder': 1, 'Heading': 'Parent Acct'},
-				'RoleName'  : {'Format': '40s', 'DisplayOrder': 3, 'Heading': 'Role Name'},
-				'Action'    : {'Format': '10s', 'DisplayOrder': 4, 'Heading': 'Action Taken'}}
-
+display_dict = {'AccountId': {'Format': '15s', 'DisplayOrder': 2, 'Heading': 'Account Number'},
+                'MgmtAcct' : {'Format': '15s', 'DisplayOrder': 1, 'Heading': 'Parent Acct'},
+                'RoleName' : {'Format': '40s', 'DisplayOrder': 3, 'Heading': 'Role Name'},
+                'Action'   : {'Format': '10s', 'DisplayOrder': 4, 'Heading': 'Action Taken'}}
 
 display_results(sorted_Results, display_dict, "No Action")
 
 print()
 if pRole is None:
-	print(f"Found {len(DisplayList)} roles across {len(ChildAccounts)} accounts")
+	print(f"Found {len(DisplayList)} roles across {len(AllCredentials)} accounts")
 else:
-	print(f"Found {len(DisplayList)} instances where role containing '{pRole}' was found across {len(ChildAccounts)} accounts")
+	print(f"Found {len(DisplayList)} instances where role containing '{pRole}' was found across {len(AllCredentials)} accounts")
 
 if pTiming:
 	print(ERASE_LINE)
