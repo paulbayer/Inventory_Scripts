@@ -16,12 +16,13 @@ parser.singleprofile()  # Allows for a single profile to be specified
 parser.multiregion()  # Allows for multiple regions to be specified at the command line
 parser.verbosity()  # Allows for the verbosity to be handled.
 parser.extendedargs()  # Allows for extended arguments like which accounts to skip, and whether Force is enabled.
-parser.my_parser.add_argument(
-	"-f", "--fragment",
-	dest="stackfrag",
-	metavar="CloudFormation stack fragment",
-	default="all",
-	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
+parser.fragment()
+# parser.my_parser.add_argument(
+# 	"-f", "--fragment",
+# 	dest="stackfrag",
+# 	metavar="CloudFormation stack fragment",
+# 	default="all",
+# 	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
 parser.my_parser.add_argument(
 	"-s", "--status",
 	dest="status",
@@ -42,9 +43,10 @@ args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
 pRegionList = args.Regions
-AccountsToSkip = args.SkipAccounts
+pSkipProfiles = args.SkipProfiles
+pSkipAccounts = args.SkipAccounts
 verbose = args.loglevel
-pstackfrag = args.stackfrag
+pstackfrag = args.Fragments
 pstatus = args.status
 pStackIdFlag = args.stackid
 DeletionRun = args.DeletionRun
@@ -55,14 +57,14 @@ ERASE_LINE = '\x1b[2K'
 aws_acct = aws_acct_access(pProfile)
 ChildAccounts = aws_acct.ChildAccounts
 RegionList = Inventory_Modules.get_service_regions('cloudformation', pRegionList)
-ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, AccountsToSkip)
+ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, pSkipAccounts)
 AccountList = [account['AccountId'] for account in ChildAccounts]
 
 print(f"You asked to find stacks with this fragment {Fore.RED}'{pstackfrag}'{Fore.RESET}")
 print(f"in these accounts:\n{Fore.RED}{AccountList}{Fore.RESET}")
 print(f"in these regions:\n{Fore.RED}{RegionList}{Fore.RESET}")
-if len(AccountsToSkip) > 0:
-	print(f"While skipping these accounts:\n{Fore.RED}{AccountsToSkip}{Fore.RESET}")
+if pSkipAccounts is not None:
+	print(f"While skipping these accounts:\n{Fore.RED}{pSkipAccounts}{Fore.RESET}")
 if DeletionRun:
 	print()
 	print("And delete the stacks that are found...")
@@ -111,15 +113,16 @@ for account_number in AccountList:
 				StackID = Stacks[y]['StackId']
 				StackCreate = Stacks[y]['CreationTime']
 				if pStackIdFlag:
-					print(fmt % (account_number, region, StackStatus, StackName, StackID))
+					print(fmt % (account_number, region, StackStatus, StackCreate, StackName, StackID))
 				else:
-					print(fmt % (account_number, region, StackStatus, StackName))
+					print(fmt % (account_number, region, StackStatus, StackCreate, StackName))
 				StacksFound.append({
 					'Account'    : account_number,
 					'Region'     : region,
 					'StackName'  : StackName,
 					'StackStatus': StackStatus,
 					'StackArn'   : StackID})
+sortedStacksFound
 lAccounts = []
 lRegions = []
 lAccountsAndRegions = []

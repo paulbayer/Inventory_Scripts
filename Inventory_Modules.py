@@ -2041,7 +2041,7 @@ def find_stacks(fProfile, fRegion, fStackFragment="all", fStatus="active"):
 	return (stacksCopy)
 
 
-def find_stacks2(ocredentials, fRegion, fStackFragment="all", fStatus="active"):
+def find_stacks2(ocredentials, fRegion, fStackFragment=None, fStatus="active"):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -2050,14 +2050,16 @@ def find_stacks2(ocredentials, fRegion, fStackFragment="all", fStatus="active"):
 		- ['AccountNumber'] holds the AccountId
 
 	fRegion is a string
-	fStackFragment is a string - default to "all"
+	fStackFragment is a list - default to ["all"]
 	fStatus is a string - default to "active"
 	"""
 
 	import boto3
 	import logging
-	logging.error(
-		f"Acct ID #: {str(ocredentials['AccountNumber'])} | Region: {fRegion} | Fragment: {fStackFragment} | Status: {fStatus}")
+
+	if fStackFragment is None:
+		fStackFragment = ['all']
+	logging.info(f"Acct ID #: {str(ocredentials['AccountNumber'])} | Region: {fRegion} | Fragment: {fStackFragment} | Status: {fStatus}")
 	session_cfn = boto3.Session(region_name=fRegion,
 								aws_access_key_id=ocredentials['AccessKeyId'],
 								aws_secret_access_key=ocredentials['SecretAccessKey'],
@@ -2065,24 +2067,29 @@ def find_stacks2(ocredentials, fRegion, fStackFragment="all", fStatus="active"):
 	client_cfn = session_cfn.client('cloudformation')
 	stacks = dict()
 	stacksCopy = []
-	if fStatus.lower() == 'active' and not fStackFragment.lower() == 'all':
+	# For Active Stacks, where we *did* specify a fragment to find
+	if fStatus.lower() == 'active' and not ('all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment):
 		# Send back stacks that are active, check the fragment further down.
 		stacks = client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE", "UPDATE_COMPLETE",
 														   "UPDATE_ROLLBACK_COMPLETE"])
 		for stack in stacks['StackSummaries']:
-			if fStackFragment in stack['StackName']:
-				# Check the fragment now - only send back those that match
-				logging.info(f"1-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
-							 f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
-				stacksCopy.append(stack)
-	elif fStackFragment.lower() == 'all' and fStatus.lower() == 'all':
+			for fragment in fStackFragment:
+				if fragment in stack['StackName']:
+					# Check the fragment now - only send back those that match
+					logging.info(f"1-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
+								 f"Region: {fRegion} with Fragment: {fragment} and Status: {fStatus}")
+					stacksCopy.append(stack)
+	# For all stacks, where we *did not* specify a fragment to find
+	elif 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
 		# Send back all stacks.
 		# TODO: Need paging here
 		stacks = client_cfn.list_stacks()
 		logging.info(f"4-Found {len(stacks)} the stacks in Account: {ocredentials['AccountNumber']} in "
 					 f"Region: {fRegion}")
 		return (stacks['StackSummaries'])
-	elif fStackFragment.lower() == 'all' and fStatus.lower() == 'active':
+	# For all active stacks where we want all stacks
+	# TODO: This case will never be triggered, since "all" stacks will be covered by the case above.
+	elif ('all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment) and fStatus.lower() == 'active':
 		# Send back all stacks regardless of fragment, check the status further down.
 		# TODO: Need paging here
 		stacks = client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE", "UPDATE_COMPLETE",
@@ -2091,8 +2098,9 @@ def find_stacks2(ocredentials, fRegion, fStackFragment="all", fStatus="active"):
 			logging.info(f"2-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
 						 f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 			stacksCopy.append(stack)
+	# In case we want *all* stacks, for all stack statuses
 	elif fStatus.lower() == 'all':
-		# Send back all stacks that match the fragment, including all statuses
+		# Send back all stacks that match the fragment. Default is to only send active, so we have to specify ALL statuses, to get everything.
 		stacks = client_cfn.list_stacks(StackStatusFilter=['CREATE_IN_PROGRESS', 'CREATE_FAILED',
 														   'CREATE_COMPLETE', 'ROLLBACK_IN_PROGRESS',
 														   'ROLLBACK_FAILED', 'ROLLBACK_COMPLETE',
@@ -2108,12 +2116,13 @@ def find_stacks2(ocredentials, fRegion, fStackFragment="all", fStatus="active"):
 														   'IMPORT_ROLLBACK_IN_PROGRESS', 'IMPORT_ROLLBACK_FAILED',
 														   'IMPORT_ROLLBACK_COMPLETE'])
 		for stack in stacks['StackSummaries']:
-			if fStackFragment in stack['StackName']:
-				# Check the fragment now - only send back those that match, regardless of status
-				logging.info(f"1-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
-							 f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
-				stacksCopy.append(stack)
-
+			for fragment in fStackFragment:
+				if fragment in stack['StackName']:
+					# Check the fragment now - only send back those that match, regardless of status
+					logging.info(f"1-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
+								 f"Region: {fRegion} with Fragment: {fragment} and Status: {fStatus}")
+					stacksCopy.append(stack)
+	# This is to capture stack statuses that aren't captured above (like specifically "deleted" or something like that)
 	elif not fStatus.lower() == 'active':
 		# Send back stacks that match the single status, check the fragment further down.
 		try:
@@ -2124,11 +2133,12 @@ def find_stacks2(ocredentials, fRegion, fStackFragment="all", fStatus="active"):
 			print(my_Error)
 		if 'StackSummaries' in stacks.keys():
 			for stack in stacks['StackSummaries']:
-				if fStackFragment in stack['StackName'] and fStatus in stack['StackStatus']:
-					# Check the fragment now - only send back those that match
-					logging.info(f"5-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']}"
-								 f" in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
-					stacksCopy.append(stack)
+				for fragment in fStackFragment:
+					if fragment in stack['StackName'] and fStatus.lower() in stack['StackStatus'].lower():
+						# Check the fragment now - only send back those that match
+						logging.info(f"5-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']}"
+									 f" in Region: {fRegion} with Fragment: {fragment} and Status: {fStatus}")
+						stacksCopy.append(stack)
 	return (stacksCopy)
 
 
