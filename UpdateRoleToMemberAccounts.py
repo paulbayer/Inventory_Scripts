@@ -19,6 +19,7 @@ parser.multiregion()
 parser.roles_to_use()
 parser.extendedargs()
 parser.rootOnly()
+parser.timing()
 parser.verbosity()
 
 group = parser.my_parser.add_mutually_exclusive_group(required=True)
