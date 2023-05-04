@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-__script_version__ = '2023-04-01'
-
 from Inventory_Modules import display_results, get_all_credentials, find_in
 import boto3
 from ArgumentsClass import CommonArguments
@@ -11,9 +9,17 @@ from botocore.exceptions import ClientError
 import logging
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
-parser.my_parser.description = ("We're going to find all roles within any of the accounts we have access to, given the profile provided.")
+parser.my_parser.description = ("We're going to find all roles within any of the accounts we have access to, given the profile(s) provided.")
+parser.multiprofile()
+parser.multiregion()
+parser.extendedargs()
+parser.rootOnly()
+parser.verbosity()
+parser.timing()
+parser.version(__version__)
 parser.my_parser.add_argument(
 	"--role",
 	dest="pRole",
@@ -27,13 +33,6 @@ parser.my_parser.add_argument(
 	const=True,
 	default=False,
 	help="Whether you'd like to delete that specified role.")
-parser.multiprofile()
-parser.multiregion()
-parser.extendedargs()  # This adds the "DryRun" and "Force" objects
-parser.rootOnly()
-parser.verbosity()
-parser.timing()
-parser.version(__script_version__)
 args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles

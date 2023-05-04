@@ -11,17 +11,21 @@ from account_class import aws_acct_access
 import logging
 
 init()
+__version__ = "2023.05.04"
+
 parser = CommonArguments()
-parser.verbosity()
 parser.multiprofile()
 parser.multiregion()
+parser.fragment()
+parser.verbosity()
+parser.version(__version__)
 
-parser.my_parser.add_argument(
-		"-f", "--fragment",
-		dest="pstackfrag",
-		metavar="CloudFormation stack fragment",
-		default="all",
-		help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
+# parser.my_parser.add_argument(
+# 		"-f", "--fragment",
+# 		dest="pstackfrag",
+# 		metavar="CloudFormation stack fragment",
+# 		default="all",
+# 		help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
 parser.my_parser.add_argument(
 		"-s", "--status",
 		dest="pstatus",
@@ -32,7 +36,7 @@ args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
 pRegionList = args.Regions
-pstackfrag = args.pstackfrag
+pstackfrag = args.Fragments
 pstatus = args.pstatus
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
@@ -41,7 +45,7 @@ logging.getLogger("botocore").setLevel(logging.CRITICAL)
 logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
 logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
-SkipProfiles = ["default", "Shared-Fid"]
+SkipProfiles = ["default"]
 
 ##########################
 ERASE_LINE = '\x1b[2K'

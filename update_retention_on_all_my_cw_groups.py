@@ -10,12 +10,14 @@ from botocore.exceptions import ClientError
 import logging
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
-parser.verbosity()
 parser.rootOnly()
+parser.verbosity()
+parser.version(__version__)
 
 parser.my_parser.add_argument(
 	'+R', "--ReplaceRetention",
@@ -53,7 +55,7 @@ account_number_format = "12s"
 
 
 def check_cw_groups_retention(faws_acct, fRegionList=None):
-	ChildAccounts = faws_acct.AllCredentials
+	ChildAccounts = faws_acct.ChildAccounts
 	AllCWLogGroups = []
 	account_credentials = {'Role': 'unset'}
 	if fRegionList is None:

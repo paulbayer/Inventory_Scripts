@@ -15,12 +15,14 @@ Originally, that script didn't have built-in recovery, so we needed this script 
 """
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
 parser.singleprofile()      # Allows for a single profile to be specified
 parser.multiregion()        # Allows for multiple regions to be specified at the command line
-parser.verbosity()          # Allows for the verbosity to be handled.
 parser.extendedargs()       # Allows for extended arguments like which accounts to skip, and whether Force is enabled.
+parser.verbosity()          # Allows for the verbosity to be handled.
+parser.version(__version__)
 parser.my_parser.add_argument(
 	"-f", "--fragment",
 	dest="stackfrag",

@@ -44,14 +44,22 @@ class CommonArguments():
 			action="store_true",  # Defaults to False, so the script would continue to run
 			help="Only run this code for the root account, not the children")
 
-	def roles_to_use(self):
+	def rolestouse(self):
 		self.my_parser.add_argument(
-			"--roles", "--RolesToUse",
-			dest="RolesToUse",
-			default=None,
-			nargs='*',
-			metavar="Role name",
-			help="Role that should be used to access child accounts")
+			"--access_rolename",
+			dest="AccessRole",
+			default='AWSCloudFormationStackSetExecutionRole',
+			metavar="role to use for access to child accounts",
+			help="This parameter specifies the role that will allow this script to have access to the children accounts.")
+
+	# def roles_to_use(self):
+	# 	self.my_parser.add_argument(
+	# 		"--roles", "--RolesToUse",
+	# 		dest="RolesToUse",
+	# 		default=None,
+	# 		nargs='*',
+	# 		metavar="Role name",
+	# 		help="Role that should be used to access child accounts")
 
 	def verbosity(self):
 		import logging

@@ -10,11 +10,13 @@ from botocore.exceptions import ClientError
 import logging
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
 parser.multiregion()
 parser.multiprofile()
 parser.verbosity()
+parser.version(__version__)
 args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles

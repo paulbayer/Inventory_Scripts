@@ -13,6 +13,7 @@ from time import time
 import logging
 
 init()
+__version__ = "2023.05.04"
 
 """
 TODO:
@@ -23,9 +24,11 @@ parser.multiprofile()
 parser.multiregion()
 parser.extendedargs()  # This adds additional *optional* arguments to the listing
 parser.rootOnly()
+parser.rolestouse()
 parser.timing()
 parser.fragment()
 parser.verbosity()
+parser.version(__version__)
 parser.my_parser.add_argument(
 	"+delete", "+forreal",
 	dest="flagDelete",
@@ -40,6 +43,7 @@ pFragments = args.Fragments
 pSkipAccounts = args.SkipAccounts
 pSkipProfiles = args.SkipProfiles
 pRootOnly = args.RootOnly
+pChildAccessRole = args.AccessRole
 pTiming = args.Time
 verbose = args.loglevel
 DeletionRun = args.flagDelete

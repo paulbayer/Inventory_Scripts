@@ -10,10 +10,13 @@ from colorama import init, Fore
 from botocore.exceptions import ClientError
 
 init()
+__version__ = "2023.05.04"
+
 parser = CommonArguments()
 parser.version()
 parser.singleprofile()
 parser.verbosity()          # Allows for the verbosity to be handled.
+parser.version(__version__)
 parser.my_parser.add_argument(
 	"-f", "--file",
 	dest="pAccountFile",

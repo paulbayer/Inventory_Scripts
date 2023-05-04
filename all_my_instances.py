@@ -13,21 +13,24 @@ from time import time
 import logging
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
-parser.verbosity()
-parser.rootOnly()
 parser.extendedargs()
+parser.rootOnly()
+parser.verbosity()
+parser.version(__version__)
 args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
 pRegionList = args.Regions
-pTiming = args.Time
+pAccounts = args.Accounts
 pSkipAccounts = args.SkipAccounts
 pSkipProfiles = args.SkipProfiles
 pRootOnly = args.RootOnly
+pTiming = args.Time
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
@@ -204,7 +207,7 @@ if pProfiles is None:  # Default use case from the classes
 	# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 	logging.info(f"Queueing default profile for credentials")
 	profile = 'default'
-	AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, profile, RegionList))
+	AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList))
 else:
 	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=pSkipProfiles, fprofiles=pProfiles)
 	print(f"Capturing info for {len(ProfileList)} requested profiles {ProfileList}")
@@ -216,7 +219,7 @@ else:
 			RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
 			logging.info(f"Queueing {profile} for credentials")
 			# This should populate the list "AllCredentials" with the credentials for the relevant accounts.
-			AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, profile, RegionList))
+			AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList))
 		except AttributeError as my_Error:
 			logging.error(f"Profile {profile} didn't work... Skipping")
 			continue

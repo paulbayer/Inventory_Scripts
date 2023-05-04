@@ -11,10 +11,12 @@ from prettytable import PrettyTable
 import logging
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
-parser.verbosity()
 parser.singleprofile()
+parser.verbosity()
+parser.version(__version__)
 parser.my_parser.add_argument(
 		"--explain",
 		dest="pExplain",

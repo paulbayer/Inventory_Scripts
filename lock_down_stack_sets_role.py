@@ -9,11 +9,13 @@ from botocore.exceptions import ClientError
 import simplejson as json
 
 import logging
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
 parser.singleprofile()
 parser.singleregion()
 parser.verbosity()
+parser.version(__version__)
 parser.my_parser.add_argument(
 		"-R", "--access_rolename",
 		dest="pAccessRole",

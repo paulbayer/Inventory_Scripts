@@ -9,11 +9,13 @@ from colorama import init, Fore
 from botocore.exceptions import ClientError
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
 parser.singleprofile()
 parser.singleregion()
 parser.verbosity()
+parser.version(__version__)
 parser.my_parser.add_argument(
 	"+delete", "+forreal",
 	dest="DeletionRun",
