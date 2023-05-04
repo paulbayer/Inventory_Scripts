@@ -11,17 +11,17 @@ from account_class import aws_acct_access
 import logging
 
 init()
-__version__ = '2023-04-11'
+__version__ = '2023.05.04'
 
 parser = CommonArguments()
 parser.multiprofile()  # Allows for multiple profiles to be specified
 parser.multiregion()  # Allows for multiple regions to be specified at the command line
 parser.fragment()  # Allows for specifying a string fragment to be looked for
 parser.extendedargs()  # Allows for SkipAccounts and Timing
-parser.verbosity()  # Allows for the verbosity to be handled.
 parser.timing()  # Allows to show the time from one process to another
 parser.rootOnly()  # Looks for the directories in the root account of the profile only
 parser.version(__version__)
+parser.verbosity()  # Allows for the verbosity to be handled.
 args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles

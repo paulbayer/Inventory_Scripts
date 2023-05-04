@@ -10,13 +10,16 @@ from time import time
 from colorama import init, Fore, Style
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
 parser.multiprofile()
-parser.rootOnly()
 parser.extendedargs()
+parser.rootOnly()
 parser.verbosity()
+parser.version(__version__)
 parser.timing()
+
 parser.my_parser.add_argument(
 		'-s', '--q', '--short',
 		help="Display only brief listing of the root accounts, and not the Child Accounts under them",
@@ -80,7 +83,7 @@ landing_zone = 'N/A'
 
 if pTiming:
 	print()
-	print(f"It's been {time()-begin_time} seconds...")
+	print(f"It's been {Fore.GREEN}{time()-begin_time}{Fore.RESET} seconds...")
 	print()
 fmt = '%-23s %-15s %-15s %-12s %-10s'
 print("<------------------------------------>")
@@ -126,11 +129,11 @@ if not shortform:
 	account = dict()
 	for item in AllProfileAccounts:
 		if item['Success'] and not item['RootAcct']:
-			account.update(item['aws_acct'].AllCredentials[0])
+			account.update(item['aws_acct'].ChildAccounts[0])
 			account.update({'Profile': item['profile']})
 			# print(account)
 			AccountList.append(account.copy())
-			NumOfNonOrgAccounts += len(item['aws_acct'].AllCredentials)
+			NumOfNonOrgAccounts += len(item['aws_acct'].ChildAccounts)
 		elif item['Success'] and item['RootAcct']:
 			# account = dict()
 			# landing_zone = Inventory_Modules.find_if_alz(item['profile'])['ALZ']

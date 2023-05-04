@@ -5,15 +5,20 @@ import Inventory_Modules
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 from colorama import init, Fore
+from time import time
 from botocore.exceptions import ClientError
 
 init()
+
+__version__ = '2023.05.04'
 
 parser = CommonArguments()
 parser.singleprofile()  # Allows for a single profile to be specified
 parser.multiregion()  # Allows for multiple regions to be specified at the command line
 parser.rootOnly()
+parser.timing()
 parser.verbosity()  # Allows for the verbosity to be handled.
+parser.version(__version__)
 parser.my_parser.add_argument(
 	"-f", "--fragment",
 	dest="pstackfrag",
@@ -32,6 +37,7 @@ parser.my_parser.add_argument(
 	dest="pstatus",
 	metavar="CloudFormation status",
 	default="Active",
+	choices=['active', 'ACTIVE', 'Active', 'deleted', 'DELETED', 'Deleted'],
 	help="String that determines whether we only see 'CREATE_COMPLETE' or 'DELETE_COMPLETE' too. Valid values are 'ACTIVE' or 'DELETED'")
 args = parser.my_parser.parse_args()
 
@@ -40,9 +46,13 @@ pRegionList = args.Regions
 pInstanceCount = args.pinstancecount
 pRootOnly = args.RootOnly
 verbose = args.loglevel
+pTiming = args.Time
 pstackfrag = args.pstackfrag
 pstatus = args.pstatus
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+
+if pTiming:
+	begin_time = time()
 
 aws_acct = aws_acct_access(pProfile)
 if pRootOnly:
@@ -114,4 +124,9 @@ print(ERASE_LINE)
 print(
 	f"{Fore.RED}Found {NumStacksFound} Stacksets across {len(ChildAccounts)} accounts across {len(RegionList)} regions{Fore.RESET}")
 print()
+if pTiming:
+	print(ERASE_LINE)
+	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 print("Thanks for using this script...")
+print()
+

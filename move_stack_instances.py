@@ -14,12 +14,13 @@ from botocore.exceptions import ClientError, WaiterError
 from time import sleep
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
 parser.singleregion()
 parser.singleprofile()
 parser.verbosity()
-# parser.version()
+parser.version(__version__)
 parser.my_parser.add_argument(
 	"--old",
 	dest="pOldStackSet",

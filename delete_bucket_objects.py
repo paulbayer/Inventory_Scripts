@@ -4,11 +4,13 @@
 import logging
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
 parser.singleprofile()
 parser.singleregion()
 parser.verbosity()
+parser.version(__version__)
 parser.my_parser.add_argument(
 	"-b", "--bucket",
 	dest="pBucketName",

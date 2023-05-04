@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-__version__ = '2023-04-01'
 
 # import boto3
 import Inventory_Modules
@@ -15,6 +14,7 @@ from prettytable import PrettyTable
 import logging
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
 parser.multiprofile()

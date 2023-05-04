@@ -10,11 +10,13 @@ from botocore.exceptions import ClientError
 import logging
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
-parser.verbosity()
 parser.singleprofile()
 parser.multiregion()
+parser.verbosity()
+parser.version(__version__)
 
 # UsageMsg="You can provide a level to determine whether this script considers only the 'credentials' file, the 'config' file, or both."
 parser.my_parser.add_argument(

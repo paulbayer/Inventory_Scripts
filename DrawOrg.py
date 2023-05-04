@@ -3,13 +3,13 @@ import logging
 from graphviz import Digraph
 from ArgumentsClass import CommonArguments
 
-__script_version__ = '2023-04-16'
+__version__ = '2023.05.04'
 
 parser = CommonArguments()
 parser.my_parser.description = ("To draw the Organization.")
 parser.singleprofile()
 parser.verbosity()
-parser.version(__script_version__)
+parser.version(__version__)
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile

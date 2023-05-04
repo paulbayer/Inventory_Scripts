@@ -15,13 +15,15 @@ from account_class import aws_acct_access
 import logging
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
-parser.verbosity()
 parser.singleprofile()
 parser.multiregion()
 # The following includes "force", "skipaccount", "skipprofile", "timing"
 parser.extendedargs()
+parser.verbosity()
+parser.version(__version__)
 parser.my_parser.add_argument(
 	"--explain",
 	dest="pExplain",

@@ -12,15 +12,17 @@ from botocore.exceptions import ClientError
 import logging
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
-parser.roles_to_use()
+parser.rolestouse()
 parser.extendedargs()
 parser.rootOnly()
 parser.timing()
 parser.verbosity()
+parser.version(__version__)
 
 group = parser.my_parser.add_mutually_exclusive_group(required=True)
 group.add_argument(
@@ -49,7 +51,7 @@ pSkipAccounts = args.SkipAccounts
 pSkipProfiles = args.SkipProfiles
 pRootOnly = args.RootOnly
 pAccounts = args.Accounts
-pRolesToUse = args.RolesToUse
+pRolesToUse = args.AccessRole
 pRoleNameToAdd = args.pRoleNameToAdd
 pRoleNameToRemove = args.pRoleNameToRemove
 pRoleNameToCheck = args.pRoleNameToCheck

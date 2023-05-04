@@ -34,36 +34,40 @@ TODO:
 
 init()
 
-__version__ = "2023.04.11"
+__version__ = "2023.05.03"
 
 parser = CommonArguments()
-parser.verbosity()
 parser.singleprofile()
 parser.singleregion()
+# This next parameter includes picking a specific account, ignoring specific accounts or profiles, and *forcing* an operation
 parser.extendedargs()
 parser.fragment()
+parser.rolestouse()
 parser.timing()
+parser.verbosity()
 parser.version(__version__)
-parser.my_parser.add_argument(
+group = parser.my_parser.add_mutually_exclusive_group()
+group.add_argument(
 	'-R', "--RemoveRegion",
 	help="The region(s) you want to remove from all the stacksets.",
 	default=None,
 	nargs="*",
 	metavar="region-name",
 	dest="pRegionRemove")
+group.add_argument(
+	"++refresh",
+	help="Use this parameter is you want to re-run the same stackset, over again",
+	action="store_true",
+	dest="Refresh")
 parser.my_parser.add_argument(
 	'-check',
 	help="Do a comparison of the accounts found in the stacksets to the accounts found in the Organization and list out any that have been closed or suspended, but never removed from the stacksets.",
-	action="store_const",
-	const=True,
-	default=False,
+	action="store_true",
 	dest="AccountCheck")
 parser.my_parser.add_argument(
 	'+delete',
 	help="[Default] Do a Dry-run; if this parameter is specified, we'll delete stacksets we find, with no additional confirmation.",
-	action="store_const",
-	const=False,
-	default=True,
+	action="store_true",
 	dest="DryRun")
 args = parser.my_parser.parse_args()
 
@@ -75,8 +79,10 @@ pTiming = args.Time
 pAccountRemoveList = args.Accounts
 verbose = args.loglevel
 pCheckAccount = args.AccountCheck
-pdryrun = args.DryRun
+pRoles = args.AccessRole
+pdelete = args.DryRun
 pRegionRemove = args.pRegionRemove
+pRefresh = args.Refresh
 pForce = args.Force
 # version = args.Version
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
@@ -110,7 +116,7 @@ def find_stack_set_instances(fStackSetNames, fRegion):
 					# TODO: Creating the list to delete this way prohibits this script from including stacksets that are already empty. This should be fixed.
 					StackInstances = Inventory_Modules.find_stack_instances3(aws_acct, c_region, c_stacksetname)
 					logging.warning(f"Found {len(StackInstances)} Stack Instances within the StackSet {c_stacksetname}")
-					if len(StackInstances) == 0 and not pdryrun and pAccountRemoveList is None and pRegionRemove is None:
+					if len(StackInstances) == 0 and pdelete and pAccountRemoveList is None and pRegionRemove is None:
 						# logging.warning(f"While we didn't find any stack instances within {fStackSetNames['StackSets'][i]['StackSetName']}, we assume you want to delete it, even when it's empty")
 						logging.warning(f"While we didn't find any stack instances within {c_stacksetname}, we assume you want to delete it, even when it's empty")
 						f_combined_stack_set_instances.append({
@@ -258,9 +264,11 @@ def _delete_stack_instances(faws_acct, fRegion, fStackSetName, fForce, fAccountL
 			return (return_response)
 
 
-def display_stack_set_health(combined_stack_set_instances):
+def display_stack_set_health(fcombined_stack_set_instances, fAccountList):
 	summary = {}
-	for record in combined_stack_set_instances:
+	for record in fcombined_stack_set_instances:
+		if fAccountList is not None and record['ChildAccount'] in fAccountList:
+			continue
 		stack_set_name = record['StackSetName']
 		stack_status = record['StackStatus']
 		stack_region = record['ChildRegion']
@@ -328,17 +336,17 @@ except ConnectionError as my_Error:
 	logging.error(f"Exiting due to error: {my_Error}")
 	sys.exit(8)
 
-if pRegion.lower() == 'all':
-	logging.critical(f"{Fore.RED}You specified 'all' as the region, but this script only works with a single region.\n"
-	                 f"Please run the command again and specify only a single region{Fore.RESET}")
+AllRegions = Inventory_Modules.get_ec2_regions()
+
+if pRegion.lower() not in AllRegions:
+	print()
+	print(f"{Fore.RED}You specified '{pRegion}' as the region, but this script only works with a single region.\n"
+	      f"Please run the command again and specify only a single, valid region{Fore.RESET}")
+	print()
 	sys.exit(9)
 
 print()
-if pdryrun:
-	print("You asked me to find (but not delete) stacksets that match the following:")
-else:
-	print("You asked me to find (and delete) stacksets that match the following:")
-
+print(f"You asked me to find {'(and delete)' if pdelete else '(but not delete)'} stacksets that match the following:")
 print(f"\t\tIn the {aws_acct.AccountType} account {aws_acct.acct_number}")
 print(f"\t\tIn this Region: {pRegion}")
 
@@ -346,25 +354,18 @@ RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionRemove)
 
 if pRegionRemove is None:
 	print(f"\t\tFor stack instances across all enabled Regions")
-elif len(RegionList) == 1:
-	print(f"\t\tLimiting instance targets to Region: {RegionList}")
 else:
-	print(f"\t\tLimiting instance targets to Regions: {RegionList}")
+	print(f"\t\tLimiting instance targets to Region{'s' if len(RegionList) > 1 else ''}: {RegionList}")
 
 if pExact:
 	print(f"\t\tFor stacksets that {Fore.RED}exactly match{Fore.RESET} these fragments: {pStackfrag}")
 else:
 	print(f"\t\tFor stacksets that contains these fragments: {pStackfrag}")
-# print("		For stack instances that match this status: {}".format(pstatus))
+# print(f"\t\tFor stack instances that match this status: {}".format(pstatus))
 
-if pAccountRemoveList is None:
-	pass
-elif len(pAccountRemoveList) == 1:
-	print(f"\t\tSpecifically to find this account number: {pAccountRemoveList}")
-else:
-	print(f"\t\tSpecifically to find these account numbers: {pAccountRemoveList}")
-if pCheckAccount:
-	print(f"\t\tWe'll also display those accounts in the stacksets that are no longer part of the organization")
+print(f"\t\tSpecifically to find th{'ese' if len(pAccountRemoveList) > 1 else 'is'} account number{'s' if len(pAccountRemoveList) > 1 else ''}: {pAccountRemoveList}") if pAccountRemoveList is not None else ""
+print(f"\t\tWe'll also display those accounts in the stacksets that are no longer part of the organization") if pCheckAccount else ""
+print(f"\t\tWe'll refresh the stackset with fragments {pStackfrag}") if pRefresh else ""
 print()
 
 # Get the StackSet names from the Management Account
@@ -384,7 +385,7 @@ ApplicableStackSetsList = []
 FoundRegionList = []
 
 for _ in range(len(combined_stack_set_instances)):
-	if pAccountRemoveList is None:  # Means we want to skip this account when removing
+	if pAccountRemoveList is None:  # Means we want to not remove anything
 		ApplicableStackSetsList.append(combined_stack_set_instances[_]['StackSetName'])
 		AccountList.append(combined_stack_set_instances[_]['ChildAccount'])
 		FoundRegionList.append(combined_stack_set_instances[_]['ChildRegion'])
@@ -440,27 +441,31 @@ The next section is broken up into a few pieces. I should try to re-write this t
 * if pdryrun (which means you DID specify a specific account you're looking for)
  - It will print that it found that account associated with X number of stacksets.
  - If you have additional verbosity set, it will print out which stacksets that account is associated with, and which regions.
-* If this is NOT a dry-run (meaning you want to take action on the stacksets)
+* If this is NOT a dry-run (meaning you want to take action on the stacksets) and it's not a REFRESH
  - We assume you're looking to remove accounts from a specific stackset
  - We ask whether you're sure if you want to remove the account, unless you've also supplied the "+force" parameter, which bypasses the extra check
-* If you didn't supply the Account Number
- - then we assume you wanted to remove the stack instances from the stackset(s)
- - except we previously allowed certain accounts to be "skipped", so we need to make sure we're skipping those accounts when we remove stack instances from these stacksets.
- - 
+	* If you didn't supply the Account Number
+	 - then we assume you wanted to remove the stack instances from the stackset(s)
+	 - except we previously allowed certain accounts to be "skipped", so we need to make sure we're skipping those accounts when we remove stack instances from these stacksets.
+* If this is NOT a dry-run (meaning you want to take action) but it IS a REFRESH
+ - We're going to go through all stacksets you selected, 
+ - Find out the existing information on them, and hold that 
+ - Then try to UPDATE that stackset, supplying the same information back to the stackset as the original, to ensure as little change as possible. 
 '''
 
-if pdryrun and pAccountRemoveList is None:
+# TODO: Update this to make it more readable
+if not pdelete and pAccountRemoveList is None:
 	print(f"Found {len(StackSetNames['StackSets'])} StackSets that matched, with {len(combined_stack_set_instances)} total instances across {len(AccountList)} accounts, across {len(FoundRegionList)} regions")
 	print(f"We found the following StackSets with the fragment you provided {pStackfrag}:")
-	display_stack_set_health(combined_stack_set_instances)
-
-elif pdryrun:
+	display_stack_set_health(combined_stack_set_instances, pAccountRemoveList)
+elif not pdelete:
 	print()
 	print(f"We found that stacks that match these accounts {pAccountRemoveList} show up in these regions:")
 	for i in range(len(combined_stack_set_instances)):
 		if combined_stack_set_instances[i]['ChildAccount'] in pAccountRemoveList:
 			print(f"\t{combined_stack_set_instances[i]['StackSetName']} \t {combined_stack_set_instances[i]['ChildRegion']} \t {combined_stack_set_instances[i]['ChildAccount']}")
-elif not pdryrun:
+
+if pdelete and not pRefresh:
 	print()
 	print(f"Removing {len(combined_stack_set_instances)} stack instances from the {len(StackSetNames['StackSets'])} StackSets found")
 	StackInstanceItem = 0
@@ -567,6 +572,36 @@ elif not pdryrun:
 				print(f"{ERASE_LINE}Removal of stackset {StackSetName} took {sleep_interval * intervals_waited} seconds")
 			else:
 				print(f"{ERASE_LINE}{Fore.RED}Removal of stackset {StackSetName} {Style.BRIGHT}failed{Style.NORMAL} due to:\n\t{StackSetResult['ErrorMessage']}.{Fore.RESET}")
+elif pRefresh:
+	RefreshOpsList = []
+	for stackset in ApplicableStackSetsList:
+		print(f"Beginning to refresh stackset {Fore.RED}{stackset}{Fore.RESET} as you requested...")
+		cfn_client = aws_acct.session.client('cloudformation')
+		# Get current attributes for the stacksets we've found...
+		stacksetAttributes = cfn_client.describe_stack_set(StackSetName=stackset)
+		# Then re-run those same stacksets, supplying the same information back to them -
+		ReallyRefresh = False
+		ReallyRefresh = (input(f"Refresh of {Fore.RED}{stackset}{Fore.RESET} has been requested.\n"
+		                       f"Drift Status of the stackset is: {stacksetAttributes['StackSet']['StackSetDriftDetectionDetails']['DriftStatus']}\n"
+		                       # f"as of {stacksetAttributes['StackSet']['StackSetDriftDetectionDetails']['DriftStatus']}"
+		                       f"Are you still sure? (y/n): ") in ['y', 'Y']) if not pForce else False
+		if ReallyRefresh or pForce:
+			refresh_stack_set = cfn_client.update_stack_set(StackSetName=stacksetAttributes['StackSet']['StackSetName'],
+			                                                UsePreviousTemplate=True,
+			                                                Capabilities=stacksetAttributes['StackSet']['Capabilities'],
+			                                                OperationPreferences={
+				                                                'RegionConcurrencyType'  : 'PARALLEL',
+				                                                'FailureToleranceCount'  : 0,
+				                                                'MaxConcurrentPercentage': 100
+			                                                },
+			                                                AdministrationRoleARN=stacksetAttributes['StackSet']['AdministrationRoleARN'],
+			                                                )
+			RefreshOpsList.append({'StackSetName': stackset,
+			                       'OperationId' : refresh_stack_set['OperationId']})
+	for operation in RefreshOpsList:
+		print(f"Checking on operations... ")
+		StackSetStatus = cfn_client.describe_stack_set_operation(StackSetName=operation['StackSetName'], OperationId=operation['OperationId'])
+		print(f"StackSet: {operation['StackSetName']} | Status: {StackSetStatus['StackSetOperation']['Status']}")
 
 if pTiming:
 	print(ERASE_LINE)

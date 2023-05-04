@@ -12,12 +12,14 @@ from botocore.exceptions import ClientError
 import logging
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
 parser.extendedargs()
 parser.verbosity()
+parser.version(__version__)
 parser.my_parser.add_argument(
 	"--default",
 	dest="pDefault",

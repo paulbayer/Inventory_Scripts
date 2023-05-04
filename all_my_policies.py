@@ -14,6 +14,7 @@ from time import time
 import logging
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
 parser.multiprofile()
@@ -22,6 +23,7 @@ parser.extendedargs()
 parser.rootOnly()
 parser.fragment()
 parser.verbosity()
+parser.version(__version__)
 parser.my_parser.add_argument(
 	"--action",
 	dest="paction",

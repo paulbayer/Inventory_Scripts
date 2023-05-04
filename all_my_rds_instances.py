@@ -12,13 +12,13 @@ import logging
 
 init()
 
-__version__ = '2023-04-14'
+__version__ = '2023.05.04'
 
 parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
-parser.verbosity()
 parser.timing()
+parser.verbosity()
 parser.version(__version__)
 args = parser.my_parser.parse_args()
 
@@ -43,7 +43,7 @@ def check_accounts_for_instances(faws_acct, fRegionList=None):
 	"""
 	Note that this function checks the account AND any children accounts in the Org.
 	"""
-	ChildAccounts = faws_acct.AllCredentials
+	ChildAccounts = faws_acct.ChildAccounts
 	AllInstances = []
 	Instances = dict()
 	if fRegionList is None:
