@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
 import Inventory_Modules
-from Inventory_Modules import get_credentials_for_accounts_in_org, get_all_credentials, addLoggingLevel, timing, display_results
+from Inventory_Modules import get_credentials_for_accounts_in_org, get_all_credentials, addLoggingLevel, display_results
+from ArgumentsClass import CommonArguments
 from colorama import init, Fore
 from time import time
 from botocore.exceptions import ClientError
-from ArgumentsClass import CommonArguments
-from account_class import aws_acct_access
 
 import logging
 

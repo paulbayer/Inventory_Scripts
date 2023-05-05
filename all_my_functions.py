@@ -23,6 +23,7 @@ parser.multiregion()  # Allows for multiple regions to be specified at the comma
 parser.fragment()   # Allows for soecifying a string fragment to be looked for
 parser.extendedargs()
 parser.rootOnly()
+parser.timing()
 parser.verbosity()  # Allows for the verbosity to be handled.
 parser.version(__version__)
 args = parser.my_parser.parse_args()

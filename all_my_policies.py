@@ -22,6 +22,7 @@ parser.multiregion()
 parser.extendedargs()
 parser.rootOnly()
 parser.fragment()
+parser.timing()
 parser.verbosity()
 parser.version(__version__)
 parser.my_parser.add_argument(

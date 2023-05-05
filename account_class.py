@@ -259,9 +259,11 @@ class aws_acct_access:
 			response = client_sts.get_caller_identity()
 			creds = response['Account']
 		except JSONDecodeError as my_Error:
-			error_message = (f"There was a JSON Decode Error while using sts to gain access from account {self.acct_number}")
+			error_message = (f"There was a JSON Decode Error while using sts to gain access to account {self.acct_number}\n"
+			                 f"This is most often associated with a profile that doesn't work to gain access to the account it's made for.")
 			logging.error(f"{error_message}\n"
 						  f"Error Message: {my_Error}")
+			pass
 		except ClientError as my_Error:
 			if str(my_Error).find("UnrecognizedClientException") > 0:
 				logging.info(f"Security Issue")

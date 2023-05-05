@@ -110,6 +110,7 @@ for account in AllCredentials:
 	else:
 		continue
 	try:
+		# TODO: Paging needed here
 		response = iam_client.list_roles()
 		for i in range(len(response['Roles'])):
 			Roles.append({
@@ -126,8 +127,13 @@ for account in AllCredentials:
 			response = iam_client.list_roles(Marker=response['Marker'])
 			for i in range(len(response['Roles'])):
 				Roles.append({
-					'AccountId': account['AccountNumber'],
-					'RoleName' : response['Roles'][i]['RoleName']
+					'AccessKeyId'    : account['AccessKeyId'],
+					'SecretAccessKey': account['SecretAccessKey'],
+					'SessionToken'   : account['SessionToken'],
+					'MgmtAcct'       : account['MgmtAccount'],
+					'Region'         : account['Region'],
+					'AccountId'      : account['AccountNumber'],
+					'RoleName'       : response['Roles'][i]['RoleName']
 				})
 				RoleNum += len(response['Roles'])
 		print(f" - Found {RoleNum} roles in account {account['AccountNumber']}", end="\r")
