@@ -27,7 +27,7 @@ args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
 pRegionList = args.Regions
-zpTopicFrag = args.Fragments
+pTopicFrag = args.Fragments
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
 
