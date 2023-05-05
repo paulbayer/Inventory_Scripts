@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import Inventory_Modules
-import argparse
 from ArgumentsClass import CommonArguments
 from colorama import init, Fore
 from botocore.exceptions import ClientError
