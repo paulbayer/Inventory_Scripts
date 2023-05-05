@@ -754,7 +754,7 @@ def find_cw_log_group_names2(ocredentials, fRegion, fCWLogGroupFrag=None):
 		return (CWLogGroupList2)
 
 
-def find_account_vpcs2(ocredentials, fRegion, defaultOnly=False):
+def find_account_vpcs2(ocredentials, defaultOnly=False):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -765,19 +765,21 @@ def find_account_vpcs2(ocredentials, fRegion, defaultOnly=False):
 	import boto3
 	import logging
 
-	session_vpc = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
-		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	session_vpc = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
 	client_vpc = session_vpc.client('ec2')
 	if defaultOnly:
-		logging.info(f"Looking for default VPCs in account {ocredentials['AccountNumber']} from Region {fRegion}")
+		logging.info(f"Looking for default VPCs in account {ocredentials['AccountNumber']} from Region {ocredentials['Region']}")
 		logging.info(f"defaultOnly: {str(defaultOnly)}")
 		response = client_vpc.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
 	else:
-		logging.info(f"Looking for all VPCs in account {ocredentials['AccountNumber']} from Region {fRegion}")
+		logging.info(f"Looking for all VPCs in account {ocredentials['AccountNumber']} from Region {ocredentials['Region']}")
 		logging.info(f"defaultOnly: {str(defaultOnly)}")
 		response = client_vpc.describe_vpcs()
 	# TODO: Enable pagination
-	logging.info(f"We found {len(response['Vpcs'])} VPCs")
+	logging.info(f"We found {len(response['Vpcs'])} VPCs in account {ocredentials['AccountNumber']} in Region {ocredentials['Region']}")
 	return (response)
 
 
@@ -1886,32 +1888,33 @@ def find_load_balancers(fProfile, fRegion, fStackFragment='all', fStatus='all'):
 	return (load_balancers_Copy)
 
 
-def find_load_balancers3(faws_acct, fRegion='us-east-1', fStackFragment='all', fStatus='all'):
+def find_load_balancers3(faws_acct, fRegion='us-east-1', fStackFragments=['all'], fStatus='all'):
 	"""
 	This library script returns the list of load balancers within an account and a region
 	"""
 	import logging
 
 	logging.info(
-		f"Account: {faws_acct.acct_number} | Region: {fRegion} | Fragment: {fStackFragment} | Status: {fStatus}")
+		f"Account: {faws_acct.acct_number} | Region: {fRegion} | Fragment: {fStackFragments} | Status: {fStatus}")
 	session_cfn = faws_acct.session
 	lb_info = session_cfn.client('elbv2', region_name=fRegion)
 	load_balancers = lb_info.describe_load_balancers()
 	load_balancers_Copy = []
-	if fStackFragment.lower() == 'all' and (fStatus.lower() == 'active' or fStatus.lower() == 'all'):
+	if ('all' in fStackFragments or 'All' in fStackFragments or 'ALL' in fStackFragments) and (fStatus.lower() == 'active' or fStatus.lower() == 'all'):
 		logging.info(
-			f"Found all the lbs in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+			f"Found all the lbs in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragments} and Status: {fStatus}")
 		return (load_balancers['LoadBalancers'])
-	elif (fStackFragment.lower() == 'all'):
+	elif 'all' in fStackFragments or 'All' in fStackFragments or 'ALL' in fStackFragments:
 		for load_balancer in load_balancers['LoadBalancers']:
 			if fStatus in load_balancer['State']['Code']:
-				logging.info(f"Found lb {load_balancers['LoadBalancerName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+				logging.info(f"Found lb {load_balancers['LoadBalancerName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment in {fStackFragments} and Status: {fStatus}")
 				load_balancers_Copy.append(load_balancer)
 	elif fStatus.lower() == 'active':
 		for load_balancer in load_balancers['LoadBalancers']:
-			if fStackFragment in load_balancer['LoadBalancerName']:
-				logging.info(f"Found lb {load_balancers['LoadBalancerName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
-				load_balancers_Copy.append(load_balancer)
+			for stack_fragment in fStackFragments:
+				if stack_fragment in load_balancer['LoadBalancerName']:
+					logging.info(f"Found lb {load_balancers['LoadBalancerName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {stack_fragment} and Status: {fStatus}")
+					load_balancers_Copy.append(load_balancer)
 	return (load_balancers_Copy)
 
 
@@ -3157,7 +3160,7 @@ def display_results(results_list, fdisplay_dict, defaultAction=None):
 	print()  # This is the new line needed at the end of the script.
 
 
-def get_all_credentials(fProfiles, fTiming, fSkipProfiles, fSkipAccounts, fRootOnly, fAccounts, fRegionList, RoleList=None):
+def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=[], fSkipAccounts=[], fRootOnly=False, fAccounts=[], fRegionList=['us-east-1'], RoleList=None):
 	import logging
 	from account_class import aws_acct_access
 	from time import time
