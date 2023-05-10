@@ -12,12 +12,12 @@ from botocore.exceptions import ClientError
 import logging
 
 init()
-__version__ = "2023.05.04"
+__version__ = "2023.05.10"
 
 parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
-parser.rolestouse()
+parser.roletouse()
 parser.extendedargs()
 parser.rootOnly()
 parser.timing()
@@ -51,7 +51,7 @@ pSkipAccounts = args.SkipAccounts
 pSkipProfiles = args.SkipProfiles
 pRootOnly = args.RootOnly
 pAccounts = args.Accounts
-pRolesToUse = args.AccessRole
+pRoleToUse = args.AccessRole
 pRoleNameToAdd = args.pRoleNameToAdd
 pRoleNameToRemove = args.pRoleNameToRemove
 pRoleNameToCheck = args.pRoleNameToCheck
@@ -356,7 +356,7 @@ Results = []
 
 ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=pSkipProfiles, fprofiles=pProfiles)
 
-AllCredentials, AccountList = get_credentials(ProfileList, pSkipAccounts, pRootOnly, pAccounts, RegionList, pRolesToUse)
+AllCredentials, AccountList = get_credentials(ProfileList, pSkipAccounts, pRootOnly, pAccounts, RegionList, pRoleToUse)
 AccountNum = len(set([acct['AccountId'] for acct in AllCredentials if 'AccountId' in acct]))
 
 print()
@@ -413,8 +413,8 @@ else:
 	print(f"We found {AccountNum} accounts provided within the profiles you provided")
 	if verbose < 50:
 		print(f"Of these, we successfully found creds for {len(Results)} accounts using ", end='')
-		if pRolesToUse:
-			print(f"the roles '{pRolesToUse}' you supplied")
+		if pRoleToUse:
+			print(f"the roles '{pRoleToUse}' you supplied")
 		else:
 			print(f"the roles we commonly use for access")
 

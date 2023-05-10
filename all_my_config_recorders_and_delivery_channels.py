@@ -13,7 +13,7 @@ from time import time
 import logging
 
 init()
-__version__ = "2023.05.04"
+__version__ = "2023.05.10"
 
 """
 TODO:
@@ -24,7 +24,7 @@ parser.multiprofile()
 parser.multiregion()
 parser.extendedargs()  # This adds additional *optional* arguments to the listing
 parser.rootOnly()
-parser.rolestouse()
+parser.roletouse()
 parser.timing()
 parser.fragment()
 parser.verbosity()
