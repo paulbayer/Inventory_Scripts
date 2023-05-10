@@ -44,13 +44,22 @@ class CommonArguments():
 			action="store_true",  # Defaults to False, so the script would continue to run
 			help="Only run this code for the root account, not the children")
 
-	def rolestouse(self):
+	def roletouse(self):
 		self.my_parser.add_argument(
 			"--access_rolename",
 			dest="AccessRole",
-			default='AWSCloudFormationStackSetExecutionRole',
+			default=None,
 			metavar="role to use for access to child accounts",
-			help="This parameter specifies the role that will allow this script to have access to the children accounts.")
+			help="This parameter specifies the single role that will allow this script to have access to the children accounts.")
+
+	def rolestouse(self):
+		self.my_parser.add_argument(
+			"--access_rolename",
+			dest="AccessRoles",
+			nargs='*',
+			default=None,
+			metavar="roles to use for access to child accounts",
+			help="This parameter specifies the list of roles that will allow this script to have access to the children accounts.")
 
 	# def roles_to_use(self):
 	# 	self.my_parser.add_argument(
@@ -175,7 +184,8 @@ class CommonArguments():
 				dest="Regions",
 				metavar="region name string",
 				default=["us-east-1"],
-				help="String fragment of the region(s) you want to check for resources. You can supply multiple fragments.")
+				help="String fragment of the region(s) you want to check for resources. You can supply multiple fragments.\n"
+				     "Use 'all' for everything you've opted into, and 'global' for everything, regardless of opted-in status")
 
 	def multiregion_nodefault(self):
 		self.my_parser.add_argument(

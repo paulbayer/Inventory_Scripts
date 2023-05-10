@@ -101,7 +101,7 @@ Generic Scripts
   - The objective of this script was to find all the various Load Balancers created in various accounts within your org.
 
 - **all_my_enis.py**
-  - This is a script I'm working on to use to find devices across all of my Orgs when all I have is the public IP address. Having so many different accounts - regions and Orgs makes finding something a real pain in the butt.
+  - This is a script to find devices across all of my Orgs when all I have is the public (or private) IP address. Having so many different accounts - regions and Orgs makes finding something a real pain in the butt.
 
 - **all_my_functions.py**
   - The objective of this script was to find all the various Lambda functions you've created and left in various accounts.
@@ -145,11 +145,12 @@ Generic Scripts
   - I have experimented with multi-threading in this script, and it seems to make a world of difference. As always - all comments are welcome!
 
 - **all_my_vpcs.py**
-  - The objective of this script is to find all the vpcs within your set of accounts - as determined by your profiles. This script has been superseded by the "all_my_vpcs2.py" since this script only looked in the specific profile you supplied.
-
-- **all_my_vpcs2.py**
-  - The objective of this script is to find all the vpcs within your set of accounts - as determined by your Master Account's list of children. This script obsoletes the previous "all_my_vpcs.py" as this script can look at your whole Org, instead of only the single profile you specify.
+  - The objective of this script is to find all the vpcs within your set of accounts - as determined by your Master Account's list of children.
   - You can also specify "--default" to limit your searching to only default VPCs.
+  - This does not currently allow any deletion of your (default) VPCs...
+
+- **check_all_cloudtrail.py**
+  - This script is used to find 
 
 - **delete_bucket_objects.py**
   - This is a tool that should delete buckets and the objects in them. I didn't write the original script, but I've been adapting it to my needs. This one should be considered alpha.
@@ -160,6 +161,7 @@ Generic Scripts
   - This script goes through the stacksets in the Management Account and looks for stacksets that match the fragment you supplied.
   - The usefulness of this script is that it can remove specific accounts from all the stacksets it finds, so that if you know you've closed an account, but forgotten to remove it from existing stacksets, this script will remove that account from the stacksets found.
   - Most recent update - this script can now affect stacksets that are tied to a specific OU and use the "SERVICE_MANAGED" permission model. 
+  - Another update - this script can now re-run stacksets, thereby remediating drift if any is found in the child stacks.
 
 - **my_org_users.py**
   - The objective of this script is to go through all of your child accounts within an Org and pull out any IAM users you have - to ensure it's only what you expect.

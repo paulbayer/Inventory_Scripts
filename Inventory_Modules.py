@@ -38,26 +38,36 @@ def get_regions3(faws_acct, fregion_list=None):
 	For instance
 		- if the user provides 'us-east', this function will return ['us-east-1','us-east-2'].
 		- if the user provides 'west', this function will return ['us-west-1', 'us-west-2', 'eu-west-1', etc.]
+		- if the user provides 'all', this function will return all regions
 
-	Thr first parameter to this library must provide a valid account object that includes a boto3 session,
+	The first parameter to this library must provide a valid account object that includes a boto3 session,
 	so that regions can be looked up.
 	"""
 	import logging
 
 	region_info = faws_acct.session.client('ec2')
-	regions = region_info.describe_regions(Filters=[
-		{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
-	RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
 	if fregion_list is None or "all" in fregion_list or "ALL" in fregion_list or "All" in fregion_list:
+		regions = region_info.describe_regions(Filters=[
+			{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
+		RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
 		return (RegionNames)
-	RegionNames2 = []
-	for x in fregion_list:
-		for y in RegionNames:
-			logging.info(f"Have {y} | Looking for {x}")
-			if y.find(x) >= 0:
-				logging.info(f"Found {y}")
-				RegionNames2.append(y)
-	return (RegionNames2)
+	# Special case where they want everything - globally
+	elif 'global' in fregion_list:
+		regions = region_info.describe_regions(AllRegions=True)
+		RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
+		return (RegionNames)
+	else:
+		regions = region_info.describe_regions(Filters=[
+			{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
+		RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
+		RegionNames2 = []
+		for x in fregion_list:
+			for y in RegionNames:
+				logging.info(f"Have {y} | Looking for {x}")
+				if y.find(x) >= 0:
+					logging.info(f"Found {y}")
+					RegionNames2.append(y)
+		return (RegionNames2)
 
 
 def get_ec2_regions(fprofile=None, fregion_list=None):
@@ -3107,21 +3117,28 @@ def find_ssm_parameters(fProfile, fRegion):
 # 	return (AllCreds)
 
 def display_results(results_list, fdisplay_dict, defaultAction=None):
+	from colorama import init, Fore
+
+	init()
 	"""
 	Note that this function simply formats the output of the data within the list provided
 	- results_list: This should be a list of dictionaries, matching to the fields in fdisplay_dict
 	- fdisplay_dict: Should look like the below. It's simply a list of fields and formats
 	- defaultAction: this is a default string or type to assign to fields that (for some reason) don't exist within the results_list.
-	display_dict = {'MgmtAccount'            : {'Format': '12s', 'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
-					'AccountId'              : {'Format': '12s', 'DisplayOrder': 2, 'Heading': 'Acct Number'},
-					'Region'                 : {'Format': '15s', 'DisplayOrder': 3, 'Heading': 'Region'},
-					'SubnetName'             : {'Format': '40s', 'DisplayOrder': 4, 'Heading': 'Subnet Name'},
-					'CidrBlock'              : {'Format': '18s', 'DisplayOrder': 5, 'Heading': 'CIDR Block'},
-					'AvailableIpAddressCount': {'Format': '5d', 'DisplayOrder': 6, 'Heading': 'Available IPs'}}
+	display_dict = {'ParentProfile': {'Format': '20s', 'DisplayOrder': 1, 'Heading': 'Parent Profile'},
+	                'MgmtAccount'  : {'Format': '12s', 'DisplayOrder': 2, 'Heading': 'Mgmt Acct'},
+	                'AccountId'    : {'Format': '12s', 'DisplayOrder': 3, 'Heading': 'Acct Number'},
+	                'Region'       : {'Format': '15s', 'DisplayOrder': 4, 'Heading': 'Region'},
+	                'InstanceType' : {'Format': '15s', 'DisplayOrder': 5, 'Heading': 'Instance Type'},
+	                'Name'         : {'Format': '40s', 'DisplayOrder': 6, 'Heading': 'Name'},
+	                'InstanceId'   : {'Format': '40s', 'DisplayOrder': 7, 'Heading': 'Instance ID'},
+	                'PublicDNSName': {'Format': '62s', 'DisplayOrder': 8, 'Heading': 'Public Name'},
+	                'State'        : {'Format': '12s', 'DisplayOrder': 9, 'Heading': 'State', 'Condition': ['running']}}
 		- The first field ("MgmtAccount") should match the field name within the list of dictionaries you're passing in (results_list)
 		- The first field within the nested dictionary is the format you want to use to display the result of that field - generally a width
 		- The second field within the nested dictionary is the SortOrder you want the results to show up in
 		- The third field within the nested dictionary is the heading you want to display at the top of the column (which allows spaces)
+		- The fourth field ('Condition') is new, and allows to highlight a special value within the output. This can be used multiple times. 
 		The dictionary doesn't have to be ordered, as long as the 'SortOrder' field is correct.
 	"""
 	# TODO:
@@ -3131,28 +3148,39 @@ def display_results(results_list, fdisplay_dict, defaultAction=None):
 
 	sorted_display_dict = dict(sorted(fdisplay_dict.items(), key=lambda x: x[1]['DisplayOrder']))
 
+	# This is an effort to find the right size spaces for the dictionary
+	print()
+	needed_space = {}
+	for field, value in sorted_display_dict.items():
+		needed_space[field] = 0
+	for result in results_list:
+		for field, value in sorted_display_dict.items():
+			needed_space[field] = max(min(int(value['Format'][:-1]), len(result[field])), len(value['Heading']), needed_space[field])
+	# 	logging.debug(f"Heading: {value['Heading']} | Format Size: {value['Format']} | Data Length: {result[field]}({len(result[field])}) | space: {needed_space[field]}")
+	# logging.debug('---------')
+
 	# This writes out the headings
 	for field, value in sorted_display_dict.items():
-		header_format = int(value['Format'][:-1])
+		header_format = needed_space[field]
 		print(f"{value['Heading']:{header_format}s} ", end='')
 	print()
 	# This writes out the dashes (separators)
 	for field, value in sorted_display_dict.items():
-		repeatvalue = max(int(value['Format'][:-1]), len(value['Heading']))
+		repeatvalue = needed_space[field]
 		print(f"{'-' * repeatvalue} ", end='')
 	print()
-
-	# sort_order =
-	# sorted_results = sorted(results, key=lambda d: (d['MgmtAccount'], d['AccountNumber'], d['Region'], d[]))
 
 	# This writes out the data
 	for result in results_list:
 		for field, value in sorted_display_dict.items():
-			# This just makes sure we don't get a 'KeyError'
-			data_format = max(int(value['Format'][:-1]), len(value['Heading']))
+			# This assigns the proper space for the output
+			data_format = needed_space[field]
 			if field not in result.keys():
 				result[field] = defaultAction
-			if result[field] is None:
+			# This allows for a condition to highlight a specific value
+			if 'Condition' in value and result[field] in value['Condition']:
+				print(f"{Fore.RED}{result[field]:{data_format}{value['Format'][-1:]}}{Fore.RESET} ", end='')
+			elif result[field] is None:
 				print(f"{'':{data_format}} ", end='')
 			else:
 				print(f"{result[field]:{data_format}{value['Format'][-1:]}} ", end='')
@@ -3179,7 +3207,7 @@ def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=[], fSkipAc
 		RegionList = get_regions3(aws_acct, fRegionList)
 		logging.info(f"Queueing default profile for credentials")
 		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
-		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList))
+		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, RoleList, fTiming))
 	else:
 		ProfileList = get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
 		print(f"{ERASE_LINE}{Fore.GREEN}Finding {len(ProfileList)} profiles has taken {time() - begin_time:.2f} seconds{Fore.RESET}") if fTiming else None
@@ -3193,7 +3221,7 @@ def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=[], fSkipAc
 				logging.warning(f"Looking at {profile} account now across these regions {RegionList}... ")
 				logging.info(f"Queueing {profile} for credentials")
 				# This should populate the list "AllCreds" with the credentials for the relevant accounts.
-				AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList))
+				AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, RoleList, fTiming))
 				if fTiming:
 					print(f"{ERASE_LINE}{Fore.GREEN}Finished profile {Fore.RED}'{profile}'{Fore.GREEN}. Finding credentials for {len(AllCredentials)} accounts and regions has taken {time() - begin_time:.2f} seconds{Fore.RESET}")
 			except AttributeError as my_Error:
@@ -3235,13 +3263,12 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 						logging.info(f"Successfully connected to account {c_account_info['AccountId']}")
 						faccount_credentials.update({'ParentProfile': c_profile,
 						                             'RolesTried'   : fRoleNames})
-					# elif faccount_credentials['Success']:
-					# 	pass
 					else:
 						logging.error(f"Error connecting to account {c_account_info['AccountId']} in region {c_region}.\n"
 						              f"Parent Profile was {c_profile}\n"
 						              f"Error Message: {faccount_credentials['ErrorMessage']}")
-						faccount_credentials.update({'AccountId'    : c_account_info['AccountId'],
+						faccount_credentials.update({'MgmtAccount'  : c_account_info['MgmtAccount'],
+						                             'AccountId'    : c_account_info['AccountId'],
 						                             'ParentProfile': c_profile,
 						                             'Region'       : c_region})
 					AllCreds.append(faccount_credentials)
@@ -3294,7 +3321,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		worker.start()
 
 	print(f"You asked to check {len(ChildAccounts) * len(fregions)} places... It's going to take a moment")
-	print(f"{Fore.GREEN}It's taken {time - begin_time:.2f} seconds to prep WorkerThreads and such{Fore.RESET}") if fTiming else None
+	print(f"{Fore.GREEN}It's taken {time() - begin_time:.2f} seconds to prep WorkerThreads and such{Fore.RESET}") if fTiming else None
 	for account in ChildAccounts:
 		AccountNum += 1
 		RegionNum = 0
@@ -3311,7 +3338,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 			credqueue.put((account, fprofile, region))
 			logging.info(f"Account / Region: {account} / {region} | {datetime.now()}")
 	logging.info(f"Profile: {fprofile} | {datetime.now()}")
-	print(f"{Fore.GREEN}Going through all {WorkerThreads} accounts and regions took {time - begin_time:.2f} seconds {Fore.RESET}") if fTiming else None
+	print(f"{Fore.GREEN}Going through all {len(ChildAccounts) * len(fregions)} accounts and regions took {time() - begin_time:.2f} seconds {Fore.RESET}") if fTiming else None
 	credqueue.join()
 	return (AllCreds)
 

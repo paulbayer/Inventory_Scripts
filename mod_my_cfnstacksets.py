@@ -34,7 +34,7 @@ TODO:
 
 init()
 
-__version__ = "2023.05.03"
+__version__ = "2023.05.10"
 
 parser = CommonArguments()
 parser.singleprofile()
@@ -42,7 +42,7 @@ parser.singleregion()
 # This next parameter includes picking a specific account, ignoring specific accounts or profiles, and *forcing* an operation
 parser.extendedargs()
 parser.fragment()
-parser.rolestouse()
+parser.roletouse()
 parser.timing()
 parser.verbosity()
 parser.version(__version__)
@@ -79,7 +79,7 @@ pTiming = args.Time
 pAccountRemoveList = args.Accounts
 verbose = args.loglevel
 pCheckAccount = args.AccountCheck
-pRoles = args.AccessRole
+pRole = args.AccessRole
 pdelete = args.DryRun
 pRegionRemove = args.pRegionRemove
 pRefresh = args.Refresh
