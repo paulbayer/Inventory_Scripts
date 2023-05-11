@@ -43,6 +43,10 @@ Purpose Built Scripts
   - If there are blockers to the adoption (like the default VPCs being present, or Config Recorder already being enabled), it can rectify those blockers it finds. However - to avoid mistakes - it only does this if you specifically select that in the submitted parameters.
   - While this script was focused on ALZ, it also *sort of* supports an account being adopted by Control Tower too.
 
+- **check_all_cloudtrail.py**
+  - This script is used to find whether CloudTrail is enabled on every account and region and whether it's enabled at the Org level, or within the Account itself. It also will show a listing of those accounts and regions which DO NOT have CloudTrail enabled - this is important!!
+
+
 - **CT_CheckAccount.py**
   - This script takes an Organization Master Account profile, and checks additional accounts to see if they meet the pre-reqs to be "adopted" by Control Tower.
   - If there are blockers to the adoption (like the Config Recorder already being enabled), it can rectify those blockers it finds. However - to avoid mistakes - it only does this if you specifically select that in the submitted parameters. This script is still being worked on.
@@ -141,16 +145,13 @@ Generic Scripts
 
 - **all_my_subnets.py**
   - The objective of this script is to allow the user to find all their subnets across their org, but ALSO to find a specific subnet that matches a provided IP address, to make it easier to find that account and region where that one IP is being used.
-  - This is a READ-ONLY script, since there's likely no scenario where you want to wontonly delete subnets from your environment.
+  - This is a READ-ONLY script, since there's likely no scenario where you want to delete subnets from your environment.
   - I have experimented with multi-threading in this script, and it seems to make a world of difference. As always - all comments are welcome!
 
 - **all_my_vpcs.py**
   - The objective of this script is to find all the vpcs within your set of accounts - as determined by your Master Account's list of children.
   - You can also specify "--default" to limit your searching to only default VPCs.
   - This does not currently allow any deletion of your (default) VPCs...
-
-- **check_all_cloudtrail.py**
-  - This script is used to find 
 
 - **delete_bucket_objects.py**
   - This is a tool that should delete buckets and the objects in them. I didn't write the original script, but I've been adapting it to my needs. This one should be considered alpha.
