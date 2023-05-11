@@ -1,3 +1,6 @@
+import logging
+
+
 def get_regions_old(fkey, fprofile="default"):
 	"""
 	This library is DEPRECATED.
@@ -3125,20 +3128,17 @@ def display_results(results_list, fdisplay_dict, defaultAction=None):
 	- results_list: This should be a list of dictionaries, matching to the fields in fdisplay_dict
 	- fdisplay_dict: Should look like the below. It's simply a list of fields and formats
 	- defaultAction: this is a default string or type to assign to fields that (for some reason) don't exist within the results_list.
-	display_dict = {'ParentProfile': {'Format': '20s', 'DisplayOrder': 1, 'Heading': 'Parent Profile'},
-	                'MgmtAccount'  : {'Format': '12s', 'DisplayOrder': 2, 'Heading': 'Mgmt Acct'},
-	                'AccountId'    : {'Format': '12s', 'DisplayOrder': 3, 'Heading': 'Acct Number'},
-	                'Region'       : {'Format': '15s', 'DisplayOrder': 4, 'Heading': 'Region'},
-	                'InstanceType' : {'Format': '15s', 'DisplayOrder': 5, 'Heading': 'Instance Type'},
-	                'Name'         : {'Format': '40s', 'DisplayOrder': 6, 'Heading': 'Name'},
-	                'InstanceId'   : {'Format': '40s', 'DisplayOrder': 7, 'Heading': 'Instance ID'},
-	                'PublicDNSName': {'Format': '62s', 'DisplayOrder': 8, 'Heading': 'Public Name'},
-	                'State'        : {'Format': '12s', 'DisplayOrder': 9, 'Heading': 'State', 'Condition': ['running']}}
+	display_dict = {'ParentProfile': {'DisplayOrder': 1, 'Heading': 'Parent Profile'},
+	                'MgmtAccount'  : {'DisplayOrder': 2, 'Heading': 'Mgmt Acct'},
+	                'AccountId'    : {'DisplayOrder': 3, 'Heading': 'Acct Number'},
+	                'Region'       : {'DisplayOrder': 4, 'Heading': 'Region', 'Condition': ['us-east-2']},
+	                'Retention'    : {'DisplayOrder': 5, 'Heading': 'Days Retention', 'Condition': ['Never']},
+	                'Name'         : {'DisplayOrder': 7, 'Heading': 'CW Log Name'},
+                    'Size'         : {'DisplayOrder': 6, 'Heading': 'Size (Bytes)'}}
 		- The first field ("MgmtAccount") should match the field name within the list of dictionaries you're passing in (results_list)
-		- The first field within the nested dictionary is the format you want to use to display the result of that field - generally a width
-		- The second field within the nested dictionary is the SortOrder you want the results to show up in
-		- The third field within the nested dictionary is the heading you want to display at the top of the column (which allows spaces)
-		- The fourth field ('Condition') is new, and allows to highlight a special value within the output. This can be used multiple times. 
+		- The first field within the nested dictionary is the SortOrder you want the results to show up in
+		- The second field within the nested dictionary is the heading you want to display at the top of the column (which allows spaces)
+		- The third field ('Condition') is new, and allows to highlight a special value within the output. This can be used multiple times. 
 		The dictionary doesn't have to be ordered, as long as the 'SortOrder' field is correct.
 	"""
 	# TODO:
@@ -3153,11 +3153,25 @@ def display_results(results_list, fdisplay_dict, defaultAction=None):
 	needed_space = {}
 	for field, value in sorted_display_dict.items():
 		needed_space[field] = 0
-	for result in results_list:
-		for field, value in sorted_display_dict.items():
-			needed_space[field] = max(min(int(value['Format'][:-1]), len(result[field])), len(value['Heading']), needed_space[field])
-	# 	logging.debug(f"Heading: {value['Heading']} | Format Size: {value['Format']} | Data Length: {result[field]}({len(result[field])}) | space: {needed_space[field]}")
-	# logging.debug('---------')
+	try:
+		for result in results_list:
+			for field, value in sorted_display_dict.items():
+				if field not in result:
+					needed_space[field] = max(len(value['Heading']), needed_space[field])
+					continue
+				elif isinstance(result[field], int):
+					# This whole section is to compensate for the fact that the len of the number in string format doesn't include the commas.
+					# I know - I've been very US-centric here, since I haven't figured out how to achieve this in a locale-agnostic way
+					num_width = len(str(result[field]))
+					if len(str(result[field])) % 3 == 0:
+						num_width += (len(str(result[field])) // 3) - 1
+					else:
+						num_width += len(str(result[field])) // 3
+					needed_space[field] = max(num_width, len(value['Heading']), needed_space[field])
+				elif isinstance(result[field], str):
+					needed_space[field] = max(len(result[field]), len(value['Heading']), needed_space[field])
+	except KeyError as my_Error:
+		logging.error(f"Error: {my_Error}")
 
 	# This writes out the headings
 	for field, value in sorted_display_dict.items():
@@ -3178,12 +3192,17 @@ def display_results(results_list, fdisplay_dict, defaultAction=None):
 			if field not in result.keys():
 				result[field] = defaultAction
 			# This allows for a condition to highlight a specific value
+			highlight = False
 			if 'Condition' in value and result[field] in value['Condition']:
-				print(f"{Fore.RED}{result[field]:{data_format}{value['Format'][-1:]}}{Fore.RESET} ", end='')
-			elif result[field] is None:
+				highlight = True
+			if result[field] is None:
 				print(f"{'':{data_format}} ", end='')
-			else:
-				print(f"{result[field]:{data_format}{value['Format'][-1:]}} ", end='')
+			elif isinstance(result[field], str):
+				print(f"{Fore.RED if highlight else '' }{result[field]:{data_format}s}{Fore.RESET if highlight else ''} ", end='')
+			elif isinstance(result[field], int):
+				print(f"{Fore.RED if highlight else '' }{result[field]:<{data_format},}{Fore.RESET if highlight else ''} ", end='')
+			elif isinstance(result[field], float):
+				print(f"{Fore.RED if highlight else '' }{result[field]:{data_format}f}{Fore.RESET if highlight else ''} ", end='')
 		print()  # This is the end of line character needed at the end of every line
 	print()  # This is the new line needed at the end of the script.
 
