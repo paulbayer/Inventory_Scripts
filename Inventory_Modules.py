@@ -1,38 +1,6 @@
 import logging
 
 
-def get_regions_old(fkey, fprofile="default"):
-	"""
-	This library is DEPRECATED.
-
-	This is a library function to get the AWS region names that correspond to the
-	fragments that may have been provided via the command line.
-
-	For instance
-		- if the user provides 'us-east', this function will return ['us-east-1','us-east-2'].
-		- if the user provides 'west', this function will return ['us-west-1', 'us-west-2', 'eu-west-1', etc.]
-	"""
-	import boto3
-	import logging
-
-	session_ec2 = boto3.Session(profile_name=fprofile)
-	region_info = session_ec2.client('ec2')
-	regions = region_info.describe_regions()
-	RegionNames = []
-	for x in range(len(regions['Regions'])):
-		RegionNames.append(regions['Regions'][x]['RegionName'])
-	if "all" in fkey or "ALL" in fkey:
-		return (RegionNames)
-	RegionNames2 = []
-	for x in fkey:
-		for y in RegionNames:
-			logging.info('Have %s | Looking for %s', y, x)
-			if y.find(x) >= 0:
-				logging.info('Found %s', y)
-				RegionNames2.append(y)
-	return (RegionNames2)
-
-
 def get_regions3(faws_acct, fregion_list=None):
 	"""
 	This is a library function to get the AWS region names that correspond to the
@@ -495,24 +463,28 @@ def get_child_access(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleList
 
 def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=None):
 	"""
-	- fAccountObject is a custom class (account_class.aws_acct_access)
+	- faws_acct is a custom class (account_class.aws_acct_access)
 	- fChildAccount expects an AWS account number (ostensibly of a Child Account)
 	- rRegion expects a string representing one of the AWS regions ('us-east-1', 'eu-west-1', etc.)
 	- fRoleList expects a list of roles to try, but defaults to a list of typical roles, in case you don't provide
 
-	The first response object is a dict with account_credentials to pass onto other functions
-	This is the same object as "ocredentials" used in other places in this library file.
-
-	The format of the account credentials dict is here:
-	account_credentials = {'ParentAcctId': ParentAccountId,
-							'AccessKeyId': None,
-							'SecretAccessKey': None,
-							'SessionToken': None,
-							'AccountNumber': None,
-							'Region': fRegion,
-							'OrgType': 'Root' or 'Standalone' or 'Child',
-							'Role': Role that worked to get in
-							'Profile': If possible, the profile used to access the account}
+	The format of the returned account credentials dict is here:
+		account_credentials = {'ParentAcctId'   : ParentAccountId,
+		                       'MgmtAccount'    : faws_acct.MgmtAccount,
+		                       'OrgType'        : org_type,
+		                       'AccessKeyId'    : faws_acct.creds.access_key,
+		                       'SecretAccessKey': faws_acct.creds.secret_key,
+		                       'SessionToken'   : faws_acct.creds.token,
+		                       'AccountNumber'  : fChildAccount,
+		                       'AccountId'      : fChildAccount,
+		                       'Region'         : fRegion,
+		                       'AccountStatus'  : faws_acct.AccountStatus,
+		                       'RolesTried'     : fRoleList,
+		                       'Role'           : 'Use Profile',
+		                       'Profile'        : If possible, the profile used to access the account,
+		                       'AccessError'    : False,
+		                       'Success'        : True,
+		                       'ErrorMessage'   : None}
 	"""
 	import logging
 	from botocore.exceptions import ClientError
@@ -1850,6 +1822,26 @@ def find_private_hosted_zones(fProfile, fRegion):
 	import boto3
 	session_r53 = boto3.Session(profile_name=fProfile, region_name=fRegion)
 	phz_info = session_r53.client('route53')
+	hosted_zones = phz_info.list_hosted_zones()
+	return (hosted_zones)
+
+
+def find_private_hosted_zones2(ocredentials, fRegion=None):
+	"""
+	This library script returns the hosted zones within an account and a region
+	"""
+	import logging
+	import boto3
+
+	if fRegion is None:
+		fRegion = 'us-east-1'
+	session_r53 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                           aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                           aws_session_token=ocredentials['SessionToken'],
+	                           region_name=ocredentials['Region'])
+
+	logging.info(f"Finding the private hosted zones within account {ocredentials['AccountId']} and region {fRegion}")
+	phz_info = session_r53.client('route53', region_name=fRegion)
 	hosted_zones = phz_info.list_hosted_zones()
 	return (hosted_zones)
 
@@ -3208,6 +3200,12 @@ def display_results(results_list, fdisplay_dict, defaultAction=None):
 
 
 def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=[], fSkipAccounts=[], fRootOnly=False, fAccounts=[], fRegionList=['us-east-1'], RoleList=None):
+	"""
+	Note that this function returns the credentials of all the accounts in all the profiles passed to it
+
+	Note that this function creates a new credential for every region, even though today - that's not necessary.
+	However, some day accounts will be pegged to specific regions, and it will be necessary then.
+	"""
 	import logging
 	from account_class import aws_acct_access
 	from time import time
@@ -3236,6 +3234,10 @@ def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=[], fSkipAc
 		for profile in ProfileList:
 			try:
 				aws_acct = aws_acct_access(profile)
+				if aws_acct.Success:
+					pass
+				else:
+					continue
 				RegionList = get_regions3(aws_acct, fRegionList)
 				logging.warning(f"Looking at {profile} account now across these regions {RegionList}... ")
 				logging.info(f"Queueing {profile} for credentials")
@@ -3252,6 +3254,9 @@ def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=[], fSkipAc
 def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, accountlist=None, fprofile="default", fregions=None, fRoleNames=None, fTiming=False):
 	"""
 	Note that this function returns the credentials of all the accounts underneath the Org passed to it.
+
+	Note that this function creates a new credential for every region, even though today - that's not necessary.
+	However, some day accounts will be pegged to specific regions, and it will be necessary then.
 	"""
 	import logging
 	from datetime import datetime
@@ -3326,11 +3331,11 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 	AccountNum = RegionNum = 0
 	AllCreds = []
 	credqueue = Queue()
-	if len(accountlist) > 0:
+
+	if len(accountlist) > 0:        # If they supplied a list of accounts to check, use 50 worker threads
 		WorkerThreads = min(len(accountlist) * len(fregions), 50)
-	else:
+	else:       # If they didn't, then use 100 worker threads - I don't know why.
 		WorkerThreads = min(len(ChildAccounts) * len(fregions), 100)
-	# WorkerThreads = len(ChildAccounts)
 
 	# Create x worker threads
 	for x in range(WorkerThreads):
@@ -3339,25 +3344,25 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		worker.daemon = True
 		worker.start()
 
-	print(f"You asked to check {len(ChildAccounts) * len(fregions)} places... It's going to take a moment")
-	print(f"{Fore.GREEN}It's taken {time() - begin_time:.2f} seconds to prep WorkerThreads and such{Fore.RESET}") if fTiming else None
+	logging.info(f"You asked to check {len(ChildAccounts) * len(fregions)} place{'s' if len(ChildAccounts) * len(fregions) > 1 else ''}... It's going to take a moment")
+	logging.debug(f"{Fore.GREEN}It's taken {time() - begin_time:.2f} seconds to prep WorkerThreads and such{Fore.RESET}") if fTiming else None
 	for account in ChildAccounts:
 		AccountNum += 1
-		RegionNum = 0
 		if account['AccountId'] in fSkipAccounts:
 			continue
 		elif fRootOnly and not account['AccountId'] == account['MgmtAccount']:
 			continue
 		elif accountlist and account['AccountId'] not in accountlist:
 			continue
-		logging.info(f"Queuing account info for {AccountNum} / {len(ChildAccounts)} accounts")
+		logging.info(f"Queuing account info for {AccountNum} / {len(ChildAccounts)} accounts in profile {fprofile}")
+		RegionNum = 0
 		for region in fregions:
 			RegionNum += 1
 			logging.info(f"\t\tRegion {RegionNum} of {len(fregions)}")
 			credqueue.put((account, fprofile, region))
 			logging.info(f"Account / Region: {account} / {region} | {datetime.now()}")
-	logging.info(f"Profile: {fprofile} | {datetime.now()}")
-	print(f"{Fore.GREEN}Going through all {len(ChildAccounts) * len(fregions)} accounts and regions took {time() - begin_time:.2f} seconds {Fore.RESET}") if fTiming else None
+	print(f"{Fore.GREEN}Going through {len(ChildAccounts) * len(fregions)} account{'s' if len(ChildAccounts) * len(fregions) > 1 else ''} and regions "
+	      f"took {time() - begin_time:.3f} seconds {Fore.RESET}") if fTiming else None
 	credqueue.join()
 	return (AllCreds)
 
