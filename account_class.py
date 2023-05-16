@@ -32,7 +32,7 @@ So if we create a class object that represented the account:
 """
 import boto3
 import logging
-from botocore.exceptions import ProfileNotFound, ClientError, ConnectionError, EndpointConnectionError, CredentialRetrievalError, UnknownRegionError
+from botocore.exceptions import ProfileNotFound, ClientError, ConnectionError, EndpointConnectionError, CredentialRetrievalError, UnknownRegionError, NoCredentialsError
 from urllib3.exceptions import NewConnectionError
 from json.decoder import JSONDecodeError
 
@@ -133,14 +133,31 @@ class aws_acct_access:
 		else:
 			# Not trying to use account_key_credentials
 			try:
+				logging.debug("Credentials are using a profile")
 				prelim_session = boto3.Session(profile_name=fProfile, region_name=fRegion)
-				account_access_successful = True
+				self.session = boto3.Session(profile_name=fProfile, region_name=fRegion)
+				try:
+					result = self.session.client('ec2').describe_regions()
+					account_access_successful = True
+					account_and_region_access_successful = True
+				except JSONDecodeError as my_Error:
+					error_message = f"Failed to authenticate to AWS using {fProfile}\n" \
+					                f"Probably a profile that doesn't work..."
+					logging.error(f"Error: {error_message}")
+					account_access_successful = False
+					account_and_region_access_successful = False
+				except Exception as my_Error:
+					error_message = f"Failed to authenticate to AWS using {fProfile}\n" \
+					                f"Unknown reason"
+					logging.error(f"Error: {error_message}")
+					account_access_successful = False
+					account_and_region_access_successful = False
 			except ProfileNotFound as my_Error:
 				ErrorMessage = (f"The profile '{fProfile}' wasn't found. Perhaps there was a typo? Error Message: {my_Error}")
 				account_access_successful = False
+				account_and_region_access_successful = False
 
 		if account_access_successful:
-			# try:
 			result = _validate_region(prelim_session, fRegion)
 			if result['Success'] is True:
 				if UsingSessionToken:
@@ -149,33 +166,29 @@ class aws_acct_access:
 												 aws_secret_access_key=ocredentials['SecretAccessKey'],
 												 aws_session_token=ocredentials['SessionToken'],
 												 region_name=result['Region'])
+					account_and_region_access_successful = True
+					self.AccountStatus = 'ACTIVE'
 				elif UsingKeys:
 					logging.debug("Credentials are using Keys, but no SessionToken")
 					self.session = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
 												 aws_secret_access_key=ocredentials['SecretAccessKey'],
 												 region_name=result['Region'])
+					account_and_region_access_successful = True
+					self.AccountStatus = 'ACTIVE'
 				else:
-					logging.debug("Credentials are using a profile")
-					self.session = boto3.Session(profile_name=fProfile, region_name=result['Region'])
-				account_and_region_access_successful = True
-				self.AccountStatus = 'ACTIVE'
+					self.AccountStatus = 'ACTIVE'
+					logging.info(f"They're using a profile, which was checked above...")
 			else:
 				logging.error(result['Message'])
 				account_and_region_access_successful = False
-		# self.AccountStatus = 'INACTIVE'
-		# raise UnknownRegionError
-		# except UnknownRegionError as my_Error:
-		# 	logging.error(f"Profile {fProfile} not found. Please ensure this profile is valid within your system.")
-		# 	logging.info(f"Error: {my_Error}")
-		# 	account_and_region_access_successful = False
-		# except ProfileNotFound as my_Error:
-		# 	logging.error(f"Profile {fProfile} not found. Please ensure this profile is valid within your system.")
-		# 	logging.info(f"Error: {my_Error}")
-		# 	account_and_region_access_successful = False
+		elif account_and_region_access_successful:
+			self.AccountStatus = 'ACTIVE'
+			pass
 
 		logging.info(f"Capturing Account Information for profile {fProfile}...")
 		if account_and_region_access_successful:
 			logging.info(f"Successfully validated access to account in region {fRegion}")
+			self.Success = True
 			self.acct_number = self.acct_num()
 			self._AccountAttributes = self.find_account_attr()
 			logging.info(f"Found {len(self._AccountAttributes)} attributes in this account")
@@ -211,7 +224,9 @@ class aws_acct_access:
 			self.creds = 'Unknown'
 			self.credentials = 'Unknown'
 			self.ErrorType = 'Invalid profile'
-		# raise ProfileNotFound
+			self.Success = False
+			logging.error(f"Profile {fProfile} doesn't seem to work...")
+			# raise NoCredentialsError
 		elif fProfile is not None and account_access_successful:  # Likely the problem was the region passed in
 			logging.error(f"Region '{fRegion}' wasn't valid. Please specify a valid region.")
 			self.AccountType = 'Unknown'
@@ -222,7 +237,8 @@ class aws_acct_access:
 			self.creds = 'Unknown'
 			self.credentials = 'Unknown'
 			self.ErrorType = 'Invalid region'
-		# raise UnknownRegionError
+			self.Success = False
+			# raise UnknownRegionError(region_name=fRegion)
 		elif ocredentials is not None:
 			logging.error(f"Credentials for access_key {ocredentials['AccountNum']} failed to successfully access an account")
 			self.AccountType = 'Unknown'
@@ -233,7 +249,8 @@ class aws_acct_access:
 			self.creds = 'Unknown'
 			self.credentials = 'Unknown'
 			self.ErrorType = 'Invalid credentials'
-		# raise CredentialRetrievalError
+			self.Success = False
+			# raise CredentialRetrievalError
 		else:
 			logging.error(f"Not sure how we got here... Call your admin for help?")
 			self.AccountType = 'Unknown'
@@ -244,6 +261,7 @@ class aws_acct_access:
 			self.creds = 'Unknown'
 			self.credentials = 'Unknown'
 			self.ErrorType = 'Unknown'
+			self.Success = False
 
 	def acct_num(self):
 		"""
@@ -257,13 +275,15 @@ class aws_acct_access:
 			logging.info(f"Accessing session object to find its account number")
 			client_sts = aws_session.client('sts')
 			response = client_sts.get_caller_identity()
+			logging.info(f"response: {response}")
 			creds = response['Account']
 		except JSONDecodeError as my_Error:
-			error_message = (f"There was a JSON Decode Error while using sts to gain access to account {self.acct_number}\n"
+			error_message = (f"There was a JSON Decode Error while using sts to gain access to account\n"
 			                 f"This is most often associated with a profile that doesn't work to gain access to the account it's made for.")
 			logging.error(f"{error_message}\n"
 						  f"Error Message: {my_Error}")
 			pass
+			creds = "Failure"
 		except ClientError as my_Error:
 			if str(my_Error).find("UnrecognizedClientException") > 0:
 				logging.info(f"Security Issue")
@@ -316,14 +336,6 @@ class aws_acct_access:
 			else:
 				function_response['AccountType'] = 'Child'
 			return (function_response)
-		except client_org.exceptions.AWSOrganizationsNotInUseException as my_Error:
-			function_response['AccountType'] = 'StandAlone'
-			function_response['Id'] = self.acct_number
-			function_response['OrgId'] = None
-			function_response['ManagementEmail'] = 'Email not available'
-			function_response['AccountNumber'] = self.acct_number
-			function_response['MasterAccountId'] = self.acct_number
-			function_response['MgmtAccountId'] = self.acct_number
 		except ClientError as my_Error:
 			if str(my_Error).find("UnrecognizedClientException") > 0:
 				logging.error(f"Security Issue with account {self.acct_number}")
@@ -336,6 +348,14 @@ class aws_acct_access:
 			logging.error(f"Failure pulling or updating credentials for {self.acct_number}")
 			print(my_Error)
 			pass
+		except client_org.exceptions.AWSOrganizationsNotInUseException as my_Error:
+			function_response['AccountType'] = 'StandAlone'
+			function_response['Id'] = self.acct_number
+			function_response['OrgId'] = None
+			function_response['ManagementEmail'] = 'Email not available'
+			function_response['AccountNumber'] = self.acct_number
+			function_response['MasterAccountId'] = self.acct_number
+			function_response['MgmtAccountId'] = self.acct_number
 		except Exception as my_Error:
 			print("Other kind of failure")
 			print(my_Error)
