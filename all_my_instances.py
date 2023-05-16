@@ -118,11 +118,9 @@ def display_results_old(results_list, fdisplay_dict, defaultAction=None):
 
 
 # The parameters passed to this function should be the dictionary of attributes that will be examined within the thread.
-def find_all_instances(fAllCredentials, fRegionList):
+def find_all_instances(fAllCredentials):
 	"""
 	Note that this function takes a list of stack set names and finds the stack instances within them
-
-	The way
 
 	"""
 
@@ -201,8 +199,6 @@ def find_all_instances(fAllCredentials, fRegionList):
 
 	###########
 
-	if fRegionList is None:
-		fRegionList = ['us-east-1']
 	checkqueue = Queue()
 
 	AllInstances = []
@@ -292,7 +288,7 @@ display_dict = {'ParentProfile': {'Format': '20s', 'DisplayOrder': 1, 'Heading':
                 'PublicDNSName': {'Format': '62s', 'DisplayOrder': 8, 'Heading': 'Public Name'},
                 'State'        : {'Format': '12s', 'DisplayOrder': 9, 'Heading': 'State', 'Condition': ['running']}}
 
-AllInstances = find_all_instances(AllCredentials, RegionList)
+AllInstances = find_all_instances(AllCredentials)
 sorted_all_instances = sorted(AllInstances, key=lambda d: (d['ParentProfile'], d['MgmtAccount'], d['Region'], d['AccountId']))
 # display_instances(AllInstances)
 
