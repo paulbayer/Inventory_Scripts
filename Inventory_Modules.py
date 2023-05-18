@@ -100,7 +100,7 @@ def get_ec2_regions3(faws_acct, fkey=None):
 	return (RegionNames2)
 
 
-def get_service_regions(service, fkey=None):
+def get_service_regions(service, fkey=None, fprofile=None, ocredentials=None, faws_acct=None):
 	"""
 	Parameters:
 		service = the AWS service we're trying to get regions for. This is useful since not all services are supported in all regions.
@@ -108,11 +108,20 @@ def get_service_regions(service, fkey=None):
 			If not supplied, then we send back all regions for that service.
 			If they send "us-" (for example), we would send back only those regions which matched that fragment.
 			This is good for focusing a search on only those regions you're searching within.
+		Either the profile, ocredentials, or aws_acct account object could be passed. We'll use whatever they pass, or nothing.
 	"""
 	import boto3
 	import logging
 
-	s = boto3.Session()
+	if fprofile is not None:
+		s = boto3.Session(profile_name=fprofile)
+	elif ocredentials is not None:
+		s = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials['SecretAccessKey'],
+		                  aws_session_token=ocredentials['SessionToken'], region_name=ocredentials['Region'])
+	elif faws_acct is not None:
+		s = faws_acct.session
+	else:
+		s = boto3.Session()
 	regions = s.get_available_regions(service, partition_name='aws', allow_non_regional=False)
 	if fkey is None or ('all' in fkey or 'All' in fkey or 'ALL' in fkey):
 		return (regions)
