@@ -3142,14 +3142,19 @@ def display_results(results_list, fdisplay_dict, defaultAction=None):
 		- The third field ('Condition') is new, and allows to highlight a special value within the output. This can be used multiple times. 
 		The dictionary doesn't have to be ordered, as long as the 'SortOrder' field is correct.
 	"""
+	# If no results were passed, print nothing and just return
+	if len(results_list) == 0:
+		return()
+
 	# TODO:
 	# 	Probably have to do a pre-emptive error-check to ensure the SortOrder is unique within the Dictionary
 	# 	Also need to enclose this whole thing in a try...except to trap errors.
 	# 	Also need to find a way to order the data within this function.
 
+
 	sorted_display_dict = dict(sorted(fdisplay_dict.items(), key=lambda x: x[1]['DisplayOrder']))
 
-	# This is an effort to find the right size spaces for the dictionary
+	# This is an effort to find the right size spaces for the dictionary to properly show the results
 	print()
 	needed_space = {}
 	for field, value in sorted_display_dict.items():
@@ -3161,7 +3166,7 @@ def display_results(results_list, fdisplay_dict, defaultAction=None):
 					needed_space[field] = max(len(value['Heading']), needed_space[field])
 					continue
 				elif isinstance(result[field], int):
-					# This whole section is to compensate for the fact that the len of the number in string format doesn't include the commas.
+					# This section is to compensate for the fact that the len of numbers in string format doesn't include the commas.
 					# I know - I've been very US-centric here, since I haven't figured out how to achieve this in a locale-agnostic way
 					num_width = len(str(result[field]))
 					if len(str(result[field])) % 3 == 0:
