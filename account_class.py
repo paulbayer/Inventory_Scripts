@@ -105,7 +105,7 @@ class aws_acct_access:
 	"""
 
 	def __init__(self, fProfile=None, fRegion='us-east-1', ocredentials=None):
-		logging.basicConfig(format="[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s")
+		# logging.basicConfig(level=20, format="[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s")
 		# First thing's first: We need to validate that the region they sent us to use is valid for this account.
 		# Otherwise, all hell will break if it's not.
 		UsingKeys = False
@@ -180,6 +180,7 @@ class aws_acct_access:
 					logging.info(f"They're using a profile, which was checked above...")
 			else:
 				logging.error(result['Message'])
+				account_access_successful = False
 				account_and_region_access_successful = False
 		elif account_and_region_access_successful:
 			self.AccountStatus = 'ACTIVE'
@@ -213,6 +214,7 @@ class aws_acct_access:
 				logging.debug(f"As acct {self.acct_number} is the root account, we found {len(self.ChildAccounts)} accounts in the Org")
 
 			else:
+				logging.warning("Account isn't a root account, but we're looking for children anyway...")
 				self.ChildAccounts = self.find_child_accounts()
 		elif fProfile is not None and not account_access_successful:  # Likely the problem was the profile passed in
 			logging.error(f"Profile {fProfile} failed to successfully access an account")
@@ -324,7 +326,8 @@ class aws_acct_access:
 		try:
 			session_org = self.session
 			client_org = session_org.client('organizations')
-			response = client_org.describe_organization()['Organization']
+			response_pre = client_org.describe_organization()
+			response = response_pre['Organization']
 			function_response['OrgId'] = response['Id']
 			function_response['Id'] = self.acct_number
 			function_response['AccountNumber'] = self.acct_number
@@ -349,6 +352,7 @@ class aws_acct_access:
 			print(my_Error)
 			pass
 		except client_org.exceptions.AWSOrganizationsNotInUseException as my_Error:
+			print(f"Error: {my_Error}")
 			function_response['AccountType'] = 'StandAlone'
 			function_response['Id'] = self.acct_number
 			function_response['OrgId'] = None
@@ -359,6 +363,8 @@ class aws_acct_access:
 		except Exception as my_Error:
 			print("Other kind of failure")
 			print(my_Error)
+			pass
+		except:
 			pass
 		return (function_response)
 
@@ -400,14 +406,17 @@ class aws_acct_access:
 				logging.debug(my_Error)
 				return ()
 		elif self.find_account_attr()['AccountType'].lower() in ['standalone', 'child']:
-			child_accounts.append({'MgmtAccount'  : self.acct_num(),
-								   'AccountId'    : self.acct_num(),
+			child_accounts.append({'MgmtAccount'  : self.acct_number,
+								   'AccountId'    : self.acct_number,
 								   'AccountEmail' : 'Not an Org Management Account',
 								   # We know the account is ACTIVE because if it was SUSPENDED, we wouldn't have gotten a valid response from the org_root check
 								   'AccountStatus': 'ACTIVE'})
 			return (child_accounts)
+		elif self.AccountType.lower() == 'unknown':
+			logging.warning(f"Account {self.acct_number} came up as an Unknown Account...")
+			return ()
 		else:
-			logging.warning(f"Account {self.acct_num()} suffered a crisis of identity")
+			logging.warning(f"Account {self.acct_number} suffered a crisis of identity")
 			return ()
 
 	def __str__(self):
