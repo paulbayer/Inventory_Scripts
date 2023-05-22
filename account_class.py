@@ -382,7 +382,7 @@ class aws_acct_access:
 		from botocore.exceptions import ClientError
 
 		child_accounts = []
-		if self.find_account_attr()['AccountType'].lower() == 'root':
+		if self.AccountType.lower() == 'root':
 			try:
 				session_org = self.session
 				client_org = session_org.client('organizations')
