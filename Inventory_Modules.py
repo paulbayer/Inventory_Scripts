@@ -718,7 +718,6 @@ def find_cw_log_group_names2(ocredentials, fRegion, fCWLogGroupFrag=None):
 	                           aws_session_token=ocredentials['SessionToken'],
 	                           region_name=fRegion)
 	client_cw = session_cw.client('logs')
-	# TODO: Enable pagination # Defaults to 50
 	CWLogGroupList = []
 	FirstTime = True
 	response = {'nextToken': None}
@@ -746,6 +745,97 @@ def find_cw_log_group_names2(ocredentials, fRegion, fCWLogGroupFrag=None):
 					CWLogGroupList2.append(logGroupName)
 		logging.info(f"We found {len(CWLogGroupList2)} Log Groups")
 		return (CWLogGroupList2)
+
+
+def find_org_services2(ocredentials, serviceNameList=None):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+		- ['Region'] holds the Region
+	serviceName allows the user to provide the specific service we're looking for
+
+	Returns:
+		List of services that match the items found in the list provided
+"""
+	import boto3
+	import logging
+	if serviceNameList is None:
+		serviceNameList = ['all']
+	session_org = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
+	client_org = session_org.client('organizations')
+	EnabledOrgServicesList = []
+	FirstTime = True
+	response = {'nextToken': None}
+	while 'nextToken' in response.keys() or FirstTime:
+		if FirstTime:
+			response = client_org.list_aws_service_access_for_organization()
+			FirstTime = False
+		else:
+			response = client_org.describe_log_groups(nextToken=response['nextToken'])
+		EnabledOrgServicesList.extend(response['EnabledServicePrincipals'])
+	if 'all' in serviceNameList or 'All' in serviceNameList or 'ALL' in serviceNameList:
+		logging.info(f"Looking for all Org-Enabled services in account {ocredentials['AccountNumber']} from Region {ocredentials['Region']}\n"
+		             f"Enabled Services Returned: {EnabledOrgServicesList}\n"
+		             f"We found {len(EnabledOrgServicesList)} enabled Org Services")
+		return (EnabledOrgServicesList)
+	else:
+		logging.info(f"Looking for specific enabled Org services in account {ocredentials['AccountNumber']} from Region {ocredentials['Region']}")
+		EnabledOrgServicesList2 = []
+		for item in serviceNameList:
+			for serviceName in EnabledOrgServicesList:
+				logging.info(f"Have {serviceName} | Looking for {item}")
+				if serviceName['ServicePrincipal'].find(item) >= 0:
+					logging.info(f"Found {serviceName}")
+					EnabledOrgServicesList2.append(serviceName)
+		logging.info(f"We found {len(EnabledOrgServicesList2)} enabled Org services")
+		return (EnabledOrgServicesList2)
+
+
+def disable_org_service2(ocredentials, serviceName=None):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+		- ['Region'] holds the Region
+	serviceName allows the user to provide the specific service we're looking for
+
+	Returns:
+		List of CloudWatch Log Group Names found that match the fragment list
+"""
+	import boto3
+	import logging
+
+	returnResponse = {}
+	if serviceName is None:
+		returnResponse = {'Success': False, 'ErrorMessage': 'No service name specified'}
+		return (returnResponse)
+	session_org = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
+	client_org = session_org.client('organizations')
+	try:
+		delResponse = client_org.disable_aws_service_access_for_organization(ServicePrincipal=serviceName)
+		checkResponse = find_org_services2(ocredentials, serviceName)
+		if len(checkResponse) == 0:
+			returnResponse = {'Success': True, 'ErrorMessage': None}
+		else:
+			returnResponse = {'Success': False, 'ErrorMessage': 'Service didn\'t get deleted properly'}
+	except (client_org.exceptions.AccessDeniedException, client_org.exceptions.AWSOrganizationsNotInUseException, client_org.exceptions.ConcurrentModificationException,
+	        client_org.exceptions.ConstraintViolationException, client_org.exceptions.InvalidInputException, client_org.exceptions.ServiceException, \
+	        client_org.exceptions.TooManyRequestsException, client_org.exceptions.UnsupportedAPIEndpointException) as my_Error:
+		error_message = f"Error disabling {serviceName} in account {ocredentials['AccountId']}\n" \
+		                f"Full Error: {my_Error}"
+		returnResponse.update({'Success': False, 'ErrorMessage': error_message})
+	return (returnResponse)
 
 
 def find_account_vpcs2(ocredentials, defaultOnly=False):
@@ -1845,9 +1935,9 @@ def find_private_hosted_zones2(ocredentials, fRegion=None):
 	if fRegion is None:
 		fRegion = 'us-east-1'
 	session_r53 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-	                           aws_secret_access_key=ocredentials['SecretAccessKey'],
-	                           aws_session_token=ocredentials['SessionToken'],
-	                           region_name=ocredentials['Region'])
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
 
 	logging.info(f"Finding the private hosted zones within account {ocredentials['AccountId']} and region {fRegion}")
 	phz_info = session_r53.client('route53', region_name=fRegion)
@@ -3144,13 +3234,12 @@ def display_results(results_list, fdisplay_dict, defaultAction=None):
 	"""
 	# If no results were passed, print nothing and just return
 	if len(results_list) == 0:
-		return()
+		return ()
 
 	# TODO:
 	# 	Probably have to do a pre-emptive error-check to ensure the SortOrder is unique within the Dictionary
 	# 	Also need to enclose this whole thing in a try...except to trap errors.
 	# 	Also need to find a way to order the data within this function.
-
 
 	sorted_display_dict = dict(sorted(fdisplay_dict.items(), key=lambda x: x[1]['DisplayOrder']))
 
@@ -3204,11 +3293,11 @@ def display_results(results_list, fdisplay_dict, defaultAction=None):
 			if result[field] is None:
 				print(f"{'':{data_format}} ", end='')
 			elif isinstance(result[field], str):
-				print(f"{Fore.RED if highlight else '' }{result[field]:{data_format}s}{Fore.RESET if highlight else ''} ", end='')
+				print(f"{Fore.RED if highlight else ''}{result[field]:{data_format}s}{Fore.RESET if highlight else ''} ", end='')
 			elif isinstance(result[field], int):
-				print(f"{Fore.RED if highlight else '' }{result[field]:<{data_format},}{Fore.RESET if highlight else ''} ", end='')
+				print(f"{Fore.RED if highlight else ''}{result[field]:<{data_format},}{Fore.RESET if highlight else ''} ", end='')
 			elif isinstance(result[field], float):
-				print(f"{Fore.RED if highlight else '' }{result[field]:{data_format}f}{Fore.RESET if highlight else ''} ", end='')
+				print(f"{Fore.RED if highlight else ''}{result[field]:{data_format}f}{Fore.RESET if highlight else ''} ", end='')
 		print()  # This is the end of line character needed at the end of every line
 	print()  # This is the new line needed at the end of the script.
 
@@ -3346,9 +3435,9 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 	AllCreds = []
 	credqueue = Queue()
 
-	if len(accountlist) > 0:        # If they supplied a list of accounts to check, use 50 worker threads
+	if len(accountlist) > 0:  # If they supplied a list of accounts to check, use 50 worker threads
 		WorkerThreads = min(len(accountlist) * len(fregions), 50)
-	else:       # If they didn't, then use 100 worker threads - I don't know why.
+	else:  # If they didn't, then use 100 worker threads - I don't know why.
 		WorkerThreads = min(len(ChildAccounts) * len(fregions), 100)
 
 	# Create x worker threads
