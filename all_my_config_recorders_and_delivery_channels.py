@@ -139,7 +139,7 @@ def check_accounts_for_delivery_channels_and_config_recorders(CredentialList, fR
 
 	account_crs_and_dcs = []
 	PlaceCount = 1
-	WorkerThreads = min(len(CredentialList), 50)
+	WorkerThreads = min(len(CredentialList), 100)
 
 	if fRegionList is None:
 		fRegionList = ['us-east-1']
@@ -220,7 +220,7 @@ if pTiming:
 display_results(all_sorted_config_recorders_and_delivery_channels, display_dict)
 
 print(ERASE_LINE)
-print(f"We scanned {AccountNum} accounts and {len(RegionList)} regions totalling {len(AllCredentials)} possible areas for resources.")
+print(f"We scanned {AccountNum} accounts and {len(RegionList)} regions...")
 print(f"We Found {cr} Configuration Recorders and {dc} Delivery Channels")
 print()
 
