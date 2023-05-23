@@ -22,7 +22,7 @@ parser.timing()
 
 parser.my_parser.add_argument(
 		'-s', '--q', '--short',
-		help="Display only brief listing of the root accounts, and not the Child Accounts under them",
+		help="Display only brief listing of the profile accounts, and not the Child Accounts under them",
 		action="store_const",
 		dest="shortform",
 		const=True,
@@ -49,7 +49,7 @@ if pTiming:
 	begin_time = time()
 
 if pSkipProfiles is None:
-	pSkipProfiles = ["default"]
+	pSkipProfiles = ["default", "skipplus"]
 ERASE_LINE = '\x1b[2K'
 
 # logging.warning("All available profiles will be shown")
