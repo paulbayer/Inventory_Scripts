@@ -532,7 +532,7 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 		return (account_credentials)
 	# Initializing the "Negative Use Case" string, returning the whole list instead of only the last role it tried.
 	# This way the operator knows that NONE of the roles supplied worked.
-	return_string = f"{str(fRoleList)} failed. Try Again"
+	error_message = f"{str(fRoleList)} failed. Try Again"
 	account_credentials = {'ParentAcctId'   : ParentAccountId,
 	                       'MgmtAccount'    : ParentAccountId,
 	                       'OrgType'        : 'Child',
@@ -577,7 +577,9 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 			account_credentials['Success'] = True
 			return (account_credentials)
 		except ClientError as my_Error:
-			logging.info(f"In Region {fRegion}, we got error message: {my_Error}")
+			error_message = f"In Region {fRegion}, we got error message: {my_Error}"
+			logging.info(error_message)
+			account_credentials = {'AccessError': True, 'Success': False, 'ErrorMessage': error_message, 'RolesTried': fRoleList}
 			continue
 		except Exception as my_Error:
 			logging.info(my_Error)
