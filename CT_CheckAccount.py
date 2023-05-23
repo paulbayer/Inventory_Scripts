@@ -88,7 +88,7 @@ if Quick:
 else:
 	# Control Tower now published its regions.
 	GlobalRegionList = Inventory_Modules.get_service_regions('controltower', faws_acct=aws_acct)
-	AllowedRegionList = Inventory_Modules.get_regions3(aws_acct, 'all')
+	AllowedRegionList = Inventory_Modules.get_regions3(aws_acct, pRegions)
 	RegionList = intersection(GlobalRegionList, AllowedRegionList)
 
 ERASE_LINE = '\x1b[2K'
@@ -746,7 +746,7 @@ def DoThreadedAccountSteps(fChildAccountList, aws_account, fFixRun, fRegionList=
 					print(f"{ERASE_LINE}Finished looking through {c_member_account} in region {c_region} - {c_PlaceCount} / {len(fChildAccountList) * len(fRegionList)}", end='\r')
 					self.queue.task_done()
 
-		###########
+	###########
 
 	if fRegionList is None:
 		fRegionList = ['us-east-1']
@@ -755,7 +755,7 @@ def DoThreadedAccountSteps(fChildAccountList, aws_account, fFixRun, fRegionList=
 	AllOrgSteps = []
 	PlaceCount = 1
 	WorkerThreads = min(len(fChildAccountList) * len(fRegionList), 150)
-	# WorkerThreads = min(len(fChildAccountList) * len(fRegionList), 10)
+	WorkerThreads = min(len(fChildAccountList) * len(fRegionList), 50)
 	# WorkerThreads = 1
 
 	for x in range(WorkerThreads):
@@ -777,6 +777,7 @@ def DoThreadedAccountSteps(fChildAccountList, aws_account, fFixRun, fRegionList=
 					logging.error(f"Authorization Failure accessing account {member_account} in {region} region")
 					logging.warning(f"It's possible that the region {region} hasn't been opted-into")
 					pass
+	print(f"Threads are starting... Results coming in shortly... It takes around 1 second per account per region... ")
 	checkqueue.join()
 	return (AllOrgSteps)
 
@@ -826,7 +827,9 @@ for i in sorted_OrgResults:
 			i['Step8']['IssuesFound'] - i['Step8']['IssuesFixed'],
 			i['Step9']['IssuesFound'] - i['Step9']['IssuesFixed'],
 			i['Step10']['IssuesFound'] - i['Step10']['IssuesFixed'],
-			i['Step0']['Success'] and i['Step2']['Success'] and i['Step3']['Success'] and i['Step4']['Success'] and i['Step5']['Success'] and i['Step6']['Success'] and i['Step7']['Success'] and i['Step8']['Success'] and i['Step9']['Success'] and i['Step10']['Success']
+			i['Step0']['Success'] and i['Step2']['Success'] and i['Step3']['Success'] and i['Step4']['Success'] and
+			i['Step5']['Success'] and i['Step6']['Success'] and i['Step7']['Success'] and i['Step8']['Success'] and
+			i['Step9']['Success'] and i['Step10']['Success']
 		])
 print("The following table represents the accounts looked at, and whether they are ready to be incorporated into a Control Tower environment.")
 print(x)
