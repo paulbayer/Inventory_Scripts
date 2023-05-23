@@ -101,7 +101,7 @@ Objective: This script aims to identify issues and make it easier to "adopt" an 
 ** TODO ** - update the JSON to be able to update the role to ensure it trusts the least privileged roles from management account, instead of the whole account.
 0b. STS must be active in all regions checked. You can check from the Account Settings page in IAM. Since we're using STS to connect to the account from the Management, this requirement is checked by successfully completing step 0.
 
-1. Previously - this was a default VPC check, but this is no longer needed.
+1. Previously - this was a default VPC check, but this is no longer needed, so we're using this step to check for Organizationally connected Config Service instead.
 
 2. There must be no active config channel and recorder in the account as “there can be only one” of each. 
 	This must also be deleted via CLI, not console, switching config off in the console is NOT good enough and just disables it. To Delete the delivery channel and the configuration recorder (can be done via CLI and Python script only):
@@ -151,10 +151,6 @@ elif aws_acct.AccountType.lower() == 'root' and pChildAccountId is not None:
 else:
 	sys.exit(f"Account {aws_acct.acct_number} is a {aws_acct.AccountType} account.\n"
 	         f" This script should be run with Management Account credentials.")
-
-if pSkipAccounts is not None:
-	for account_to_skip in pSkipAccounts:
-		ChildAccountList.remove(account_to_skip)
 
 print()
 
@@ -224,6 +220,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 	# Step 0
 	ProcessStatus = InitDict(NumOfSteps)
 	OrgAccountList = [d['AccountId'] for d in aws_account.ChildAccounts]
+	account_credentials = {'Success': False, 'AccessError': True, 'ErrorMessage': 'Initialization Parameters'}
 	Step = 'Step0'
 	# This next list is the list of attempted roles. If you use a different named role for broad access, make sure it appears in this list.
 	CTRoles = [pAccessRole, 'AWSControlTowerExecution', 'AWSCloudFormationStackSetExecutionRole', 'Owner', 'OrganizationAccountAccessRole']
@@ -785,6 +782,10 @@ def DoThreadedAccountSteps(fChildAccountList, aws_account, fFixRun, fRegionList=
 ####
 # Summary at the end
 ####
+
+if pSkipAccounts is not None:
+	for account_to_skip in pSkipAccounts:
+		ChildAccountList.remove(account_to_skip)
 
 print(f"Beginning to evaluate the Org and Accounts to see if they're ready to deploy Control Tower")
 OrgResults = DoThreadedAccountSteps(ChildAccountList, aws_acct, FixRun, RegionList)
