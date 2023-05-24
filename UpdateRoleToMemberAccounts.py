@@ -365,7 +365,8 @@ UpdatedAccounts = 0
 # If the user specified only one account to check, and that account isn't found within the credentials found, this line will alert them of that fact.
 # However, if they specified multiple accounts to check, and SOME of them appeared, then they won't be notified of the ones that did NOT appear
 if not AllCredentials:
-	print(f"{Fore.RED}The account{'' if len(pAccounts) == 1 else 's'} you requested to check {pAccounts} doesn't appear to be within the profiles you specified.{Fore.RESET}")
+	# print(f"{Fore.RED}The account{'' if len(pAccounts) == 1 else 's'} you requested to check {pAccounts} doesn't appear to be within the profiles you specified.{Fore.RESET}")
+	print(f"{Fore.RED}The account you requested to check '{pAccounts}' doesn't appear to be within the profiles you specified.{Fore.RESET}")
 
 for cred in AllCredentials:
 	# account_credentials = Inventory_Modules.get_child_access3(aws_acct, cred['AccountId'], fRoleList=pRolesToUse)
