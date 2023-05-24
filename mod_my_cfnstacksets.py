@@ -266,6 +266,7 @@ def _delete_stack_instances(faws_acct, fRegion, fStackSetName, fForce, fAccountL
 
 def display_stack_set_health(fcombined_stack_set_instances, fAccountList):
 	summary = {}
+	stack_set_permission_models = dict()
 	for record in fcombined_stack_set_instances:
 		if fAccountList is not None and record['ChildAccount'] in fAccountList:
 			continue
@@ -273,6 +274,7 @@ def display_stack_set_health(fcombined_stack_set_instances, fAccountList):
 		stack_status = record['StackStatus']
 		stack_region = record['ChildRegion']
 		ou = record['OrganizationalUnitId']
+		stack_set_permission_models.update({stack_set_name: stackset_permission_model})
 		if stack_set_name not in summary:
 			summary[stack_set_name] = {}
 		if stack_status not in summary[stack_set_name]:
@@ -282,7 +284,7 @@ def display_stack_set_health(fcombined_stack_set_instances, fAccountList):
 	# Print the summary
 	print()
 	for stack_set_name, status_counts in summary.items():
-		print(f"{stack_set_name}:")
+		print(f"{stack_set_name} ({stack_set_permission_models[stack_set_name]}):")
 		for stack_status, instances in status_counts.items():
 			print(f"\t{Fore.RED if stack_status != 'CURRENT' else ''}{stack_status}: {len(instances)} instances {Fore.RESET}")
 			if verbose < 50:
@@ -293,7 +295,7 @@ def display_stack_set_health(fcombined_stack_set_instances, fAccountList):
 					stack_instances[stack_instance['Account']].append(stack_instance['Region'])
 				for k, v in stack_instances.items():
 					if k in RemovedAccounts:
-						print(f"{Style.BRIGHT}{Fore.MAGENTA}\t\t{k}: {v}{Style.RESET_ALL}\t <----- Look here!!! ")
+						print(f"{Style.BRIGHT}{Fore.MAGENTA}\t\t{k}: {v}{Style.RESET_ALL}\t <----- Look here for orphaned accounts! ")
 					else:
 						print(f"\t\t{k}: {v}")
 
