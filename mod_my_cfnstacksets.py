@@ -274,7 +274,7 @@ def display_stack_set_health(fcombined_stack_set_instances, fAccountList):
 		stack_status = record['StackStatus']
 		stack_region = record['ChildRegion']
 		ou = record['OrganizationalUnitId']
-		stack_set_permission_models.update({stack_set_name: stackset_permission_model})
+		stack_set_permission_models.update({stack_set_name: record['PermissionModel']})
 		if stack_set_name not in summary:
 			summary[stack_set_name] = {}
 		if stack_status not in summary[stack_set_name]:
