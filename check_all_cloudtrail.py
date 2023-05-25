@@ -10,18 +10,18 @@ from queue import Queue
 from colorama import init, Fore
 from time import time
 from botocore.exceptions import ClientError
-from prettytable import PrettyTable
 
 import logging
 
 init()
-__version__ = "2023.05.10"
+__version__ = "2023.05.25"
 
 parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
 parser.extendedargs()
 parser.rootOnly()
+parser.save_to_file()
 parser.timing()
 parser.verbosity()
 parser.version(__version__)
@@ -33,6 +33,7 @@ pSkipAccounts = args.SkipAccounts
 pAccounts = args.Accounts
 pSkipProfiles = args.SkipProfiles
 pRootOnly = args.RootOnly
+pSaveFilename = args.Filename
 pTiming = args.Time
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
@@ -137,7 +138,7 @@ display_dict = {'AccountId'  : {'Format': '15s', 'DisplayOrder': 2, 'Heading': '
 				'Bucket'     : {'Format': '20s', 'DisplayOrder': 6, 'Heading': 'S3 Bucket'}}
 sorted_Results = sorted(TrailsFound, key=lambda d: (d['MgmtAccount'], d['AccountId'], d['Region'], d['TrailName']))
 ProblemAccountsandRegions.sort()
-display_results(sorted_Results, display_dict, "None")
+display_results(sorted_Results, display_dict, "None", pSaveFilename)
 
 print(f"These accounts were skipped - as requested: {pSkipAccounts}")
 print(f"There were {len(ProblemAccountsandRegions)} accounts and regions that didn't seem to have a CloudTrail associated: \n")
@@ -148,6 +149,6 @@ print(f"Found {len(TrailsFound)} trails across {len(AllCredentials)} accounts ac
 print()
 if pTiming:
 	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 print("Thank you for using this script")
 print()

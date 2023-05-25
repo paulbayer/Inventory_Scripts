@@ -3212,8 +3212,9 @@ def find_ssm_parameters(fProfile, fRegion):
 # 	credqueue.join()
 # 	return (AllCreds)
 
-def display_results(results_list, fdisplay_dict, defaultAction=None):
+def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_save=None):
 	from colorama import init, Fore
+	from datetime import datetime
 
 	init()
 	"""
@@ -3302,6 +3303,32 @@ def display_results(results_list, fdisplay_dict, defaultAction=None):
 				print(f"{Fore.RED if highlight else ''}{result[field]:{data_format}f}{Fore.RESET if highlight else ''} ", end='')
 		print()  # This is the end of line character needed at the end of every line
 	print()  # This is the new line needed at the end of the script.
+	# TODO: We need to add some analytics here... Trying to come up with what would make sense across all displays.
+	#   Possibly we can have a setting where this data is written to a csv locally. We could create separate analytics once the data was saved.
+	if file_to_save is not None:
+		Heading = ''
+		with open(f'{file_to_save}-{datetime.now().strftime("%y-%m-%d--%H:%M:%S")}', 'w') as savefile:
+			for field, value in sorted_display_dict.items():
+				Heading += f"{value['Heading']}|"
+			Heading += '\n'
+			savefile.write(Heading)
+			for result in results_list:
+				row = ''
+				for field, value in sorted_display_dict.items():
+					data_format = 0
+					if field not in result.keys():
+						result[field] = defaultAction
+					# This allows for a condition to highlight a specific value
+					if result[field] is None:
+						row += "|"
+					elif isinstance(result[field], str):
+						row += f"{result[field]:{data_format}s}|"
+					elif isinstance(result[field], int):
+						row += f"{result[field]:<{data_format},}|"
+					elif isinstance(result[field], float):
+						row += f"{result[field]:{data_format}f}|"
+				row += '\n'
+				savefile.write(row)
 
 
 def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=[], fSkipAccounts=[], fRootOnly=False, fAccounts=[], fRegionList=['us-east-1'], RoleList=None):
@@ -3466,7 +3493,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 			logging.info(f"\t\tRegion {RegionNum} of {len(fregions)}")
 			credqueue.put((account, fprofile, region))
 			logging.info(f"Account / Region: {account} / {region} | {datetime.now()}")
-	print(f"{Fore.GREEN}Going through {len(ChildAccounts) * len(fregions)} account{'s' if len(ChildAccounts) * len(fregions) > 1 else ''} and regions "
+	print(f"{Fore.GREEN}Enumerating {len(ChildAccounts) * len(fregions)} account{'s' if len(ChildAccounts) * len(fregions) > 1 else ''} and regions "
 	      f"took {time() - begin_time:.3f} seconds {Fore.RESET}") if fTiming else None
 	credqueue.join()
 	return (AllCreds)

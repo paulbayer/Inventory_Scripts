@@ -203,3 +203,11 @@ class CommonArguments():
 				metavar="region name string",
 				default="us-east-1",
 				help="Name of the *single* region you want to check for resources.")
+
+	def save_to_file(self):
+		self.my_parser.add_argument(
+			"--filename",
+			dest="Filename",
+			metavar="filename",
+			default=None,
+			help="Name of the filename you want to save results to.")
