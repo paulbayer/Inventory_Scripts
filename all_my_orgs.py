@@ -83,7 +83,7 @@ landing_zone = 'N/A'
 
 if pTiming:
 	print()
-	print(f"It's been {Fore.GREEN}{time()-begin_time}{Fore.RESET} seconds...")
+	print(f"It's been {Fore.GREEN}{time()-begin_time:.2f}{Fore.RESET} seconds...")
 	print()
 fmt = '%-23s %-15s %-15s %-12s %-10s'
 print("<------------------------------------>")
@@ -125,6 +125,7 @@ if not shortform:
 	print(fmt % ("----------------------", "------------", "---"))
 	NumOfOrgAccounts = 0
 	NumOfNonOrgAccounts = 0
+	ClosedAccounts = []
 	FailedAccounts = 0
 	account = dict()
 	for item in AllProfileAccounts:
@@ -133,7 +134,7 @@ if not shortform:
 			account.update({'Profile': item['profile']})
 			# print(account)
 			AccountList.append(account.copy())
-			NumOfNonOrgAccounts += len(item['aws_acct'].ChildAccounts)
+			# NumOfNonOrgAccounts += len(item['aws_acct'].ChildAccounts)
 		elif item['Success'] and item['RootAcct']:
 			# account = dict()
 			# landing_zone = Inventory_Modules.find_if_alz(item['profile'])['ALZ']
@@ -151,17 +152,32 @@ if not shortform:
 			print(f"\t\t{'Child Account Number':20s} {'Child Account Status':20s} {'Child Email Address':20s}")
 			# for account in sorted(child_accounts):
 			for child_acct in item['aws_acct'].ChildAccounts:
-				print(f"\t\t{child_acct['AccountId']:20s} {child_acct['AccountStatus']:20s} {child_acct['AccountEmail']:20s}")
+				print(f"\t\t{ Fore.RED if not child_acct['AccountStatus'] == 'ACTIVE' else '' }{child_acct['AccountId']:20s} {child_acct['AccountStatus']:20s} {child_acct['AccountEmail']:20s}{ Fore.RESET if not child_acct['AccountStatus'] == 'ACTIVE' else '' }")
+				if not child_acct['AccountStatus'] == 'ACTIVE':
+					ClosedAccounts.append(child_acct['AccountId'])
 		elif not item['Success']:
 			FailedAccounts += 1
 			continue
 
+	StandAloneAccounts = [x['AccountId'] for x in AccountList if x['MgmtAccount'] == x['AccountId'] and x['AccountEmail'] == 'Not an Org Management Account']
+	FailedProfiles = [i['profile'] for i in AllProfileAccounts if not i['Success']]
+	OrgsFound = [i['MgmtAcct'] for i in AllProfileAccounts if i['RootAcct']]
+	StandAloneAccounts.sort()
+	FailedProfiles.sort()
+	OrgsFound.sort()
+	ClosedAccounts.sort()
+
 	print()
-	print(f"Number of Organizations: {len([i for i in AllProfileAccounts if i['RootAcct']])}")
+	print(f"Number of Organizations: {len(OrgsFound)}")
 	print(f"Number of Organization Accounts: {NumOfOrgAccounts}")
-	print(f"Number of Standalone Accounts: {NumOfNonOrgAccounts}")
-	print(f"Number of profiles that failed: {FailedAccounts}")
-	logging.error(f"List of failed profiles: {[i['profile'] for i in AllProfileAccounts if not i['Success']]}")
+	print(f"Number of Standalone Accounts: {len(StandAloneAccounts)}")
+	print(f"Number of suspended or closed accounts: {len(ClosedAccounts)}")
+	print(f"Number of profiles that failed: {len(FailedProfiles)}")
+	if verbose < 50:
+		print(f"The following accounts are closed or suspended: {ClosedAccounts.sort()}")
+		print(f"The following accounts are Standalone: {StandAloneAccounts.sort()}")
+		print(f"The following profiles failed: {FailedProfiles}")
+		print(f"The following accounts are the Org Accounts: {OrgsFound}")
 	print()
 
 if pAccountList is not None:
@@ -172,6 +188,6 @@ if pAccountList is not None:
 
 print()
 if pTiming:
-	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 print("Thanks for using this script")
 print()
