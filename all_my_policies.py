@@ -152,7 +152,7 @@ pRegionList = RegionList = ['us-east-1']
 AllCredentials = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
 
 if pTiming:
-	logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
+	logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time:.2f} seconds up till now{Fore.RESET}")
 
 PoliciesFound.extend(check_accounts_for_policies(AllCredentials, RegionList, pAction, pFragment))
 sorted_policies = sorted(PoliciesFound, key=lambda x: (x['MgmtAccount'], x['AccountNumber'], x['Region'], x['PolicyName']))
@@ -160,7 +160,7 @@ display_results(sorted_policies, display_dict, pAction)
 
 if pTiming:
 	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else print()
 print()
 print(f"Found {len(PoliciesFound)} policies across {len(AllCredentials)} accounts across {len(RegionList)} regions\n"
