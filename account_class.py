@@ -396,12 +396,13 @@ class aws_acct_access:
 						                       'AccountId'    : account['Id'],
 						                       'AccountEmail' : account['Email'],
 						                       'AccountStatus': account['Status']})
-					if 'NextToken' in response:
+					if 'NextToken' in response.keys():
 						theresmore = True
 						response = client_org.list_accounts(NextToken=response['NextToken'])
 					else:
 						theresmore = False
-				return (child_accounts)
+				sorted_child_accounts = sorted(child_accounts, key=lambda d: d['AccountId'])
+				return (sorted_child_accounts)
 			except ClientError as my_Error:
 				logging.warning(f"Account {self.acct_num()} doesn't represent an Org Root account")
 				logging.debug(my_Error)
