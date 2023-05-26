@@ -145,7 +145,7 @@ display_results(sorted_ENIs_Found, display_dict)
 
 if pTiming:
 	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 print()
 print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else ""
 print(f"These profiles were skipped - as requested: {pSkipProfiles}") if pSkipProfiles is not None else ""

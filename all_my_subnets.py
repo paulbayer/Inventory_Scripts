@@ -167,7 +167,7 @@ if pProfiles is None:  # Default use case from the classes
 	RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
 	WorkerThreads = len(aws_acct.ChildAccounts) + 4
 	if pTiming:
-		logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
+		logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time:.2f} seconds up till now{Fore.RESET}")
 	# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 	logging.info(f"Queueing default profile for credentials")
 	AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, 'default', RegionList))
@@ -181,7 +181,7 @@ else:
 		WorkerThreads = len(aws_acct.ChildAccounts) + 4
 		RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
 		if pTiming:
-			logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time} seconds up till now{Fore.RESET}")
+			logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time:.2f} seconds up till now{Fore.RESET}")
 		logging.warning(f"Looking at {profile} account now... ")
 		logging.info(f"Queueing {profile} for credentials")
 		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
@@ -193,7 +193,7 @@ display_results(SubnetsFound, display_dict)
 
 if pTiming:
 	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 print()
 print(f"These accounts were skipped - as requested: {pSkipAccounts}")
 print()
