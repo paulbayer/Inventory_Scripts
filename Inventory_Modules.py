@@ -3267,6 +3267,7 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 	"""
 	# If no results were passed, print nothing and just return
 	if len(results_list) == 0:
+		logging.warning("There were no results passed in to display")
 		return ()
 
 	# TODO:
