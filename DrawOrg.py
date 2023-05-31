@@ -5,7 +5,7 @@ from time import time
 from colorama import init, Fore
 from ArgumentsClass import CommonArguments
 
-__version__ = '2023.05.23'
+__version__ = '2023.05.31'
 init()
 
 parser = CommonArguments()
@@ -17,12 +17,12 @@ parser.version(__version__)
 parser.my_parser.add_argument(
 	"--policy",
 	dest='policy',
-	action="store_true",  # Defaults to False, so the script would continue to run
+	action="store_true",  # Defaults to False, meaning it won't show policies by default
 	help="Only run this code for the root account, not the children")
 parser.my_parser.add_argument(
 	"--aws", "--managed",
 	dest='aws_managed',
-	action="store_true",  # Defaults to False, so the script would continue to run
+	action="store_true",  # Defaults to False, meaning it defaults to NOT showing the AWS managed policies applied
 	help="Use this parameter to SHOW the AWS Managed SCPs as well, otherwise they're hidden")
 args = parser.my_parser.parse_args()
 
@@ -56,11 +56,17 @@ SERVICE_CONTROL_POLICY
 TAG_POLICY
 """
 aws_policy_type_list = ['SERVICE_CONTROL_POLICY', 'TAG_POLICY', 'BACKUP_POLICY', 'AISERVICES_OPT_OUT_POLICY']
+#####################
+
+
+def round_up(number):
+	return int(number) + (number % 1 > 0)
 
 
 def get_root_OUS(root_id):
 	try:
 		ChildOUs = org_client.list_children(ParentId=root_id, ChildType='ORGANIZATIONAL_UNIT')
+		return (ChildOUs['Children'])
 	except (org_client.exceptions.AccessDeniedException,
 	        org_client.exceptions.AWSOrganizationsNotInUseException,
 	        org_client.exceptions.InvalidInputException,
@@ -68,7 +74,7 @@ def get_root_OUS(root_id):
 	        org_client.exceptions.ServiceException,
 	        org_client.exceptions.TooManyRequestsException) as myError:
 		logging.error(f"Error: {myError}")
-	return (ChildOUs['Children'])
+	return ()
 
 
 # Function to recursively traverse the OUs and accounts
@@ -163,11 +169,13 @@ def create_policy_nodes(dot):
 		else:
 			dot.node(policy_id, label=f"{policy_name}\n {policy_id} | {policy_type}", shape=policy_shape, color=policy_linecolor, style='filled', fillcolor=policy_fillcolor)
 
+
 # Specify the AWS root organization ID
 root_OUs = get_root_OUS(root)
 
 # Create a new Digraph object for the diagram
-dot = Digraph('AWS Organization', format='png')
+dot = Digraph('AWS Organization', format='png', comment="Organization Structure")
+# dot = dot_wide.unflatten(stagger=round_up(len(root_OUs)/5))
 
 if pPolicy:
 	create_policy_nodes(dot)
@@ -177,6 +185,8 @@ for ou in root_OUs:
 
 # Render the diagram to a PNG image
 dot.render('aws_organization', view=True)
+dot_unflat = dot.unflatten(stagger=round_up(len(root_OUs)/5))
+dot_unflat.render('aws_organization2', view=True)
 
 if pTiming:
 	print(f"{Fore.GREEN}\tThis script took {time()-begin_time:.2f} seconds{Fore.RESET}")

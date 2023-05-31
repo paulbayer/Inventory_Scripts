@@ -10,7 +10,7 @@ from time import time
 from colorama import init, Fore, Style
 
 init()
-__version__ = "2023.05.04"
+__version__ = "2023.05.31"
 
 parser = CommonArguments()
 parser.multiprofile()
