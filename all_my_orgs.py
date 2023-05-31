@@ -106,39 +106,40 @@ but that takes a long time, since nothing would be sent to the screen in the mea
 print(ERASE_LINE)
 print("-------------------")
 
-if not shortform and pSaveFilename is None:
-	fmt = '%-23s %-15s %-6s'
-	child_fmt = "\t\t%-20s %-20s %-20s"
-	print()
-	print(fmt % ("Organization's Profile", "Root Account", "ALZ"))
-	print(fmt % ("----------------------", "------------", "---"))
+if not shortform:
 	NumOfOrgAccounts = 0
-	NumOfNonOrgAccounts = 0
 	ClosedAccounts = []
 	FailedAccounts = 0
 	account = dict()
-	for item in AllProfileAccounts:
-		if item['Success'] and not item['RootAcct']:
-			account.update(item['aws_acct'].ChildAccounts[0])
-			account.update({'Profile': item['profile']})
-			AccountList.append(account.copy())
-		elif item['Success'] and item['RootAcct']:
-			for i in item['aws_acct'].ChildAccounts:
-				account.update(i)
+	if pSaveFilename is None:
+		fmt = '%-23s %-15s %-6s'
+		child_fmt = "\t\t%-20s %-20s %-20s"
+		print()
+		print(fmt % ("Organization's Profile", "Root Account", "ALZ"))
+		print(fmt % ("----------------------", "------------", "---"))
+		for item in AllProfileAccounts:
+			if item['Success'] and not item['RootAcct']:
+				account.update(item['aws_acct'].ChildAccounts[0])
 				account.update({'Profile': item['profile']})
 				AccountList.append(account.copy())
-			NumOfOrgAccounts += len(item['aws_acct'].ChildAccounts)
-			print(f"{item['profile']:23s}{Style.BRIGHT} {item['MgmtAcct']:15s}{Style.RESET_ALL} {Fore.RED if landing_zone else Fore.RESET}{landing_zone}{Fore.RESET}")
-			print(f"\t\t{'Child Account Number':20s} {'Child Account Status':20s} {'Child Email Address':20s}")
-			for child_acct in item['aws_acct'].ChildAccounts:
-				print(f"\t\t{Fore.RED if not child_acct['AccountStatus'] == 'ACTIVE' else ''}{child_acct['AccountId']:20s} {child_acct['AccountStatus']:20s} {child_acct['AccountEmail']:20s}{Fore.RESET if not child_acct['AccountStatus'] == 'ACTIVE' else ''}")
-				if not child_acct['AccountStatus'] == 'ACTIVE':
-					ClosedAccounts.append(child_acct['AccountId'])
-		elif not item['Success']:
-			FailedAccounts += 1
-			continue
+			elif item['Success'] and item['RootAcct']:
+				for i in item['aws_acct'].ChildAccounts:
+					account.update(i)
+					account.update({'Profile': item['profile']})
+					AccountList.append(account.copy())
+				NumOfOrgAccounts += len(item['aws_acct'].ChildAccounts)
+				print(f"{item['profile']:23s}{Style.BRIGHT} {item['MgmtAcct']:15s}{Style.RESET_ALL} {Fore.RED if landing_zone else Fore.RESET}{landing_zone}{Fore.RESET}")
+				print(f"\t\t{'Child Account Number':20s} {'Child Account Status':20s} {'Child Email Address':20s}")
+				for child_acct in item['aws_acct'].ChildAccounts:
+					print(f"\t\t{Fore.RED if not child_acct['AccountStatus'] == 'ACTIVE' else ''}{child_acct['AccountId']:20s} {child_acct['AccountStatus']:20s} {child_acct['AccountEmail']:20s}{Fore.RESET if not child_acct['AccountStatus'] == 'ACTIVE' else ''}")
+					if not child_acct['AccountStatus'] == 'ACTIVE':
+						ClosedAccounts.append(child_acct['AccountId'])
+			elif not item['Success']:
+				FailedAccounts += 1
+				continue
 
-	if pSaveFilename is not None:
+	elif pSaveFilename is not None:
+		# The user specified a file name, which means they want a (pipe-delimited) CSV file with the relevant output.
 		display_dict = {'MgmtAccount'  : {'DisplayOrder': 1, 'Heading': 'Parent Acct'},
 		                'AccountId'    : {'DisplayOrder': 2, 'Heading': 'Account Number'},
 		                'AccountStatus': {'DisplayOrder': 3, 'Heading': 'Account Status', 'Condition': ['SUSPENDED', 'CLOSED']},
@@ -168,6 +169,9 @@ if not shortform and pSaveFilename is None:
 		print(f"The following profiles failed: {FailedProfiles}")
 		print("----------------------")
 	print()
+else:
+	# The user specified "short-form" which means they don't want any information on child accounts.
+	pass
 
 if pAccountList is not None:
 	for acct in AccountList:
