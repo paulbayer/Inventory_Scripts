@@ -14,7 +14,7 @@ from botocore.exceptions import ClientError
 import logging
 
 init()
-__version__ = "2023.05.25"
+__version__ = "2023.05.31"
 
 parser = CommonArguments()
 parser.multiprofile()

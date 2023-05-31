@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import sys
 
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
@@ -11,7 +10,7 @@ import logging
 
 init()
 
-__version__ = '2023.05.04'
+__version__ = '2023.05.31'
 
 parser = CommonArguments()
 parser.multiprofile()
