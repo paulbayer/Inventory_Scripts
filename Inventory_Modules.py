@@ -166,13 +166,18 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 	import boto3
 	import logging
 
+	profiles_to_remove = []
+	my_Session = boto3.Session()
+	my_profiles = my_Session._session.available_profiles
 	if fSkipProfiles is None:
 		fSkipProfiles = []
 	if fprofiles is None:
 		fprofiles = ['all']
-	profiles_to_remove = []
-	my_Session = boto3.Session()
-	my_profiles = my_Session._session.available_profiles
+	elif isinstance(fprofiles, str) and fprofiles in my_profiles:
+		return(fprofiles)
+	elif isinstance(fprofiles, str):
+		logging.error(f"There was an error: The profile passed in '{fprofiles}' doesn't exist.")
+		return()
 	for profile in my_profiles:
 		logging.info(f"Found profile {profile}")
 		if ("skipplus" in fSkipProfiles and profile.find("+") >= 0) or profile in fSkipProfiles:
@@ -3383,6 +3388,7 @@ def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=[], fSkipAc
 	if fProfiles is None:  # Default use case from the classes
 		print("Getting Accounts to check: ", end='')
 		aws_acct = aws_acct_access()
+		# This doesn't mean the profile "default", this is just what the label for the Org Name will be, since there's no other text
 		profile = 'default'
 		RegionList = get_regions3(aws_acct, fRegionList)
 		logging.info(f"Queueing default profile for credentials")

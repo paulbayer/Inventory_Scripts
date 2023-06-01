@@ -17,7 +17,8 @@ init()
 __version__ = "2023.05.31"
 
 parser = CommonArguments()
-parser.multiprofile()
+parser.singleprofile()
+# parser.multiprofile()
 parser.multiregion()
 parser.extendedargs()
 parser.rootOnly()
@@ -27,7 +28,7 @@ parser.verbosity()
 parser.version(__version__)
 args = parser.my_parser.parse_args()
 
-pProfiles = args.Profiles
+pProfile = args.Profile
 pRegionList = args.Regions
 pSkipAccounts = args.SkipAccounts
 pAccounts = args.Accounts
@@ -104,7 +105,7 @@ def check_account_for_cloudtrail(f_AllCredentials):
 ##################
 ERASE_LINE = '\x1b[2K'
 
-logging.info(f"Profiles: {pProfiles}")
+logging.info(f"Single Profile: {pProfile}")
 if pTiming:
 	begin_time = time()
 
@@ -114,27 +115,45 @@ print()
 
 TrailsFound = []
 AllCredentials = []
+CTSummary = {}
+OrgTrailInUse = False
+ExtraCloudTrails = 0
 if pSkipAccounts is None:
 	pSkipAccounts = []
 
-AllCredentials = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
+AllCredentials = get_all_credentials(pProfile, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
 
-
-# print(f"{ERASE_LINE}Checking account {credential['AccountId']} in region {credential['Region']}: {account_num} of {len(AllCredentials)}", end='\r')
 TrailsFound = check_account_for_cloudtrail(AllCredentials)
 
 AllChildAccountandRegionList = [[item['MgmtAccount'], item['AccountId'], item['Region']] for item in AllCredentials]
 ChildAccountsandRegionsWithCloudTrail = [[item['MgmtAccount'], item['AccountId'], item['Region']] for item in TrailsFound]
+# The list of accounts and regions with NO CloudTrail
 ProblemAccountsandRegions = [item for item in AllChildAccountandRegionList if item not in ChildAccountsandRegionsWithCloudTrail]
 UniqueRegions = list(set([item['Region'] for item in AllCredentials]))
-
+# The list of accounts and regions with more than 1 CloudTrail
+if verbose < 50:
+	for trail in TrailsFound:
+		if trail['OrgTrail'] == 'OrgTrail':
+			OrgTrailInUse = True
+		if trail['AccountId'] not in CTSummary.keys():
+			CTSummary[trail['AccountId']] = {}
+			CTSummary[trail['AccountId']]['CloudTrailNum'] = 1
+		if trail['Region'] not in CTSummary[trail['AccountId']].keys():
+			CTSummary[trail['AccountId']][trail['Region']] = []
+			CTSummary[trail['AccountId']]['CloudTrailNum'] += 1
+			CTSummary[trail['AccountId']][trail['Region']].append({'TrailName': trail['TrailName'], 'Bucket': trail['Bucket'], 'OrgTrail': trail['OrgTrail']})
+		elif trail['Region'] in CTSummary[trail['AccountId']].keys():
+			# If we ever get to this part of the loop, it means there was an *additional* CloudTrail in use.
+			ExtraCloudTrails += 1
+			CTSummary[trail['AccountId']]['CloudTrailNum'] += 1
+			CTSummary[trail['AccountId']][trail['Region']].append({'TrailName': trail['TrailName'], 'Bucket': trail['Bucket'], 'OrgTrail': trail['OrgTrail']})
 print()
 
 display_dict = {'AccountId'  : {'Format': '15s', 'DisplayOrder': 2, 'Heading': 'Account Number'},
 				'MgmtAccount': {'Format': '15s', 'DisplayOrder': 1, 'Heading': 'Parent Acct'},
 				'Region'     : {'Format': '15s', 'DisplayOrder': 3, 'Heading': 'Region'},
-				'TrailName'  : {'Format': '40s', 'DisplayOrder': 5, 'Heading': 'Trail Name'},
-				'OrgTrail'   : {'Format': '15s', 'DisplayOrder': 4, 'Heading': 'Org Trail?'},
+				'TrailName'  : {'Format': '40s', 'DisplayOrder': 4, 'Heading': 'Trail Name'},
+				'OrgTrail'   : {'Format': '15s', 'DisplayOrder': 5, 'Heading': 'Org Trail?'},
 				'Bucket'     : {'Format': '20s', 'DisplayOrder': 6, 'Heading': 'S3 Bucket'}}
 sorted_Results = sorted(TrailsFound, key=lambda d: (d['MgmtAccount'], d['AccountId'], d['Region'], d['TrailName']))
 ProblemAccountsandRegions.sort()
@@ -145,7 +164,12 @@ print(f"There were {len(ProblemAccountsandRegions)} accounts and regions that di
 for item in ProblemAccountsandRegions:
 	print(item)
 print()
-print(f"Found {len(TrailsFound)} trails across {len(AllCredentials)} accounts across {len(UniqueRegions)} regions")
+if verbose < 50:
+	print(f"We found {ExtraCloudTrails} extra cloud trails in use")
+	print(f"Which is silly because we have an Org Trail enabled for the whole Organization") if OrgTrailInUse else ''
+	print(f"Removing these extra trails would save considerable money (can't really quantify how much right now)") if ExtraCloudTrails > 0 else ''
+	print()
+print(f"Found {len(TrailsFound)} trails across {len(AllCredentials)} accounts/ regions across {len(UniqueRegions)} regions")
 print()
 if pTiming:
 	print(ERASE_LINE)
