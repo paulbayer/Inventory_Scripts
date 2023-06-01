@@ -174,7 +174,8 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 	if fprofiles is None:
 		fprofiles = ['all']
 	elif isinstance(fprofiles, str) and fprofiles in my_profiles:
-		return(fprofiles)
+		# Update the string to become a list
+		return([fprofiles])
 	elif isinstance(fprofiles, str):
 		logging.error(f"There was an error: The profile passed in '{fprofiles}' doesn't exist.")
 		return()
