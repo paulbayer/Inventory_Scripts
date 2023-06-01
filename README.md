@@ -33,8 +33,8 @@ Less used common parameters:
   - --exact: It's possible that some fragments will exist both as a stackname, as well as part of other stacknames (think "xxx" and "xxx-global"). In these cases, you can use the "--exact" parameter, and it will only use the string you've entered. *Note that this means you must enter the entire string, and not just a fragment anymore.*
   - --skipprofile: Sometimes you want to specify a fragment of a profile, and you want 5 of the 6 profiles that fragment shows up in, but not the 6th. You can use this parameter to exclude that 6th profile (space delimited).
   - --skipaccount: Sometimes you want to exclude the production accounts from any script you're running. You can use this parameter to exclude a list of accounts (space delimited).
+  - --filename: This parameter (hasn't been added to all the scripts yet) is my attempt to produce output suitable for use in an Excel sheet, or other analysis tooling. Eventually I'll come up with the Analysis tooling myself, but until then - the least I could do is output this data in a suitable format. You'll have to run the help (-h) to find out for each script if it supports this parameter / output yet or not.
   - +delete: I've tried to make it difficult to **accidentally** delete any resources, so that's why it's a "+" instead of a "-".
-  
 
 Purpose Built Scripts
 ------------------
@@ -198,3 +198,41 @@ Class Files
 
 - **ArgumentsClass.py**
   - This class holds the argparse class I use to standardize te parameters across as many scripts as possible.
+
+Using these Inventory Scripts as Discovery
+----------------
+Lately, I've been asked to come up with a way of combining many of these scripts together to come up with a way to perform a reasonable Discovery on an Org - and find issues that need to be remediated, as well as assess the level of maturity of a Landing Zone. What follows here is the list of scripts (with expected parameters) and what I'd expect you'll find given the output.
+
+--------
+The following script runs for all accounts within either your specified profile, or (if no profile is used) your default credentials (could be environment variables). This will assess whether ALL of your accounts are suitable to be migrated to Control Tower or not, and if not - what the issues preventing their adoption would be. The "-r global" specifies that ALL regions (even those you have not opted into) should be looked at. The script will (because of the "-v") inform you of the failure to connect to an account in the excluded region, but won't fail because of it. This script executes 10 commands for every account in every region, so it will take a **long** time to run. I have NOT enabled the output to be saved to an output file yet, but that's next on my list. For now - you'll have to pipe the output to a file and import that to Excel.    
+```commandline
+CT_CheckAccount.py -v -r global --timing [-p <profile of Org Account>]
+```
+
+This next script will find the status of all of your accounts and regions and whether you have CloudTrail enabled in each. I'm working on enhancing the script to also summarize whether there are multiple CloudTrails for a given account / region, so you can be notified to TURN THAT OFF - and save a bunch of money. You only get 1 CloudTrail per account / region for free, and the second one costs more than you think.
+```commandline
+check_all_cloudtrail.py -v -r global --timing --filename cloudtrail_check.out [-p <profile of Org Account>]
+```
+
+The following script can draw out the Organization. The output will be a file in the current directory called “aws_organization.png” - please either get that file, or a screenshot of it. Assuming the user has the graphviz tool installed within their environment, running this tool should end with the diagram itself being shown.
+```commandline
+DrawOrg.py --policy --timing
+```
+
+The following script can do soooo much _(Yeah - I'm pretty proud of this one)_. As it's shown here, 
+```commandline
+mod_my_cfnstacksets.py -v -r <home region> --timing [-p <profile of Org Account>]
+```
+
+put_s3_public_block.py -v
+my_org_users.py -v
+all_my_config_recorders_and_delivery_channels.py -v -r global --timing
+all_my_orgs.py -v
+all_my_saml_providers.py -v
+all_my_phzs.py -v
+all_my_vpcs.py -v
+my_ssm_parameters.py --ALZ
+update_retention_on_all_my_cw_groups.py
+all_my_directories.py -v
+SC_Products_to_CFN_Stacks.py -v --timing
+
