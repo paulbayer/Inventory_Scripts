@@ -18,7 +18,6 @@ __version__ = "2023.05.31"
 
 parser = CommonArguments()
 parser.singleprofile()
-# parser.multiprofile()
 parser.multiregion()
 parser.extendedargs()
 parser.rootOnly()

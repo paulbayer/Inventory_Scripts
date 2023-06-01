@@ -34,7 +34,7 @@ TODO:
 
 init()
 
-__version__ = "2023.05.10"
+__version__ = "2023.05.31"
 
 parser = CommonArguments()
 parser.singleprofile()
@@ -43,6 +43,7 @@ parser.singleregion()
 parser.extendedargs()
 parser.fragment()
 parser.roletouse()
+# parser.save_to_file()
 parser.timing()
 parser.verbosity()
 parser.version(__version__)
@@ -84,9 +85,10 @@ pdelete = args.DryRun
 pRegionRemove = args.pRegionRemove
 pRefresh = args.Refresh
 pForce = args.Force
-# version = args.Version
+# pSaveFilename = args.Filename
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
+# Seems low, but this fits under the API threshold. Make it too high and it will not.
 DefaultMaxWorkerThreads = 5
 
 
