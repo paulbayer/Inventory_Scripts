@@ -99,6 +99,7 @@ for account in ChildAccounts:
 			print(my_Error)
 		break
 	for region in RegionList:
+		Stacks = []
 		try:
 			StackNum = 0
 			Stacks = Inventory_Modules.find_stacks2(account_credentials, region, pstackfrag, pstatus)
