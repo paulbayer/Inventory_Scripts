@@ -175,10 +175,10 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 		fprofiles = ['all']
 	elif isinstance(fprofiles, str) and fprofiles in my_profiles:
 		# Update the string to become a list
-		return([fprofiles])
+		return ([fprofiles])
 	elif isinstance(fprofiles, str):
 		logging.error(f"There was an error: The profile passed in '{fprofiles}' doesn't exist.")
-		return()
+		return ()
 	for profile in my_profiles:
 		logging.info(f"Found profile {profile}")
 		if ("skipplus" in fSkipProfiles and profile.find("+") >= 0) or profile in fSkipProfiles:
@@ -611,18 +611,6 @@ def enable_drift_on_stacks2(ocredentials, fRegion, fStackName):
 	response = client_cfn.detect_stack_drift(StackName=fStackName)
 	return (response)  # Since this is an async process, there is no response to send back
 
-def enable_drift_on_stack_set(ocredentials, fRegion, fStackSetName):
-	import boto3
-	import logging
-
-	session_cfn = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
-		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
-	client_cfn = session_cfn.client('cloudformation')
-	logging.info(f"Enabling drift detection on Stack {fStackSetName} in "
-	             f"Account {ocredentials['AccountNumber']} in region {fRegion}")
-	response = client_cfn.detect_stack_set_drift(StackSetName=fStackSetName)
-	return (response)  # Since this is an async process, there is no response to send back
-
 
 """
 Above - Generic functions
@@ -850,7 +838,7 @@ def disable_org_service2(ocredentials, serviceName=None):
 		else:
 			returnResponse = {'Success': False, 'ErrorMessage': 'Service didn\'t get deleted properly'}
 	except (client_org.exceptions.AccessDeniedException, client_org.exceptions.AWSOrganizationsNotInUseException, client_org.exceptions.ConcurrentModificationException,
-	        client_org.exceptions.ConstraintViolationException, client_org.exceptions.InvalidInputException, client_org.exceptions.ServiceException, \
+	        client_org.exceptions.ConstraintViolationException, client_org.exceptions.InvalidInputException, client_org.exceptions.ServiceException,
 	        client_org.exceptions.TooManyRequestsException, client_org.exceptions.UnsupportedAPIEndpointException) as my_Error:
 		error_message = f"Error disabling {serviceName} in account {ocredentials['AccountId']}\n" \
 		                f"Full Error: {my_Error}"
@@ -3048,12 +3036,12 @@ def find_sc_products(fProfile, fRegion, fStatus="ERROR", flimit=100):
 	return (response2)
 
 
-def find_sc_products3(faws_acct, fProduct_id=None, fStatus="ERROR", flimit=100):
+def find_sc_products3(faws_acct, fStatus="ERROR", flimit=100, fproductId=None):
 	"""
-	fProfile is the Root Profile that owns the Account we're interrogating
-	fRegion is the region we're interrogating
+	faws_acct is the Org account that we're interrogating
 	fStatus is the status of SC products we're looking for. Defaults to "ERROR"
 	flimit is the max number of products to find. This is used for debugging, mainly
+	fproductId is the provisioned product ID that we can filter on to narrow down our search
 
 	Returned list looks like this:
 	[
@@ -3084,36 +3072,43 @@ def find_sc_products3(faws_acct, fProduct_id=None, fStatus="ERROR", flimit=100):
 
 	response2 = []
 	client_sc = faws_acct.session.client('servicecatalog')
-	if fStatus.lower() == 'all':
-		# Define the search parameters
-		search_filters = {}
-		if fProduct_id is not None:
-			search_filters = {
-                "SearchQuery": [f"productId:{fProduct_id}"]
-            }
-
-		response = client_sc.search_provisioned_products(PageSize=flimit, Filters=search_filters)
+	if fStatus.lower() == 'all' and fproductId is None:
+		response = client_sc.search_provisioned_products(PageSize=flimit,
+		                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'})
 		while 'NextPageToken' in response.keys():
 			response2.extend(response['ProvisionedProducts'])
-			response = client_sc.search_provisioned_products(PageToken=response['NextPageToken'], PageSize=flimit, Filters=search_filters)
-	else:
-		# We filter down to only the statuses asked for
-		search_filters = {}
-		if fProduct_id is not None:
-			# TODO: Following filter seems to have an "OR" condition instead of "AND". Check how can an "AND" based filter be added
-			search_filters = {
-                "SearchQuery": [f"status:{fStatus}"],
-                "SearchQuery": [f"productId:{fProduct_id}"]
-            }
-		else:
-			search_filters = {
-                "SearchQuery": [f"status:{fStatus}"]
-            }
-		response = client_sc.search_provisioned_products(PageSize=flimit, Filters=search_filters)
+			response = client_sc.search_provisioned_products(PageToken=response['NextPageToken'],
+			                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+			                                                 PageSize=flimit)
+	elif fStatus.lower() == 'all' and fproductId is not None:
+		response = client_sc.search_provisioned_products(PageSize=flimit,
+		                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+		                                                 Filters={'SearchQuery': [f"productId:{fproductId}"]})
 		while 'NextPageToken' in response.keys():
 			response2.extend(response['ProvisionedProducts'])
-			response = client_sc.search_provisioned_products(PageSize=flimit, Filters=search_filters,
-				PageToken=response['NextPageToken'])
+			response = client_sc.search_provisioned_products(PageToken=response['NextPageToken'],
+			                                                 PageSize=flimit, AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+			                                                 Filters={'SearchQuery': [f"productId:{fproductId}"]})
+	elif fproductId is not None:  # We filter down to only the statuses asked for and the productId
+		response = client_sc.search_provisioned_products(PageSize=flimit,
+		                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+		                                                 Filters={'SearchQuery': [f"status:{fStatus}", f"productId:{fproductId}"]})
+		while 'NextPageToken' in response.keys():
+			response2.extend(response['ProvisionedProducts'])
+			response = client_sc.search_provisioned_products(PageSize=flimit,
+			                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+			                                                 Filters={'SearchQuery': [f"status:{fStatus}", f"productId:{fproductId}"]},
+			                                                 PageToken=response['NextPageToken'])
+	else:  # We filter down to only the statuses asked for
+		response = client_sc.search_provisioned_products(PageSize=flimit,
+		                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+		                                                 Filters={'SearchQuery': [f"status:{fStatus}", f"productId:{fproductId}"]})
+		while 'NextPageToken' in response.keys():
+			response2.extend(response['ProvisionedProducts'])
+			response = client_sc.search_provisioned_products(PageSize=flimit,
+			                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+			                                                 Filters={'SearchQuery': [f"status:{fStatus}", f"productId:{fproductId}"]},
+			                                                 PageToken=response['NextPageToken'])
 	response2.extend(response['ProvisionedProducts'])
 	return (response2)
 
