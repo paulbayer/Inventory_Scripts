@@ -99,6 +99,7 @@ for account in ChildAccounts:
 			print(my_Error)
 		break
 	for region in RegionList:
+		Stacks = []
 		try:
 			StackNum = 0
 			Stacks = Inventory_Modules.find_stacks2(account_credentials, region, pstackfrag, pstatus)
@@ -108,16 +109,15 @@ for account in ChildAccounts:
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				print(f"{account['AccountId']}: Authorization Failure")
-		# TODO: Is there a better way to refer to "Stacks" if there are no stacks in the account?
-		if len(Stacks) > 0:
-			for y in range(len(Stacks)):
-				StackName = Stacks[y]['StackName']
-				StackStatus = Stacks[y]['StackStatus']
-				StackID = Stacks[y]['StackId']
-				DriftStatus = Inventory_Modules.enable_drift_on_stacks2(account_credentials, region, StackName)
-				logging.error(
-					f"Enabled drift detection on {StackName} in account {account_credentials['AccountNumber']} in region {region}")
-				NumStacksFound += 1
+		# if len(Stacks) > 0:
+		for Stack in Stacks:
+			StackName = Stack['StackName']
+			StackStatus = Stack['StackStatus']
+			StackID = Stack['StackId']
+			DriftStatus = Inventory_Modules.enable_drift_on_stacks2(account_credentials, region, StackName)
+			logging.error(
+				f"Enabled drift detection on {StackName} in account {account_credentials['AccountNumber']} in region {region}")
+			NumStacksFound += 1
 
 print(ERASE_LINE)
 print(f"{Fore.RED}Looked through {NumStacksFound} Stacks across {len(ChildAccounts)} accounts across "
