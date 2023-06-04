@@ -61,7 +61,7 @@ if pTiming:
 	print()
 RegionList = list(set([x['Region'] for x in CredentialList]))
 AccountList = list(set([x['AccountId'] for x in CredentialList]))
-ProfileList = list(set([x['Profile'] for x in CredentialList]))
+# ProfileList = list(set([x['Profile'] for x in CredentialList]))
 if pTiming:
 	print(f"{Fore.GREEN}\tAfter parsing out all Regions, Account and Profiles, this script took {time()-begin_time} seconds{Fore.RESET}")
 	print()
