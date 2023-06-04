@@ -89,6 +89,9 @@ for account in ChildAccounts:
 	# logging.info(f"Role ARN: {role_arn}")
 	try:
 		account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'], )
+		if account_credentials['AccessError']:
+			logging.error(f"Accessing account {account['AccountId']} didn't work, so we're skipping it")
+			continue
 	except ClientError as my_Error:
 		if str(my_Error).find("AuthFailure") > 0:
 			print(f"{pProfile}: Authorization Failure for account {account['AccountId']}")
