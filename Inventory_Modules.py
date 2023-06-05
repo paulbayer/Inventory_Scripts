@@ -605,6 +605,18 @@ def enable_drift_on_stacks2(ocredentials, fRegion, fStackName):
 	response = client_cfn.detect_stack_drift(StackName=fStackName)
 	return (response)  # Since this is an async process, there is no response to send back
 
+def enable_drift_on_stack_set(ocredentials, fRegion, fStackSetName):
+	import boto3
+	import logging
+
+	session_cfn = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
+		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	client_cfn = session_cfn.client('cloudformation')
+	logging.info(f"Enabling drift detection on Stack {fStackSetName} in "
+	             f"Account {ocredentials['AccountNumber']} in region {fRegion}")
+	response = client_cfn.detect_stack_set_drift(StackSetName=fStackSetName)
+	return (response)  # Since this is an async process, there is no response to send back
+
 
 """
 Above - Generic functions
@@ -3030,7 +3042,7 @@ def find_sc_products(fProfile, fRegion, fStatus="ERROR", flimit=100):
 	return (response2)
 
 
-def find_sc_products3(faws_acct, fStatus="ERROR", flimit=100):
+def find_sc_products3(faws_acct, fProduct_id=None, fStatus="ERROR", flimit=100):
 	"""
 	fProfile is the Root Profile that owns the Account we're interrogating
 	fRegion is the region we're interrogating
@@ -3067,17 +3079,34 @@ def find_sc_products3(faws_acct, fStatus="ERROR", flimit=100):
 	response2 = []
 	client_sc = faws_acct.session.client('servicecatalog')
 	if fStatus.lower() == 'all':
-		response = client_sc.search_provisioned_products(PageSize=flimit)
+		# Define the search parameters
+		search_filters = {}
+		if fProduct_id is not None:
+			search_filters = {
+                "SearchQuery": [f"productId:{fProduct_id}"]
+            }
+
+		response = client_sc.search_provisioned_products(PageSize=flimit, Filters=search_filters)
 		while 'NextPageToken' in response.keys():
 			response2.extend(response['ProvisionedProducts'])
-			response = client_sc.search_provisioned_products(PageToken=response['NextPageToken'], PageSize=flimit)
-	else:  # We filter down to only the statuses asked for
-		response = client_sc.search_provisioned_products(PageSize=flimit, Filters={
-			'SearchQuery': [f"status:{fStatus}"]})
+			response = client_sc.search_provisioned_products(PageToken=response['NextPageToken'], PageSize=flimit, Filters=search_filters)
+	else:
+		# We filter down to only the statuses asked for
+		search_filters = {}
+		if fProduct_id is not None:
+			search_filters = {
+                "SearchQuery": [f"status:{fStatus}"],
+                "SearchQuery": [f"productId:{fProduct_id}"]
+            }
+		else:
+			search_filters = {
+                "SearchQuery": [f"status:{fStatus}"]
+            }
+		response = client_sc.search_provisioned_products(PageSize=flimit, Filters=search_filters)
 		while 'NextPageToken' in response.keys():
 			response2.extend(response['ProvisionedProducts'])
-			response = client_sc.search_provisioned_products(PageSize=flimit, Filters={
-				'SearchQuery': [f"status:{fStatus}"]}, PageToken=response['NextPageToken'])
+			response = client_sc.search_provisioned_products(PageSize=flimit, Filters=search_filters,
+				PageToken=response['NextPageToken'])
 	response2.extend(response['ProvisionedProducts'])
 	return (response2)
 
