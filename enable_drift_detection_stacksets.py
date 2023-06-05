@@ -42,7 +42,7 @@ args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
 pRegionList = args.Regions
-pstackfrag = args.pstackfrag
+pstacksetfrag = args.pstacksetfrag
 pstatus = args.pstatus
 AccountsToSkip = args.pSkipAccounts
 verbose = args.loglevel
@@ -92,7 +92,7 @@ for region in RegionList:
 	StackSets = []
 	try:
 		StackSetNum = 0
-		StackSets = Inventory_Modules.find_stacksets2(account_credentials, region, pstackfrag, pstatus)
+		StackSets = Inventory_Modules.find_stacksets2(account_credentials, region, pstacksetfrag, pstatus)
 		logging.warning(f"Account: {MgmtAccount['AccountId']} | Region: {region} | Found {len(StackSets)} Stacksets")
 		if not StackSets:
 			logging.info(
