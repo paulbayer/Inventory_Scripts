@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
-# import boto3
 import Inventory_Modules
 from Inventory_Modules import get_credentials_for_accounts_in_org, display_results, get_all_credentials
 from ArgumentsClass import CommonArguments
-from account_class import aws_acct_access
+from datetime import datetime
 from colorama import init, Fore
 from botocore.exceptions import ClientError
 from queue import Queue
@@ -15,7 +14,7 @@ import logging
 
 init()
 
-__version__ = '2023.05.04'
+__version__ = '2023.06.06'
 
 parser = CommonArguments()
 parser.multiprofile()
@@ -23,6 +22,7 @@ parser.multiregion()
 parser.extendedargs()
 parser.rootOnly()
 parser.timing()
+parser.save_to_file()
 parser.verbosity()
 parser.version(__version__)
 parser.my_parser.add_argument(
@@ -41,6 +41,7 @@ pSkipProfiles = args.SkipProfiles
 pAccounts = args.Accounts
 pRootOnly = args.RootOnly
 pIPaddressList = args.pipaddresses
+pFileName = args.Filename
 pTiming = args.Time
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
@@ -131,17 +132,20 @@ CredentialList = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAcc
 RegionList = list(set([x['Region'] for x in CredentialList]))
 AccountList = list(set([x['AccountId'] for x in CredentialList]))
 
-display_dict = {'MgmtAccount'     : {'Format': '12s', 'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
-                'AccountId'       : {'Format': '12s', 'DisplayOrder': 2, 'Heading': 'Acct Number'},
-                'Region'          : {'Format': '15s', 'DisplayOrder': 3, 'Heading': 'Region'},
-                'Name'            : {'Format': '25s', 'DisplayOrder': 4, 'Heading': 'ENI Name'},
-                'PublicIp'        : {'Format': '18s', 'DisplayOrder': 5, 'Heading': 'Public IP Address'},
-                'ENIId'           : {'Format': '22s', 'DisplayOrder': 6, 'Heading': 'ENI Id'},
-                'PrivateIpAddress': {'Format': '15s', 'DisplayOrder': 7, 'Heading': 'Assoc. IP'}}
+display_dict = {'MgmtAccount'     : {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
+                'AccountId'       : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
+                'Region'          : {'DisplayOrder': 3, 'Heading': 'Region'},
+                'PrivateDnsName'  : {'DisplayOrder': 4, 'Heading': 'ENI Name'},
+                'Status'          : {'DisplayOrder': 5, 'Heading': 'Status', 'Condition': ['available', 'attaching', 'detaching']},
+                'PublicIp'        : {'DisplayOrder': 6, 'Heading': 'Public IP Address'},
+                'ENIId'           : {'DisplayOrder': 7, 'Heading': 'ENI Id'},
+                'PrivateIpAddress': {'DisplayOrder': 8, 'Heading': 'Assoc. IP'}}
 
 ENIsFound.extend(check_accounts_for_enis(CredentialList, fip=pIPaddressList))
 sorted_ENIs_Found = sorted(ENIsFound, key=lambda d: (d['MgmtAccount'], d['AccountId'], d['Region'], d['VpcId']))
-display_results(sorted_ENIs_Found, display_dict)
+display_results(sorted_ENIs_Found, display_dict, 'None', pFileName)
+
+DetachedENIs = [x for x in sorted_ENIs_Found if x['Status'] in ['available', 'attaching', 'detaching']]
 
 if pTiming:
 	print(ERASE_LINE)
@@ -150,7 +154,12 @@ print()
 print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else ""
 print(f"These profiles were skipped - as requested: {pSkipProfiles}") if pSkipProfiles is not None else ""
 print()
-print(f"Found {len(ENIsFound)} ENIs across {len(AccountList)} accounts and regions across {len(RegionList)} regions")
+print(f"Found {len(ENIsFound)} ENIs across {len(AccountList)} accounts across {len(RegionList)} regions")
+print(f"{Fore.RED}Found {len(DetachedENIs)} ENIs that are not listed as 'in-use' and may therefore be costing you additional money while they're unused.{Fore.RESET}")
+if verbose < 40:
+	for x in DetachedENIs:
+		print(x)
 print()
 print("Thank you for using this script")
+print(f"Your output was saved to {Fore.GREEN}'{pFileName}-{datetime.now().strftime('%y-%m-%d--%H:%M:%S')}'{Fore.RESET}") if pFileName is not None else ""
 print()
