@@ -71,9 +71,9 @@ NumStackSetsFound = 0
 print()
 RegionList = Inventory_Modules.get_service_regions('cloudformation', pRegionList)
 
-fmt = '%-20s %-15s %-15s %-50s'
-print(fmt % ("Account", "Region", "StackSet Status", "StackSet Name"))
-print(fmt % ("-------", "------", "---------------", "-------------"))
+fmt = '%-20s %-15s %-15s %-15s %-50s'
+print(fmt % ("Account", "Region", "StackSet Status", "Drift Status", "StackSet Name"))
+print(fmt % ("-------", "------", "---------------", "------------", "-------------"))
 
 StackSetsFound = []
 try:
@@ -103,10 +103,8 @@ for region in RegionList:
 
 	for StackSet in StackSets:
 		StackSetName = StackSet['StackSetName']
-		StackSetStatus = StackSet['Status']
 		DriftStatus = Inventory_Modules.enable_drift_on_stack_set(account_credentials, region, StackSetName)
-		logging.error(
-			f"Enabled drift detection on {StackSetName} in account {MgmtAccount['AccountId']} in region {region}")
+		print(fmt % (MgmtAccount['AccountId'], region, StackSet['Status'], StackSet['DriftStatus'], StackSetName))
 		NumStackSetsFound += 1
 
 print(ERASE_LINE)
