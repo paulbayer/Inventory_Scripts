@@ -1490,8 +1490,8 @@ def find_account_enis2(ocredentials, fRegion=None, fipaddresses=None):
 						'PrivateIpAddress': interface['PrivateIpAddress'],
 						'Status'          : interface['Status'],
 						'VpcId'           : interface['VpcId'] if 'VpcId' in interface.keys() else "No VPC Associated",
-						'InstanceId'      : interface['Attachment']['InstanceId'] if 'InstanceId' in interface['Attachment'].keys() else "No instance association",
-						'AttachmentStatus': interface['Attachment']['Status'],
+						'InstanceId'      : interface['Attachment']['InstanceId'] if ('Attachment' in interface.keys() and 'InstanceId' in interface['Attachment'].keys()) else "No instance association",
+						'AttachmentStatus': interface['Attachment']['Status'] if 'Attachment' in interface.keys() else "Not attached",
 						'PublicIp'        : interface['Association']['PublicIp'] if 'Association' in interface.keys() and 'PublicIp' in interface['Association'].keys() else "No Public IP", })
 		except ClientError as my_Error:
 			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
