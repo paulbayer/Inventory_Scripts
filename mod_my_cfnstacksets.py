@@ -127,6 +127,7 @@ def find_stack_set_instances(fStackSetNames, fRegion):
 							'ChildRegion'        : None,
 							'PermissionModel'    : c_stackset_info['PermissionModel'] if 'PermissionModel' in c_stackset_info else None,
 							'StackStatus'        : None,
+							'DetailedStatus'	 : None,
 							'StackSetName'       : c_stacksetname
 						})
 					for StackInstance in StackInstances:
@@ -149,6 +150,7 @@ def find_stack_set_instances(fStackSetNames, fRegion):
 									'ChildAccount'        : StackInstance['Account'],
 									'ChildRegion'         : StackInstance['Region'],
 									'StackStatus'         : StackInstance['Status'],
+									'DetailedStatus' 	  : StackInstance['StackInstanceStatus']['DetailedStatus'],
 									'OrganizationalUnitId': StackInstance['OrganizationalUnitId'] if 'OrganizationalUnitId' in StackInstance else None,
 									'PermissionModel'     : c_stackset_info['PermissionModel'] if 'PermissionModel' in c_stackset_info else 'SELF_MANAGED',
 									'StackSetName'        : c_stacksetname
@@ -269,11 +271,15 @@ def _delete_stack_instances(faws_acct, fRegion, fStackSetName, fForce, fAccountL
 def display_stack_set_health(fcombined_stack_set_instances, fAccountList):
 	summary = {}
 	stack_set_permission_models = dict()
+	fmt = '%-80s %-15s %-15s %-15s %-15s'
+	print(fmt % ("StackSet Name", "Account", "Region", "Status", "DetailedStatus"))
+	print(fmt % ("------------------------------", "-------", "------", "------", "--------------"))
 	for record in fcombined_stack_set_instances:
 		if fAccountList is not None and record['ChildAccount'] in fAccountList:
 			continue
 		stack_set_name = record['StackSetName']
 		stack_status = record['StackStatus']
+		detailed_status = record['DetailedStatus']
 		stack_region = record['ChildRegion']
 		ou = record['OrganizationalUnitId']
 		stack_set_permission_models.update({stack_set_name: record['PermissionModel']})
@@ -281,7 +287,8 @@ def display_stack_set_health(fcombined_stack_set_instances, fAccountList):
 			summary[stack_set_name] = {}
 		if stack_status not in summary[stack_set_name]:
 			summary[stack_set_name][stack_status] = []
-		summary[stack_set_name][stack_status].append({'Account': record['ChildAccount'], 'Region': stack_region})
+		summary[stack_set_name][stack_status].append({'Account': record['ChildAccount'], 'Region': stack_region, 'DetailedStatus': detailed_status})
+		print(fmt % (stack_set_name, record['ChildAccount'], stack_region, stack_status, detailed_status))
 
 	# Print the summary
 	print()
