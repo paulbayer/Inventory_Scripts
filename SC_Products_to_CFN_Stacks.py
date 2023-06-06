@@ -20,6 +20,12 @@ parser.verbosity()
 parser.timing()
 parser.version(__version__)
 parser.my_parser.add_argument(
+	"-sp", "--product",
+	dest="ProductId",
+	metavar="SC Product Id to filter for",
+	default=None,
+	help="Use this parameter to search a specific Service Catalog Product Id")
+parser.my_parser.add_argument(
 	"+d", "+delete",
 	dest="DeletionRun",
 	action="store_true",
@@ -30,6 +36,7 @@ pProfile = args.Profile
 pRegion = args.Region
 pTiming = args.Time
 verbose = args.loglevel
+pProductId = args.ProductId
 DeletionRun = args.DeletionRun
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
@@ -139,7 +146,7 @@ for account in aws_acct.ChildAccounts:
 
 # Finds Service Catalog Products and reconciles them to the account they belong to
 try:
-	SCresponse = Inventory_Modules.find_sc_products3(aws_acct, "All", 10)
+	SCresponse = Inventory_Modules.find_sc_products3(aws_acct, pProductId, "All", 10)
 	logging.warning("A list of the SC Products found:")
 	for i in range(len(SCresponse)):
 		logging.warning(f"SC Product Name {SCresponse[i]['Name']} | SC Product Status {SCresponse[i]['Status']}")
