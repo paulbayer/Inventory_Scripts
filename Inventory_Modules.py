@@ -3094,6 +3094,7 @@ def find_sc_products3(faws_acct, fProduct_id=None, fStatus="ERROR", flimit=100):
 		# We filter down to only the statuses asked for
 		search_filters = {}
 		if fProduct_id is not None:
+			# TODO: Following filter seems to have an "OR" condition instead of "AND". Check how can an "AND" based filter be added
 			search_filters = {
                 "SearchQuery": [f"status:{fStatus}"],
                 "SearchQuery": [f"productId:{fProduct_id}"]

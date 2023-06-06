@@ -24,6 +24,7 @@ parser.my_parser.add_argument(
 		dest="pstacksetfrag",
 		metavar="CloudFormation StackSet fragment",
 		default="all",
+		nargs="+",
 		help="String fragment of the cloudformation stackset(s) you want to check for.")
 parser.my_parser.add_argument(
 		"-s", "--status",
@@ -76,17 +77,12 @@ print(fmt % ("-------", "------", "---------------", "-------------"))
 
 StackSetsFound = []
 try:
-	account_credentials = Inventory_Modules.get_child_access3(aws_acct, MgmtAccount['AccountId'], )
+	account_credentials = Inventory_Modules.get_child_access3(aws_acct, MgmtAccount['AccountId'])
 	if account_credentials['AccessError']:
 		logging.error(f"Accessing account {MgmtAccount['AccountId']} didn't work, so we're skipping it")
 except ClientError as my_Error:
-	if str(my_Error).find("AuthFailure") > 0:
-		print(f"{pProfile}: Authorization Failure for account {MgmtAccount['AccountId']}")
-	elif str(my_Error).find("AccessDenied") > 0:
-		print(f"{pProfile}: Access Denied Failure for account {MgmtAccount['AccountId']}")
-	else:
-		print(f"{pProfile}: Other kind of failure for account {MgmtAccount['AccountId']}")
-		print(my_Error)
+	if str(my_Error).find("AuthFailure") > 0 or str(my_Error).find("AccessDenied") > 0:
+		logging.error("%s: Authorization Failure for account %s", pProfile, MgmtAccount['AccountId'])
 
 for region in RegionList:
 	StackSets = []
@@ -110,11 +106,11 @@ for region in RegionList:
 		StackSetStatus = StackSet['Status']
 		DriftStatus = Inventory_Modules.enable_drift_on_stack_set(account_credentials, region, StackSetName)
 		logging.error(
-			f"Enabled drift detection on {StackSetName} in account {account_credentials['AccountNumber']} in region {region}")
+			f"Enabled drift detection on {StackSetName} in account {MgmtAccount['AccountId']} in region {region}")
 		NumStackSetsFound += 1
 
 print(ERASE_LINE)
-print(f"{Fore.RED}Looked through {NumStackSetsFound} Stacks across Management account across "
+print(f"{Fore.RED}Looked through {NumStackSetsFound} StackSets across Management account across "
       f"{len(RegionList)} regions{Fore.RESET}")
 print()
 
