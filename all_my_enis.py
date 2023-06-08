@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import Inventory_Modules
-from Inventory_Modules import get_credentials_for_accounts_in_org, display_results, get_all_credentials
+from Inventory_Modules import display_results, get_all_credentials
 from ArgumentsClass import CommonArguments
 from datetime import datetime
 from colorama import init, Fore
