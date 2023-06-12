@@ -1426,7 +1426,7 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 	return (AllSubnets)
 
 
-def find_account_enis2(ocredentials, fRegion=None, fipaddresses=None):
+def find_account_volumes2(ocredentials):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -1440,69 +1440,72 @@ def find_account_enis2(ocredentials, fRegion=None, fipaddresses=None):
 	from botocore.exceptions import ClientError
 	import logging
 
-	if fRegion is None and 'Region' in ocredentials.keys():
-		fRegion = ocredentials['Region']
-	elif fRegion is None:
-		fRegion = 'us-east-1'
-
 	session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
 	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
 	                            aws_session_token=ocredentials['SessionToken'],
-	                            region_name=fRegion)
+	                            region_name=ocredentials['Region'])
 	eni_info = session_ec2.client('ec2')
-	ENIs = {'NextToken': None}
-	AllENIs = []
-	return_this_result = True if fipaddresses is None else False
+	Volumes = {'NextToken': None}
+	AllVolumes = []
+	# return_this_result = True if fipaddresses is None else False
 
-	while 'NextToken' in ENIs.keys():
+	while 'NextToken' in Volumes.keys():
 		# Had to add this so that a failure of the describe_subnet function doesn't cause a race condition
-		ENIs = dict()
+		Volumes = dict()
 		try:
-			logging.info(f"Looking for ENIs that match any of {fipaddresses} in account #{ocredentials['AccountNumber']} in region {fRegion}")
-			ENIs = eni_info.describe_network_interfaces()
+			# logging.info(f"Looking for ENIs that match any of {fipaddresses} in account #{ocredentials['AccountNumber']} in region {ocredentials['Region']}")
+			logging.info(f"Looking for all volumes in account #{ocredentials['AccountNumber']} in region {ocredentials['Region']}")
+			Volumes = eni_info.describe_volumes()
 			# Run through each of the subnets, and determine if the passed in IP address fits within any of them
 			# If it does - then include that data within the array, otherwise next...
-			for interface in ENIs['NetworkInterfaces']:
-				if fipaddresses is not None:
-					return_this_result = False
-					for address in fipaddresses:
-						if address == interface['PrivateIpAddress']:
-							logging.info(f"Found it - {interface['PrivateIpAddress']} - ENI: {interface['NetworkInterfaceId']}")
-							return_this_result = True
-						elif 'Association' in interface.keys() and 'PublicIp' in interface['Association'].keys() and address == interface['Association']['PublicIp']:
-							logging.info(f"Found it - {interface['Association']['PublicIp']} - ENI: {interface['NetworkInterfaceId']}")
-							return_this_result = True
-						else:
-							continue
-				if return_this_result:
-					Name = None
-					if 'TagSet' in interface.keys():
-						for tag in interface['TagSet']:
-							if tag['Key'] == 'Name':
-								Name = tag['Value']
-					AllENIs.append({
-						'Name'            : Name,
-						'AccountId'       : ocredentials['AccountNumber'],
-						'Region'          : ocredentials['Region'],
-						'ENIId'           : interface['NetworkInterfaceId'],
-						'InterfaceType'   : interface['InterfaceType'],
-						'PrivateDnsName'  : interface['PrivateDnsName'],
-						'PrivateIpAddress': interface['PrivateIpAddress'],
-						'Status'          : interface['Status'],
-						'VpcId'           : interface['VpcId'] if 'VpcId' in interface.keys() else "No VPC Associated",
-						'InstanceId'      : interface['Attachment']['InstanceId'] if ('Attachment' in interface.keys() and 'InstanceId' in interface['Attachment'].keys()) else "No instance association",
-						'AttachmentStatus': interface['Attachment']['Status'] if 'Attachment' in interface.keys() else "Not attached",
-						'PublicIp'        : interface['Association']['PublicIp'] if 'Association' in interface.keys() and 'PublicIp' in interface['Association'].keys() else "No Public IP", })
+			for volume in Volumes['Volumes']:
+				# if fipaddresses is not None:
+				# 	return_this_result = False
+				# 	for address in fipaddresses:
+				# 		if address == volume['PrivateIpAddress']:
+				# 			logging.info(f"Found it - {volume['PrivateIpAddress']} - ENI: {volume['NetworkInterfaceId']}")
+				# 			return_this_result = True
+				# 		elif 'Association' in volume.keys() and 'PublicIp' in volume['Association'].keys() and address == volume['Association']['PublicIp']:
+				# 			logging.info(f"Found it - {volume['Association']['PublicIp']} - ENI: {volume['NetworkInterfaceId']}")
+				# 			return_this_result = True
+				# 		else:
+				# 			continue
+				# if return_this_result:
+				Name = 'None'
+				AttachmentList = []
+				if 'Tags' in volume.keys():
+					for tag in volume['Tags']:
+						if tag['Key'] == 'Name':
+							Name = tag['Value']
+				if 'Attachments' in volume.keys():
+					for attachment in volume['Attachments']:
+						if 'InstanceId' in attachment.keys():
+							AttachmentList.append({'InstanceId'      : attachment['InstanceId'],
+							                       'AttachmentStatus': attachment['State']})
+				AllVolumes.append({
+					'VolumeName' : Name,
+					'AccountId'  : ocredentials['AccountNumber'],
+					'Region'     : ocredentials['Region'],
+					'Encrypted'   : volume['Encrypted'],
+					'VolumeId'   : volume['VolumeId'],
+					'VolumeType' : volume['VolumeType'],
+					'Iops'       : volume['Iops'],
+					'Size'       : volume['Size'],
+					'State'     : volume['State'],
+					# 'KmsKeyId'   : volume['KmsKeyId'] if volume['Encrypted'] else None,
+					'Throughput' : volume['Throughput'] if 'Throughput' in volume.keys() else None,
+					'Attachments': AttachmentList})
+				logging.info(f"Wrote volume id {volume['VolumeId']} into 'AllVolumes' list")
 		except ClientError as my_Error:
-			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
-			              f"This is likely due to '{fRegion}' not being enabled for your account\n"
+			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {ocredentials['Region']}\n"
+			              f"This is likely due to '{ocredentials['Region']}' not being enabled for your account\n"
 			              f"Error Message: {my_Error}")
 			continue
 		except KeyError as my_Error:
 			logging.error(f"Some kind of KeyError\n"
 			              f"Error Message: {my_Error}")
 			continue
-	return (AllENIs)
+	return (AllVolumes)
 
 
 def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None, fExact=False):
