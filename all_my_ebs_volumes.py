@@ -186,7 +186,7 @@ if pTiming:
 print()
 print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else ""
 print(f"These profiles were skipped - as requested: {pSkipProfiles}") if pSkipProfiles is not None else ""
-print(f"The output has also been written to a file beginning with '{pFilename}' + the date and time")
+print(f"This output has also been written to a file beginning with '{pFilename}' + the date and time") if pFilename is not None else ""
 print()
 print(f"Found {len(VolumesFound)} volumes across {len(AccountList)} account{'' if len(AccountList) == 1 else 's'} "
       f"across {len(RegionList)} region{'' if len(RegionList) == 1 else 's'}")
