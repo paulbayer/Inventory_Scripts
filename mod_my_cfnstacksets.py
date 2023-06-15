@@ -3,6 +3,7 @@
 import logging
 import sys
 import Inventory_Modules
+from Inventory_Modules import display_results
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 from colorama import init, Fore, Style
@@ -149,6 +150,7 @@ def find_stack_set_instances(fStackSetNames, fRegion):
 									'ChildAccount'        : StackInstance['Account'],
 									'ChildRegion'         : StackInstance['Region'],
 									'StackStatus'         : StackInstance['Status'],
+									'DetailedStatus'      : StackInstance['StackInstanceStatus']['DetailedStatus'],
 									'OrganizationalUnitId': StackInstance['OrganizationalUnitId'] if 'OrganizationalUnitId' in StackInstance else None,
 									'PermissionModel'     : c_stackset_info['PermissionModel'] if 'PermissionModel' in c_stackset_info else 'SELF_MANAGED',
 									'StackSetName'        : c_stacksetname
@@ -195,8 +197,8 @@ def find_stack_set_instances(fStackSetNames, fRegion):
 		logging.debug(f"Beginning to queue data - starting with {stacksetname['StackSetName']}")
 		try:
 			# I don't know why - but double parens are necessary below. If you remove them, only the first parameter is queued.
-			checkqueue.put((stacksetname['StackSetName'], fRegion, stacksetname, PlaceCount))
 			PlaceCount += 1
+			checkqueue.put((stacksetname['StackSetName'], fRegion, stacksetname, PlaceCount))
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				logging.error(f"Authorization Failure accessing stack set {stacksetname['StackSetName']} in {fRegion} region")
@@ -280,6 +282,7 @@ def display_stack_set_health(fcombined_stack_set_instances, fAccountList):
 			continue
 		stack_set_name = record['StackSetName']
 		stack_status = record['StackStatus']
+		detailed_status = record['DetailedStatus']
 		stack_region = record['ChildRegion']
 		ou = record['OrganizationalUnitId']
 		stack_set_permission_models.update({stack_set_name: record['PermissionModel']})
@@ -287,7 +290,8 @@ def display_stack_set_health(fcombined_stack_set_instances, fAccountList):
 			summary[stack_set_name] = {}
 		if stack_status not in summary[stack_set_name]:
 			summary[stack_set_name][stack_status] = []
-		summary[stack_set_name][stack_status].append({'Account': record['ChildAccount'], 'Region': stack_region})
+		summary[stack_set_name][stack_status].append({'Account': record['ChildAccount'], 'Region': stack_region, 'DetailedStatus': detailed_status})
+	# print(fmt % (stack_set_name, record['ChildAccount'], stack_region, stack_status, detailed_status))
 
 	# Print the summary
 	print()
@@ -477,11 +481,16 @@ if not pdelete and pAccountRemoveList is None:
 	print(f"We found the following StackSets with the fragment you provided {pStackfrag}:")
 	display_stack_set_health(combined_stack_set_instances, pAccountRemoveList)
 elif not pdelete:
+	display_dict = {'StackSetName'  : {'DisplayOrder': 1, 'Heading': 'Stack Set Name'},
+	                'ChildAccount'  : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
+	                'ChildRegion'   : {'DisplayOrder': 3, 'Heading': 'Region'},
+	                'DetailedStatus': {'DisplayOrder': 4, 'Heading': 'Instance Status', 'Condition': ['FAILED', 'INOPERABLE', 'SKIPPED_SUSPENDED_ACCOUNT', 'CANCELLED']}}
 	print()
 	print(f"We found that stacks that match these accounts {pAccountRemoveList} show up in these regions:")
-	for i in range(len(combined_stack_set_instances)):
-		if combined_stack_set_instances[i]['ChildAccount'] in pAccountRemoveList:
-			print(f"\t{combined_stack_set_instances[i]['StackSetName']} \t {combined_stack_set_instances[i]['ChildRegion']} \t {combined_stack_set_instances[i]['ChildAccount']}")
+	display_results(combined_stack_set_instances, display_dict, 'None')
+	# for i in range(len(combined_stack_set_instances)):
+	# 	if combined_stack_set_instances[i]['ChildAccount'] in pAccountRemoveList:
+	# 		print(f"\t{combined_stack_set_instances[i]['StackSetName']} \t {combined_stack_set_instances[i]['ChildRegion']} \t {combined_stack_set_instances[i]['ChildAccount']} \t {combined_stack_set_instances[i]['DetailedStatus']}")
 
 if pdelete and not pRefresh:
 	print()
