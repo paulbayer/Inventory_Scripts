@@ -175,7 +175,7 @@ display_results(sorted_AllVPCs, display_dict, None)
 
 if pTiming:
 	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 print(ERASE_LINE)
 print(f"Found {len(All_VPCs_Found)}{' default' if pDefault else ''} Vpcs across {len(AllAccountList)} accounts across {len(AllRegionsList)} regions")
 print()

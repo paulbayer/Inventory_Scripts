@@ -129,7 +129,7 @@ print(ERASE_LINE)
 print(f"Found {len(InstancesFound)} instances across {len(AllChildAccounts)} accounts across {len(RegionList)} regions")
 if pTiming:
 	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 print()
 print("Thank you for using this script")
 print()

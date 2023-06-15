@@ -4,35 +4,36 @@ import logging
 from ArgumentsClass import CommonArguments
 # from account_class import aws_acct_access
 import Inventory_Modules
-from Inventory_Modules import get_org_accounts_from_profiles
+from Inventory_Modules import get_org_accounts_from_profiles, display_results
 from time import time
 # from botocore.exceptions import ClientError, NoCredentialsError, InvalidConfigError
 from colorama import init, Fore, Style
 
 init()
-__version__ = "2023.05.04"
+__version__ = "2023.05.31"
 
 parser = CommonArguments()
 parser.multiprofile()
 parser.extendedargs()
 parser.rootOnly()
+parser.timing()
+parser.save_to_file()
 parser.verbosity()
 parser.version(__version__)
-parser.timing()
 
 parser.my_parser.add_argument(
-		'-s', '--q', '--short',
-		help="Display only brief listing of the profile accounts, and not the Child Accounts under them",
-		action="store_const",
-		dest="shortform",
-		const=True,
-		default=False)
+	'-s', '--q', '--short',
+	help="Display only brief listing of the profile accounts, and not the Child Accounts under them",
+	action="store_const",
+	dest="shortform",
+	const=True,
+	default=False)
 parser.my_parser.add_argument(
-		'-A', '--acct',
-		help="Find which Org this account is a part of",
-		nargs="*",
-		dest="accountList",
-		default=None)
+	'-A', '--acct',
+	help="Find which Org this account is a part of",
+	nargs="*",
+	dest="accountList",
+	default=None)
 args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
@@ -41,6 +42,7 @@ pTiming = args.Time
 pSkipAccounts = args.SkipAccounts
 pSkipProfiles = args.SkipProfiles
 verbose = args.loglevel
+pSaveFilename = args.Filename
 shortform = args.shortform
 pAccountList = args.accountList
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(processName)s %(threadName)s %(funcName)20s() ] %(message)s")
@@ -48,11 +50,7 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(pr
 if pTiming:
 	begin_time = time()
 
-if pSkipProfiles is None:
-	pSkipProfiles = ["default", "skipplus"]
 ERASE_LINE = '\x1b[2K'
-
-# logging.warning("All available profiles will be shown")
 
 """
 TODO:
@@ -60,15 +58,6 @@ TODO:
 	and then show the org for that. 
 	This will be difficult, since we don't know which profile that belongs to. Hmmm...
 """
-##################
-
-
-def display_results(account_item):
-	"""
-	Note that this function simply formats the output of the data within the list provided
-	"""
-	print(f"{Fore.RED if account_item['RootAcct'] else Fore.RESET}{account_item['profile']:23s} {account_item['aws_acct'].acct_number:15s} {account_item['MgmtAcct']:15s} {account_item['OrgId']:12s} {account_item['RootAcct']}{Fore.RESET}")
-
 
 ##################
 
@@ -83,7 +72,7 @@ landing_zone = 'N/A'
 
 if pTiming:
 	print()
-	print(f"It's been {Fore.GREEN}{time()-begin_time}{Fore.RESET} seconds...")
+	print(f"It's taken {Fore.GREEN}{time() - begin_time:.2f}{Fore.RESET} seconds to find profile accounts...")
 	print()
 fmt = '%-23s %-15s %-15s %-12s %-10s'
 print("<------------------------------------>")
@@ -118,60 +107,80 @@ print(ERASE_LINE)
 print("-------------------")
 
 if not shortform:
-	fmt = '%-23s %-15s %-6s'
-	child_fmt = "\t\t%-20s %-20s %-20s"
-	print()
-	print(fmt % ("Organization's Profile", "Root Account", "ALZ"))
-	print(fmt % ("----------------------", "------------", "---"))
 	NumOfOrgAccounts = 0
-	NumOfNonOrgAccounts = 0
+	ClosedAccounts = []
 	FailedAccounts = 0
 	account = dict()
-	for item in AllProfileAccounts:
-		if item['Success'] and not item['RootAcct']:
-			account.update(item['aws_acct'].ChildAccounts[0])
-			account.update({'Profile': item['profile']})
-			# print(account)
-			AccountList.append(account.copy())
-			NumOfNonOrgAccounts += len(item['aws_acct'].ChildAccounts)
-		elif item['Success'] and item['RootAcct']:
-			# account = dict()
-			# landing_zone = Inventory_Modules.find_if_alz(item['profile'])['ALZ']
-			for i in item['aws_acct'].ChildAccounts:
-				account.update(i)
+	if pSaveFilename is None:
+		fmt = '%-23s %-15s %-6s'
+		child_fmt = "\t\t%-20s %-20s %-20s"
+		print()
+		print(fmt % ("Organization's Profile", "Root Account", "ALZ"))
+		print(fmt % ("----------------------", "------------", "---"))
+		for item in AllProfileAccounts:
+			if item['Success'] and not item['RootAcct']:
+				account.update(item['aws_acct'].ChildAccounts[0])
 				account.update({'Profile': item['profile']})
-				# print(account)
 				AccountList.append(account.copy())
-			NumOfOrgAccounts += len(item['aws_acct'].ChildAccounts)
-			# if landing_zone:
-			# 	fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}{Fore.RED}%-6s {Fore.RESET}"
-			# else:
-			# 	fmt = f"%-23s {Style.BRIGHT}%-15s {Style.RESET_ALL}%-6s"
-			print(f"{item['profile']:23s}{Style.BRIGHT} {item['MgmtAcct']:15s}{Style.RESET_ALL} {Fore.RED if landing_zone else Fore.RESET}{landing_zone}{Fore.RESET}")
-			print(f"\t\t{'Child Account Number':20s} {'Child Account Status':20s} {'Child Email Address':20s}")
-			# for account in sorted(child_accounts):
-			for child_acct in item['aws_acct'].ChildAccounts:
-				print(f"\t\t{child_acct['AccountId']:20s} {child_acct['AccountStatus']:20s} {child_acct['AccountEmail']:20s}")
-		elif not item['Success']:
-			FailedAccounts += 1
-			continue
+			elif item['Success'] and item['RootAcct']:
+				for i in item['aws_acct'].ChildAccounts:
+					account.update(i)
+					account.update({'Profile': item['profile']})
+					AccountList.append(account.copy())
+				NumOfOrgAccounts += len(item['aws_acct'].ChildAccounts)
+				print(f"{item['profile']:23s}{Style.BRIGHT} {item['MgmtAcct']:15s}{Style.RESET_ALL} {Fore.RED if landing_zone else Fore.RESET}{landing_zone}{Fore.RESET}")
+				print(f"\t\t{'Child Account Number':20s} {'Child Account Status':20s} {'Child Email Address':20s}")
+				for child_acct in item['aws_acct'].ChildAccounts:
+					print(f"\t\t{Fore.RED if not child_acct['AccountStatus'] == 'ACTIVE' else ''}{child_acct['AccountId']:20s} {child_acct['AccountStatus']:20s} {child_acct['AccountEmail']:20s}{Fore.RESET if not child_acct['AccountStatus'] == 'ACTIVE' else ''}")
+					if not child_acct['AccountStatus'] == 'ACTIVE':
+						ClosedAccounts.append(child_acct['AccountId'])
+			elif not item['Success']:
+				FailedAccounts += 1
+				continue
+
+	elif pSaveFilename is not None:
+		# The user specified a file name, which means they want a (pipe-delimited) CSV file with the relevant output.
+		display_dict = {'MgmtAccount'  : {'DisplayOrder': 1, 'Heading': 'Parent Acct'},
+		                'AccountId'    : {'DisplayOrder': 2, 'Heading': 'Account Number'},
+		                'AccountStatus': {'DisplayOrder': 3, 'Heading': 'Account Status', 'Condition': ['SUSPENDED', 'CLOSED']},
+		                'AccountEmail' : {'DisplayOrder': 4, 'Heading': 'Email'}}
+		sorted_Results = sorted(AllProfileAccounts, key=lambda d: (d['MgmtAccount'], d['AccountId']))
+		display_results(sorted_Results, display_dict, "None", pSaveFilename)
+
+	StandAloneAccounts = [x['AccountId'] for x in AccountList if x['MgmtAccount'] == x['AccountId'] and x['AccountEmail'] == 'Not an Org Management Account']
+	FailedProfiles = [i['profile'] for i in AllProfileAccounts if not i['Success']]
+	OrgsFound = [i['MgmtAcct'] for i in AllProfileAccounts if i['RootAcct']]
+	StandAloneAccounts.sort()
+	FailedProfiles.sort()
+	OrgsFound.sort()
+	ClosedAccounts.sort()
 
 	print()
-	print(f"Number of Organizations: {len([i for i in AllProfileAccounts if i['RootAcct']])}")
+	print(f"Number of Organizations: {len(OrgsFound)}")
 	print(f"Number of Organization Accounts: {NumOfOrgAccounts}")
-	print(f"Number of Standalone Accounts: {NumOfNonOrgAccounts}")
-	print(f"Number of profiles that failed: {FailedAccounts}")
-	logging.error(f"List of failed profiles: {[i['profile'] for i in AllProfileAccounts if not i['Success']]}")
+	print(f"Number of Standalone Accounts: {len(StandAloneAccounts)}")
+	print(f"Number of suspended or closed accounts: {len(ClosedAccounts)}")
+	print(f"Number of profiles that failed: {len(FailedProfiles)}")
+	if verbose < 50:
+		print("----------------------")
+		print(f"The following accounts are the Org Accounts: {OrgsFound}")
+		print(f"The following accounts are Standalone: {StandAloneAccounts}")
+		print(f"The following accounts are closed or suspended: {ClosedAccounts}")
+		print(f"The following profiles failed: {FailedProfiles}")
+		print("----------------------")
 	print()
+else:
+	# The user specified "short-form" which means they don't want any information on child accounts.
+	pass
 
 if pAccountList is not None:
 	for acct in AccountList:
 		if acct['AccountId'] in pAccountList:
 			print("Found the requested account number:")
-			print(f"Profile: {acct['Profile']} | Account: {acct['AccountId']} | Org: {acct['MgmtAccount']}")
+			print(f"Profile: {acct['Profile']} | Org: {acct['MgmtAccount']} | Account: {acct['AccountId']} | Status: {acct['AccountStatus']} | Email: {acct['AccountEmail']}")
 
 print()
 if pTiming:
-	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 print("Thanks for using this script")
 print()

@@ -2,9 +2,8 @@
 
 
 import Inventory_Modules
-from Inventory_Modules import get_credentials_for_accounts_in_org, display_results, get_all_credentials
+from Inventory_Modules import display_results, get_all_credentials
 from ArgumentsClass import CommonArguments
-from account_class import aws_acct_access
 from colorama import init, Fore
 from time import time
 from threading import Thread
@@ -14,7 +13,7 @@ from botocore.exceptions import ClientError
 import logging
 
 init()
-__version__ = "2023.05.12"
+__version__ = "2023.05.31"
 
 parser = CommonArguments()
 parser.multiregion()

@@ -34,7 +34,7 @@ TODO:
 
 init()
 
-__version__ = "2023.05.10"
+__version__ = "2023.05.31"
 
 parser = CommonArguments()
 parser.singleprofile()
@@ -43,6 +43,7 @@ parser.singleregion()
 parser.extendedargs()
 parser.fragment()
 parser.roletouse()
+# parser.save_to_file()
 parser.timing()
 parser.verbosity()
 parser.version(__version__)
@@ -55,7 +56,7 @@ group.add_argument(
 	metavar="region-name",
 	dest="pRegionRemove")
 group.add_argument(
-	"++refresh",
+	"+refresh",
 	help="Use this parameter is you want to re-run the same stackset, over again",
 	action="store_true",
 	dest="Refresh")
@@ -84,9 +85,10 @@ pdelete = args.DryRun
 pRegionRemove = args.pRegionRemove
 pRefresh = args.Refresh
 pForce = args.Force
-# version = args.Version
+# pSaveFilename = args.Filename
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
+# Seems low, but this fits under the API threshold. Make it too high and it will not.
 DefaultMaxWorkerThreads = 5
 
 
@@ -258,6 +260,12 @@ def _delete_stack_instances(faws_acct, fRegion, fStackSetName, fForce, fAccountL
 			logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
 			return_response = {'Success': False, 'ErrorMessage': "Failed - StackSet not found"}
 			return (return_response)
+		# except  as my_Error:
+		# 	print(my_Error)
+		# 	if my_Error.response['Error']['Code'] == 'StackSetNotFoundException':
+		# 		logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
+		# 		return_response = {'Success': False, 'ErrorMessage': "Failed - StackSet not found"}
+		# 		return (return_response)
 		else:
 			print("Failure to run: ", my_Error)
 			return_response = {'Success': False, 'ErrorMessage': "Failed-Other"}
@@ -300,25 +308,33 @@ def display_stack_set_health(fcombined_stack_set_instances, fAccountList):
 						print(f"\t\t{k}: {v}")
 
 
-def get_stack_set_deployment_target_info(faws_acct, fRegion, fStackSetName):
+def get_stack_set_deployment_target_info(faws_acct, fRegion, fStackSetName, fAccountRemovalList=None):
 	"""
 	Required Parameters:
 	faws_acct - the object containing the account credentials and such
 	fRegion - the region we're looking to make changes in
 	fStackSetName - the stackset we're removing stack instances from
+	fAccountRemvalList - The list of accounts they may have provided to limit the deletion to
 	"""
 	return_result = {'Success': False, 'ErrorMessage': None, 'Results': None}
-	deployment_results = Inventory_Modules.find_stack_instances3(faws_acct, fRegion, fStackSetName)
-	identified_ous = list(set([x['OrganizationalUnitId'] for x in deployment_results]))
-	DeploymentTargets = {
-		# 'Accounts'             : [
-		# 	'string',
-		# ],
-		# 'AccountsUrl'          : 'string',
-		'OrganizationalUnitIds': identified_ous
-		# 'AccountFilterType'    : 'NONE' | 'INTERSECTION' | 'DIFFERENCE' | 'UNION'
-	}
-
+	if fAccountRemovalList is None:
+		deployment_results = Inventory_Modules.find_stack_instances3(faws_acct, fRegion, fStackSetName)
+		identified_ous = list(set([x['OrganizationalUnitId'] for x in deployment_results]))
+		DeploymentTargets = {
+			# 'Accounts'             : [
+			# 	'string',
+			# ],
+			# 'AccountsUrl'          : 'string',
+			'OrganizationalUnitIds': identified_ous
+			# 'AccountFilterType'    : 'NONE' | 'INTERSECTION' | 'DIFFERENCE' | 'UNION'
+		}
+	else:
+		DeploymentTargets = {
+			'Accounts': fAccountRemovalList,
+			# 'AccountsUrl'          : 'string',
+			# 'OrganizationalUnitIds': identified_ous
+			# 'AccountFilterType'    : 'NONE' | 'INTERSECTION' | 'DIFFERENCE' | 'UNION'
+		}
 	return_result.update({'Success': True, 'ErrorMessage': None, 'Results': DeploymentTargets})
 	return (return_result)
 
@@ -483,7 +499,10 @@ if pdelete and not pRefresh:
 			"""
 			If the StackSet is SERVICE-MANAGED, we need to find more information about the stackset than is returned in the "list-stack-set" call from above
 			"""
-			DeploymentTargets = get_stack_set_deployment_target_info(aws_acct, pRegion, StackSetName)
+			if pAccountRemoveList is None:
+				DeploymentTargets = get_stack_set_deployment_target_info(aws_acct, pRegion, StackSetName)
+			else:
+				DeploymentTargets = get_stack_set_deployment_target_info(aws_acct, pRegion, StackSetName, pAccountRemoveList)
 			if FoundRegionList is None:
 				print(f"There appear to be no stack instances for this stack-set")
 				continue
@@ -588,16 +607,28 @@ elif pRefresh:
 		                       # f"as of {stacksetAttributes['StackSet']['StackSetDriftDetectionDetails']['DriftStatus']}"
 		                       f"Are you still sure? (y/n): ") in ['y', 'Y']) if not pForce else False
 		if ReallyRefresh or pForce:
-			refresh_stack_set = cfn_client.update_stack_set(StackSetName=stacksetAttributes['StackSet']['StackSetName'],
-			                                                UsePreviousTemplate=True,
-			                                                Capabilities=stacksetAttributes['StackSet']['Capabilities'],
-			                                                OperationPreferences={
-				                                                'RegionConcurrencyType'  : 'PARALLEL',
-				                                                'FailureToleranceCount'  : 0,
-				                                                'MaxConcurrentPercentage': 100
-			                                                },
-			                                                AdministrationRoleARN=stacksetAttributes['StackSet']['AdministrationRoleARN'],
-			                                                )
+			# WE have to separate the use-cases here, since the "Service Managed" update operation won't accept a "AdministrationRoleArn",
+			# but the "Self Managed" *requires* it.
+			if stacksetAttributes['StackSet']['PermissionModel'] == 'SERVICE_MANAGED':
+				refresh_stack_set = cfn_client.update_stack_set(StackSetName=stacksetAttributes['StackSet']['StackSetName'],
+				                                                UsePreviousTemplate=True,
+				                                                Capabilities=stacksetAttributes['StackSet']['Capabilities'],
+				                                                OperationPreferences={
+					                                                'RegionConcurrencyType'  : 'PARALLEL',
+					                                                'FailureToleranceCount'  : 0,
+					                                                'MaxConcurrentPercentage': 100
+				                                                })
+			else:
+				refresh_stack_set = cfn_client.update_stack_set(StackSetName=stacksetAttributes['StackSet']['StackSetName'],
+				                                                UsePreviousTemplate=True,
+				                                                Capabilities=stacksetAttributes['StackSet']['Capabilities'],
+				                                                OperationPreferences={
+					                                                'RegionConcurrencyType'  : 'PARALLEL',
+					                                                'FailureToleranceCount'  : 0,
+					                                                'MaxConcurrentPercentage': 100
+				                                                },
+				                                                AdministrationRoleARN=stacksetAttributes['StackSet']['AdministrationRoleARN'],
+				                                                )
 			RefreshOpsList.append({'StackSetName': stackset,
 			                       'OperationId' : refresh_stack_set['OperationId']})
 	for operation in RefreshOpsList:
@@ -607,7 +638,7 @@ elif pRefresh:
 
 if pTiming:
 	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 print()
 print("Thanks for using this script...")
 print()

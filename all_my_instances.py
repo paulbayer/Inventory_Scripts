@@ -296,7 +296,7 @@ display_results(sorted_all_instances, display_dict)
 
 if pTiming:
 	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 print(ERASE_LINE)
 
 print(f"Found {len(AllInstances)} instances across {AccountNum} accounts across {len(RegionList)} regions")

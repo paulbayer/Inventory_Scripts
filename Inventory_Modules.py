@@ -166,13 +166,19 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 	import boto3
 	import logging
 
+	profiles_to_remove = []
+	my_Session = boto3.Session()
+	my_profiles = my_Session._session.available_profiles
 	if fSkipProfiles is None:
 		fSkipProfiles = []
 	if fprofiles is None:
 		fprofiles = ['all']
-	profiles_to_remove = []
-	my_Session = boto3.Session()
-	my_profiles = my_Session._session.available_profiles
+	elif isinstance(fprofiles, str) and fprofiles in my_profiles:
+		# Update the string to become a list
+		return ([fprofiles])
+	elif isinstance(fprofiles, str):
+		logging.error(f"There was an error: The profile passed in '{fprofiles}' doesn't exist.")
+		return ()
 	for profile in my_profiles:
 		logging.info(f"Found profile {profile}")
 		if ("skipplus" in fSkipProfiles and profile.find("+") >= 0) or profile in fSkipProfiles:
@@ -605,6 +611,7 @@ def enable_drift_on_stacks2(ocredentials, fRegion, fStackName):
 	response = client_cfn.detect_stack_drift(StackName=fStackName)
 	return (response)  # Since this is an async process, there is no response to send back
 
+
 def enable_drift_on_stack_set(ocredentials, fRegion, fStackSetName):
 	import boto3
 	import logging
@@ -844,7 +851,7 @@ def disable_org_service2(ocredentials, serviceName=None):
 		else:
 			returnResponse = {'Success': False, 'ErrorMessage': 'Service didn\'t get deleted properly'}
 	except (client_org.exceptions.AccessDeniedException, client_org.exceptions.AWSOrganizationsNotInUseException, client_org.exceptions.ConcurrentModificationException,
-	        client_org.exceptions.ConstraintViolationException, client_org.exceptions.InvalidInputException, client_org.exceptions.ServiceException, \
+	        client_org.exceptions.ConstraintViolationException, client_org.exceptions.InvalidInputException, client_org.exceptions.ServiceException,
 	        client_org.exceptions.TooManyRequestsException, client_org.exceptions.UnsupportedAPIEndpointException) as my_Error:
 		error_message = f"Error disabling {serviceName} in account {ocredentials['AccountId']}\n" \
 		                f"Full Error: {my_Error}"
@@ -1432,7 +1439,7 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 	return (AllSubnets)
 
 
-def find_account_enis2(ocredentials, fRegion=None, fipaddresses=None):
+def find_account_volumes2(ocredentials):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -1446,69 +1453,72 @@ def find_account_enis2(ocredentials, fRegion=None, fipaddresses=None):
 	from botocore.exceptions import ClientError
 	import logging
 
-	if fRegion is None and 'Region' in ocredentials.keys():
-		fRegion = ocredentials['Region']
-	elif fRegion is None:
-		fRegion = 'us-east-1'
-
 	session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
 	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
 	                            aws_session_token=ocredentials['SessionToken'],
-	                            region_name=fRegion)
+	                            region_name=ocredentials['Region'])
 	eni_info = session_ec2.client('ec2')
-	ENIs = {'NextToken': None}
-	AllENIs = []
-	return_this_result = True if fipaddresses is None else False
+	Volumes = {'NextToken': None}
+	AllVolumes = []
+	# return_this_result = True if fipaddresses is None else False
 
-	while 'NextToken' in ENIs.keys():
+	while 'NextToken' in Volumes.keys():
 		# Had to add this so that a failure of the describe_subnet function doesn't cause a race condition
-		ENIs = dict()
+		Volumes = dict()
 		try:
-			logging.info(f"Looking for ENIs that match any of {fipaddresses} in account #{ocredentials['AccountNumber']} in region {fRegion}")
-			ENIs = eni_info.describe_network_interfaces()
+			# logging.info(f"Looking for ENIs that match any of {fipaddresses} in account #{ocredentials['AccountNumber']} in region {ocredentials['Region']}")
+			logging.info(f"Looking for all volumes in account #{ocredentials['AccountNumber']} in region {ocredentials['Region']}")
+			Volumes = eni_info.describe_volumes()
 			# Run through each of the subnets, and determine if the passed in IP address fits within any of them
 			# If it does - then include that data within the array, otherwise next...
-			for interface in ENIs['NetworkInterfaces']:
-				if fipaddresses is not None:
-					return_this_result = False
-					for address in fipaddresses:
-						if address == interface['PrivateIpAddress']:
-							logging.info(f"Found it - {interface['PrivateIpAddress']} - ENI: {interface['NetworkInterfaceId']}")
-							return_this_result = True
-						elif 'Association' in interface.keys() and 'PublicIp' in interface['Association'].keys() and address == interface['Association']['PublicIp']:
-							logging.info(f"Found it - {interface['Association']['PublicIp']} - ENI: {interface['NetworkInterfaceId']}")
-							return_this_result = True
-						else:
-							continue
-				if return_this_result:
-					Name = None
-					if 'TagSet' in interface.keys():
-						for tag in interface['TagSet']:
-							if tag['Key'] == 'Name':
-								Name = tag['Value']
-					AllENIs.append({
-						'Name'            : Name,
-						'AccountId'       : ocredentials['AccountNumber'],
-						'Region'          : ocredentials['Region'],
-						'ENIId'           : interface['NetworkInterfaceId'],
-						'InterfaceType'   : interface['InterfaceType'],
-						'PrivateDnsName'  : interface['PrivateDnsName'],
-						'PrivateIpAddress': interface['PrivateIpAddress'],
-						'Status'          : interface['Status'],
-						'VpcId'           : interface['VpcId'] if 'VpcId' in interface.keys() else "No VPC Associated",
-						'InstanceId'      : interface['Attachment']['InstanceId'] if 'InstanceId' in interface['Attachment'].keys() else "No instance association",
-						'AttachmentStatus': interface['Attachment']['Status'],
-						'PublicIp'        : interface['Association']['PublicIp'] if 'Association' in interface.keys() and 'PublicIp' in interface['Association'].keys() else "No Public IP", })
+			for volume in Volumes['Volumes']:
+				# if fipaddresses is not None:
+				# 	return_this_result = False
+				# 	for address in fipaddresses:
+				# 		if address == volume['PrivateIpAddress']:
+				# 			logging.info(f"Found it - {volume['PrivateIpAddress']} - ENI: {volume['NetworkInterfaceId']}")
+				# 			return_this_result = True
+				# 		elif 'Association' in volume.keys() and 'PublicIp' in volume['Association'].keys() and address == volume['Association']['PublicIp']:
+				# 			logging.info(f"Found it - {volume['Association']['PublicIp']} - ENI: {volume['NetworkInterfaceId']}")
+				# 			return_this_result = True
+				# 		else:
+				# 			continue
+				# if return_this_result:
+				Name = 'None'
+				AttachmentList = []
+				if 'Tags' in volume.keys():
+					for tag in volume['Tags']:
+						if tag['Key'] == 'Name':
+							Name = tag['Value']
+				if 'Attachments' in volume.keys():
+					for attachment in volume['Attachments']:
+						if 'InstanceId' in attachment.keys():
+							AttachmentList.append({'InstanceId'      : attachment['InstanceId'],
+							                       'AttachmentStatus': attachment['State']})
+				AllVolumes.append({
+					'VolumeName' : Name,
+					'AccountId'  : ocredentials['AccountNumber'],
+					'Region'     : ocredentials['Region'],
+					'Encrypted'   : volume['Encrypted'],
+					'VolumeId'   : volume['VolumeId'],
+					'VolumeType' : volume['VolumeType'],
+					'Iops'       : volume['Iops'],
+					'Size'       : volume['Size'],
+					'State'     : volume['State'],
+					# 'KmsKeyId'   : volume['KmsKeyId'] if volume['Encrypted'] else None,
+					'Throughput' : volume['Throughput'] if 'Throughput' in volume.keys() else None,
+					'Attachments': AttachmentList})
+				logging.info(f"Wrote volume id {volume['VolumeId']} into 'AllVolumes' list")
 		except ClientError as my_Error:
-			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
-			              f"This is likely due to '{fRegion}' not being enabled for your account\n"
+			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {ocredentials['Region']}\n"
+			              f"This is likely due to '{ocredentials['Region']}' not being enabled for your account\n"
 			              f"Error Message: {my_Error}")
 			continue
 		except KeyError as my_Error:
 			logging.error(f"Some kind of KeyError\n"
 			              f"Error Message: {my_Error}")
 			continue
-	return (AllENIs)
+	return (AllVolumes)
 
 
 def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None, fExact=False):
@@ -3042,12 +3052,12 @@ def find_sc_products(fProfile, fRegion, fStatus="ERROR", flimit=100):
 	return (response2)
 
 
-def find_sc_products3(faws_acct, fProduct_id=None, fStatus="ERROR", flimit=100):
+def find_sc_products3(faws_acct, fStatus="ERROR", flimit=100, fproductId=None):
 	"""
-	fProfile is the Root Profile that owns the Account we're interrogating
-	fRegion is the region we're interrogating
+	faws_acct is the Org account that we're interrogating
 	fStatus is the status of SC products we're looking for. Defaults to "ERROR"
 	flimit is the max number of products to find. This is used for debugging, mainly
+	fproductId is the provisioned product ID that we can filter on to narrow down our search
 
 	Returned list looks like this:
 	[
@@ -3078,36 +3088,43 @@ def find_sc_products3(faws_acct, fProduct_id=None, fStatus="ERROR", flimit=100):
 
 	response2 = []
 	client_sc = faws_acct.session.client('servicecatalog')
-	if fStatus.lower() == 'all':
-		# Define the search parameters
-		search_filters = {}
-		if fProduct_id is not None:
-			search_filters = {
-                "SearchQuery": [f"productId:{fProduct_id}"]
-            }
-
-		response = client_sc.search_provisioned_products(PageSize=flimit, Filters=search_filters)
+	if fStatus.lower() == 'all' and fproductId is None:
+		response = client_sc.search_provisioned_products(PageSize=flimit,
+		                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'})
 		while 'NextPageToken' in response.keys():
 			response2.extend(response['ProvisionedProducts'])
-			response = client_sc.search_provisioned_products(PageToken=response['NextPageToken'], PageSize=flimit, Filters=search_filters)
-	else:
-		# We filter down to only the statuses asked for
-		search_filters = {}
-		if fProduct_id is not None:
-			# TODO: Following filter seems to have an "OR" condition instead of "AND". Check how can an "AND" based filter be added
-			search_filters = {
-                "SearchQuery": [f"status:{fStatus}"],
-                "SearchQuery": [f"productId:{fProduct_id}"]
-            }
-		else:
-			search_filters = {
-                "SearchQuery": [f"status:{fStatus}"]
-            }
-		response = client_sc.search_provisioned_products(PageSize=flimit, Filters=search_filters)
+			response = client_sc.search_provisioned_products(PageToken=response['NextPageToken'],
+			                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+			                                                 PageSize=flimit)
+	elif fStatus.lower() == 'all' and fproductId is not None:
+		response = client_sc.search_provisioned_products(PageSize=flimit,
+		                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+		                                                 Filters={'SearchQuery': [f"productId:{fproductId}"]})
 		while 'NextPageToken' in response.keys():
 			response2.extend(response['ProvisionedProducts'])
-			response = client_sc.search_provisioned_products(PageSize=flimit, Filters=search_filters,
-				PageToken=response['NextPageToken'])
+			response = client_sc.search_provisioned_products(PageToken=response['NextPageToken'],
+			                                                 PageSize=flimit, AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+			                                                 Filters={'SearchQuery': [f"productId:{fproductId}"]})
+	elif fproductId is not None:  # We filter down to only the statuses asked for and the productId
+		response = client_sc.search_provisioned_products(PageSize=flimit,
+		                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+		                                                 Filters={'SearchQuery': [f"status:{fStatus}", f"productId:{fproductId}"]})
+		while 'NextPageToken' in response.keys():
+			response2.extend(response['ProvisionedProducts'])
+			response = client_sc.search_provisioned_products(PageSize=flimit,
+			                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+			                                                 Filters={'SearchQuery': [f"status:{fStatus}", f"productId:{fproductId}"]},
+			                                                 PageToken=response['NextPageToken'])
+	else:  # We filter down to only the statuses asked for
+		response = client_sc.search_provisioned_products(PageSize=flimit,
+		                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+		                                                 Filters={'SearchQuery': [f"status:{fStatus}", f"productId:{fproductId}"]})
+		while 'NextPageToken' in response.keys():
+			response2.extend(response['ProvisionedProducts'])
+			response = client_sc.search_provisioned_products(PageSize=flimit,
+			                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+			                                                 Filters={'SearchQuery': [f"status:{fStatus}", f"productId:{fproductId}"]},
+			                                                 PageToken=response['NextPageToken'])
 	response2.extend(response['ProvisionedProducts'])
 	return (response2)
 
@@ -3267,6 +3284,7 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 	"""
 	# If no results were passed, print nothing and just return
 	if len(results_list) == 0:
+		logging.warning("There were no results passed in to display")
 		return ()
 
 	# TODO:
@@ -3382,6 +3400,7 @@ def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=[], fSkipAc
 	if fProfiles is None:  # Default use case from the classes
 		print("Getting Accounts to check: ", end='')
 		aws_acct = aws_acct_access()
+		# This doesn't mean the profile "default", this is just what the label for the Org Name will be, since there's no other text
 		profile = 'default'
 		RegionList = get_regions3(aws_acct, fRegionList)
 		logging.info(f"Queueing default profile for credentials")
