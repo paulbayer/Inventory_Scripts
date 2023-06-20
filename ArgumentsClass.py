@@ -15,6 +15,7 @@ How to use:
 	verbose = args.loglevel
 
 """
+__version__ = "2023.06.15"
 
 
 class CommonArguments():

@@ -36,7 +36,7 @@ from botocore.exceptions import ProfileNotFound, ClientError, ConnectionError, E
 from urllib3.exceptions import NewConnectionError
 from json.decoder import JSONDecodeError
 
-__version__ = "2023.05.04"
+__version__ = "2023.06.15"
 
 
 def _validate_region(faws_prelim_session, fRegion=None):
