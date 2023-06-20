@@ -2,6 +2,23 @@ import logging
 
 __version__ = "2023.06.15"
 
+"""
+** Why are some functions "function" vs. "function2" vs. "function3"?**
+
+As most things in computer science, my naming scheme makes sense to me, but not necessarily everyone :). Hence, here is my attempt at an explanation.
+
+- When a function is named "<function>" without a number after it, it's because that was the original function name I chose and used. 
+Back in the beginning of my coding journey, I was using *profiles* for authentication/ authorization for everything, thinking that everyone else would use that too.
+However, I was wrong. But the naming convention generally sticks, so functions without a numbered prefix, tend to expect the profile to be supplied.
+- After a while, I realized that I could pass a dictionary of credentials, instead of the profile itself, which could include things like the region, and therefore, 
+make the script a little more flexible. So functions that end in "*2", typically take a dict (often called "ocredentials") as a parameter. I've tried to document 
+what fields are expected in that parameter within the docstring of the function.
+- After another long while, I realized I should be creating a class object for the account/ credentials, so I created the "account_class.py" class file, and I've 
+used that for all functions that end in "*3". However, I have also realized that using the account_class object can sometimes lead to some latency, as some of the 
+lookups within that class take a while. Soooo... I've recently reverted to using the "*2" functions more than the "*3" functions - since the credentials can be 
+easily passed back and forth, and it's quicker. There might be some security exposure to doing this that I'm unaware of, so I'm keeping the "*3" functions around
+just in case...     
+"""
 
 def get_regions3(faws_acct, fregion_list=None):
 	"""
