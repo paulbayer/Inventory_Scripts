@@ -4,6 +4,7 @@
 import re
 import datetime
 import Inventory_Modules
+from Inventory_Modules import display_results
 from colorama import init, Fore
 from botocore.exceptions import ClientError
 from ArgumentsClass import CommonArguments
@@ -12,50 +13,55 @@ from account_class import aws_acct_access
 import logging
 
 init()
-__version__ = "2023.05.04"
+__version__ = "2023.06.19"
 
 parser = CommonArguments()
 parser.singleprofile()
 parser.singleregion()
+parser.timing()
+parser.save_to_file()
 parser.verbosity()
 parser.version(__version__)
 
 parser.my_parser.add_argument(
-		'--ALZ',
-		help="Identify left-over parameters created by the ALZ solution",
-		action="store_const",
-		dest="ALZParam",
-		const=True,
-		default=False)
+	'--ALZ',
+	help="Identify left-over parameters created by the ALZ solution",
+	action="store_const",
+	dest="ALZParam",
+	const=True,
+	default=False)
 parser.my_parser.add_argument(
-		'-b', '--daysback',
-		help="Only keep the last x days of Parameters (default 90)",
-		dest="DaysBack",
-		default=90)
+	'-b', '--daysback',
+	help="Only keep the last x days of Parameters (default 90)",
+	dest="DaysBack",
+	default=90)
 parser.my_parser.add_argument(
-		'+d', '--delete',
-		help="Delete left-over parameters created by the ALZ solution",
-		action="store_const",
-		dest="DeletionRun",
-		const=True,
-		default=False)
+	'+d', '--delete',
+	help="Delete left-over parameters created by the ALZ solution",
+	action="store_const",
+	dest="DeletionRun",
+	const=True,
+	default=False)
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
 pRegion = args.Region
 ALZParam = args.ALZParam
+pTiming = args.Time
+pFilename = args.Filename
 DeletionRun = args.DeletionRun
 dtDaysBack = datetime.timedelta(days=int(args.DaysBack))
+verbose = args.loglevel
 logging.basicConfig(level=args.loglevel,
-                    format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)20s() ] %(message)s")
+                    format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 ##########################
 ERASE_LINE = '\x1b[2K'
 ALZRegex = '/\w{8,8}-\w{4,4}-\w{4,4}-\w{4,4}-\w{12,12}/\w{3,3}'
 print()
-fmt = '%-15s %-20s'
-print(fmt % ("Parameter Name", "Last Modified Date"))
-print(fmt % ("--------------", "------------------"))
+# fmt = '%-15s %-20s'
+# print(fmt % ("Parameter Name", "Last Modified Date"))
+# print(fmt % ("--------------", "------------------"))
 
 aws_acct = aws_acct_access(pProfile)
 aws_session = aws_acct.session
@@ -66,12 +72,18 @@ ALZParams = 0
 
 try:
 	# Since there could be 10,000 parameters stored in the Parameter Store - this function COULD take a long time
-	Parameters = Inventory_Modules.find_ssm_parameters(pProfile, pRegion)
+	Parameters = Inventory_Modules.find_ssm_parameters3(aws_acct)
 	logging.error(f"Profile: {pProfile} found a total of {len(Parameters)} parameters")
 # print(ERASE_LINE,"Account:",account['AccountId'],"Found",len(Users),"users",end='\r')
 except ClientError as my_Error:
 	if str(my_Error).find("AuthFailure") > 0:
 		print(f"{pProfile}: Authorization Failure")
+
+display_dict = {'AccountNumber'   : {'DisplayOrder': 1, 'Heading': 'Acct Number'},
+                'Region'          : {'DisplayOrder': 2, 'Heading': 'Region'},
+                'Name'            : {'DisplayOrder': 3, 'Heading': 'Parameter Name'},
+                'LastModifiedDate': {'DisplayOrder': 4, 'Heading': 'Last Modified'}}
+display_results(Parameters, display_dict, 'Default', pFilename)
 
 if ALZParam:
 	today = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -96,14 +108,14 @@ if DeletionRun:
 		i += 1
 		if i % 10 == 0:
 			response = client_ssm.delete_parameters(
-					Names=ParamsToDelete[mark:i]
-					)
+				Names=ParamsToDelete[mark:i]
+			)
 			mark = i
 			print(ERASE_LINE, f"{i} parameters deleted and {len(ParamsToDelete) - i} more to go...", end='\r')
 		elif i == len(ParamsToDelete):
 			response = client_ssm.delete_parameters(
-					Names=ParamsToDelete[mark:i]
-					)
+				Names=ParamsToDelete[mark:i]
+			)
 			logging.warning(f"Deleted the last {i % 10} parameters.")
 print()
 print(ERASE_LINE)
