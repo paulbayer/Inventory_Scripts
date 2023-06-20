@@ -1,5 +1,7 @@
 import logging
 
+__version__ = "2023.06.15"
+
 
 def get_regions3(faws_acct, fregion_list=None):
 	"""
@@ -832,7 +834,7 @@ def disable_org_service2(ocredentials, serviceName=None):
 		List of CloudWatch Log Group Names found that match the fragment list
 """
 	import boto3
-	import logging
+	# import logging
 
 	returnResponse = {}
 	if serviceName is None:
@@ -1499,12 +1501,12 @@ def find_account_volumes2(ocredentials):
 					'VolumeName' : Name,
 					'AccountId'  : ocredentials['AccountNumber'],
 					'Region'     : ocredentials['Region'],
-					'Encrypted'   : volume['Encrypted'],
+					'Encrypted'  : volume['Encrypted'],
 					'VolumeId'   : volume['VolumeId'],
 					'VolumeType' : volume['VolumeType'],
 					'Iops'       : volume['Iops'],
 					'Size'       : volume['Size'],
-					'State'     : volume['State'],
+					'State'      : volume['State'],
 					# 'KmsKeyId'   : volume['KmsKeyId'] if volume['Encrypted'] else None,
 					'Throughput' : volume['Throughput'] if 'Throughput' in volume.keys() else None,
 					'Attachments': AttachmentList})
@@ -1536,18 +1538,6 @@ def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None, f
 	from botocore.exceptions import ClientError
 	import logging
 
-	# if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
-	# 	ProfileAccountNumber = find_account_number(ocredentials['Profile'])
-	# 	logging.info(
-	# 		f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
-	# 	if ProfileAccountNumber == ocredentials['AccountNumber']:
-	# 		session_iam = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
-	# 	else:
-	# 		session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-	# 									aws_secret_access_key=ocredentials['SecretAccessKey'],
-	# 									aws_session_token=ocredentials['SessionToken'],
-	# 									region_name=fRegion)
-	# else:
 	session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
 	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
 	                            aws_session_token=ocredentials['SessionToken'],
@@ -1560,8 +1550,9 @@ def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None, f
 	while Policies['IsTruncated']:
 		# Had to add this so that a failure of the describe_policy function doesn't cause a race condition
 		try:
-			logging.info(f"Looking for all policies that exist within account #{ocredentials['AccountNumber']}")
+			PoliciesFound = 0
 			if first_time:
+				logging.info(f"Looking in account #{ocredentials['AccountNumber']} for policies")
 				Policies = policy_info.list_policies()
 				first_time = False
 			else:
@@ -1590,6 +1581,7 @@ def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None, f
 							               'MgmtAccount'  : ocredentials['MgmtAccount'],
 							               'Region'       : ocredentials['Region']})
 							AllPolicies.append(policy)
+			logging.info(f"Found {len(AllPolicies)} matching policies within account #{ocredentials['AccountNumber']}")
 		except ClientError as my_Error:
 			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
 			              f"This is likely due to '{fRegion}' not being enabled for your account\n"
@@ -1671,35 +1663,53 @@ def find_policy_action(ocredentials, fpolicy, f_action):
 			                            aws_session_token=ocredentials['SessionToken'],
 			                            region_name=fRegion)
 	else:
-		session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
-			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+		session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+		                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+		                            aws_session_token=ocredentials['SessionToken'],
+		                            region_name=fRegion)
 	policy_info = session_iam.client('iam')
-	result = dict()
 	results = list()
 
 	try:
-		logging.info(f"Getting policy statements for policy {fpolicy} that exists within account #{ocredentials['AccountNumber']}")
+		logging.debug(f"Getting policy statements for policy {fpolicy} that exists within account #{ocredentials['AccountNumber']}")
 		Policy_statements = policy_info.get_policy_version(PolicyArn=fpolicy['Arn'], VersionId=fpolicy['DefaultVersionId'])['PolicyVersion']
 		# Run through each of the policies, and determine if the passed in action fits within any of them
 		# If it does - then include that data within the array, otherwise next...
-		for key, statement in Policy_statements['Document']['Statement'].items():
-			if key == 'Action':
-				try:
-					for action in statement:
-						for action_to_find in f_action:
-							if action.find(action_to_find) >= 0:
-								result.update({'message'   : f"Found action '{f_action}' in {fpolicy['PolicyName']}",
-								               'PolicyName': fpolicy['PolicyName'],
-								               'Statement' : statement})
-
-					results.append(result)
-				except Exception as my_Error:
-					print(f"Error in statements: {my_Error}")
+		for policy_statement in Policy_statements['Document']['Statement']:
+			for key, value in policy_statement.items():
+				result = {'Success': False}
+				if key == 'Action':
+					try:
+						# TODO: When this is called from two sepaarte threads for the same statement, there's some caching going on that duplicates the result added to the results dict.
+						if isinstance(value, list):
+							for action in value:
+								if action.find(f_action) >= 0:
+									result.update(fpolicy)
+									result.update({'Success'       : True,
+									               'message'       : f"Found action '{f_action}' in policy '{fpolicy['PolicyName']}' in set of actions '{value}' as single action '{action}'",
+									               'PolicyName'    : fpolicy['PolicyName'],
+									               'Statement'     : policy_statement,
+									               'SearchedAction': f_action,
+									               'PolicyAction'  : action})
+									results.append(result)
+						elif isinstance(value, str):
+							action = value
+							if action.find(f_action) >= 0:
+								result.update(fpolicy)
+								result.update({'Success'       : True,
+								               'message'       : f"Found action '{f_action}' in policy '{fpolicy['PolicyName']}' in single action '{value}'",
+								               'PolicyName'    : fpolicy['PolicyName'],
+								               'Statement'     : policy_statement,
+								               'SearchedAction': f_action,
+								               'PolicyAction'  : action})
+								results.append(result)
+					except Exception as my_Error:
+						logging.error(f"Error in statements: {my_Error}")
 		return (results)
 	except ClientError as my_Error:
 		logging.error(f"Error connecting to account {ocredentials['AccountNumber']}\n"
 		              f"Error Message: {my_Error}")
-	return (result)
+	return (results)
 
 
 def find_users2(ocredentials):
@@ -1833,6 +1843,7 @@ def find_directories2(ocredentials, fRegion='us-east-1', fSearchStrings=None):
 	import boto3
 
 	directories2 = []
+	directories = []
 	# TODO: Add pagination here
 	try:
 		session_ds = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
@@ -1840,6 +1851,7 @@ def find_directories2(ocredentials, fRegion='us-east-1', fSearchStrings=None):
 		                           region_name=ocredentials['Region'],
 		                           aws_session_token=ocredentials['SessionToken'])
 		client_ds = session_ds.client('ds', region_name=fRegion)
+		# TODO: Need paging here
 		directories = client_ds.describe_directories()['DirectoryDescriptions']
 		logging.info(f"Found {len(directories)} directories: {directories}")
 	except AttributeError as my_Error:
@@ -2016,12 +2028,14 @@ def find_load_balancers(fProfile, fRegion, fStackFragment='all', fStatus='all'):
 	return (load_balancers_Copy)
 
 
-def find_load_balancers3(faws_acct, fRegion='us-east-1', fStackFragments=['all'], fStatus='all'):
+def find_load_balancers3(faws_acct, fRegion='us-east-1', fStackFragments=None, fStatus='all'):
 	"""
 	This library script returns the list of load balancers within an account and a region
 	"""
 	import logging
 
+	if fStackFragments is None:
+		fStackFragments = ['all']
 	logging.info(
 		f"Account: {faws_acct.acct_number} | Region: {fRegion} | Fragment: {fStackFragments} | Status: {fStatus}")
 	session_cfn = faws_acct.session
@@ -3153,111 +3167,135 @@ def find_ssm_parameters(fProfile, fRegion):
 	from botocore.exceptions import ClientError
 	ERASE_LINE = '\x1b[2K'
 
-	logging.info("Finding ssm parameters for profile %s in Region %s", fProfile, fRegion)
+	logging.info(f"Finding ssm parameters for profile {fProfile} in Region {fRegion}")
 	session_ssm = boto3.Session(profile_name=fProfile, region_name=fRegion)
+	client_sts = session_ssm.client('sts')
+	client_ssm = session_ssm.client('ssm')
+	account_num = client_sts.get_caller_identity()['Account']
+	response = {}
+	response2 = []
+	TotalParameters = 0
+
+	try:
+		response = client_ssm.describe_parameters(MaxResults=50)
+	except ClientError as my_Error:
+		logging.error(f"Error: {my_Error}")
+	TotalParameters = TotalParameters + len(response['Parameters'])
+	logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
+	for param in response['Parameters']:
+		response2.append({'AccountNum'      : account_num,
+		                  'Region'          : session_ssm.region_name,
+		                  'Profile'         : session_ssm.profile_name,
+		                  'Description'     : param['Description'],
+		                  'LastModifiedDate': param['LastModifiedDate'],
+		                  'LastModifiedUser': param['LastModifiedUser'],
+		                  'Name'            : param['Name'],
+		                  'Policies'        : param['Policies'],
+		                  'Tier'            : param['Tier'],
+		                  'Type'            : param['Type'],
+		                  'Version'         : param['Version']
+		                  })
+	while 'NextToken' in response.keys():
+		response = client_ssm.describe_parameters(MaxResults=50, NextToken=response['NextToken'])
+		TotalParameters = TotalParameters + len(response['Parameters'])
+		logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
+		for param in response['Parameters']:
+			response2.append({'AccountNumber'   : account_num,
+			                  'Region'          : session_ssm.region_name,
+			                  'Profile'         : session_ssm.profile_name,
+			                  'Description'     : param['Description'] if 'Description' in param.keys() else None,
+			                  'LastModifiedDate': param['LastModifiedDate'],
+			                  'LastModifiedUser': param['LastModifiedUser'],
+			                  'Name'            : param['Name'],
+			                  'Policies'        : param['Policies'],
+			                  'Tier'            : param['Tier'],
+			                  'Type'            : param['Type'],
+			                  'Version'         : param['Version']
+			                  })
+		if (len(response2) % 500 == 0) and (logging.getLogger().getEffectiveLevel() > 20):
+			print(f"{ERASE_LINE}Sorry this is taking a while - we've already found {len(response2)} parameters!", end="\r")
+
+	logging.error(f"Found {len(response2)} parameters")
+	return (response2)
+
+
+def find_ssm_parameters3(faws_acct):
+	"""
+	fProfile is the Root Profile that owns the stackset
+	fRegion is the region where the stackset resides
+
+	Return Value is a list that looks like this:
+	[
+		{
+			'Description': 'Contains the Local SNS Topic Arn for Landing Zone',
+			'LastModifiedDate': datetime.datetime(2020, 2, 7, 12, 50, 2, 373000, tzinfo = tzlocal()),
+			'LastModifiedUser': 'arn:aws:sts::517713657778:assumed-role/AWSCloudFormationStackSetExecutionRole/16b4abdd-1d1f-4aeb-8930-3e65dcef6bab',
+			'Name': '/org/member/local_sns_arn',
+			'Policies': [],
+			'Tier': 'Standard',
+			'Type': 'String',
+			'Version': 1
+		},
+	]
+	"""
+	import logging
+	from botocore.exceptions import ClientError
+	ERASE_LINE = '\x1b[2K'
+
+	logging.info(f"Finding ssm parameters for account {faws_acct.acct_number} in Region {faws_acct.credentials['Region']}")
+	session_ssm = faws_acct.session
 	client_ssm = session_ssm.client('ssm')
 	response = {}
 	response2 = []
 	TotalParameters = 0
+
 	try:
 		response = client_ssm.describe_parameters(MaxResults=50)
 	except ClientError as my_Error:
-		print(my_Error)
+		logging.error(f"Error: {my_Error}")
 	TotalParameters = TotalParameters + len(response['Parameters'])
-	logging.info("Found another %s parameters, bringing the total up to %s", len(
-		response['Parameters']), TotalParameters)
-	for i in range(len(response['Parameters'])):
-		response2.append(response['Parameters'][i])
+	logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
+	for param in response['Parameters']:
+		response2.append({'MgmtAcct'        : faws_acct.MgmtAccount,
+		                  'AccountNumber'      : faws_acct.acct_number,
+		                  'Region'          : session_ssm.region_name,
+		                  'Profile'         : session_ssm.profile_name,
+		                  'Description'     : param['Description'] if 'Description' in param.keys() else None,
+		                  'LastModifiedDate': param['LastModifiedDate'],
+		                  'LastModifiedUser': param['LastModifiedUser'],
+		                  'Name'            : param['Name'],
+		                  'Policies'        : param['Policies'],
+		                  'Tier'            : param['Tier'],
+		                  'Type'            : param['Type'],
+		                  'Version'         : param['Version']
+		                  })
 	while 'NextToken' in response.keys():
 		response = client_ssm.describe_parameters(MaxResults=50, NextToken=response['NextToken'])
 		TotalParameters = TotalParameters + len(response['Parameters'])
-		logging.info("Found another %s parameters, bringing the total up to %s", len(
-			response['Parameters']), TotalParameters)
-		for i in range(len(response['Parameters'])):
-			response2.append(response['Parameters'][i])
-		if (len(response2) % 500 == 0) and (logging.getLogger().getEffectiveLevel() > 30):
-			print(ERASE_LINE,
-			      f"Sorry this is taking a while - we've already found {len(response2)} parameters!", end="\r")
+		logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
+		for param in response['Parameters']:
+			response2.append({'MgmtAcct'        : faws_acct.MgmtAccount,
+			                  'AccountNumber'   : faws_acct.acct_number,
+			                  'Region'          : session_ssm.region_name,
+			                  'Profile'         : session_ssm.profile_name,
+			                  'Description'     : param['Description'] if 'Description' in param.keys() else None,
+			                  'LastModifiedDate': param['LastModifiedDate'],
+			                  'LastModifiedUser': param['LastModifiedUser'],
+			                  'Name'            : param['Name'],
+			                  'Policies'        : param['Policies'],
+			                  'Tier'            : param['Tier'],
+			                  'Type'            : param['Type'],
+			                  'Version'         : param['Version']
+			                  })
+		if (len(response2) % 500 == 0) and (logging.getLogger().getEffectiveLevel() > 20):
+			print(f"{ERASE_LINE}Sorry this is taking a while - we've already found {len(response2)} parameters!", end="\r")
 
-	print()
-	logging.error("Found %s parameters", len(response2))
+	logging.error(f"Found {len(response2)} parameters")
 	return (response2)
 
 
 ############
 
-
-# def get_credentials_for_multiple_orgs(fProfileList, fSkipAccounts=[], fRootOnly=False):
-# 	"""
-# 	Note that this function returns the credentials of all the accounts underneath the Org passed to it.
-# 	"""
-# 	import logging
-# 	import boto3
-# 	from account_class import aws_acct_access
-# 	from datetime import datetime
-# 	from queue import Queue
-# 	from threading import Thread
-# 	from botocore.exceptions import ClientError
-#
-# 	class AssembleCredentials(Thread):
-#
-# 		def __init__(self, queue):
-# 			Thread.__init__(self)
-# 			self.queue = queue
-#
-# 		def run(self):
-# 			while True:
-# 				# Get the work from the queue and expand the tuple
-# 				c_profile = self.queue.get()
-# 				logging.info(f"De-queued info for account {c_profile}")
-# 				try:
-# 					aws_acct = aws_acct_access(c_profile)
-# 				except ClientError as my_Error:
-# 					if str(my_Error).find("AuthFailure") > 0:
-# 						logging.error(f"{account['AccountId']}: Authorization failure using role: {account_credentials['Role']}")
-# 						logging.info(my_Error)
-# 					elif str(my_Error).find("AccessDenied") > 0:
-# 						logging.error(f"{account['AccountId']}: Access Denied failure using role: {account_credentials['Role']}")
-# 						logging.info(my_Error)
-# 					else:
-# 						logging.error(f"{account['AccountId']}: Other kind of failure using role: {account_credentials['Role']}")
-# 						logging.info(my_Error)
-# 					continue
-# 				except KeyError as my_Error:
-# 					logging.error(f"Account Access failed - trying to access {account['AccountId']}")
-# 					logging.info(f"Actual Error: {my_Error}")
-# 					pass
-# 				except AttributeError as my_Error:
-# 					logging.error(f"Error: Likely that one of the supplied profiles was wrong")
-# 					logging.info(my_Error)
-# 					continue
-# 				finally:
-# 					self.queue.task_done()
-#
-#
-# 	account_credentials = {'Role': 'Nothing'}
-# 	AccountNum = 0
-# 	AllCreds = []
-# 	credqueue = Queue()
-# 	WorkerThreads = len(fProfileList)
-#
-# 	# Create x worker threads
-# 	for x in range(WorkerThreads):
-# 		worker = AssembleCredentials(credqueue)
-# 		# Setting daemon to True will let the main thread exit even though the workers are blocking
-# 		worker.daemon = True
-# 		worker.start()
-#
-# 	for profile in fProfileList:
-# 		if profile in fSkipAccounts:
-# 			continue
-# 		AccountNum += 1
-# 		logging.info(f"Queuing account info for {AccountNum} / {len(ChildAccounts)} accounts")
-# 		credqueue.put((profile))
-# 		print(f"Profile: {profile} | {datetime.now()}")
-# 	print(f"Profile: {faws_acct.session.profile_name} | {datetime.now()}")
-# 	credqueue.join()
-# 	return (AllCreds)
 
 def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_save=None):
 	from colorama import init, Fore
@@ -3316,6 +3354,9 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 					needed_space[field] = max(num_width, len(value['Heading']), needed_space[field])
 				elif isinstance(result[field], str):
 					needed_space[field] = max(len(result[field]), len(value['Heading']), needed_space[field])
+				elif isinstance(result[field], datetime):
+					# Recognizes the field as a date, and finds the necessary amount of string space to show that date, and assigns the length to "needed_space"
+					needed_space[field] = len(datetime.now().strftime('%x %X'))
 	except KeyError as my_Error:
 		logging.error(f"Error: {my_Error}")
 
@@ -3349,6 +3390,8 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 				print(f"{Fore.RED if highlight else ''}{result[field]:<{data_format},}{Fore.RESET if highlight else ''} ", end='')
 			elif isinstance(result[field], float):
 				print(f"{Fore.RED if highlight else ''}{result[field]:{data_format}f}{Fore.RESET if highlight else ''} ", end='')
+			elif isinstance(result[field], datetime):
+				print(f"{Fore.RED if highlight else ''}{result[field].strftime('%x %X')}{Fore.RESET if highlight else ''} ", end='')
 		print()  # This is the end of line character needed at the end of every line
 	print()  # This is the new line needed at the end of the script.
 	# TODO: We need to add some analytics here... Trying to come up with what would make sense across all displays.
@@ -3379,7 +3422,7 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 				savefile.write(row)
 
 
-def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=[], fSkipAccounts=[], fRootOnly=False, fAccounts=[], fRegionList=['us-east-1'], RoleList=None):
+def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=None, fSkipAccounts=None, fRootOnly=False, fAccounts=None, fRegionList=None, RoleList=None):
 	"""
 	Note that this function returns the credentials of all the accounts in all the profiles passed to it
 
@@ -3397,6 +3440,14 @@ def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=[], fSkipAc
 	print(f"{Fore.GREEN}Timing is enabled{Fore.RESET}") if fTiming else None
 
 	AllCredentials = []
+	if fSkipProfiles is None:
+		fSkipProfiles = []
+	if fSkipAccounts is None:
+		fSkipAccounts = []
+	if fAccounts is None:
+		fAccounts = []
+	if fRegionList is None:
+		fRegionList = ['us-east-1']
 	if fProfiles is None:  # Default use case from the classes
 		print("Getting Accounts to check: ", end='')
 		aws_acct = aws_acct_access()
