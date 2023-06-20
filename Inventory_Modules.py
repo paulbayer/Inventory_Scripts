@@ -20,6 +20,7 @@ easily passed back and forth, and it's quicker. There might be some security exp
 just in case...     
 """
 
+
 def get_regions3(faws_acct, fregion_list=None):
 	"""
 	This is a library function to get the AWS region names that correspond to the
