@@ -106,6 +106,10 @@ Generic Scripts
 - **all_my_elbs.py**
   - The objective of this script was to find all the various Load Balancers created in various accounts within your org.
 
+- **all_my_ebs_volumes.py**
+  - The objective of this script was to find all the EBS volumes in various accounts within your org.
+  - At the end, I tried to give a summary of any volumes that are unattached, so you can take proper action on those (which could be costing you money).
+
 - **all_my_enis.py**
   - This is a script to find devices across all of my Orgs when all I have is the public (or private) IP address. Having so many different accounts - regions and Orgs makes finding something a real pain in the butt.
 
@@ -129,6 +133,9 @@ Generic Scripts
 
 - **all_my_phzs.py**
   - The objective of this script is to find all of the Private Hosted Zones in a cross-account fashion.
+
+- **all_my_policies.py**
+  - The objective of this script is to find all the RDS instances within a profile, or an Org.
 
 - **all_my_rds_instances.py**
   - The objective of this script is to find all the RDS instances within a profile, or an Org.
