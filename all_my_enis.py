@@ -14,7 +14,7 @@ import logging
 
 init()
 
-__version__ = '2023.06.06'
+__version__ = '2023.06.22'
 
 parser = CommonArguments()
 parser.multiprofile()

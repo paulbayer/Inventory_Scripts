@@ -1,6 +1,6 @@
 import logging
 
-__version__ = "2023.06.15"
+__version__ = "2023.06.22"
 
 """
 ** Why are some functions "function" vs. "function2" vs. "function3"?**
@@ -22,6 +22,9 @@ just in case...
 
 
 def get_regions3(faws_acct, fregion_list=None):
+
+
+
 	"""
 	This is a library function to get the AWS region names that correspond to the
 	fragments that may have been provided via the command line.
@@ -1446,6 +1449,85 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 	return (AllSubnets)
 
 
+def find_account_enis2(ocredentials, fRegion=None, fipaddresses=None):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['Region'] holds the region
+		- ['AccountNumber'] holds the account number
+		- ['Profile'] can hold the profile, instead of the session credentials
+	"""
+	import boto3
+	from botocore.exceptions import ClientError
+	import logging
+
+	if fRegion is None and 'Region' in ocredentials.keys():
+		fRegion = ocredentials['Region']
+	elif fRegion is None:
+		fRegion = 'us-east-1'
+
+	session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=fRegion)
+	eni_info = session_ec2.client('ec2')
+	ENIs = {'NextToken': None}
+	AllENIs = []
+	return_this_result = True if fipaddresses is None else False
+
+	while 'NextToken' in ENIs.keys():
+		# Had to add this so that a failure of the describe_subnet function doesn't cause a race condition
+		ENIs = dict()
+		try:
+			logging.info(f"Looking for ENIs that match any of {fipaddresses} in account #{ocredentials['AccountNumber']} in region {fRegion}")
+			ENIs = eni_info.describe_network_interfaces()
+			# Run through each of the subnets, and determine if the passed in IP address fits within any of them
+			# If it does - then include that data within the array, otherwise next...
+			for interface in ENIs['NetworkInterfaces']:
+				if fipaddresses is not None:
+					return_this_result = False
+					for address in fipaddresses:
+						if address == interface['PrivateIpAddress']:
+							logging.info(f"Found it - {interface['PrivateIpAddress']} - ENI: {interface['NetworkInterfaceId']}")
+							return_this_result = True
+						elif 'Association' in interface.keys() and 'PublicIp' in interface['Association'].keys() and address == interface['Association']['PublicIp']:
+							logging.info(f"Found it - {interface['Association']['PublicIp']} - ENI: {interface['NetworkInterfaceId']}")
+							return_this_result = True
+						else:
+							continue
+				if return_this_result:
+					Name = None
+					if 'TagSet' in interface.keys():
+						for tag in interface['TagSet']:
+							if tag['Key'] == 'Name':
+								Name = tag['Value']
+					AllENIs.append({
+						'Name'            : Name,
+						'AccountId'       : ocredentials['AccountNumber'],
+						'Region'          : ocredentials['Region'],
+						'ENIId'           : interface['NetworkInterfaceId'],
+						'InterfaceType'   : interface['InterfaceType'],
+						'PrivateDnsName'  : interface['PrivateDnsName'],
+						'PrivateIpAddress': interface['PrivateIpAddress'],
+						'Status'          : interface['Status'],
+						'VpcId'           : interface['VpcId'] if 'VpcId' in interface.keys() else "No VPC Associated",
+						'InstanceId'      : interface['Attachment']['InstanceId'] if ('Attachment' in interface.keys() and 'InstanceId' in interface['Attachment'].keys()) else "No instance association",
+						'AttachmentStatus': interface['Attachment']['Status'] if 'Attachment' in interface.keys() else "Not attached",
+						'PublicIp'        : interface['Association']['PublicIp'] if 'Association' in interface.keys() and 'PublicIp' in interface['Association'].keys() else "No Public IP", })
+		except ClientError as my_Error:
+			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
+			              f"This is likely due to '{fRegion}' not being enabled for your account\n"
+			              f"Error Message: {my_Error}")
+			continue
+		except KeyError as my_Error:
+			logging.error(f"Some kind of KeyError\n"
+			              f"Error Message: {my_Error}")
+			continue
+	return (AllENIs)
+
+
 def find_account_volumes2(ocredentials):
 	"""
 	ocredentials is an object with the following structure:
@@ -1473,10 +1555,9 @@ def find_account_volumes2(ocredentials):
 		# Had to add this so that a failure of the describe_subnet function doesn't cause a race condition
 		Volumes = dict()
 		try:
-			# logging.info(f"Looking for ENIs that match any of {fipaddresses} in account #{ocredentials['AccountNumber']} in region {ocredentials['Region']}")
 			logging.info(f"Looking for all volumes in account #{ocredentials['AccountNumber']} in region {ocredentials['Region']}")
 			Volumes = eni_info.describe_volumes()
-			# Run through each of the subnets, and determine if the passed in IP address fits within any of them
+			# Run through each of the volumes, and determine if the passed in fragment fits within any of them
 			# If it does - then include that data within the array, otherwise next...
 			for volume in Volumes['Volumes']:
 				# if fipaddresses is not None:
@@ -3224,7 +3305,7 @@ def find_ssm_parameters(fProfile, fRegion):
 	return (response2)
 
 
-def find_ssm_parameters3(faws_acct):
+def find_ssm_parameters3(faws_acct, fregion=None):
 	"""
 	fProfile is the Root Profile that owns the stackset
 	fRegion is the region where the stackset resides
@@ -3247,7 +3328,9 @@ def find_ssm_parameters3(faws_acct):
 	from botocore.exceptions import ClientError
 	ERASE_LINE = '\x1b[2K'
 
-	logging.info(f"Finding ssm parameters for account {faws_acct.acct_number} in Region {faws_acct.credentials['Region']}")
+	if fregion is None:
+		fregion = faws_acct.session.region_name
+	logging.info(f"Finding ssm parameters for account {faws_acct.acct_number} in Region {fregion}")
 	session_ssm = faws_acct.session
 	client_ssm = session_ssm.client('ssm')
 	response = {}
@@ -3263,7 +3346,7 @@ def find_ssm_parameters3(faws_acct):
 	for param in response['Parameters']:
 		response2.append({'MgmtAcct'        : faws_acct.MgmtAccount,
 		                  'AccountNumber'      : faws_acct.acct_number,
-		                  'Region'          : session_ssm.region_name,
+		                  'Region'          : fregion,
 		                  'Profile'         : session_ssm.profile_name,
 		                  'Description'     : param['Description'] if 'Description' in param.keys() else None,
 		                  'LastModifiedDate': param['LastModifiedDate'],
