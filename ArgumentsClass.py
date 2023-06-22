@@ -71,6 +71,19 @@ class CommonArguments():
 	# 		metavar="Role name",
 	# 		help="Role that should be used to access child accounts")
 
+	def deletion(self):
+		# self.my_parser.add_argument(
+		# 	"+forreal",
+		# 	help="By default, we report results without changing anything. If you want to remediate or change your environment - include this parameter",
+		# 	action="store_false",
+		# 	dest="DryRun")              # Default to Dry Run (no changes)
+		self.my_parser.add_argument(
+			"--force", "+force",
+			help="To force a change - despite indications to the contrary",
+			action="store_true",
+			dest="Force")  # Default to Dry Run (no changes)
+
+
 	def verbosity(self):
 		import logging
 		self.my_parser.add_argument(
@@ -103,16 +116,6 @@ class CommonArguments():
 				default=logging.CRITICAL)  # args.loglevel = 50
 
 	def extendedargs(self):
-		# self.my_parser.add_argument(
-		# 	"+forreal",
-		# 	help="By default, we report results without changing anything. If you want to remediate or change your environment - include this parameter",
-		# 	action="store_false",
-		# 	dest="DryRun")              # Default to Dry Run (no changes)
-		self.my_parser.add_argument(
-			"--force", "+force",
-			help="To force a change - despite indications to the contrary",
-			action="store_true",
-			dest="Force")  # Default to Dry Run (no changes)
 		self.my_parser.add_argument(
 			"-k", "-ka", "--skip", "--skipaccount", "--skipaccounts",
 			dest="SkipAccounts",
@@ -203,6 +206,14 @@ class CommonArguments():
 				dest="Region",
 				metavar="region name string",
 				default="us-east-1",
+				help="Name of the *single* region you want to check for resources.")
+
+	def singleregion_nodefault(self):
+		self.my_parser.add_argument(
+				"-r", "--region",
+				dest="Region",
+				metavar="region name string",
+				default=None,
 				help="Name of the *single* region you want to check for resources.")
 
 	def save_to_file(self):
