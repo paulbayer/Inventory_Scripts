@@ -22,9 +22,6 @@ just in case...
 
 
 def get_regions3(faws_acct, fregion_list=None):
-
-
-
 	"""
 	This is a library function to get the AWS region names that correspond to the
 	fragments that may have been provided via the command line.
@@ -2893,6 +2890,7 @@ def find_stack_instances2(ocredentials, fRegion, fStackSetName, fStatus='CURRENT
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['Region'] holds the Region where the authentication was done
 		- ['AccountNumber'] holds the AccountId
 	fRegion is a string
 	fStackSetName is a string
@@ -3318,6 +3316,92 @@ def find_ssm_parameters(fProfile, fRegion):
 	return (response2)
 
 
+def find_ssm_parameters2(ocredentials):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['Region'] holds the Region where the authentication was done
+		- ['MgmtAccount'] holds the AccountId
+		- ['AccountNumber'] holds the AccountId
+
+	Return Value is a list that looks like this:
+	[
+		{
+			'Description': 'Contains the Local SNS Topic Arn for Landing Zone',
+			'LastModifiedDate': datetime.datetime(2020, 2, 7, 12, 50, 2, 373000, tzinfo = tzlocal()),
+			'LastModifiedUser': 'arn:aws:sts::517713657778:assumed-role/AWSCloudFormationStackSetExecutionRole/16b4abdd-1d1f-4aeb-8930-3e65dcef6bab',
+			'Name': '/org/member/local_sns_arn',
+			'Policies': [],
+			'Tier': 'Standard',
+			'Type': 'String',
+			'Version': 1
+		},
+	]
+	"""
+	import logging
+	import boto3
+	from botocore.exceptions import ClientError
+	ERASE_LINE = '\x1b[2K'
+
+	region = ocredentials['Region']
+	logging.info(f"Finding ssm parameters for account {ocredentials['AccountNumber']} in Region {region}")
+	session_ssm = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
+	client_ssm = session_ssm.client('ssm')
+	response = {}
+	response2 = []
+	TotalParameters = 0
+
+	try:
+		response = client_ssm.describe_parameters(MaxResults=50)
+	except ClientError as my_Error:
+		logging.error(f"Error: {my_Error}")
+	TotalParameters = TotalParameters + len(response['Parameters'])
+	logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
+	for param in response['Parameters']:
+		response2.append({'MgmtAcct'        : ocredentials['MgmtAccount'],
+		                  'AccountNumber'   : ocredentials['AccountNumber'],
+		                  'Region'          : region,
+		                  'Profile'         : session_ssm.profile_name,
+		                  'credentials'     : ocredentials,
+		                  'Description'     : param['Description'] if 'Description' in param.keys() else None,
+		                  'LastModifiedDate': param['LastModifiedDate'],
+		                  'LastModifiedUser': param['LastModifiedUser'],
+		                  'Name'            : param['Name'],
+		                  'Policies'        : param['Policies'],
+		                  'Tier'            : param['Tier'],
+		                  'Type'            : param['Type'],
+		                  'Version'         : param['Version']
+		                  })
+	while 'NextToken' in response.keys():
+		response = client_ssm.describe_parameters(MaxResults=50, NextToken=response['NextToken'])
+		TotalParameters = TotalParameters + len(response['Parameters'])
+		logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
+		for param in response['Parameters']:
+			response2.append({'MgmtAcct'        : ocredentials['MgmtAccount'],
+			                  'AccountNumber'   : ocredentials['AccountNumber'],
+			                  'Region'          : session_ssm.region_name,
+			                  'Profile'         : session_ssm.profile_name,
+			                  'Description'     : param['Description'] if 'Description' in param.keys() else None,
+			                  'LastModifiedDate': param['LastModifiedDate'],
+			                  'LastModifiedUser': param['LastModifiedUser'],
+			                  'Name'            : param['Name'],
+			                  'Policies'        : param['Policies'],
+			                  'Tier'            : param['Tier'],
+			                  'Type'            : param['Type'],
+			                  'Version'         : param['Version']
+			                  })
+		if (len(response2) % 500 == 0) and (logging.getLogger().getEffectiveLevel() > 20):
+			print(f"{ERASE_LINE}Sorry this is taking a while - we've already found {len(response2)} parameters!", end="\r")
+
+	logging.error(f"Found {len(response2)} parameters")
+	return (response2)
+
+
 def find_ssm_parameters3(faws_acct, fregion=None):
 	"""
 	fProfile is the Root Profile that owns the stackset
@@ -3358,7 +3442,7 @@ def find_ssm_parameters3(faws_acct, fregion=None):
 	logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
 	for param in response['Parameters']:
 		response2.append({'MgmtAcct'        : faws_acct.MgmtAccount,
-		                  'AccountNumber'      : faws_acct.acct_number,
+		                  'AccountNumber'   : faws_acct.acct_number,
 		                  'Region'          : fregion,
 		                  'Profile'         : session_ssm.profile_name,
 		                  'Description'     : param['Description'] if 'Description' in param.keys() else None,
@@ -3420,6 +3504,9 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 		- The second field within the nested dictionary is the heading you want to display at the top of the column (which allows spaces)
 		- The third field ('Condition') is new, and allows to highlight a special value within the output. This can be used multiple times. 
 		The dictionary doesn't have to be ordered, as long as the 'SortOrder' field is correct.
+		
+		Enhancements:
+			- How to create a break between rows, like after every account, or Management Org, or region, or whatever...  
 	"""
 	# If no results were passed, print nothing and just return
 	if len(results_list) == 0:

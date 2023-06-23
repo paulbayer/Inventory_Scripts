@@ -41,7 +41,7 @@ pSkipProfiles = args.SkipProfiles
 pAccounts = args.Accounts
 pRootOnly = args.RootOnly
 pIPaddressList = args.pipaddresses
-pFileName = args.Filename
+pFilename = args.Filename
 pTiming = args.Time
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
@@ -143,7 +143,7 @@ display_dict = {'MgmtAccount'     : {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
 
 ENIsFound.extend(check_accounts_for_enis(CredentialList, fip=pIPaddressList))
 sorted_ENIs_Found = sorted(ENIsFound, key=lambda d: (d['MgmtAccount'], d['AccountId'], d['Region'], d['VpcId']))
-display_results(sorted_ENIs_Found, display_dict, 'None', pFileName)
+display_results(sorted_ENIs_Found, display_dict, 'None', pFilename)
 
 DetachedENIs = [x for x in sorted_ENIs_Found if x['Status'] in ['available', 'attaching', 'detaching']]
 
@@ -161,5 +161,5 @@ if verbose < 40:
 		print(x)
 print()
 print("Thank you for using this script")
-print(f"Your output was saved to {Fore.GREEN}'{pFileName}-{datetime.now().strftime('%y-%m-%d--%H:%M:%S')}'{Fore.RESET}") if pFileName is not None else ""
+print(f"Your output was saved to {Fore.GREEN}'{pFilename}-{datetime.now().strftime('%y-%m-%d--%H:%M:%S')}'{Fore.RESET}") if pFilename is not None else ""
 print()

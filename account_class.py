@@ -79,7 +79,7 @@ def _validate_region(faws_prelim_session, fRegion=None):
 				'Region' : fRegion}
 		logging.info(message)
 	else:
-		message = (f"{fRegion} is not valid region within this AWS partition")
+		message = (f"'{fRegion}' is not valid region within this AWS partition")
 		logging.info(message)
 		result = {
 			'Success': False,
@@ -104,7 +104,7 @@ class aws_acct_access:
 		ChildAccounts: If the account is a "Root", this is a listing of the child accounts
 	"""
 
-	def __init__(self, fProfile=None, fRegion='us-east-1', ocredentials=None):
+	def __init__(self, fProfile=None, fRegion=None, ocredentials=None):
 		# logging.basicConfig(level=20, format="[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s")
 		# First thing's first: We need to validate that the region they sent us to use is valid for this account.
 		# Otherwise, all hell will break if it's not.
@@ -134,8 +134,13 @@ class aws_acct_access:
 			# Not trying to use account_key_credentials
 			try:
 				logging.debug("Credentials are using a profile")
-				prelim_session = boto3.Session(profile_name=fProfile, region_name=fRegion)
-				self.session = boto3.Session(profile_name=fProfile, region_name=fRegion)
+				# Checking to see if a region was included in the profile, if it was, then use it, otherwise - pick a default.
+				prelim_session = boto3.Session(profile_name=fProfile)
+				if prelim_session.region_name is None:
+					prelim_session = boto3.Session(profile_name=fProfile, region_name=fRegion)
+				elif fRegion is None:
+					fRegion = prelim_session.region_name
+				self.session = prelim_session
 				try:
 					result = self.session.client('ec2').describe_regions()
 					account_access_successful = True
