@@ -13,7 +13,7 @@ import logging
 import sys
 
 init()
-__version__ = "2023.06.08"
+__version__ = "2023.06.22"
 
 parser = CommonArguments()
 parser.singleprofile()
