@@ -14,7 +14,7 @@ from time import time
 import logging
 
 init()
-__version__ = "2023.05.04"
+__version__ = "2023.06.15"
 
 parser = CommonArguments()
 parser.multiprofile()
@@ -38,9 +38,9 @@ pProfiles = args.Profiles
 pSkipAccounts = args.SkipAccounts
 pSkipProfiles = args.SkipProfiles
 pAccounts = args.Accounts
-pFragment = args.Fragments
+pFragments = args.Fragments
 pRootOnly = args.RootOnly
-pAction = args.paction
+pActions = args.paction
 pExact = args.Exact
 pTiming = args.Time
 verbose = args.loglevel
@@ -55,9 +55,9 @@ logging.info(f"Profiles: {pProfiles}")
 ##################
 
 
-def check_accounts_for_policies(CredentialList, fRegionList=None, fAction=None, fFragment=None):
+def check_accounts_for_policies(CredentialList, fRegionList=None, fActions=None, fFragments=None):
 	"""
-	Note that this function takes a list of Credentials and checks for subnets in every account it has creds for
+	Note that this function takes a list of Credentials and checks for policies in every account it has creds for
 	"""
 
 	class FindActions(Thread):
@@ -74,9 +74,9 @@ def check_accounts_for_policies(CredentialList, fRegionList=None, fAction=None, 
 				try:
 					logging.info(f"Attempting to connect to {c_account_credentials['AccountId']}")
 					policy_actions = Inventory_Modules.find_policy_action(c_account_credentials, c_policy, c_action)
-					logging.info(f"Successfully connected to account {c_account_credentials['AccountId']}")
-					if policy_actions:
-						AllPolicies.append(policy_actions)
+					logging.info(f"Successfully connected to account {c_account_credentials['AccountId']} for policy {c_policy['PolicyName']}")
+					if len(policy_actions) > 0:
+						AllPolicies.extend(policy_actions)
 				except KeyError as my_Error:
 					logging.error(f"Account Access failed - trying to access {c_account_credentials['AccountId']}")
 					logging.info(f"Actual Error: {my_Error}")
@@ -91,35 +91,38 @@ def check_accounts_for_policies(CredentialList, fRegionList=None, fAction=None, 
 
 	if fRegionList is None:
 		fRegionList = ['us-east-1']
-	if fFragment is None:
-		fFragment = []
+	if fFragments is None:
+		fFragments = []
 	checkqueue = Queue()
 
 	AllPolicies = []
 	AccountCount = 0
 	Policies = []
+	PolicyCount = 0
 
 	print()
 	for credential in CredentialList:
 		logging.info(f"Connecting to account {credential['AccountId']}")
 		try:
-			Policies = Inventory_Modules.find_account_policies2(credential, fRegionList[0], fFragment, pExact)
+			Policies = Inventory_Modules.find_account_policies2(credential, fRegionList[0], fFragments, pExact)
 			AccountCount += 1
-			PlacesToLook = len(Policies)
+			PlacesToLook = len(Policies) * len(fActions)
 			print(f"{ERASE_LINE}Found {PlacesToLook} matching policies in account {credential['AccountId']} ({AccountCount}/{len(CredentialList)})", end='\r')
 			# print(f"{ERASE_LINE}Queuing account {credential['AccountId']} in region {region}", end='\r')
-			if fAction is None:
+			if fActions is None:
 				AllPolicies.extend(Policies)
 			else:
 				for policy in Policies:
-					checkqueue.put((credential, policy, fAction, PlacesToLook, AccountCount))
+					PolicyCount += 1
+					for action in fActions:
+						checkqueue.put((credential, policy, action, PlacesToLook, PolicyCount))
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				logging.error(f"Authorization Failure accessing account {credential['AccountId']}")
 				pass
 
 	# WorkerThreads = min(len(Policies) * len(fAction), 250)
-	WorkerThreads = min(AccountCount, 12)
+	WorkerThreads = min(PlacesToLook, 12)
 
 	for x in range(WorkerThreads):
 		worker = FindActions(checkqueue)
@@ -133,16 +136,17 @@ def check_accounts_for_policies(CredentialList, fRegionList=None, fAction=None, 
 
 ##################
 
-begin_time = time()
+if pTiming:
+	begin_time = time()
 print()
 print(f"Checking for matching Policies... ")
 print()
 
-display_dict = {'MgmtAccount'  : {'Format': '12s', 'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
-				'AccountNumber': {'Format': '12s', 'DisplayOrder': 2, 'Heading': 'Acct Number'},
-				'Region'       : {'Format': '15s', 'DisplayOrder': 3, 'Heading': 'Region'},
-				'PolicyName'   : {'Format': '40s', 'DisplayOrder': 4, 'Heading': 'Policy Name'},
-				'Action'       : {'Format': '10s', 'DisplayOrder': 5, 'Heading': 'Action'}}
+display_dict = {'MgmtAccount'  : {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
+				'AccountNumber': {'DisplayOrder': 2, 'Heading': 'Acct Number'},
+				'Region'       : {'DisplayOrder': 3, 'Heading': 'Region'},
+				'PolicyName'   : {'DisplayOrder': 4, 'Heading': 'Policy Name'},
+				'Action'       : {'DisplayOrder': 5, 'Heading': 'Action'}}
 
 PoliciesFound = []
 AllChildAccounts = []
@@ -154,9 +158,9 @@ AllCredentials = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAcc
 if pTiming:
 	logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time:.2f} seconds up till now{Fore.RESET}")
 
-PoliciesFound.extend(check_accounts_for_policies(AllCredentials, RegionList, pAction, pFragment))
+PoliciesFound.extend(check_accounts_for_policies(AllCredentials, RegionList, pActions, pFragments))
 sorted_policies = sorted(PoliciesFound, key=lambda x: (x['MgmtAccount'], x['AccountNumber'], x['Region'], x['PolicyName']))
-display_results(sorted_policies, display_dict, pAction)
+display_results(sorted_policies, display_dict, pActions)
 
 if pTiming:
 	print(ERASE_LINE)
@@ -164,7 +168,7 @@ if pTiming:
 print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else print()
 print()
 print(f"Found {len(PoliciesFound)} policies across {len(AllCredentials)} accounts across {len(RegionList)} regions\n"
-	  f"	that matched the fragment{'s' if len(pFragment) > 1 else ''} that you specified: {pFragment}")
+	  f"	that matched the fragment{'s' if len(pFragments) > 1 else ''} that you specified: {pFragments}")
 print()
 print("Thank you for using this script")
 print()
