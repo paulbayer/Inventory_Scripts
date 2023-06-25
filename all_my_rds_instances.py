@@ -4,6 +4,7 @@
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
+from time import time
 from colorama import init, Fore
 from botocore.exceptions import ClientError
 
@@ -11,19 +12,26 @@ import logging
 
 init()
 
+__version__ = '2023.05.04'
+
 parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
+parser.timing()
 parser.verbosity()
+parser.version(__version__)
 args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
 pRegionList = args.Regions
 verbose = args.loglevel
+pTiming = args.Time
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 ##################
 
+if pTiming:
+	begin_time = time()
 
 ERASE_LINE = '\x1b[2K'
 
@@ -75,13 +83,11 @@ def check_accounts_for_instances(faws_acct, fRegionList=None):
 				for y in range(len(Instances['DBInstances'])):
 					InstanceType = Instances['DBInstances'][y]['DBInstanceClass']
 					State = Instances['DBInstances'][y]['DBInstanceStatus']
-					if 'DBName' in Instances['DBInstances'][y].keys():
-						Name = Instances['DBInstances'][y]['DBName']
-					else:
-						Name = "No Name"
+					Name = Instances['DBInstances'][y]['DBName'] if 'DBName' in Instances['DBInstances'][y].keys() else "No Name"
+					DBId = Instances['DBInstances'][y]['DBInstanceIdentifier']
 					Engine = Instances['DBInstances'][y]['Engine']
-					fmt = '%-12s %-12s %-10s %-15s %-20s %-20s %-12s'
-					print(fmt % (faws_acct.acct_number, account['AccountId'], region, InstanceType, Name, Engine, State))
+					fmt = '%-12s %-12s %-10s %-15s %-20s %-12s %-20s %-12s'
+					print(fmt % (faws_acct.acct_number, account['AccountId'], region, InstanceType, Name, DBId, Engine, State))
 		AllInstances.extend(Instances['DBInstances'])
 	return (AllInstances)
 
@@ -94,9 +100,9 @@ print(f"Checking for instances... ")
 print()
 
 print()
-fmt = '%-12s %-12s %-10s %-15s %-20s %-20s %-12s'
-print(fmt % ("Root Acct #", "Account #", "Region", "InstanceType", "Name", "Engine", "State"))
-print(fmt % ("-----------", "---------", "------", "------------", "----", "------", "-----"))
+fmt = '%-12s %-12s %-10s %-15s %-20s %-12s %-20s %-12s'
+print(fmt % ("Root Acct #", "Account #", "Region", "InstanceType", "Name", "DB ID", "Engine", "State"))
+print(fmt % ("-----------", "---------", "------", "------------", "----", "-----", "------", "-----"))
 
 InstancesFound = []
 AllChildAccounts = []
@@ -121,6 +127,9 @@ else:
 
 print(ERASE_LINE)
 print(f"Found {len(InstancesFound)} instances across {len(AllChildAccounts)} accounts across {len(RegionList)} regions")
+if pTiming:
+	print(ERASE_LINE)
+	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 print()
 print("Thank you for using this script")
 print()

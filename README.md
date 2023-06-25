@@ -19,21 +19,22 @@ Common Parameters
   - -vvv for even more logging (level: INFO)
     - This is generally the lowest level I would recommend anyone use.
     - I started changing most scripts over from "-d" for INFO, to "-vvv" to align with standard practices 
-  - -d for lots of logging (level: INFO)
-    - In the scripts where I changed over to the "-vvv", the single "-d" now means "debug"; but in the scripts which haven't moved over yet, it's still "-dd".
     - This is generally the lowest level I would recommend anyone use.
-  - -dd for crazy amount of logging (level: DEBUG)
-    - I would avoid the "debug" level because Python itself tends to bombard you with so much screen-spam that it's not useful. I've used DEBUG level for when I was writing the code and needed to debug it myself.
-
-Additional common parameters:
-------------------
+  - -d for lots of logging (level: DEBUG)
+    - I've updated the DEBUG to be the -d. Beware - this is a crazy amount of debugging, and it includes a lot of the open-source libraries that I use, since I don't disable that functionality within my scripts.
   - -h: Provide "-h" or "--help" on the command line and get a nicely formatted screen that describes all possible parameters.
-  - -p: to specify the profile which the script will work with. In most cases, this could/ should be a Master Profile, but doesn't always have to be.
+  - -p: to specify the profile which the script will work with. In most cases, this could/ should be a Master Profile, but doesn't always have to be. Additionally - in many scripts, this parameter takes more than one possible profile AND ALSO allows you to specify a fragment of a profile, so it you have 3 profiles all with the same fragment, it will include all 3.
   - -r: to specify the single region for the script to work in. Most scripts take "all" as a valid parameter. Most scripts also assume "us-east-1" as a default if nothing is specified. 
   - -rs: In many of the scripts, you can specify a fragment - so you can specify "us-east" and get both "us-east-1" and "us-east-2". Specify "us-" and you'll get all four "us-" regions.
   - -f: string fragment - some scripts (specifically ones dealing with CFN stacks and stacksets) take a parameter that allows you to specify a fragment of the stack name, so you can find that stack you can't quite remember the whole name of.
-  - +delete: I've tried to make it difficult to **accidentally** delete any resources, so that's why it's a "+" instead of a "-".
 
+Less used common parameters:
+------------------
+  - --exact: It's possible that some fragments will exist both as a stackname, as well as part of other stacknames (think "xxx" and "xxx-global"). In these cases, you can use the "--exact" parameter, and it will only use the string you've entered. *Note that this means you must enter the entire string, and not just a fragment anymore.*
+  - --skipprofile: Sometimes you want to specify a fragment of a profile, and you want 5 of the 6 profiles that fragment shows up in, but not the 6th. You can use this parameter to exclude that 6th profile (space delimited).
+  - --skipaccount: Sometimes you want to exclude the production accounts from any script you're running. You can use this parameter to exclude a list of accounts (space delimited).
+  - --filename: This parameter (hasn't been added to all the scripts yet) is my attempt to produce output suitable for use in an Excel sheet, or other analysis tooling. Eventually I'll come up with the Analysis tooling myself, but until then - the least I could do is output this data in a suitable format. You'll have to run the help (-h) to find out for each script if it supports this parameter / output yet or not.
+  - +delete: I've tried to make it difficult to **accidentally** delete any resources, so that's why it's a "+" instead of a "-".
 
 Purpose Built Scripts
 ------------------
@@ -42,10 +43,19 @@ Purpose Built Scripts
   - If there are blockers to the adoption (like the default VPCs being present, or Config Recorder already being enabled), it can rectify those blockers it finds. However - to avoid mistakes - it only does this if you specifically select that in the submitted parameters.
   - While this script was focused on ALZ, it also *sort of* supports an account being adopted by Control Tower too.
 
+- **check_all_cloudtrail.py**
+  - This script is used to find whether CloudTrail is enabled on every account and region and whether it's enabled at the Org level, or within the Account itself. It also will show a listing of those accounts and regions which DO NOT have CloudTrail enabled - this is important!!
+
+
 - **CT_CheckAccount.py**
   - This script takes an Organization Master Account profile, and checks additional accounts to see if they meet the pre-reqs to be "adopted" by Control Tower.
   - If there are blockers to the adoption (like the Config Recorder already being enabled), it can rectify those blockers it finds. However - to avoid mistakes - it only does this if you specifically select that in the submitted parameters. This script is still being worked on.
  
+- **DrawOrg.py**
+  - This script can take a single profile and create a graphviz representation of the Org, with OUs (and the number of accounts under them), and the accounts shown as well. Eventually, I'll make showing the accounts optional, but for now - it does both.
+  - I added visualizing the policies (both managed or unmanaged) as a parameter too. Use "--policy" to see the policies (default is to not show) and "--managed" to see even the Managed Policies (which really make the diagram tougher to read).
+  - This script will require multi-threading to make the most sense, because for every account and OU, we need to do 4 additional calls to find the policies associated with that account. These could definitely be mult-threaded.
+
 - **find_my_LZ_versions.py**
   - I wrote this script because I've noticed that many customers find it difficult to find their own ALZ versions, and some customers have multiple Landing Zones (like me), so it makes it even harder to keep track. This script will take either a single profile, or the keyword "all" and determine whether your profile is the Management Account of a Landing Zone - or in the case of "all", go through all of your profiles and find those accounts which are Landing Zones roots, and tell you the version of the ALZ in that account.  
 
@@ -81,8 +91,8 @@ Purpose Built Scripts
 
 
 
-    Generic Scripts
-    ------------------
+Generic Scripts
+------------------
 - **all_my_cfnstacks.py**
   - The objective of this script is to find that CloudFormation stack you know you created in some account within your Organization - but you just can't remember which one (and God forbid - in which region!). So here you can specify a stack fragment, and a region fragment and the script will search through all accounts within your Org (assuming you provided a profile of the Master Account-with appropriate rights) in only those regions that match your fragment, and find the stacks that match the fragment you provided.
   - If you provide the "+delete" parameter - it will DELETE those stacks WITHOUT ADDITIONAL CONFIRMATION! So please be careful about using this.
@@ -95,6 +105,13 @@ Purpose Built Scripts
 
 - **all_my_elbs.py**
   - The objective of this script was to find all the various Load Balancers created in various accounts within your org.
+
+- **all_my_ebs_volumes.py**
+  - The objective of this script was to find all the EBS volumes in various accounts within your org.
+  - At the end, I tried to give a summary of any volumes that are unattached, so you can take proper action on those (which could be costing you money).
+
+- **all_my_enis.py**
+  - This is a script to find devices across all of my Orgs when all I have is the public (or private) IP address. Having so many different accounts - regions and Orgs makes finding something a real pain in the butt.
 
 - **all_my_functions.py**
   - The objective of this script was to find all the various Lambda functions you've created and left in various accounts.
@@ -117,6 +134,9 @@ Purpose Built Scripts
 - **all_my_phzs.py**
   - The objective of this script is to find all of the Private Hosted Zones in a cross-account fashion.
 
+- **all_my_policies.py**
+  - The objective of this script is to find all the RDS instances within a profile, or an Org.
+
 - **all_my_rds_instances.py**
   - The objective of this script is to find all the RDS instances within a profile, or an Org.
 
@@ -134,15 +154,13 @@ Purpose Built Scripts
 
 - **all_my_subnets.py**
   - The objective of this script is to allow the user to find all their subnets across their org, but ALSO to find a specific subnet that matches a provided IP address, to make it easier to find that account and region where that one IP is being used.
-  - This is a READ-ONLY script, since there's likely no scenario where you want to wontonly delete subnets from your environment.
+  - This is a READ-ONLY script, since there's likely no scenario where you want to delete subnets from your environment.
   - I have experimented with multi-threading in this script, and it seems to make a world of difference. As always - all comments are welcome!
 
 - **all_my_vpcs.py**
-  - The objective of this script is to find all the vpcs within your set of accounts - as determined by your profiles. This script has been superseded by the "all_my_vpcs2.py" since this script only looked in the specific profile you supplied.
-
-- **all_my_vpcs2.py**
-  - The objective of this script is to find all the vpcs within your set of accounts - as determined by your Master Account's list of children. This script obsoletes the previous "all_my_vpcs.py" as this script can look at your whole Org, instead of only the single profile you specify.
+  - The objective of this script is to find all the vpcs within your set of accounts - as determined by your Master Account's list of children.
   - You can also specify "--default" to limit your searching to only default VPCs.
+  - This does not currently allow any deletion of your (default) VPCs...
 
 - **delete_bucket_objects.py**
   - This is a tool that should delete buckets and the objects in them. I didn't write the original script, but I've been adapting it to my needs. This one should be considered alpha.
@@ -151,7 +169,9 @@ Purpose Built Scripts
   - So, originally, when I was creating this library, I had the idea that I would create scripts that found resources - and different scripts that deleted those resources. Hence - both the "all_my_cfnstacksets" as well as "del_my_cfnstacksets". However, I quickly realized that you had to do the finding before you could do the deleting - so I decided to put more effort into the "del\*" tool instead of the "find\*" tool. Of course - then I realized that having the "deletion" be action in the find script made way more sense, so I tried to put everything I had done from one script into the other. At the end of it all - I had a mish-mash of useful and stale features in both scripts.
   - The truth is that I need to go through this script and make sure everything useful here has gotten into the "all_my_cfnstacksets.py" script and simply move forward with that one only. Still a work in progress, I guess.
   - This script goes through the stacksets in the Management Account and looks for stacksets that match the fragment you supplied.
-  - The usefulness of this script is that it can remove specific accounts from all the stacksets it finds, so that if you know you've closed an account, but forgotten to remove it from existing stacksets, this script will remove that account from the stacksets found.  
+  - The usefulness of this script is that it can remove specific accounts from all the stacksets it finds, so that if you know you've closed an account, but forgotten to remove it from existing stacksets, this script will remove that account from the stacksets found.
+  - Most recent update - this script can now affect stacksets that are tied to a specific OU and use the "SERVICE_MANAGED" permission model. 
+  - Another update - this script can now re-run stacksets, thereby remediating drift if any is found in the child stacks.
 
 - **my_org_users.py**
   - The objective of this script is to go through all of your child accounts within an Org and pull out any IAM users you have - to ensure it's only what you expect.
@@ -185,3 +205,67 @@ Class Files
 
 - **ArgumentsClass.py**
   - This class holds the argparse class I use to standardize te parameters across as many scripts as possible.
+
+Using these Inventory Scripts as Discovery
+----------------
+Lately, I've been asked to come up with a way of combining many of these scripts together to come up with a way to perform a reasonable Discovery on an Org - and find issues that need to be remediated, as well as assess the level of maturity of a Landing Zone. What follows here is the list of scripts (with expected parameters) and what I'd expect you'll find given the output.
+
+--------
+The following script runs for all accounts within either your specified profile, or (if no profile is used) your default credentials (could be environment variables). This will assess whether ALL of your accounts are suitable to be migrated to Control Tower or not, and if not - what the issues preventing their adoption would be. The "-r global" specifies that ALL regions (even those you have not opted into) should be looked at. The script will (because of the "-v") inform you of the failure to connect to an account in the excluded region, but won't fail because of it. This script executes 10 commands for every account in every region, so it will take a **long** time to run. I have NOT enabled the output to be saved to an output file yet, but that's next on my list. For now - you'll have to pipe the output to a file and import that to Excel.    
+```commandline
+CT_CheckAccount.py -v -r global --timing [-p <profile of Org Account>]
+```
+
+This script will go through your Org and find all Child Accounts and their statuses - thereby showing you which accounts should - perhaps - be moved to a "SUSPENDED" OU or otherwise treated specially. It's useful because the output is very purposeful and it's pretty fast. 
+```commandline
+all_my_orgs.py -v
+```
+
+This next script will find the status of all of your accounts and regions and whether you have CloudTrail enabled in each. I'm working on enhancing the script to also summarize whether there are multiple CloudTrails for a given account / region, so you can be notified to TURN THAT OFF - and save a bunch of money. You only get 1 CloudTrail per account / region for free, and the second one costs more than you think.
+```commandline
+check_all_cloudtrail.py -v -r global --timing --filename cloudtrail_check.out [-p <profile of Org Account>]
+```
+
+The following script can draw out the Organization. The output will be a file in the current directory called “aws_organization.png” - please either get that file, or a screenshot of it. Assuming the user has the graphviz tool installed within their environment, running this tool should end with the diagram itself being shown. The parameter "--policy" can also be mitigated by "--aws" to include those policies which AWS owns (like the AWSFullAccess policy assigned by default to every OU and account). The default (below) excludes that AWS-managed policy for diagram clarity's sake. 
+```commandline
+DrawOrg.py --policy --timing
+```
+
+The following script can do soooo much _(Yeah - I'm pretty proud of this one)_. As it's shown here, it doesn't yet support the "--filename" parameter, since I haven't decided how to write out the data. The goal of using this output in Discovery, is to find those accounts which have been closed (and may no longer be in the Org at all), but are still represented in the stacksets of the Org - and therefore may (eventually) cause stacksets to slow down or fail. Best to find these issues ahead of time, rather than after the fact. For instance - I found a customer with 450 accounts in their Org, but their largest stackset had over 100 closed (and already dropped out) accounts, so while the stackset was still considered "CURRENT", more than 20% of the time spent on that stackset was spent attempting to connect to previously closed accounts.
+```commandline
+mod_my_cfnstacksets.py -v -r <home region> --timing [-p <profile of Org Account>] -check
+```
+
+The following script shows whether the "Public S3 block" has been enabled on all accounts within the Org. While Control Tower has a control that can enable this on new accounts, it doesn't mean that it hasn't been removed somewhere. It's a good idea to run this, and you can use the same script to re-enable the block if it's been removed.
+```commandline
+put_s3_public_block.py -v
+```
+
+The following script finds any and all config recorders and delivery channels in your environment - again, this is a tool that is used when trying to determine what blockers exist before moving to Control Tower. It's also a good tool (if you don't need the full complement of checks in the CT_CheckAccount.py above) to find any accounts where Config isn't running at all. This tool also can be used to **delete** the config recorders and delivery channels - if needed. 
+```commandline
+all_my_config_recorders_and_delivery_channels.py -v -r global --timing
+```
+
+These scripts will find those IAM users, local directories, or SAML providers in your child accounts which can be exposures to unwanted access, without you realizing it. It's always a good idea to look for these - since these can represent a significant threat vector to protect from.
+```commandline
+my_org_users.py -v
+all_my_saml_providers.py -v
+all_my_directories.py -v
+```
+
+The following scripts will just show very useful Inventory information that will help the Discovery process flesh out its understanding of the customer's environment.
+```commandline
+all_my_vpcs.py -v
+all_my_phzs.py -v
+```
+
+Whenever we do Discovery, we always want to find possible money-savings areas for the customer as well. The script below will find any Log Groups and their retention settings. This gives the customer the opportunity (perhaps) to update those retention settings (from their default of "NEVER") to something that will purge data after a specific time. The bottom of the script gives an *idea* of how much you're spending on Log Groups anyway, so you have an idea if taking action is worthwhile. 
+```commandline
+update_retention_on_all_my_cw_groups.py
+```
+
+ALZ used Service Catalog to create and manage accounts. It's important that these Service Catalog products are properly terminated when ALZ  is decommissioned, so this tool will report on the accounts in the Org reconciled with the Service Catalog Products that were created and point out if there are products for already closed accounts, or whether there are more than one product for a given account (or no products for a given account). This is - again - useful in cleaning up what sometimes happens over time with any tool - organic mess...   
+```commandline
+SC_Products_to_CFN_Stacks.py -v --timing
+```
+

@@ -1,33 +1,24 @@
-def get_regions_old(fkey, fprofile="default"):
-	"""
-	This library is DEPRECATED.
+import logging
 
-	This is a library function to get the AWS region names that correspond to the
-	fragments that may have been provided via the command line.
+__version__ = "2023.06.22"
 
-	For instance
-		- if the user provides 'us-east', this function will return ['us-east-1','us-east-2'].
-		- if the user provides 'west', this function will return ['us-west-1', 'us-west-2', 'eu-west-1', etc.]
-	"""
-	import boto3
-	import logging
+"""
+** Why are some functions "function" vs. "function2" vs. "function3"?**
 
-	session_ec2 = boto3.Session(profile_name=fprofile)
-	region_info = session_ec2.client('ec2')
-	regions = region_info.describe_regions()
-	RegionNames = []
-	for x in range(len(regions['Regions'])):
-		RegionNames.append(regions['Regions'][x]['RegionName'])
-	if "all" in fkey or "ALL" in fkey:
-		return (RegionNames)
-	RegionNames2 = []
-	for x in fkey:
-		for y in RegionNames:
-			logging.info('Have %s | Looking for %s', y, x)
-			if y.find(x) >= 0:
-				logging.info('Found %s', y)
-				RegionNames2.append(y)
-	return (RegionNames2)
+As most things in computer science, my naming scheme makes sense to me, but not necessarily everyone :). Hence, here is my attempt at an explanation.
+
+- When a function is named "<function>" without a number after it, it's because that was the original function name I chose and used. 
+Back in the beginning of my coding journey, I was using *profiles* for authentication/ authorization for everything, thinking that everyone else would use that too.
+However, I was wrong. But the naming convention generally sticks, so functions without a numbered prefix, tend to expect the profile to be supplied.
+- After a while, I realized that I could pass a dictionary of credentials, instead of the profile itself, which could include things like the region, and therefore, 
+make the script a little more flexible. So functions that end in "*2", typically take a dict (often called "ocredentials") as a parameter. I've tried to document 
+what fields are expected in that parameter within the docstring of the function.
+- After another long while, I realized I should be creating a class object for the account/ credentials, so I created the "account_class.py" class file, and I've 
+used that for all functions that end in "*3". However, I have also realized that using the account_class object can sometimes lead to some latency, as some of the 
+lookups within that class take a while. Soooo... I've recently reverted to using the "*2" functions more than the "*3" functions - since the credentials can be 
+easily passed back and forth, and it's quicker. There might be some security exposure to doing this that I'm unaware of, so I'm keeping the "*3" functions around
+just in case...     
+"""
 
 
 def get_regions3(faws_acct, fregion_list=None):
@@ -38,26 +29,36 @@ def get_regions3(faws_acct, fregion_list=None):
 	For instance
 		- if the user provides 'us-east', this function will return ['us-east-1','us-east-2'].
 		- if the user provides 'west', this function will return ['us-west-1', 'us-west-2', 'eu-west-1', etc.]
+		- if the user provides 'all', this function will return all regions
 
-	Thr first parameter to this library must provide a valid account object that includes a boto3 session,
+	The first parameter to this library must provide a valid account object that includes a boto3 session,
 	so that regions can be looked up.
 	"""
 	import logging
 
 	region_info = faws_acct.session.client('ec2')
-	regions = region_info.describe_regions(Filters=[
-		{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
-	RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
 	if fregion_list is None or "all" in fregion_list or "ALL" in fregion_list or "All" in fregion_list:
+		regions = region_info.describe_regions(Filters=[
+			{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
+		RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
 		return (RegionNames)
-	RegionNames2 = []
-	for x in fregion_list:
-		for y in RegionNames:
-			logging.info(f"Have {y} | Looking for {x}")
-			if y.find(x) >= 0:
-				logging.info(f"Found {y}")
-				RegionNames2.append(y)
-	return (RegionNames2)
+	# Special case where they want everything - globally
+	elif 'global' in fregion_list:
+		regions = region_info.describe_regions(AllRegions=True)
+		RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
+		return (RegionNames)
+	else:
+		regions = region_info.describe_regions(Filters=[
+			{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
+		RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
+		RegionNames2 = []
+		for x in fregion_list:
+			for y in RegionNames:
+				logging.info(f"Have {y} | Looking for {x}")
+				if y.find(x) >= 0:
+					logging.info(f"Found {y}")
+					RegionNames2.append(y)
+		return (RegionNames2)
 
 
 def get_ec2_regions(fprofile=None, fregion_list=None):
@@ -82,7 +83,7 @@ def get_ec2_regions(fprofile=None, fregion_list=None):
 	regions = region_info.describe_regions(Filters=[
 		{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
 	RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
-	if fregion_list is None or "all" in fregion_list or "ALL" in fregion_list or 'All' in fregion_list:
+	if fregion_list is None or ("all" in fregion_list or "ALL" in fregion_list or 'All' in fregion_list):
 		return (RegionNames)
 	RegionNames2 = []
 	for x in fregion_list:
@@ -119,7 +120,7 @@ def get_ec2_regions3(faws_acct, fkey=None):
 	return (RegionNames2)
 
 
-def get_service_regions(service, fkey=None):
+def get_service_regions(service, fkey=None, fprofile=None, ocredentials=None, faws_acct=None):
 	"""
 	Parameters:
 		service = the AWS service we're trying to get regions for. This is useful since not all services are supported in all regions.
@@ -127,11 +128,20 @@ def get_service_regions(service, fkey=None):
 			If not supplied, then we send back all regions for that service.
 			If they send "us-" (for example), we would send back only those regions which matched that fragment.
 			This is good for focusing a search on only those regions you're searching within.
+		Either the profile, ocredentials, or aws_acct account object could be passed. We'll use whatever they pass, or nothing.
 	"""
 	import boto3
 	import logging
 
-	s = boto3.Session()
+	if fprofile is not None:
+		s = boto3.Session(profile_name=fprofile)
+	elif ocredentials is not None:
+		s = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials['SecretAccessKey'],
+		                  aws_session_token=ocredentials['SessionToken'], region_name=ocredentials['Region'])
+	elif faws_acct is not None:
+		s = faws_acct.session
+	else:
+		s = boto3.Session()
 	regions = s.get_available_regions(service, partition_name='aws', allow_non_regional=False)
 	if fkey is None or ('all' in fkey or 'All' in fkey or 'ALL' in fkey):
 		return (regions)
@@ -176,15 +186,25 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 	import boto3
 	import logging
 
+	profiles_to_remove = []
+	my_Session = boto3.Session()
+	my_profiles = my_Session._session.available_profiles
 	if fSkipProfiles is None:
 		fSkipProfiles = []
 	if fprofiles is None:
 		fprofiles = ['all']
-	my_Session = boto3.Session()
-	my_profiles = my_Session._session.available_profiles
+	elif isinstance(fprofiles, str) and fprofiles in my_profiles:
+		# Update the string to become a list
+		return ([fprofiles])
+	elif isinstance(fprofiles, str):
+		logging.error(f"There was an error: The profile passed in '{fprofiles}' doesn't exist.")
+		return ()
 	for profile in my_profiles:
+		logging.info(f"Found profile {profile}")
 		if ("skipplus" in fSkipProfiles and profile.find("+") >= 0) or profile in fSkipProfiles:
-			my_profiles.remove(profile)
+			logging.info(f"Removing profile: {profile} since it's in the fSkipProfiles parameter {fSkipProfiles}")
+			profiles_to_remove.append(profile)
+	my_profiles = list(set(my_profiles) - set(profiles_to_remove))
 	if "all" in fprofiles or "ALL" in fprofiles or "All" in fprofiles:
 		return (my_profiles)
 
@@ -196,6 +216,75 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 				logging.info(f"Found profile {y}")
 				ProfileList.append(y)
 	return (ProfileList)
+
+
+def find_in(list_to_search, list_to_find=None):
+	import logging
+
+	if list_to_find is None or None in list_to_find:
+		return (list_to_search)
+	elif 'all' in list_to_find or 'All' in list_to_find or 'ALL' in list_to_find:
+		return (list_to_search)
+	list_to_return = []
+	for x in list_to_search:
+		for y in list_to_find:
+			logging.info(f"Have {x} | Looking for {y}")
+			if x.find(y) >= 0:
+				logging.info(f"Found {y}")
+				list_to_return.append(y)
+	return (list_to_return)
+
+
+def addLoggingLevel(levelName, levelNum, methodName=None):
+	import logging
+	"""
+	Comprehensively adds a new logging level to the `logging` module and the
+	currently configured logging class.
+
+	`levelName` becomes an attribute of the `logging` module with the value
+	`levelNum`. `methodName` becomes a convenience method for both `logging`
+	itself and the class returned by `logging.getLoggerClass()` (usually just
+	`logging.Logger`). If `methodName` is not specified, `levelName.lower()` is
+	used.
+
+	To avoid accidental clobberings of existing attributes, this method will
+	raise an `AttributeError` if the level name is already an attribute of the
+	`logging` module or if the method name is already present 
+
+	Example
+	-------
+	>>> addLoggingLevel('TRACE', logging.DEBUG - 5)
+	>>> logging.getLogger(__name__).setLevel("TRACE")
+	>>> logging.getLogger(__name__).trace('that worked')
+	>>> logging.trace('so did this')
+	>>> logging.TRACE
+	5
+
+	"""
+	if not methodName:
+		methodName = levelName.lower()
+
+	if hasattr(logging, levelName):
+		raise AttributeError('{} already defined in logging module'.format(levelName))
+	if hasattr(logging, methodName):
+		raise AttributeError('{} already defined in logging module'.format(methodName))
+	if hasattr(logging.getLoggerClass(), methodName):
+		raise AttributeError('{} already defined in logger class'.format(methodName))
+
+	# This method was inspired by the answers to Stack Overflow post
+	# http://stackoverflow.com/q/2183233/2988730, especially
+	# http://stackoverflow.com/a/13638084/2988730
+	def logForLevel(self, message, *args, **kwargs):
+		if self.isEnabledFor(levelNum):
+			self._log(levelNum, message, args, **kwargs)
+
+	def logToRoot(message, *args, **kwargs):
+		logging.log(levelNum, message, *args, **kwargs)
+
+	logging.addLevelName(levelNum, levelName)
+	setattr(logging, levelName, levelNum)
+	setattr(logging.getLoggerClass(), methodName, logForLevel)
+	setattr(logging, methodName, logToRoot)
 
 
 def find_if_alz(fProfile):
@@ -295,7 +384,7 @@ def find_calling_identity(fProfile):
 		client_sts = session_sts.client('sts')
 		response = client_sts.get_caller_identity()
 		creds = {'Arn'  : response['Arn'], 'AccountId': response['Account'],
-				 'Short': response['Arn'][response['Arn'].rfind(':') + 1:]}
+		         'Short': response['Arn'][response['Arn'].rfind(':') + 1:]}
 	except ClientError as my_Error:
 		if str(my_Error).find("UnrecognizedClientException") > 0:
 			print(f"{fProfile}: Security Issue")
@@ -366,9 +455,9 @@ def get_child_access(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleList
 	sts_client = sts_session.client('sts', region_name=fRegion)
 	if fChildAccount == ParentAccountId:
 		explain_string = ("We're trying to get access to either the Root Account (which we already have access "
-						  "to via the profile)	or we're trying to gain access to a Standalone account. "
-						  "In either of these cases, we should just use the profile passed in, "
-						  "instead of trying to do anything fancy.")
+		                  "to via the profile)	or we're trying to gain access to a Standalone account. "
+		                  "In either of these cases, we should just use the profile passed in, "
+		                  "instead of trying to do anything fancy.")
 		logging.info(explain_string)
 		# TODO: Wrap this in a try/except loop
 		account_credentials = sts_client.get_session_token()['Credentials']
@@ -377,20 +466,20 @@ def get_child_access(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleList
 		return (account_credentials, 'Check Profile')
 	if fRoleList is None:
 		fRoleList = ['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution',
-					 'OrganizationAccountAccessRole', 'AdministratorAccess', 'Owner']
+		             'OrganizationAccountAccessRole', 'AdministratorAccess', 'Owner']
 	# Initializing the "Negative Use Case" string, returning the whole list instead of only the last role it tried.
 	# This way the operator knows that NONE of the roles supplied worked.
 	return_string = f"{str(fRoleList)} failed. Try Again"
 
 	account_credentials = {'Profile'        : fRootProfile,
-						   'AccessKeyId'    : None,
-						   'SecretAccessKey': None,
-						   'SessionToken'   : None,
-						   'AccountNumber'  : None}
+	                       'AccessKeyId'    : None,
+	                       'SecretAccessKey': None,
+	                       'SessionToken'   : None,
+	                       'AccountNumber'  : None}
 	for role in fRoleList:
 		try:
 			logging.info("Trying to access account %s using %s profile assuming role: %s", fChildAccount, fRootProfile,
-						 role)
+			             role)
 			role_arn = f"arn:aws:iam::{fChildAccount}:role/{role}"
 			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Find-ChildAccount-Things")[
 				'Credentials']
@@ -409,24 +498,28 @@ def get_child_access(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleList
 
 def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=None):
 	"""
-	- fAccountObject is a custom class (account_class.aws_acct_access)
+	- faws_acct is a custom class (account_class.aws_acct_access)
 	- fChildAccount expects an AWS account number (ostensibly of a Child Account)
 	- rRegion expects a string representing one of the AWS regions ('us-east-1', 'eu-west-1', etc.)
 	- fRoleList expects a list of roles to try, but defaults to a list of typical roles, in case you don't provide
 
-	The first response object is a dict with account_credentials to pass onto other functions
-	This is the same object as "ocredentials" used in other places in this library file.
-
-	The format of the account credentials dict is here:
-	account_credentials = {'ParentAcctId': ParentAccountId,
-							'AccessKeyId': None,
-							'SecretAccessKey': None,
-							'SessionToken': None,
-							'AccountNumber': None,
-							'Region': fRegion,
-							'OrgType': 'Root' or 'Standalone' or 'Child',
-							'Role': Role that worked to get in
-							'Profile': If possible, the profile used to access the account}
+	The format of the returned account credentials dict is here:
+		account_credentials = {'ParentAcctId'   : ParentAccountId,
+		                       'MgmtAccount'    : faws_acct.MgmtAccount,
+		                       'OrgType'        : org_type,
+		                       'AccessKeyId'    : faws_acct.creds.access_key,
+		                       'SecretAccessKey': faws_acct.creds.secret_key,
+		                       'SessionToken'   : faws_acct.creds.token,
+		                       'AccountNumber'  : fChildAccount,
+		                       'AccountId'      : fChildAccount,
+		                       'Region'         : fRegion,
+		                       'AccountStatus'  : faws_acct.AccountStatus,
+		                       'RolesTried'     : fRoleList,
+		                       'Role'           : 'Use Profile',
+		                       'Profile'        : If possible, the profile used to access the account,
+		                       'AccessError'    : False,
+		                       'Success'        : True,
+		                       'ErrorMessage'   : None}
 	"""
 	import logging
 	from botocore.exceptions import ClientError
@@ -438,50 +531,50 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 	sts_client = faws_acct.session.client('sts', region_name=fRegion)
 	if fRoleList is None or fRoleList == []:
 		fRoleList = ['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution',
-					 'OrganizationAccountAccessRole', 'AdministratorAccess', 'Owner']
+		             'OrganizationAccountAccessRole', 'AdministratorAccess', 'Owner']
 	if fChildAccount == ParentAccountId:
 		explain_string = (f"We're trying to get access to either the Root Account (which we already have access "
-						  f"to via the profile) or we're trying to gain access to a Standalone account. "
-						  f"In either of these cases, we should just use the profile passed in, "
-						  f"instead of trying to do anything fancy.")
+		                  f"to via the profile) or we're trying to gain access to a Standalone account. "
+		                  f"In either of these cases, we should just use the profile passed in, "
+		                  f"instead of trying to do anything fancy.")
 		logging.info(explain_string)
 		# TODO: Wrap this in a try/except loop on the off-chance that the class doesn't work properly
 		account_credentials = {'ParentAcctId'   : ParentAccountId,
-							   'MgmtAccount'    : faws_acct.MgmtAccount,
-							   'OrgType'        : org_type,
-							   'AccessKeyId'    : faws_acct.creds.access_key,
-							   'SecretAccessKey': faws_acct.creds.secret_key,
-							   'SessionToken'   : faws_acct.creds.token,
-							   'AccountNumber'  : fChildAccount,
-							   'AccountId'      : fChildAccount,
-							   'Region'         : fRegion,
-							   'AccountStatus'  : faws_acct.AccountStatus,
-							   'RolesTried'     : fRoleList,
-							   'Role'           : 'Use Profile',
-							   'Profile'        : faws_acct.session.profile_name if faws_acct.session.profile_name else None,
-							   'AccessError'    : False,
-							   'Success'        : True,
-							   'ErrorMessage'   : None}
+		                       'MgmtAccount'    : faws_acct.MgmtAccount,
+		                       'OrgType'        : org_type,
+		                       'AccessKeyId'    : faws_acct.creds.access_key,
+		                       'SecretAccessKey': faws_acct.creds.secret_key,
+		                       'SessionToken'   : faws_acct.creds.token,
+		                       'AccountNumber'  : fChildAccount,
+		                       'AccountId'      : fChildAccount,
+		                       'Region'         : fRegion,
+		                       'AccountStatus'  : faws_acct.AccountStatus,
+		                       'RolesTried'     : fRoleList,
+		                       'Role'           : 'Use Profile',
+		                       'Profile'        : faws_acct.session.profile_name if faws_acct.session.profile_name else None,
+		                       'AccessError'    : False,
+		                       'Success'        : True,
+		                       'ErrorMessage'   : None}
 		return (account_credentials)
 	# Initializing the "Negative Use Case" string, returning the whole list instead of only the last role it tried.
 	# This way the operator knows that NONE of the roles supplied worked.
-	return_string = f"{str(fRoleList)} failed. Try Again"
+	error_message = f"{str(fRoleList)} failed. Try Again"
 	account_credentials = {'ParentAcctId'   : ParentAccountId,
-						   'MgmtAccount'    : ParentAccountId,
-						   'OrgType'        : 'Child',
-						   'AccessKeyId'    : None,
-						   'SecretAccessKey': None,
-						   'SessionToken'   : None,
-						   'AccountNumber'  : None,
-						   'AccountId'      : None,
-						   'Region'         : fRegion,
-						   'AccountStatus'  : faws_acct.AccountStatus,
-						   'RolesTried'     : fRoleList,
-						   'Role'           : None,
-						   'Profile'        : None,
-						   'AccessError'    : False,
-						   'Success'        : False,
-						   'ErrorMessage'   : None}
+	                       'MgmtAccount'    : ParentAccountId,
+	                       'OrgType'        : 'Child',
+	                       'AccessKeyId'    : None,
+	                       'SecretAccessKey': None,
+	                       'SessionToken'   : None,
+	                       'AccountNumber'  : None,
+	                       'AccountId'      : None,
+	                       'Region'         : fRegion,
+	                       'AccountStatus'  : faws_acct.AccountStatus,
+	                       'RolesTried'     : fRoleList,
+	                       'Role'           : None,
+	                       'Profile'        : None,
+	                       'AccessError'    : False,
+	                       'Success'        : False,
+	                       'ErrorMessage'   : None}
 	for role in fRoleList:
 		try:
 			if faws_acct.session.profile_name:
@@ -494,7 +587,7 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 			account_credentials = sts_client.assume_role(RoleArn=role_arn, RoleSessionName="Test-ChildAccount-Access")['Credentials']
 			# If we were successful up to this point, then we'll short-cut everything and just return the credentials that worked
 			logging.info(f"The credentials for account {fChildAccount} using parent account "
-						 f"{faws_acct.acct_number} and role name {role} worked")
+			             f"{faws_acct.acct_number} and role name {role} worked")
 			account_credentials['ParentAcctId'] = ParentAccountId
 			account_credentials['MgmtAccount'] = ParentAccountId
 			account_credentials['OrgType'] = 'Child'
@@ -510,7 +603,9 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 			account_credentials['Success'] = True
 			return (account_credentials)
 		except ClientError as my_Error:
-			logging.info(f"In Region {fRegion}, we got error message: {my_Error}")
+			error_message = f"In Region {fRegion}, we got error message: {my_Error}"
+			logging.info(error_message)
+			account_credentials = {'AccessError': True, 'Success': False, 'ErrorMessage': error_message, 'RolesTried': fRoleList}
 			continue
 		except Exception as my_Error:
 			logging.info(my_Error)
@@ -518,8 +613,8 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 	# Returns a dict object since that's what's expected
 	# It will only get to the part below if the child isn't accessed properly using the roles already defined
 	logging.debug(f"Failure:\n"
-				  f"Role list: {fRoleList}\n"
-				  f"account credentials: {account_credentials}")
+	              f"Role list: {fRoleList}\n"
+	              f"account credentials: {account_credentials}")
 	account_credentials = {'AccessError': True, 'Success': False, 'ErrorMessage': "Access Failed", 'RolesTried': fRoleList}
 	return (account_credentials)
 
@@ -532,8 +627,21 @@ def enable_drift_on_stacks2(ocredentials, fRegion, fStackName):
 		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
 	client_cfn = session_cfn.client('cloudformation')
 	logging.info(f"Enabling drift detection on Stack {fStackName} in "
-				 f"Account {ocredentials['AccountNumber']} in region {fRegion}")
+	             f"Account {ocredentials['AccountNumber']} in region {fRegion}")
 	response = client_cfn.detect_stack_drift(StackName=fStackName)
+	return (response)  # Since this is an async process, there is no response to send back
+
+
+def enable_drift_on_stack_set(ocredentials, fRegion, fStackSetName):
+	import boto3
+	import logging
+
+	session_cfn = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
+		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	client_cfn = session_cfn.client('cloudformation')
+	logging.info(f"Enabling drift detection on Stack {fStackSetName} in "
+	             f"Account {ocredentials['AccountNumber']} in region {fRegion}")
+	response = client_cfn.detect_stack_set_drift(StackSetName=fStackSetName)
 	return (response)  # Since this is an async process, there is no response to send back
 
 
@@ -559,9 +667,9 @@ def find_sns_topics2(ocredentials, fRegion, fTopicFrag=None):
 	if fTopicFrag is None:
 		fTopicFrag = ['all']
 	session_sns = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-								aws_secret_access_key=ocredentials['SecretAccessKey'],
-								aws_session_token=ocredentials['SessionToken'],
-								region_name=fRegion)
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=fRegion)
 	client_sns = session_sns.client('sns')
 	# TODO: Enable pagination
 	response = client_sns.list_topics()
@@ -570,8 +678,8 @@ def find_sns_topics2(ocredentials, fRegion, fTopicFrag=None):
 		TopicList.append(item['TopicArn'])
 	if 'all' in fTopicFrag:
 		logging.info(f"Looking for all SNS Topics in account {ocredentials['AccountNumber']} from Region {fRegion}\n"
-					 f"Topic Arns Returned: {TopicList}\n"
-					 f"We found {len(TopicList)} SNS Topics")
+		             f"Topic Arns Returned: {TopicList}\n"
+		             f"We found {len(TopicList)} SNS Topics")
 		return (TopicList)
 	else:
 		logging.info(
@@ -603,9 +711,9 @@ def find_role_names2(ocredentials, fRegion, fRoleNameFrag=None):
 	if fRoleNameFrag is None:
 		fRoleNameFrag = ['all']
 	session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-								aws_secret_access_key=ocredentials['SecretAccessKey'],
-								aws_session_token=ocredentials['SessionToken'],
-								region_name=fRegion)
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=fRegion)
 	client_iam = session_iam.client('iam')
 	# TODO: Enable pagination
 	response = client_iam.list_roles()['Roles']
@@ -614,8 +722,8 @@ def find_role_names2(ocredentials, fRegion, fRoleNameFrag=None):
 		RoleNameList.append(item['RoleName'])
 	if 'all' in fRoleNameFrag:
 		logging.info(f"Looking for all RoleNames in account {ocredentials['AccountNumber']} from Region {fRegion}\n"
-					 f"RoleName Arns Returned: {RoleNameList}\n"
-					 f"We found {len(RoleNameList)} RoleNames")
+		             f"RoleName Arns Returned: {RoleNameList}\n"
+		             f"We found {len(RoleNameList)} RoleNames")
 		return (RoleNameList)
 	else:
 		logging.info(
@@ -647,11 +755,10 @@ def find_cw_log_group_names2(ocredentials, fRegion, fCWLogGroupFrag=None):
 	if fCWLogGroupFrag is None:
 		fCWLogGroupFrag = ['all']
 	session_cw = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-							   aws_secret_access_key=ocredentials['SecretAccessKey'],
-							   aws_session_token=ocredentials['SessionToken'],
-							   region_name=fRegion)
+	                           aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                           aws_session_token=ocredentials['SessionToken'],
+	                           region_name=fRegion)
 	client_cw = session_cw.client('logs')
-	# TODO: Enable pagination # Defaults to 50
 	CWLogGroupList = []
 	FirstTime = True
 	response = {'nextToken': None}
@@ -665,8 +772,8 @@ def find_cw_log_group_names2(ocredentials, fRegion, fCWLogGroupFrag=None):
 			CWLogGroupList.append(item['logGroupName'])
 	if 'all' in fCWLogGroupFrag:
 		logging.info(f"Looking for all Log Group names in account {ocredentials['AccountNumber']} from Region {fRegion}\n"
-					 f"Log Group Names Returned: {CWLogGroupList}\n"
-					 f"We found {len(CWLogGroupList)} Log Group names")
+		             f"Log Group Names Returned: {CWLogGroupList}\n"
+		             f"We found {len(CWLogGroupList)} Log Group names")
 		return (CWLogGroupList)
 	else:
 		logging.info(f"Looking for specific Log Group names in account {ocredentials['AccountNumber']} from Region {fRegion}")
@@ -681,7 +788,98 @@ def find_cw_log_group_names2(ocredentials, fRegion, fCWLogGroupFrag=None):
 		return (CWLogGroupList2)
 
 
-def find_account_vpcs2(ocredentials, fRegion, defaultOnly=False):
+def find_org_services2(ocredentials, serviceNameList=None):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+		- ['Region'] holds the Region
+	serviceName allows the user to provide the specific service we're looking for
+
+	Returns:
+		List of services that match the items found in the list provided
+"""
+	import boto3
+	import logging
+	if serviceNameList is None:
+		serviceNameList = ['all']
+	session_org = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
+	client_org = session_org.client('organizations')
+	EnabledOrgServicesList = []
+	FirstTime = True
+	response = {'nextToken': None}
+	while 'nextToken' in response.keys() or FirstTime:
+		if FirstTime:
+			response = client_org.list_aws_service_access_for_organization()
+			FirstTime = False
+		else:
+			response = client_org.describe_log_groups(nextToken=response['nextToken'])
+		EnabledOrgServicesList.extend(response['EnabledServicePrincipals'])
+	if 'all' in serviceNameList or 'All' in serviceNameList or 'ALL' in serviceNameList:
+		logging.info(f"Looking for all Org-Enabled services in account {ocredentials['AccountNumber']} from Region {ocredentials['Region']}\n"
+		             f"Enabled Services Returned: {EnabledOrgServicesList}\n"
+		             f"We found {len(EnabledOrgServicesList)} enabled Org Services")
+		return (EnabledOrgServicesList)
+	else:
+		logging.info(f"Looking for specific enabled Org services in account {ocredentials['AccountNumber']} from Region {ocredentials['Region']}")
+		EnabledOrgServicesList2 = []
+		for item in serviceNameList:
+			for serviceName in EnabledOrgServicesList:
+				logging.info(f"Have {serviceName} | Looking for {item}")
+				if serviceName['ServicePrincipal'].find(item) >= 0:
+					logging.info(f"Found {serviceName}")
+					EnabledOrgServicesList2.append(serviceName)
+		logging.info(f"We found {len(EnabledOrgServicesList2)} enabled Org services")
+		return (EnabledOrgServicesList2)
+
+
+def disable_org_service2(ocredentials, serviceName=None):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+		- ['Region'] holds the Region
+	serviceName allows the user to provide the specific service we're looking for
+
+	Returns:
+		List of CloudWatch Log Group Names found that match the fragment list
+"""
+	import boto3
+	# import logging
+
+	returnResponse = {}
+	if serviceName is None:
+		returnResponse = {'Success': False, 'ErrorMessage': 'No service name specified'}
+		return (returnResponse)
+	session_org = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
+	client_org = session_org.client('organizations')
+	try:
+		delResponse = client_org.disable_aws_service_access_for_organization(ServicePrincipal=serviceName)
+		checkResponse = find_org_services2(ocredentials, serviceName)
+		if len(checkResponse) == 0:
+			returnResponse = {'Success': True, 'ErrorMessage': None}
+		else:
+			returnResponse = {'Success': False, 'ErrorMessage': 'Service didn\'t get deleted properly'}
+	except (client_org.exceptions.AccessDeniedException, client_org.exceptions.AWSOrganizationsNotInUseException, client_org.exceptions.ConcurrentModificationException,
+	        client_org.exceptions.ConstraintViolationException, client_org.exceptions.InvalidInputException, client_org.exceptions.ServiceException,
+	        client_org.exceptions.TooManyRequestsException, client_org.exceptions.UnsupportedAPIEndpointException) as my_Error:
+		error_message = f"Error disabling {serviceName} in account {ocredentials['AccountId']}\n" \
+		                f"Full Error: {my_Error}"
+		returnResponse.update({'Success': False, 'ErrorMessage': error_message})
+	return (returnResponse)
+
+
+def find_account_vpcs2(ocredentials, defaultOnly=False):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -692,19 +890,21 @@ def find_account_vpcs2(ocredentials, fRegion, defaultOnly=False):
 	import boto3
 	import logging
 
-	session_vpc = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
-		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	session_vpc = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
 	client_vpc = session_vpc.client('ec2')
 	if defaultOnly:
-		logging.info(f"Looking for default VPCs in account {ocredentials['AccountNumber']} from Region {fRegion}")
+		logging.info(f"Looking for default VPCs in account {ocredentials['AccountNumber']} from Region {ocredentials['Region']}")
 		logging.info(f"defaultOnly: {str(defaultOnly)}")
 		response = client_vpc.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
 	else:
-		logging.info(f"Looking for all VPCs in account {ocredentials['AccountNumber']} from Region {fRegion}")
+		logging.info(f"Looking for all VPCs in account {ocredentials['AccountNumber']} from Region {ocredentials['Region']}")
 		logging.info(f"defaultOnly: {str(defaultOnly)}")
 		response = client_vpc.describe_vpcs()
 	# TODO: Enable pagination
-	logging.info(f"We found {len(response['Vpcs'])} VPCs")
+	logging.info(f"We found {len(response['Vpcs'])} VPCs in account {ocredentials['AccountNumber']} in Region {ocredentials['Region']}")
 	return (response)
 
 
@@ -756,9 +956,9 @@ def find_config_recorders2(ocredentials, fRegion):
 	import boto3
 	import logging
 	session_cfg = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-								aws_secret_access_key=ocredentials['SecretAccessKey'],
-								aws_session_token=ocredentials['SessionToken'],
-								region_name=fRegion)
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=fRegion)
 	client_cfg = session_cfg.client('config')
 	logging.info("Looking for Config Recorders in account %s from Region %s", ocredentials['AccountNumber'], fRegion)
 	response = client_cfg.describe_configuration_recorders()
@@ -782,7 +982,7 @@ def del_config_recorder2(ocredentials, fRegion, fConfig_recorder_name):
 		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
 	client_cfg = session_cfg.client('config')
 	logging.error("Deleting Config Recorder %s from Region %s in account %s", fConfig_recorder_name, fRegion,
-				  ocredentials['AccountNumber'])
+	              ocredentials['AccountNumber'])
 	response = client_cfg.delete_configuration_recorder(ConfigurationRecorderName=fConfig_recorder_name)
 	return (response)  # There is no response to send back
 
@@ -817,9 +1017,9 @@ def find_delivery_channels2(ocredentials, fRegion):
 	import logging
 
 	session_cfg = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-								aws_secret_access_key=ocredentials['SecretAccessKey'],
-								aws_session_token=ocredentials['SessionToken'],
-								region_name=fRegion)
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=fRegion)
 	client_cfg = session_cfg.client('config')
 	logging.info(f"Looking for Delivery Channels in account {ocredentials['AccountNumber']} from Region {fRegion}")
 	response = {'Success': False, 'ErrorMessage': None}
@@ -829,7 +1029,7 @@ def find_delivery_channels2(ocredentials, fRegion):
 		response.update({'Success': True})
 	except ClientError as my_Error:
 		logging.error(f"Error accessing {ocredentials['AccountId']} in region {fRegion}\n"
-					  f"Error Message: {my_Error}")
+		              f"Error Message: {my_Error}")
 		response.update({'ErrorMessage': my_Error})
 	return (response)
 
@@ -851,7 +1051,7 @@ def del_delivery_channel2(ocredentials, fRegion, fDelivery_channel_name):
 		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
 	client_cfg = session_cfg.client('config')
 	logging.error("Deleting Delivery Channel %s from Region %s in account %s", fDelivery_channel_name, fRegion,
-				  ocredentials['AccountNumber'])
+	              ocredentials['AccountNumber'])
 	response = client_cfg.delete_delivery_channel(DeliveryChannelName=fDelivery_channel_name)
 	return (response)
 
@@ -869,9 +1069,9 @@ def del_config_recorder_or_delivery_channel2(deletion_item):
 	import boto3
 	import logging
 	session_cfg = boto3.Session(aws_access_key_id=deletion_item['AccessKeyId'],
-								aws_secret_access_key=deletion_item['SecretAccessKey'],
-								aws_session_token=deletion_item['SessionToken'],
-								region_name=deletion_item['Region'])
+	                            aws_secret_access_key=deletion_item['SecretAccessKey'],
+	                            aws_session_token=deletion_item['SessionToken'],
+	                            region_name=deletion_item['Region'])
 	client_cfg = session_cfg.client('config')
 	logging.error(f"Deleting {deletion_item['Type']} '{deletion_item['name']}' from Region {deletion_item['Region']} in account {deletion_item['AccountId']}")
 	response = {'Success': False, 'ErrorMessage': None}
@@ -926,9 +1126,9 @@ def find_cloudtrails2(ocredentials, fRegion, fCloudTrailnames=None):
 	from botocore.exceptions import ClientError
 
 	session_ct = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-							   aws_secret_access_key=ocredentials['SecretAccessKey'],
-							   aws_session_token=ocredentials['SessionToken'],
-							   region_name=fRegion)
+	                           aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                           aws_session_token=ocredentials['SessionToken'],
+	                           region_name=fRegion)
 	client_ct = session_ct.client('cloudtrail')
 	logging.info(f"Looking for CloudTrail trails in account {ocredentials['AccountNumber']} from Region {fRegion}")
 	fullresponse = []
@@ -981,7 +1181,7 @@ def del_cloudtrails2(ocredentials, fRegion, fCloudTrail):
 		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
 	client_ct = session_ct.client('cloudtrail')
 	logging.info("Deleting CloudTrail %s in account %s from Region %s", fCloudTrail,
-				 ocredentials['AccountNumber'], fRegion)
+	             ocredentials['AccountNumber'], fRegion)
 	response = client_ct.delete_trail(Name=fCloudTrail)
 	return (response)
 
@@ -1004,7 +1204,7 @@ def find_gd_invites2(ocredentials, fRegion):
 		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
 	client_gd = session_gd.client('guardduty')
 	logging.info("Looking for GuardDuty invitations in account %s from Region %s",
-				 ocredentials['AccountNumber'], fRegion)
+	             ocredentials['AccountNumber'], fRegion)
 	try:
 		response = client_gd.list_invitations()
 	except ClientError as my_Error:
@@ -1038,7 +1238,7 @@ def delete_gd_invites2(ocredentials, fRegion, fAccountId):
 		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
 	client_gd = session_gd.client('guardduty')
 	logging.info("Looking for GuardDuty invitations in account %s in Region %s",
-				 ocredentials['AccountNumber'], fRegion)
+	             ocredentials['AccountNumber'], fRegion)
 	try:
 		response = client_gd.delete_invitations(AccountIds=[fAccountId])
 		return (response['Invitations'])
@@ -1070,17 +1270,17 @@ def find_account_instances2(ocredentials, fRegion='us-east-1'):
 			f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
 		if ProfileAccountNumber == ocredentials['AccountNumber']:
 			session_ec2 = boto3.Session(profile_name=ocredentials['Profile'],
-										region_name=fRegion)
+			                            region_name=fRegion)
 		else:
 			session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-										aws_secret_access_key=ocredentials['SecretAccessKey'],
-										aws_session_token=ocredentials['SessionToken'],
-										region_name=fRegion)
+			                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+			                            aws_session_token=ocredentials['SessionToken'],
+			                            region_name=fRegion)
 	else:
 		session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-									aws_secret_access_key=ocredentials['SecretAccessKey'],
-									aws_session_token=ocredentials['SessionToken'],
-									region_name=fRegion)
+		                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+		                            aws_session_token=ocredentials['SessionToken'],
+		                            region_name=fRegion)
 	instance_info = session_ec2.client('ec2')
 	logging.info(f"Looking for instances in account # {ocredentials['AccountNumber']} in region {fRegion}")
 	instances = instance_info.describe_instances()
@@ -1111,9 +1311,9 @@ def find_cw_groups_retention2(ocredentials, fRegion='us-east-1'):
 			session_cw = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
 		else:
 			session_cw = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-									   aws_secret_access_key=ocredentials['SecretAccessKey'],
-									   aws_session_token=ocredentials['SessionToken'],
-									   region_name=fRegion)
+			                           aws_secret_access_key=ocredentials['SecretAccessKey'],
+			                           aws_session_token=ocredentials['SessionToken'],
+			                           region_name=fRegion)
 	else:
 		session_cw = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
 			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
@@ -1149,9 +1349,9 @@ def find_account_rds_instances2(ocredentials, fRegion='us-east-1'):
 			session_rds = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
 		else:
 			session_rds = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-										aws_secret_access_key=ocredentials['SecretAccessKey'],
-										aws_session_token=ocredentials['SessionToken'],
-										region_name=fRegion)
+			                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+			                            aws_session_token=ocredentials['SessionToken'],
+			                            region_name=fRegion)
 	else:
 		session_rds = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
 			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
@@ -1185,9 +1385,9 @@ def find_account_cloudtrail2(ocredentials, fRegion='us-east-1'):
 			session_ct = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
 		else:
 			session_ct = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-									   aws_secret_access_key=ocredentials['SecretAccessKey'],
-									   aws_session_token=ocredentials['SessionToken'],
-									   region_name=fRegion)
+			                           aws_secret_access_key=ocredentials['SecretAccessKey'],
+			                           aws_session_token=ocredentials['SessionToken'],
+			                           region_name=fRegion)
 	else:
 		session_ct = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
 			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
@@ -1223,9 +1423,9 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 			session_ec2 = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
 		else:
 			session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-										aws_secret_access_key=ocredentials['SecretAccessKey'],
-										aws_session_token=ocredentials['SessionToken'],
-										region_name=fRegion)
+			                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+			                            aws_session_token=ocredentials['SessionToken'],
+			                            region_name=fRegion)
 	else:
 		session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
 			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
@@ -1253,10 +1453,359 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 							AllSubnets['Subnets'].append(subnet)
 		except ClientError as my_Error:
 			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
-						  f"This is likely due to '{fRegion}' not being enabled for your account\n"
-						  f"Error Message: {my_Error}")
+			              f"This is likely due to '{fRegion}' not being enabled for your account\n"
+			              f"Error Message: {my_Error}")
 			continue
 	return (AllSubnets)
+
+
+def find_account_enis2(ocredentials, fRegion=None, fipaddresses=None):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['Region'] holds the region
+		- ['AccountNumber'] holds the account number
+		- ['Profile'] can hold the profile, instead of the session credentials
+	"""
+	import boto3
+	from botocore.exceptions import ClientError
+	import logging
+
+	if fRegion is None and 'Region' in ocredentials.keys():
+		fRegion = ocredentials['Region']
+	elif fRegion is None:
+		fRegion = 'us-east-1'
+
+	session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=fRegion)
+	eni_info = session_ec2.client('ec2')
+	ENIs = {'NextToken': None}
+	AllENIs = []
+	return_this_result = True if fipaddresses is None else False
+
+	while 'NextToken' in ENIs.keys():
+		# Had to add this so that a failure of the describe_subnet function doesn't cause a race condition
+		ENIs = dict()
+		try:
+			logging.info(f"Looking for ENIs that match any of {fipaddresses} in account #{ocredentials['AccountNumber']} in region {fRegion}")
+			ENIs = eni_info.describe_network_interfaces()
+			# Run through each of the subnets, and determine if the passed in IP address fits within any of them
+			# If it does - then include that data within the array, otherwise next...
+			for interface in ENIs['NetworkInterfaces']:
+				if fipaddresses is not None:
+					return_this_result = False
+					for address in fipaddresses:
+						if address == interface['PrivateIpAddress']:
+							logging.info(f"Found it - {interface['PrivateIpAddress']} - ENI: {interface['NetworkInterfaceId']}")
+							return_this_result = True
+						elif 'Association' in interface.keys() and 'PublicIp' in interface['Association'].keys() and address == interface['Association']['PublicIp']:
+							logging.info(f"Found it - {interface['Association']['PublicIp']} - ENI: {interface['NetworkInterfaceId']}")
+							return_this_result = True
+						else:
+							continue
+				if return_this_result:
+					Name = None
+					if 'TagSet' in interface.keys():
+						for tag in interface['TagSet']:
+							if tag['Key'] == 'Name':
+								Name = tag['Value']
+					AllENIs.append({
+						'Name'            : Name,
+						'AccountId'       : ocredentials['AccountNumber'],
+						'Region'          : ocredentials['Region'],
+						'ENIId'           : interface['NetworkInterfaceId'],
+						'InterfaceType'   : interface['InterfaceType'],
+						'PrivateDnsName'  : interface['PrivateDnsName'],
+						'PrivateIpAddress': interface['PrivateIpAddress'],
+						'Status'          : interface['Status'],
+						'VpcId'           : interface['VpcId'] if 'VpcId' in interface.keys() else "No VPC Associated",
+						'InstanceId'      : interface['Attachment']['InstanceId'] if ('Attachment' in interface.keys() and 'InstanceId' in interface['Attachment'].keys()) else "No instance association",
+						'AttachmentStatus': interface['Attachment']['Status'] if 'Attachment' in interface.keys() else "Not attached",
+						'PublicIp'        : interface['Association']['PublicIp'] if 'Association' in interface.keys() and 'PublicIp' in interface['Association'].keys() else "No Public IP", })
+		except ClientError as my_Error:
+			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
+			              f"This is likely due to '{fRegion}' not being enabled for your account\n"
+			              f"Error Message: {my_Error}")
+			continue
+		except KeyError as my_Error:
+			logging.error(f"Some kind of KeyError\n"
+			              f"Error Message: {my_Error}")
+			continue
+	return (AllENIs)
+
+
+def find_account_volumes2(ocredentials):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['Region'] holds the region
+		- ['AccountNumber'] holds the account number
+		- ['Profile'] can hold the profile, instead of the session credentials
+	"""
+	import boto3
+	from botocore.exceptions import ClientError
+	import logging
+
+	session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
+	eni_info = session_ec2.client('ec2')
+	Volumes = {'NextToken': None}
+	AllVolumes = []
+	# return_this_result = True if fipaddresses is None else False
+
+	while 'NextToken' in Volumes.keys():
+		# Had to add this so that a failure of the describe_subnet function doesn't cause a race condition
+		Volumes = dict()
+		try:
+			logging.info(f"Looking for all volumes in account #{ocredentials['AccountNumber']} in region {ocredentials['Region']}")
+			Volumes = eni_info.describe_volumes()
+			# Run through each of the volumes, and determine if the passed in fragment fits within any of them
+			# If it does - then include that data within the array, otherwise next...
+			for volume in Volumes['Volumes']:
+				# if fipaddresses is not None:
+				# 	return_this_result = False
+				# 	for address in fipaddresses:
+				# 		if address == volume['PrivateIpAddress']:
+				# 			logging.info(f"Found it - {volume['PrivateIpAddress']} - ENI: {volume['NetworkInterfaceId']}")
+				# 			return_this_result = True
+				# 		elif 'Association' in volume.keys() and 'PublicIp' in volume['Association'].keys() and address == volume['Association']['PublicIp']:
+				# 			logging.info(f"Found it - {volume['Association']['PublicIp']} - ENI: {volume['NetworkInterfaceId']}")
+				# 			return_this_result = True
+				# 		else:
+				# 			continue
+				# if return_this_result:
+				Name = 'None'
+				AttachmentList = []
+				if 'Tags' in volume.keys():
+					for tag in volume['Tags']:
+						if tag['Key'] == 'Name':
+							Name = tag['Value']
+				if 'Attachments' in volume.keys():
+					for attachment in volume['Attachments']:
+						if 'InstanceId' in attachment.keys():
+							AttachmentList.append({'InstanceId'      : attachment['InstanceId'],
+							                       'AttachmentStatus': attachment['State']})
+				AllVolumes.append({
+					'VolumeName' : Name,
+					'AccountId'  : ocredentials['AccountNumber'],
+					'Region'     : ocredentials['Region'],
+					'Encrypted'  : volume['Encrypted'],
+					'VolumeId'   : volume['VolumeId'],
+					'VolumeType' : volume['VolumeType'],
+					'Iops'       : volume['Iops'],
+					'Size'       : volume['Size'],
+					'State'      : volume['State'],
+					# 'KmsKeyId'   : volume['KmsKeyId'] if volume['Encrypted'] else None,
+					'Throughput' : volume['Throughput'] if 'Throughput' in volume.keys() else None,
+					'Attachments': AttachmentList})
+				logging.info(f"Wrote volume id {volume['VolumeId']} into 'AllVolumes' list")
+		except ClientError as my_Error:
+			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {ocredentials['Region']}\n"
+			              f"This is likely due to '{ocredentials['Region']}' not being enabled for your account\n"
+			              f"Error Message: {my_Error}")
+			continue
+		except KeyError as my_Error:
+			logging.error(f"Some kind of KeyError\n"
+			              f"Error Message: {my_Error}")
+			continue
+	return (AllVolumes)
+
+
+def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None, fExact=False):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+		- ['Profile'] can hold the profile, instead of the session credentials
+	fRegion is the region in which you're looking for policies
+	fFragments is a list of fragments you might be looking for in the policy name
+	"""
+	import boto3
+	from botocore.exceptions import ClientError
+	import logging
+
+	session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
+	policy_info = session_iam.client('iam')
+	Policies = {'IsTruncated': True}
+	AllPolicies = []
+	first_time = True
+
+	while Policies['IsTruncated']:
+		# Had to add this so that a failure of the describe_policy function doesn't cause a race condition
+		try:
+			PoliciesFound = 0
+			if first_time:
+				logging.info(f"Looking in account #{ocredentials['AccountNumber']} for policies")
+				Policies = policy_info.list_policies()
+				first_time = False
+			else:
+				Policies = policy_info.list_policies(Marker=Policies['Marker'])
+			for policy in Policies['Policies']:
+				if fFragments is None or 'all' in fFragments:
+					policy.update({'AccountNumber': ocredentials['AccountNumber'],
+					               'MgmtAccount'  : ocredentials['MgmtAccount'],
+					               'Region'       : ocredentials['Region']})
+					AllPolicies.append(policy)
+				elif fExact:
+					for fragment in fFragments:
+						if fragment == policy['PolicyName']:
+							# Run through each of the policies, and determine if the passed in policy fragment matches the policy name
+							# If it does - then include that policy within the returned list, otherwise next...
+							policy.update({'AccountNumber': ocredentials['AccountNumber'],
+							               'MgmtAccount'  : ocredentials['MgmtAccount'],
+							               'Region'       : ocredentials['Region']})
+							AllPolicies.append(policy)
+				elif not fExact:
+					for fragment in fFragments:
+						if fragment in policy['PolicyName']:
+							# Run through each of the policies, and determine if the passed in policy fragment matches any part of the policy name
+							# If it does - then include that policy within the returned list, otherwise next...
+							policy.update({'AccountNumber': ocredentials['AccountNumber'],
+							               'MgmtAccount'  : ocredentials['MgmtAccount'],
+							               'Region'       : ocredentials['Region']})
+							AllPolicies.append(policy)
+			logging.info(f"Found {len(AllPolicies)} matching policies within account #{ocredentials['AccountNumber']}")
+		except ClientError as my_Error:
+			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
+			              f"This is likely due to '{fRegion}' not being enabled for your account\n"
+			              f"Error Message: {my_Error}")
+			continue
+	return (AllPolicies)
+
+
+def find_account_policies3(faws_acct, fRegion='us-east-1', fFragments=None):
+	"""
+	faws_acct is an aws_acct object
+	fRegion is the region in which you're looking for policies
+	fFragments is a list of fragments you might be looking for in the policy name
+	"""
+	from botocore.exceptions import ClientError
+	import logging
+
+	logging.info(f"Account: {faws_acct.acct_number}")
+	client_iam = faws_acct.session.client('iam')
+	Policies = {'IsTruncated': True}
+	AllPolicies = []
+	first_time = True
+
+	while Policies['IsTruncated']:
+		# Had to add this so that a failure of the describe_policy function doesn't cause a race condition
+		try:
+			logging.info(f"Looking for all policies that exist within account #{faws_acct.acct_number}")
+			if first_time:
+				Policies = client_iam.list_policies()
+				first_time = False
+			else:
+				Policies = client_iam.list_policies(Marker=Policies['Marker'])
+			for policy in Policies['Policies']:
+				if fFragments is None:
+					policy.update({'AccountNumber': faws_acct.acct_number,
+					               'MgmtAccount'  : faws_acct.MgmtAccount,
+					               'Region'       : fRegion})
+					AllPolicies.append(policy)
+				else:
+					for fragment in fFragments:
+						if fragment in policy['PolicyName']:
+							# Run through each of the policies, and determine if the passed in action fits within any of them
+							# If it does - then include that data within the array, otherwise next...
+							policy.update({'AccountNumber': faws_acct.acct_number,
+							               'MgmtAccount'  : faws_acct.MgmtAccount,
+							               'Region'       : fRegion})
+							AllPolicies.append(policy)
+		except ClientError as my_Error:
+			logging.error(f"Error connecting to account {faws_acct.acct_number} in region {fRegion}\n"
+			              f"This is likely due to '{fRegion}' not being enabled for your account\n"
+			              f"Error Message: {my_Error}")
+			continue
+	return (AllPolicies)
+
+
+def find_policy_action(ocredentials, fpolicy, f_action):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+		- ['Profile'] can hold the profile, instead of the session credentials
+	"""
+	import boto3
+	from botocore.exceptions import ClientError
+	import logging
+
+	fRegion = 'us-east-1'
+	if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
+		ProfileAccountNumber = find_account_number(ocredentials['Profile'])
+		logging.info(
+			f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
+		if ProfileAccountNumber == ocredentials['AccountNumber']:
+			session_iam = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
+		else:
+			session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+			                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+			                            aws_session_token=ocredentials['SessionToken'],
+			                            region_name=fRegion)
+	else:
+		session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+		                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+		                            aws_session_token=ocredentials['SessionToken'],
+		                            region_name=fRegion)
+	policy_info = session_iam.client('iam')
+	results = list()
+
+	try:
+		logging.debug(f"Getting policy statements for policy {fpolicy} that exists within account #{ocredentials['AccountNumber']}")
+		Policy_statements = policy_info.get_policy_version(PolicyArn=fpolicy['Arn'], VersionId=fpolicy['DefaultVersionId'])['PolicyVersion']
+		# Run through each of the policies, and determine if the passed in action fits within any of them
+		# If it does - then include that data within the array, otherwise next...
+		for policy_statement in Policy_statements['Document']['Statement']:
+			for key, value in policy_statement.items():
+				result = {'Success': False}
+				if key == 'Action':
+					try:
+						# TODO: When this is called from two sepaarte threads for the same statement, there's some caching going on that duplicates the result added to the results dict.
+						if isinstance(value, list):
+							for action in value:
+								if action.find(f_action) >= 0:
+									result.update(fpolicy)
+									result.update({'Success'       : True,
+									               'message'       : f"Found action '{f_action}' in policy '{fpolicy['PolicyName']}' in set of actions '{value}' as single action '{action}'",
+									               'PolicyName'    : fpolicy['PolicyName'],
+									               'Statement'     : policy_statement,
+									               'SearchedAction': f_action,
+									               'PolicyAction'  : action})
+									results.append(result)
+						elif isinstance(value, str):
+							action = value
+							if action.find(f_action) >= 0:
+								result.update(fpolicy)
+								result.update({'Success'       : True,
+								               'message'       : f"Found action '{f_action}' in policy '{fpolicy['PolicyName']}' in single action '{value}'",
+								               'PolicyName'    : fpolicy['PolicyName'],
+								               'Statement'     : policy_statement,
+								               'SearchedAction': f_action,
+								               'PolicyAction'  : action})
+								results.append(result)
+					except Exception as my_Error:
+						logging.error(f"Error in statements: {my_Error}")
+		return (results)
+	except ClientError as my_Error:
+		logging.error(f"Error connecting to account {ocredentials['AccountNumber']}\n"
+		              f"Error Message: {my_Error}")
+	return (results)
 
 
 def find_users2(ocredentials):
@@ -1322,9 +1871,9 @@ def find_lambda_functions2(ocredentials, fRegion='us-east-1', fSearchStrings=Non
 		for i in range(len(functions)):
 			logging.info(f"Found function {functions[i]['FunctionName']}")
 			functions2.append({'FunctionName': functions[i]['FunctionName'],
-							   'FunctionArn' : functions[i]['FunctionArn'],
-							   'Role'        : functions[i]['Role'],
-							   'Runtime'     : functions[i]['Runtime']})
+			                   'FunctionArn' : functions[i]['FunctionArn'],
+			                   'Role'        : functions[i]['Role'],
+			                   'Runtime'     : functions[i]['Runtime']})
 		return (functions2)
 	else:
 		for i in range(len(functions)):
@@ -1332,8 +1881,8 @@ def find_lambda_functions2(ocredentials, fRegion='us-east-1', fSearchStrings=Non
 				if searchitem in functions[i]['FunctionName']:
 					logging.info(f"Found function {functions[i]['FunctionName']}")
 					functions2.append({'FunctionName': functions[i]['FunctionName'],
-									   'FunctionArn' : functions[i]['FunctionArn'], 'Role': functions[i]['Role'],
-									   'Runtime'     : functions[i]['Runtime']})
+					                   'FunctionArn' : functions[i]['FunctionArn'], 'Role': functions[i]['Role'],
+					                   'Runtime'     : functions[i]['Runtime']})
 		return (functions2)
 
 
@@ -1361,14 +1910,14 @@ def find_lambda_functions3(faws_acct, fRegion='us-east-1', fSearchStrings=None):
 		for i in range(len(functions)):
 			logging.info(f"Found function {functions[i]['FunctionName']}")
 			functions2.append({'FunctionName': functions[i]['FunctionName'],
-							   'FunctionArn' : functions[i]['FunctionArn'], 'Role': functions[i]['Role']})
+			                   'FunctionArn' : functions[i]['FunctionArn'], 'Role': functions[i]['Role']})
 	else:
 		for i in range(len(functions)):
 			for searchitem in fSearchStrings:
 				if searchitem in functions[i]['FunctionName']:
 					logging.info(f"Found function {functions[i]['FunctionName']}")
 					functions2.append({'FunctionName': functions[i]['FunctionName'],
-									   'FunctionArn' : functions[i]['FunctionArn'], 'Role': functions[i]['Role']})
+					                   'FunctionArn' : functions[i]['FunctionArn'], 'Role': functions[i]['Role']})
 	return (functions2)
 
 
@@ -1378,6 +1927,67 @@ def get_lambda_code_url(fprofile, fregion, fFunctionName):
 	client_lambda = session_lambda.client('lambda')
 	code_url = client_lambda.get_function(FunctionName=fFunctionName)['Code']['Location']
 	return (code_url)
+
+
+def find_directories2(ocredentials, fRegion='us-east-1', fSearchStrings=None):
+	"""
+	ocredentials is an aws_acct object
+	fRegion is a string
+	fSearchString is a list of strings
+	"""
+	import logging
+	import boto3
+
+	directories2 = []
+	directories = []
+	# TODO: Add pagination here
+	try:
+		session_ds = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+		                           aws_secret_access_key=ocredentials['SecretAccessKey'],
+		                           region_name=ocredentials['Region'],
+		                           aws_session_token=ocredentials['SessionToken'])
+		client_ds = session_ds.client('ds', region_name=fRegion)
+		# TODO: Need paging here
+		directories = client_ds.describe_directories()['DirectoryDescriptions']
+		logging.info(f"Found {len(directories)} directories: {directories}")
+	except AttributeError as my_Error:
+		logging.info(f"Error: {my_Error}")
+	if fSearchStrings is None or 'all' in fSearchStrings:
+		for directory in directories:
+			logging.info(f"Found directory {directory['Name']}")
+			response_dict = {'DirectoryName': directory['Name'],
+			                 'DirectoryId'  : directory['DirectoryId'],
+			                 'Status'       : directory.get('ShareStatus', 'Owned'),
+			                 'Type'         : directory['Type'], }
+			if 'RegionsInfo' in directory:
+				response_dict.update({'HomeRegion': directory['RegionsInfo'].get('PrimaryRegion', None)})
+			else:
+				response_dict.update({'HomeRegion': fRegion})
+			if 'OwnerDirectoryDescription' in directory:
+				response_dict.update({'Owner': directory['OwnerDirectoryDescription'].get('AccountId', None)})
+			else:
+				response_dict.update({'Owner': ocredentials['AccountId']})
+			directories2.append(response_dict)
+		return (directories2)
+	else:
+		for directory in directories:
+			for searchitem in fSearchStrings:
+				if searchitem in directory['Name'] or searchitem in directory['DirectoryId']:
+					logging.info(f"Found fragment {searchitem} in directory {directory['Name']} in account {ocredentials['AccountId']}")
+					response_dict = {'DirectoryName': directory['Name'],
+					                 'DirectoryId'  : directory['DirectoryId'],
+					                 'Status'       : directory.get('ShareStatus', 'Owned'),
+					                 'Type'         : directory['Type'], }
+					if 'RegionsInfo' in directory:
+						response_dict.update({'HomeRegion': directory['RegionsInfo'].get('PrimaryRegion', None)})
+					else:
+						response_dict.update({'HomeRegion': fRegion})
+					if 'OwnerDirectoryDescription' in directory:
+						response_dict.update({'Owner': directory['OwnerDirectoryDescription'].get('AccountId', None)})
+					else:
+						response_dict.update({'Owner': ocredentials['AccountId']})
+					directories2.append(response_dict)
+		return (directories2)
 
 
 def find_directories3(faws_acct, fRegion='us-east-1', fSearchStrings=None):
@@ -1401,9 +2011,9 @@ def find_directories3(faws_acct, fRegion='us-east-1', fSearchStrings=None):
 		for directory in directories:
 			logging.info(f"Found directory {directory['Name']}")
 			response_dict = {'DirectoryName': directory['Name'],
-							 'DirectoryId'  : directory['DirectoryId'],
-							 'Status'       : directory.get('ShareStatus', 'Owned'),
-							 'Type'         : directory['Type'], }
+			                 'DirectoryId'  : directory['DirectoryId'],
+			                 'Status'       : directory.get('ShareStatus', 'Owned'),
+			                 'Type'         : directory['Type'], }
 			if 'RegionsInfo' in directory:
 				response_dict.update({'HomeRegion': directory['RegionsInfo'].get('PrimaryRegion', None)})
 			else:
@@ -1419,9 +2029,9 @@ def find_directories3(faws_acct, fRegion='us-east-1', fSearchStrings=None):
 				if searchitem in directory['Name']:
 					logging.info(f"Found directory {directory['Name']}")
 					response_dict = {'DirectoryName': directory['Name'],
-									 'DirectoryId'  : directory['DirectoryId'],
-									 'Status'       : directory.get('ShareStatus', 'Owned'),
-									 'Type'         : directory['Type'], }
+					                 'DirectoryId'  : directory['DirectoryId'],
+					                 'Status'       : directory.get('ShareStatus', 'Owned'),
+					                 'Type'         : directory['Type'], }
 					if 'RegionsInfo' in directory:
 						response_dict.update({'HomeRegion': directory['RegionsInfo'].get('PrimaryRegion', None)})
 					else:
@@ -1443,6 +2053,26 @@ def find_private_hosted_zones(fProfile, fRegion):
 	import boto3
 	session_r53 = boto3.Session(profile_name=fProfile, region_name=fRegion)
 	phz_info = session_r53.client('route53')
+	hosted_zones = phz_info.list_hosted_zones()
+	return (hosted_zones)
+
+
+def find_private_hosted_zones2(ocredentials, fRegion=None):
+	"""
+	This library script returns the hosted zones within an account and a region
+	"""
+	import logging
+	import boto3
+
+	if fRegion is None:
+		fRegion = 'us-east-1'
+	session_r53 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
+
+	logging.info(f"Finding the private hosted zones within account {ocredentials['AccountId']} and region {fRegion}")
+	phz_info = session_r53.client('route53', region_name=fRegion)
 	hosted_zones = phz_info.list_hosted_zones()
 	return (hosted_zones)
 
@@ -1477,49 +2107,52 @@ def find_load_balancers(fProfile, fRegion, fStackFragment='all', fStatus='all'):
 	load_balancers_Copy = []
 	if fStackFragment.lower() == 'all' and (fStatus.lower() == 'active' or fStatus.lower() == 'all'):
 		logging.info("Found all the lbs in Profile: %s in Region: %s with Fragment: %s and Status: %s", fProfile,
-					 fRegion, fStackFragment, fStatus)
+		             fRegion, fStackFragment, fStatus)
 		return (load_balancers['LoadBalancers'])
 	elif (fStackFragment.lower() == 'all'):
 		for load_balancer in load_balancers['LoadBalancers']:
 			if fStatus in load_balancer['State']['Code']:
 				logging.info("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s",
-							 load_balancers['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
+				             load_balancers['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
 				load_balancers_Copy.append(load_balancer)
 	elif fStatus.lower() == 'active':
 		for load_balancer in load_balancers['LoadBalancers']:
 			if fStackFragment in load_balancer['LoadBalancerName']:
 				logging.info("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s",
-							 load_balancers['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
+				             load_balancers['LoadBalancerName'], fProfile, fRegion, fStackFragment, fStatus)
 				load_balancers_Copy.append(load_balancer)
 	return (load_balancers_Copy)
 
 
-def find_load_balancers3(faws_acct, fRegion='us-east-1', fStackFragment='all', fStatus='all'):
+def find_load_balancers3(faws_acct, fRegion='us-east-1', fStackFragments=None, fStatus='all'):
 	"""
 	This library script returns the list of load balancers within an account and a region
 	"""
 	import logging
 
+	if fStackFragments is None:
+		fStackFragments = ['all']
 	logging.info(
-		f"Account: {faws_acct.acct_number} | Region: {fRegion} | Fragment: {fStackFragment} | Status: {fStatus}")
+		f"Account: {faws_acct.acct_number} | Region: {fRegion} | Fragment: {fStackFragments} | Status: {fStatus}")
 	session_cfn = faws_acct.session
 	lb_info = session_cfn.client('elbv2', region_name=fRegion)
 	load_balancers = lb_info.describe_load_balancers()
 	load_balancers_Copy = []
-	if fStackFragment.lower() == 'all' and (fStatus.lower() == 'active' or fStatus.lower() == 'all'):
+	if ('all' in fStackFragments or 'All' in fStackFragments or 'ALL' in fStackFragments) and (fStatus.lower() == 'active' or fStatus.lower() == 'all'):
 		logging.info(
-			f"Found all the lbs in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+			f"Found all the lbs in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragments} and Status: {fStatus}")
 		return (load_balancers['LoadBalancers'])
-	elif (fStackFragment.lower() == 'all'):
+	elif 'all' in fStackFragments or 'All' in fStackFragments or 'ALL' in fStackFragments:
 		for load_balancer in load_balancers['LoadBalancers']:
 			if fStatus in load_balancer['State']['Code']:
-				logging.info(f"Found lb {load_balancers['LoadBalancerName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+				logging.info(f"Found lb {load_balancers['LoadBalancerName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment in {fStackFragments} and Status: {fStatus}")
 				load_balancers_Copy.append(load_balancer)
 	elif fStatus.lower() == 'active':
 		for load_balancer in load_balancers['LoadBalancers']:
-			if fStackFragment in load_balancer['LoadBalancerName']:
-				logging.info(f"Found lb {load_balancers['LoadBalancerName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
-				load_balancers_Copy.append(load_balancer)
+			for stack_fragment in fStackFragments:
+				if stack_fragment in load_balancer['LoadBalancerName']:
+					logging.info(f"Found lb {load_balancers['LoadBalancerName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {stack_fragment} and Status: {fStatus}")
+					load_balancers_Copy.append(load_balancer)
 	return (load_balancers_Copy)
 
 
@@ -1585,20 +2218,20 @@ def find_stacks(fProfile, fRegion, fStackFragment="all", fStatus="active"):
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match
 				logging.info("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s",
-							 stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
+				             stack['StackName'], fProfile, fRegion, fStackFragment, fStatus)
 				stacksCopy.append(stack)
 	elif fStatus.lower() == 'active' and fStackFragment.lower() == 'all':
 		# Send back all stacks regardless of fragment, check the status further down.
 		# TODO: This section needs paging
 		stacks = client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE", "DELETE_FAILED", "UPDATE_COMPLETE",
-														   "UPDATE_ROLLBACK_COMPLETE"])
+		                                                   "UPDATE_ROLLBACK_COMPLETE"])
 		logging.info("2 - Found ALL %s stacks in 'active' status.", len(stacks['StackSummaries']))
 		for stack in stacks['StackSummaries']:
 			# if fStatus in stack['StackStatus']:
 			# Check the status now - only send back those that match a single status
 			# I don't see this happening unless someone wants Stacks in a "Deleted" or "Rollback" type status
 			logging.info("Found stack %s in Profile: %s in Region: %s regardless of fragment and Status: %s",
-						 stack['StackName'], fProfile, fRegion, fStatus)
+			             stack['StackName'], fProfile, fRegion, fStatus)
 			stacksCopy.append(stack)
 	elif fStatus.lower() == 'all' and fStackFragment.lower() == 'all':
 		# Send back all stacks.
@@ -1644,12 +2277,12 @@ def find_stacks(fProfile, fRegion, fStackFragment="all", fStatus="active"):
 				if fStackFragment in stack['StackName']:
 					# Check the fragment now - only send back those that match
 					logging.info("Found stack %s in Profile: %s in Region: %s with Fragment: %s and Status: %s",
-								 stack['StackName'], fProfile, fRegion, fStackFragment, stack['StackStatus'])
+					             stack['StackName'], fProfile, fRegion, fStackFragment, stack['StackStatus'])
 					stacksCopy.append(stack)
 	return (stacksCopy)
 
 
-def find_stacks2(ocredentials, fRegion, fStackFragment="all", fStatus="active"):
+def find_stacks2(ocredentials, fRegion, fStackFragment=None, fStatus=None):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -1658,85 +2291,102 @@ def find_stacks2(ocredentials, fRegion, fStackFragment="all", fStatus="active"):
 		- ['AccountNumber'] holds the AccountId
 
 	fRegion is a string
-	fStackFragment is a string - default to "all"
+	fStackFragment is a list - default to ["all"]
 	fStatus is a string - default to "active"
 	"""
 
 	import boto3
 	import logging
-	logging.error(
-		f"Acct ID #: {str(ocredentials['AccountNumber'])} | Region: {fRegion} | Fragment: {fStackFragment} | Status: {fStatus}")
+
+	if 'active' in fStatus or fStatus is None:
+		fStatus = ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]
+		desired_status = 'active'
+	elif 'all' in fStatus:
+		fStatus = ['CREATE_IN_PROGRESS', 'CREATE_FAILED',
+		           'CREATE_COMPLETE', 'ROLLBACK_IN_PROGRESS',
+		           'ROLLBACK_FAILED', 'ROLLBACK_COMPLETE',
+		           'DELETE_IN_PROGRESS', 'DELETE_FAILED',
+		           'DELETE_COMPLETE', 'UPDATE_IN_PROGRESS',
+		           'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS',
+		           'UPDATE_COMPLETE', 'UPDATE_FAILED',
+		           'UPDATE_ROLLBACK_IN_PROGRESS',
+		           'UPDATE_ROLLBACK_FAILED',
+		           'UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS',
+		           'UPDATE_ROLLBACK_COMPLETE', 'REVIEW_IN_PROGRESS',
+		           'IMPORT_IN_PROGRESS', 'IMPORT_COMPLETE',
+		           'IMPORT_ROLLBACK_IN_PROGRESS', 'IMPORT_ROLLBACK_FAILED',
+		           'IMPORT_ROLLBACK_COMPLETE']
+		desired_status = 'all'
+	else:
+		desired_status = 'unknown'
+	if fStackFragment is None:
+		fStackFragment = ['all']
+	logging.info(f"Acct ID #: {str(ocredentials['AccountNumber'])} | Region: {fRegion} | Fragment: {fStackFragment} | Status: {fStatus}")
 	session_cfn = boto3.Session(region_name=fRegion,
-								aws_access_key_id=ocredentials['AccessKeyId'],
-								aws_secret_access_key=ocredentials['SecretAccessKey'],
-								aws_session_token=ocredentials['SessionToken'])
+	                            aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'])
 	client_cfn = session_cfn.client('cloudformation')
 	stacks = dict()
 	stacksCopy = []
-	if fStatus.lower() == 'active' and not fStackFragment.lower() == 'all':
+	# For Active Stacks, where we *did* specify a fragment to find
+	if desired_status == 'active' and not ('all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment):
 		# Send back stacks that are active, check the fragment further down.
-		stacks = client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE", "UPDATE_COMPLETE",
-														   "UPDATE_ROLLBACK_COMPLETE"])
+		stacks = client_cfn.list_stacks(StackStatusFilter=fStatus)
 		for stack in stacks['StackSummaries']:
-			if fStackFragment in stack['StackName']:
-				# Check the fragment now - only send back those that match
-				logging.info(f"1-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
-							 f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
-				stacksCopy.append(stack)
-	elif fStackFragment.lower() == 'all' and fStatus.lower() == 'all':
+			for fragment in fStackFragment:
+				if fragment in stack['StackName']:
+					# Check the fragment now - only send back those that match
+					logging.info(f"1-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
+					             f"Region: {fRegion} with Fragment: {fragment} and Status: {fStatus}")
+					stacksCopy.append(stack)
+	# For all stacks, where we *did not* specify a fragment to find
+	elif 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
 		# Send back all stacks.
 		# TODO: Need paging here
-		stacks = client_cfn.list_stacks()
-		logging.info(f"4-Found {len(stacks)} the stacks in Account: {ocredentials['AccountNumber']} in "
-					 f"Region: {fRegion}")
+		stacks = client_cfn.list_stacks(StackStatusFilter=fStatus)
+		logging.info(f"4-Found {len(stacks['StackSummaries'])} stacks in Account: {ocredentials['AccountNumber']} in "
+		             f"Region: {fRegion} with status of {fStatus}")
 		return (stacks['StackSummaries'])
-	elif fStackFragment.lower() == 'all' and fStatus.lower() == 'active':
+	# For all active stacks where we want all stacks
+	# TODO: This case will never be triggered, since "all" stacks will be covered by the case above.
+	elif ('all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment) and desired_status == 'active':
 		# Send back all stacks regardless of fragment, check the status further down.
 		# TODO: Need paging here
-		stacks = client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE", "UPDATE_COMPLETE",
-														   "UPDATE_ROLLBACK_COMPLETE"])
+		stacks = client_cfn.list_stacks(StackStatusFilter=fStatus)
 		for stack in stacks['StackSummaries']:
 			logging.info(f"2-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
-						 f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+			             f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 			stacksCopy.append(stack)
-	elif fStatus.lower() == 'all':
-		# Send back all stacks that match the fragment, including all statuses
-		stacks = client_cfn.list_stacks(StackStatusFilter=['CREATE_IN_PROGRESS', 'CREATE_FAILED',
-														   'CREATE_COMPLETE', 'ROLLBACK_IN_PROGRESS',
-														   'ROLLBACK_FAILED', 'ROLLBACK_COMPLETE',
-														   'DELETE_IN_PROGRESS', 'DELETE_FAILED',
-														   'DELETE_COMPLETE', 'UPDATE_IN_PROGRESS',
-														   'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS',
-														   'UPDATE_COMPLETE', 'UPDATE_FAILED',
-														   'UPDATE_ROLLBACK_IN_PROGRESS',
-														   'UPDATE_ROLLBACK_FAILED',
-														   'UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS',
-														   'UPDATE_ROLLBACK_COMPLETE', 'REVIEW_IN_PROGRESS',
-														   'IMPORT_IN_PROGRESS', 'IMPORT_COMPLETE',
-														   'IMPORT_ROLLBACK_IN_PROGRESS', 'IMPORT_ROLLBACK_FAILED',
-														   'IMPORT_ROLLBACK_COMPLETE'])
+	# In case we want *all* stacks, for all stack statuses
+	elif desired_status == 'all':
+		# Send back all stacks that match the fragment. Default is to only send active, so we have to specify ALL statuses, to get everything.
+		stacks = client_cfn.list_stacks(StackStatusFilter=fStatus)
 		for stack in stacks['StackSummaries']:
-			if fStackFragment in stack['StackName']:
-				# Check the fragment now - only send back those that match, regardless of status
-				logging.info(f"1-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
-							 f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
-				stacksCopy.append(stack)
-
-	elif not fStatus.lower() == 'active':
+			for fragment in fStackFragment:
+				if fragment in stack['StackName']:
+					# Check the fragment now - only send back those that match, regardless of status
+					logging.info(f"1-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
+					             f"Region: {fRegion} with Fragment: {fragment} and desired status: {desired_status}")
+					stacksCopy.append(stack)
+	# This is to capture stack statuses that aren't captured above (like specifically "deleted" or something like that)
+	elif not desired_status == 'active':
 		# Send back stacks that match the single status, check the fragment further down.
 		try:
 			logging.info(f"Looking for Status: {fStatus}")
 			# TODO: Need paging here
-			stacks = client_cfn.list_stacks(StackStatusFilter=[fStatus])
+			stacks = client_cfn.list_stacks(StackStatusFilter=fStatus)
 		except Exception as my_Error:
-			print(my_Error)
+			logging.error(f"Error: {my_Error}")
 		if 'StackSummaries' in stacks.keys():
 			for stack in stacks['StackSummaries']:
-				if fStackFragment in stack['StackName'] and fStatus in stack['StackStatus']:
-					# Check the fragment now - only send back those that match
-					logging.info(f"5-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']}"
-								 f" in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
-					stacksCopy.append(stack)
+				for fragment in fStackFragment:
+					for status in fStatus:
+						if fragment in stack['StackName'] and status == stack['StackStatus']:
+							# Check the fragment now - only send back those that match
+							logging.info(f"5-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']}"
+							             f" in Region: {fRegion} with Fragment: {fragment} and Status: {fStatus}")
+							stacksCopy.append(stack)
 	return (stacksCopy)
 
 
@@ -1807,7 +2457,7 @@ def find_stacks3(faws_acct, fRegion, fStackFragment="all", fStatus="active"):
 		# Send back all stacks regardless of fragment, check the status further down.
 		# TODO: This section needs paging
 		stacks = client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE", "DELETE_FAILED", "UPDATE_COMPLETE",
-														   "UPDATE_ROLLBACK_COMPLETE"])
+		                                                   "UPDATE_ROLLBACK_COMPLETE"])
 		logging.info("2 - Found ALL %s stacks in 'active' status.", len(stacks['StackSummaries']))
 		for stack in stacks['StackSummaries']:
 			# if fStatus in stack['StackStatus']:
@@ -1910,9 +2560,9 @@ def delete_stack2(ocredentials, fRegion, fStackName, **kwargs):
 		RetainResources = True
 		ResourcesToRetain = kwargs['ResourcesToRetain']
 	session_cfn = boto3.Session(region_name=fRegion,
-								aws_access_key_id=ocredentials['AccessKeyId'],
-								aws_secret_access_key=ocredentials['SecretAccessKey'],
-								aws_session_token=ocredentials['SessionToken'])
+	                            aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'])
 	client_cfn = session_cfn.client('cloudformation')
 	if RetainResources:
 		logging.info("Account: %s | Region: %s | StackName: %s", ocredentials['AccountNumber'], fRegion, fStackName)
@@ -1920,9 +2570,9 @@ def delete_stack2(ocredentials, fRegion, fStackName, **kwargs):
 		response = client_cfn.delete_stack(StackName=fStackName, RetainResources=ResourcesToRetain)
 	else:
 		logging.info("Account: %s | Region: %s | StackName: %s",
-					 ocredentials['AccountNumber'],
-					 fRegion,
-					 fStackName)
+		             ocredentials['AccountNumber'],
+		             fRegion,
+		             fStackName)
 		response = client_cfn.delete_stack(StackName=fStackName)
 	return (response)
 
@@ -1950,21 +2600,21 @@ def find_stacks_in_acct3(faws_acct, fRegion, fStackFragment="all", fStatus="acti
 	stacks = dict()
 	stacksCopy = []
 	StackStatusFilter_all = ['CREATE_IN_PROGRESS', 'CREATE_FAILED',
-							 'CREATE_COMPLETE', 'ROLLBACK_IN_PROGRESS',
-							 'ROLLBACK_FAILED', 'ROLLBACK_COMPLETE',
-							 'DELETE_IN_PROGRESS', 'DELETE_FAILED',
-							 'DELETE_COMPLETE', 'UPDATE_IN_PROGRESS',
-							 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS',
-							 'UPDATE_COMPLETE', 'UPDATE_FAILED',
-							 'UPDATE_ROLLBACK_IN_PROGRESS',
-							 'UPDATE_ROLLBACK_FAILED',
-							 'UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS',
-							 'UPDATE_ROLLBACK_COMPLETE', 'REVIEW_IN_PROGRESS',
-							 'IMPORT_IN_PROGRESS', 'IMPORT_COMPLETE',
-							 'IMPORT_ROLLBACK_IN_PROGRESS', 'IMPORT_ROLLBACK_FAILED',
-							 'IMPORT_ROLLBACK_COMPLETE']
+	                         'CREATE_COMPLETE', 'ROLLBACK_IN_PROGRESS',
+	                         'ROLLBACK_FAILED', 'ROLLBACK_COMPLETE',
+	                         'DELETE_IN_PROGRESS', 'DELETE_FAILED',
+	                         'DELETE_COMPLETE', 'UPDATE_IN_PROGRESS',
+	                         'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS',
+	                         'UPDATE_COMPLETE', 'UPDATE_FAILED',
+	                         'UPDATE_ROLLBACK_IN_PROGRESS',
+	                         'UPDATE_ROLLBACK_FAILED',
+	                         'UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS',
+	                         'UPDATE_ROLLBACK_COMPLETE', 'REVIEW_IN_PROGRESS',
+	                         'IMPORT_IN_PROGRESS', 'IMPORT_COMPLETE',
+	                         'IMPORT_ROLLBACK_IN_PROGRESS', 'IMPORT_ROLLBACK_FAILED',
+	                         'IMPORT_ROLLBACK_COMPLETE']
 	StackStatusFilter_active = ["CREATE_COMPLETE", "UPDATE_COMPLETE",
-								"UPDATE_ROLLBACK_COMPLETE"]
+	                            "UPDATE_ROLLBACK_COMPLETE"]
 	if fStatus.lower() == 'active' and not fStackFragment.lower() == 'all':
 		# Send back stacks that are active, check the fragment further down.
 		stacks = client_cfn.list_stacks(StackStatusFilter=StackStatusFilter_active)
@@ -1972,7 +2622,7 @@ def find_stacks_in_acct3(faws_acct, fRegion, fStackFragment="all", fStatus="acti
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match
 				logging.info(f"1-Found stack {stack['StackName']} in Account: {faws_acct.acct_number} in "
-							 f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+				             f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 				stacksCopy.append(stack)
 	elif fStatus.lower() == 'active' and fStackFragment.lower() == 'all':
 		# Send back all stacks regardless of fragment, check the status further down.
@@ -1980,14 +2630,14 @@ def find_stacks_in_acct3(faws_acct, fRegion, fStackFragment="all", fStatus="acti
 		stacks = client_cfn.list_stacks(StackStatusFilter=StackStatusFilter_active)
 		for stack in stacks['StackSummaries']:
 			logging.info(f"2-Found stack {stack['StackName']} in Account: {faws_acct.acct_number} in "
-						 f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+			             f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 			stacksCopy.append(stack)
 	elif fStatus.lower() == 'all' and fStackFragment.lower() == 'all':
 		# Send back all stacks.
 		# TODO: Need paging here
 		stacks = client_cfn.list_stacks(StackStatusFilter=StackStatusFilter_all)
 		logging.info(f"4-Found {len(stacks)} stacks in Account: {faws_acct.acct_number} in "
-					 f"Region: {fRegion}")
+		             f"Region: {fRegion}")
 		return (stacks['StackSummaries'])
 	elif fStatus.lower() == 'all':
 		# Send back all stacks that match the fragment, including all statuses
@@ -1996,7 +2646,7 @@ def find_stacks_in_acct3(faws_acct, fRegion, fStackFragment="all", fStatus="acti
 			if fStackFragment in stack['StackName']:
 				# Check the fragment now - only send back those that match, regardless of status
 				logging.info(f"3-Found stack {stack['StackName']} in Account: {faws_acct.acct_number} in "
-							 f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+				             f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 				stacksCopy.append(stack)
 	elif not fStatus.lower() == 'active':
 		# Send back stacks that match the single status, check the fragment further down.
@@ -2011,7 +2661,7 @@ def find_stacks_in_acct3(faws_acct, fRegion, fStackFragment="all", fStatus="acti
 				if fStackFragment in stack['StackName'] and fStatus in stack['StackStatus']:
 					# Check the fragment now - only send back those that match
 					logging.info(f"5-Found stack {stack['StackName']} in Account: {faws_acct.acct_number}"
-								 f" in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
+					             f" in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 					stacksCopy.append(stack)
 	return (stacksCopy)
 
@@ -2030,9 +2680,9 @@ def find_saml_components_in_acct2(ocredentials, fRegion):
 	import logging
 	logging.info(f"Acct ID #: {str(ocredentials['AccountNumber'])} | Region: {fRegion}")
 	session_aws = boto3.Session(region_name=fRegion,
-								aws_access_key_id=ocredentials['AccessKeyId'],
-								aws_secret_access_key=ocredentials['SecretAccessKey'],
-								aws_session_token=ocredentials['SessionToken'])
+	                            aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'])
 	iam_info = session_aws.client('iam')
 	saml_providers = iam_info.list_saml_providers()['SAMLProviderList']
 	return (saml_providers)
@@ -2064,9 +2714,9 @@ def find_stacksets2(ocredentials, fRegion='us-east-1', fStackFragment=None, fSta
 	logging.info(
 		f"Account ID: {ocredentials['AccountId']} | Region: {fRegion} | Fragment: {fStackFragment} | Status: {fStatus}")
 	session_aws = boto3.Session(region_name=fRegion,
-								aws_access_key_id=ocredentials['AccessKeyId'],
-								aws_secret_access_key=ocredentials['SecretAccessKey'],
-								aws_session_token=ocredentials['SessionToken'])
+	                            aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'])
 	client_cfn = session_aws.client('cloudformation')
 	logging.info(f'Creds: {ocredentials}')
 	stacksets2 = []
@@ -2076,11 +2726,8 @@ def find_stacksets2(ocredentials, fRegion='us-east-1', fStackFragment=None, fSta
 	if fStackFragment is None:
 		fStackFragment = ['all']
 	if fStatus.upper() == 'ACTIVE' or fStatus.upper() == 'DELETED':
-		logging.info(
-			f"Looking for stack sets in account {ocredentials['AccountId']} matching fragment {fStackFragment} with status {fStatus}")
+		logging.info(f"Looking for stack sets in account {ocredentials['AccountId']} matching fragment {fStackFragment} with status {fStatus}")
 		stacksets = client_cfn.list_stack_sets(Status=fStatus.upper())
-		# if 'NextToken' in stacksets.keys():
-		# 	stacksets2.extend(stacksets['Summaries'])
 		stacksets2.extend(stacksets['Summaries'])
 		while 'NextToken' in stacksets.keys():
 			stacksets = client_cfn.list_stack_sets(Status=fStatus.upper())
@@ -2089,9 +2736,8 @@ def find_stacksets2(ocredentials, fRegion='us-east-1', fStackFragment=None, fSta
 		logging.error(f"fstatus is {fStatus}")
 		logging.error(f"A list of stacksets wasn't captured")
 		print("We shouldn't get to this point")
-	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment or fStackFragment is None:
-		logging.info(
-			f"Found all the stacksets in Account: {ocredentials['AccountNumber']} in Region: {fRegion}")
+	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
+		logging.info(f"Found all the stacksets in Account: {ocredentials['AccountNumber']} in Region: {fRegion}")
 		return (stacksets2)
 	else:
 		stacksetsCopy = []
@@ -2233,7 +2879,7 @@ def find_stack_instances(fProfile, fRegion, fStackSetName, fStatus='CURRENT'):
 	stack_instances_list = stack_instances['Summaries']
 	while 'NextToken' in stack_instances.keys():  # Get all instance names
 		stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName,
-														  NextToken=stack_instances['NextToken'])
+		                                                  NextToken=stack_instances['NextToken'])
 		stack_instances_list.extend(stack_instances['Summaries'])
 	return (stack_instances_list)
 
@@ -2244,6 +2890,7 @@ def find_stack_instances2(ocredentials, fRegion, fStackSetName, fStatus='CURRENT
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['Region'] holds the Region where the authentication was done
 		- ['AccountNumber'] holds the AccountId
 	fRegion is a string
 	fStackSetName is a string
@@ -2254,15 +2901,15 @@ def find_stack_instances2(ocredentials, fRegion, fStackSetName, fStatus='CURRENT
 	import logging
 	logging.info(f"Acct ID #: {str(ocredentials['AccountNumber'])} | Region: {fRegion}")
 	session_aws = boto3.Session(region_name=fRegion,
-								aws_access_key_id=ocredentials['AccessKeyId'],
-								aws_secret_access_key=ocredentials['SecretAccessKey'],
-								aws_session_token=ocredentials['SessionToken'])
+	                            aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'])
 	client_cfn = session_aws.client('cloudformation')
 	stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName)
 	stack_instances_list = stack_instances['Summaries']
 	while 'NextToken' in stack_instances.keys():  # Get all instance names
 		stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName,
-														  NextToken=stack_instances['NextToken'])
+		                                                  NextToken=stack_instances['NextToken'])
 		stack_instances_list.extend(stack_instances['Summaries'])
 	return (stack_instances_list)
 
@@ -2287,13 +2934,13 @@ def find_stack_instances3(faws_acct, fRegion, fStackSetName, fStatus='CURRENT'):
 	stack_instances_list = stack_instances['Summaries']
 	while 'NextToken' in stack_instances.keys():  # Get all instance names
 		stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName,
-														  NextToken=stack_instances['NextToken'])
+		                                                  NextToken=stack_instances['NextToken'])
 		stack_instances_list.extend(stack_instances['Summaries'])
 	return (stack_instances_list)
 
 
 def delete_stack_instances(fProfile, fRegion, lAccounts, lRegions, fStackSetName, fRetainStacks=False,
-						   fOperationName="StackDelete"):
+                           fOperationName="StackDelete"):
 	"""
 	fProfile is the Root Profile that owns the stackset
 	fRegion is the region where the stackset resides
@@ -2309,14 +2956,14 @@ def delete_stack_instances(fProfile, fRegion, lAccounts, lRegions, fStackSetName
 	session_cfn = boto3.Session(profile_name=fProfile, region_name=fRegion)
 	client_cfn = session_cfn.client('cloudformation')
 	response = client_cfn.delete_stack_instances(StackSetName=fStackSetName, Accounts=lAccounts, Regions=lRegions,
-												 RetainStacks=fRetainStacks, OperationId=fOperationName)
+	                                             RetainStacks=fRetainStacks, OperationId=fOperationName)
 	return (response)  # There is no response to send back
 
 
-def delete_stack_instances3(faws_acct, fRegion, lAccounts, lRegions, fStackSetName, fRetainStacks=False,
-							fOperationName=None):
+def delete_stack_instances3(faws_acct, fRegion, lRegions, fStackSetName, fRetainStacks=False,
+                            fOperationName=None, lAccounts=None, fPermissionModel='SELF_MANAGED', fDeploymentTarget=None):
 	"""
-	fProfile is the Root Profile that owns the stackset
+	faws_acct is the Root account class object that owns the stackset (This function doesn't yet support Delegated Admin permissions)
 	fRegion is the region where the stackset resides
 	lAccounts is a list of accounts
 	lRegion is a list of regions
@@ -2326,8 +2973,12 @@ def delete_stack_instances3(faws_acct, fRegion, lAccounts, lRegions, fStackSetNa
 	import logging
 	from random import choices
 	from string import ascii_letters
+	from botocore.exceptions import ValidationError
 
 	result = validate_region3(faws_acct, fRegion)
+	response = {'Success': True, 'ErrorMessage': None, 'OperationId': None}
+	errormessage = "Error hasn't been initialized yet"
+	return_response = {'Success': False, 'ErrorMessage': errormessage}
 	if not result['Success']:
 		return (result['Message'])
 	else:
@@ -2336,36 +2987,61 @@ def delete_stack_instances3(faws_acct, fRegion, lAccounts, lRegions, fStackSetNa
 		fOperationName = f"StackDelete-{choices(ascii_letters, k=6)}"
 	logging.info(f"Deleting {fStackSetName} stackset over {len(lAccounts)} accounts across {len(lRegions)} regions")
 	client_cfn = faws_acct.session.client('cloudformation', region_name=fRegion)
+	# The following code is only valid for "Self-Managed StackSets"
 	try:
-		response = client_cfn.delete_stack_instances(StackSetName=fStackSetName,
-													 Accounts=lAccounts,
-													 Regions=lRegions,
-													 RetainStacks=fRetainStacks,
-													 OperationPreferences={
-														 'RegionConcurrencyType'     : 'PARALLEL',
-														 'FailureTolerancePercentage': 100,
-														 'MaxConcurrentPercentage'   : 100
-													 },
-													 OperationId=fOperationName)
-		return_response = {'Success': True, 'OperationId': response['OperationId']}
+		if fPermissionModel == 'SELF_MANAGED':
+			response.update(client_cfn.delete_stack_instances(StackSetName=fStackSetName,
+			                                                  Accounts=lAccounts,
+			                                                  Regions=lRegions,
+			                                                  RetainStacks=fRetainStacks,
+			                                                  OperationPreferences={
+				                                                  'RegionConcurrencyType'     : 'PARALLEL',
+				                                                  'FailureTolerancePercentage': 0,
+				                                                  'MaxConcurrentPercentage'   : 100
+			                                                  },
+			                                                  OperationId=fOperationName))
+
+			return_response = {'Success': True, 'OperationId': response['OperationId']}
+		elif fPermissionModel == 'SERVICE_MANAGED':
+			response.update(client_cfn.delete_stack_instances(StackSetName=fStackSetName,
+			                                                  DeploymentTargets=fDeploymentTarget,
+			                                                  Regions=lRegions,
+			                                                  RetainStacks=fRetainStacks,
+			                                                  OperationPreferences={
+				                                                  'RegionConcurrencyType'     : 'PARALLEL',
+				                                                  'FailureTolerancePercentage': 0,
+				                                                  'MaxConcurrentPercentage'   : 100
+			                                                  },
+			                                                  OperationId=fOperationName))
+			return_response = {'Success': True, 'OperationId': response['OperationId']}
 	except client_cfn.exceptions.StackSetNotFoundException as myError:
-		logging.error(f"StackSet not found: {myError}")
-		return_response = {'Success': False, 'ErrorMessage': myError}
+		errormessage = f"StackSet not found: {myError}"
+		logging.error(errormessage)
+		return_response = {'Success': False, 'ErrorMessage': errormessage}
 	except client_cfn.exceptions.OperationInProgressException as myError:
-		logging.error(f"Operation in progress: {myError}")
-		return_response = {'Success': False, 'ErrorMessage': myError}
+		errormessage = f"Operation in progress: {myError}"
+		logging.error(errormessage)
+		return_response = {'Success': False, 'ErrorMessage': errormessage}
 	except client_cfn.exceptions.OperationIdAlreadyExistsException as myError:
-		logging.error(f"Operation Id already exists: {myError}")
-		return_response = {'Success': False, 'ErrorMessage': myError}
+		errormessage = f"Operation Id already exists: {myError}"
+		logging.error(errormessage)
+		return_response = {'Success': False, 'ErrorMessage': errormessage}
 	except client_cfn.exceptions.StaleRequestException as myError:
-		logging.error(f"Stale Request: {myError}")
-		return_response = {'Success': False, 'ErrorMessage': myError}
+		errormessage = f"Stale Request: {myError}"
+		logging.error(errormessage)
+		return_response = {'Success': False, 'ErrorMessage': errormessage}
 	except client_cfn.exceptions.InvalidOperationException as myError:
-		logging.error(f"Invalid Operation: {myError}")
-		return_response = {'Success': False, 'ErrorMessage': myError}
+		errormessage = f"Invalid Operation: {myError}"
+		logging.error(errormessage)
+		return_response = {'Success': False, 'ErrorMessage': errormessage}
+	except ValidationError as myError:
+		errormessage = f"Validation Error: {myError}"
+		logging.error(errormessage)
+		return_response = {'Success': False, 'ErrorMessage': errormessage}
 	except Exception as myError:
-		logging.error(f"Other problem: {myError}")
-		return_response = {'Success': False, 'ErrorMessage': myError}
+		errormessage = f"Other problem: {myError}"
+		logging.error(errormessage)
+		return_response = {'Success': False, 'ErrorMessage': errormessage}
 	return (return_response)  # The response will be the Operation ID of the delete operation or an Error Message
 
 
@@ -2388,7 +3064,7 @@ def check_stack_set_status3(faws_acct, fStack_set_name, fOperationId=None):
 		# so we need to check the status of the stack-set creation, and not the operations that happen to the stackset
 		try:
 			response = client_cfn.describe_stack_set(StackSetName=fStack_set_name,
-													 CallAs='SELF')['StackSet']
+			                                         CallAs='SELF')['StackSet']
 			return_response['StackSetStatus'] = response['Status']
 			return_response['Success'] = True
 			return (return_response)
@@ -2398,8 +3074,8 @@ def check_stack_set_status3(faws_acct, fStack_set_name, fOperationId=None):
 			return (return_response)
 	try:
 		response = client_cfn.describe_stack_set_operation(StackSetName=fStack_set_name,
-														   OperationId=fOperationId,
-														   CallAs='SELF')['StackSetOperation']
+		                                                   OperationId=fOperationId,
+		                                                   CallAs='SELF')['StackSetOperation']
 		return_response['StackSetStatus'] = response['Status']
 		return_response['Success'] = True
 	except client_cfn.exceptions.StackSetNotFoundException as myError:
@@ -2487,6 +3163,83 @@ def find_sc_products(fProfile, fRegion, fStatus="ERROR", flimit=100):
 	return (response2)
 
 
+def find_sc_products3(faws_acct, fStatus="ERROR", flimit=100, fproductId=None):
+	"""
+	faws_acct is the Org account that we're interrogating
+	fStatus is the status of SC products we're looking for. Defaults to "ERROR"
+	flimit is the max number of products to find. This is used for debugging, mainly
+	fproductId is the provisioned product ID that we can filter on to narrow down our search
+
+	Returned list looks like this:
+	[
+		{
+			"Arn": "string",
+			"CreatedTime": number,
+			"Id": "string",
+			"IdempotencyToken": "string",
+			"LastRecordId": "string",
+			"Name": "string",
+			"PhysicalId": "string",
+			"ProductId": "string",
+			"ProvisioningArtifactId": "string",
+			"Status": "string",
+			"StatusMessage": "string",
+			"Tags": [
+				{
+					"Key": "string",
+					"Value": "string"
+				}
+			],
+			"Type": "string",
+			"UserArn": "string",
+			"UserArnSession": "string"
+		}
+	]
+	"""
+
+	response2 = []
+	client_sc = faws_acct.session.client('servicecatalog')
+	if fStatus.lower() == 'all' and fproductId is None:
+		response = client_sc.search_provisioned_products(PageSize=flimit,
+		                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'})
+		while 'NextPageToken' in response.keys():
+			response2.extend(response['ProvisionedProducts'])
+			response = client_sc.search_provisioned_products(PageToken=response['NextPageToken'],
+			                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+			                                                 PageSize=flimit)
+	elif fStatus.lower() == 'all' and fproductId is not None:
+		response = client_sc.search_provisioned_products(PageSize=flimit,
+		                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+		                                                 Filters={'SearchQuery': [f"productId:{fproductId}"]})
+		while 'NextPageToken' in response.keys():
+			response2.extend(response['ProvisionedProducts'])
+			response = client_sc.search_provisioned_products(PageToken=response['NextPageToken'],
+			                                                 PageSize=flimit, AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+			                                                 Filters={'SearchQuery': [f"productId:{fproductId}"]})
+	elif fproductId is not None:  # We filter down to only the statuses asked for and the productId
+		response = client_sc.search_provisioned_products(PageSize=flimit,
+		                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+		                                                 Filters={'SearchQuery': [f"status:{fStatus}", f"productId:{fproductId}"]})
+		while 'NextPageToken' in response.keys():
+			response2.extend(response['ProvisionedProducts'])
+			response = client_sc.search_provisioned_products(PageSize=flimit,
+			                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+			                                                 Filters={'SearchQuery': [f"status:{fStatus}", f"productId:{fproductId}"]},
+			                                                 PageToken=response['NextPageToken'])
+	else:  # We filter down to only the statuses asked for
+		response = client_sc.search_provisioned_products(PageSize=flimit,
+		                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+		                                                 Filters={'SearchQuery': [f"status:{fStatus}", f"productId:{fproductId}"]})
+		while 'NextPageToken' in response.keys():
+			response2.extend(response['ProvisionedProducts'])
+			response = client_sc.search_provisioned_products(PageSize=flimit,
+			                                                 AccessLevelFilter={'Key': 'Account', 'Value': 'self'},
+			                                                 Filters={'SearchQuery': [f"status:{fStatus}", f"productId:{fproductId}"]},
+			                                                 PageToken=response['NextPageToken'])
+	response2.extend(response['ProvisionedProducts'])
+	return (response2)
+
+
 def find_ssm_parameters(fProfile, fRegion):
 	"""
 	fProfile is the Root Profile that owns the stackset
@@ -2511,122 +3264,431 @@ def find_ssm_parameters(fProfile, fRegion):
 	from botocore.exceptions import ClientError
 	ERASE_LINE = '\x1b[2K'
 
-	logging.info("Finding ssm parameters for profile %s in Region %s", fProfile, fRegion)
+	logging.info(f"Finding ssm parameters for profile {fProfile} in Region {fRegion}")
 	session_ssm = boto3.Session(profile_name=fProfile, region_name=fRegion)
+	client_sts = session_ssm.client('sts')
+	client_ssm = session_ssm.client('ssm')
+	account_num = client_sts.get_caller_identity()['Account']
+	response = {}
+	response2 = []
+	TotalParameters = 0
+
+	try:
+		response = client_ssm.describe_parameters(MaxResults=50)
+	except ClientError as my_Error:
+		logging.error(f"Error: {my_Error}")
+	TotalParameters = TotalParameters + len(response['Parameters'])
+	logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
+	for param in response['Parameters']:
+		response2.append({'AccountNum'      : account_num,
+		                  'Region'          : session_ssm.region_name,
+		                  'Profile'         : session_ssm.profile_name,
+		                  'Description'     : param['Description'],
+		                  'LastModifiedDate': param['LastModifiedDate'],
+		                  'LastModifiedUser': param['LastModifiedUser'],
+		                  'Name'            : param['Name'],
+		                  'Policies'        : param['Policies'],
+		                  'Tier'            : param['Tier'],
+		                  'Type'            : param['Type'],
+		                  'Version'         : param['Version']
+		                  })
+	while 'NextToken' in response.keys():
+		response = client_ssm.describe_parameters(MaxResults=50, NextToken=response['NextToken'])
+		TotalParameters = TotalParameters + len(response['Parameters'])
+		logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
+		for param in response['Parameters']:
+			response2.append({'AccountNumber'   : account_num,
+			                  'Region'          : session_ssm.region_name,
+			                  'Profile'         : session_ssm.profile_name,
+			                  'Description'     : param['Description'] if 'Description' in param.keys() else None,
+			                  'LastModifiedDate': param['LastModifiedDate'],
+			                  'LastModifiedUser': param['LastModifiedUser'],
+			                  'Name'            : param['Name'],
+			                  'Policies'        : param['Policies'],
+			                  'Tier'            : param['Tier'],
+			                  'Type'            : param['Type'],
+			                  'Version'         : param['Version']
+			                  })
+		if (len(response2) % 500 == 0) and (logging.getLogger().getEffectiveLevel() > 20):
+			print(f"{ERASE_LINE}Sorry this is taking a while - we've already found {len(response2)} parameters!", end="\r")
+
+	logging.error(f"Found {len(response2)} parameters")
+	return (response2)
+
+
+def find_ssm_parameters2(ocredentials):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['Region'] holds the Region where the authentication was done
+		- ['MgmtAccount'] holds the AccountId
+		- ['AccountNumber'] holds the AccountId
+
+	Return Value is a list that looks like this:
+	[
+		{
+			'Description': 'Contains the Local SNS Topic Arn for Landing Zone',
+			'LastModifiedDate': datetime.datetime(2020, 2, 7, 12, 50, 2, 373000, tzinfo = tzlocal()),
+			'LastModifiedUser': 'arn:aws:sts::517713657778:assumed-role/AWSCloudFormationStackSetExecutionRole/16b4abdd-1d1f-4aeb-8930-3e65dcef6bab',
+			'Name': '/org/member/local_sns_arn',
+			'Policies': [],
+			'Tier': 'Standard',
+			'Type': 'String',
+			'Version': 1
+		},
+	]
+	"""
+	import logging
+	import boto3
+	from botocore.exceptions import ClientError
+	ERASE_LINE = '\x1b[2K'
+
+	region = ocredentials['Region']
+	logging.info(f"Finding ssm parameters for account {ocredentials['AccountNumber']} in Region {region}")
+	session_ssm = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
 	client_ssm = session_ssm.client('ssm')
 	response = {}
 	response2 = []
 	TotalParameters = 0
+
 	try:
 		response = client_ssm.describe_parameters(MaxResults=50)
+		TotalParameters = TotalParameters + len(response['Parameters'])
+		logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
+		for param in response['Parameters']:
+			response2.append({'MgmtAcct'        : ocredentials['MgmtAccount'],
+			                  'AccountNumber'   : ocredentials['AccountNumber'],
+			                  'Region'          : region,
+			                  'Profile'         : session_ssm.profile_name,
+			                  'credentials'     : ocredentials,
+			                  'Description'     : param['Description'] if 'Description' in param.keys() else None,
+			                  'LastModifiedDate': param['LastModifiedDate'],
+			                  'LastModifiedUser': param['LastModifiedUser'],
+			                  'Name'            : param['Name'],
+			                  'Policies'        : param['Policies'],
+			                  'Tier'            : param['Tier'],
+			                  'Type'            : param['Type'],
+			                  'Version'         : param['Version']
+			                  })
 	except ClientError as my_Error:
-		print(my_Error)
-	TotalParameters = TotalParameters + len(response['Parameters'])
-	logging.info("Found another %s parameters, bringing the total up to %s", len(
-		response['Parameters']), TotalParameters)
-	for i in range(len(response['Parameters'])):
-		response2.append(response['Parameters'][i])
+		logging.error(f"Error: {my_Error}")
 	while 'NextToken' in response.keys():
 		response = client_ssm.describe_parameters(MaxResults=50, NextToken=response['NextToken'])
 		TotalParameters = TotalParameters + len(response['Parameters'])
-		logging.info("Found another %s parameters, bringing the total up to %s", len(
-			response['Parameters']), TotalParameters)
-		for i in range(len(response['Parameters'])):
-			response2.append(response['Parameters'][i])
-		if (len(response2) % 500 == 0) and (logging.getLogger().getEffectiveLevel() > 30):
-			print(ERASE_LINE,
-				  f"Sorry this is taking a while - we've already found {len(response2)} parameters!", end="\r")
+		logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
+		for param in response['Parameters']:
+			response2.append({'MgmtAcct'        : ocredentials['MgmtAccount'],
+			                  'AccountNumber'   : ocredentials['AccountNumber'],
+			                  'Region'          : session_ssm.region_name,
+			                  'Profile'         : session_ssm.profile_name,
+			                  'Description'     : param['Description'] if 'Description' in param.keys() else None,
+			                  'LastModifiedDate': param['LastModifiedDate'],
+			                  'LastModifiedUser': param['LastModifiedUser'],
+			                  'Name'            : param['Name'],
+			                  'Policies'        : param['Policies'],
+			                  'Tier'            : param['Tier'],
+			                  'Type'            : param['Type'],
+			                  'Version'         : param['Version']
+			                  })
+		if (len(response2) % 500 == 0) and (logging.getLogger().getEffectiveLevel() > 20):
+			print(f"{ERASE_LINE}Sorry this is taking a while - we've already found {len(response2)} parameters!", end="\r")
 
-	print()
-	logging.error("Found %s parameters", len(response2))
+	if logging.getLogger().getEffectiveLevel() < 50:
+		print(f"Found {len(response2)} parameters in account {ocredentials['AccountNumber']}")
+	return (response2)
+
+
+def find_ssm_parameters3(faws_acct, fregion=None):
+	"""
+	fProfile is the Root Profile that owns the stackset
+	fRegion is the region where the stackset resides
+
+	Return Value is a list that looks like this:
+	[
+		{
+			'Description': 'Contains the Local SNS Topic Arn for Landing Zone',
+			'LastModifiedDate': datetime.datetime(2020, 2, 7, 12, 50, 2, 373000, tzinfo = tzlocal()),
+			'LastModifiedUser': 'arn:aws:sts::517713657778:assumed-role/AWSCloudFormationStackSetExecutionRole/16b4abdd-1d1f-4aeb-8930-3e65dcef6bab',
+			'Name': '/org/member/local_sns_arn',
+			'Policies': [],
+			'Tier': 'Standard',
+			'Type': 'String',
+			'Version': 1
+		},
+	]
+	"""
+	import logging
+	from botocore.exceptions import ClientError
+	ERASE_LINE = '\x1b[2K'
+
+	if fregion is None:
+		fregion = faws_acct.session.region_name
+	logging.info(f"Finding ssm parameters for account {faws_acct.acct_number} in Region {fregion}")
+	session_ssm = faws_acct.session
+	client_ssm = session_ssm.client('ssm')
+	response = {}
+	response2 = []
+	TotalParameters = 0
+
+	try:
+		response = client_ssm.describe_parameters(MaxResults=50)
+	except ClientError as my_Error:
+		logging.error(f"Error: {my_Error}")
+	TotalParameters = TotalParameters + len(response['Parameters'])
+	logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
+	for param in response['Parameters']:
+		response2.append({'MgmtAcct'        : faws_acct.MgmtAccount,
+		                  'AccountNumber'   : faws_acct.acct_number,
+		                  'Region'          : fregion,
+		                  'Profile'         : session_ssm.profile_name,
+		                  'Description'     : param['Description'] if 'Description' in param.keys() else None,
+		                  'LastModifiedDate': param['LastModifiedDate'],
+		                  'LastModifiedUser': param['LastModifiedUser'],
+		                  'Name'            : param['Name'],
+		                  'Policies'        : param['Policies'],
+		                  'Tier'            : param['Tier'],
+		                  'Type'            : param['Type'],
+		                  'Version'         : param['Version']
+		                  })
+	while 'NextToken' in response.keys():
+		response = client_ssm.describe_parameters(MaxResults=50, NextToken=response['NextToken'])
+		TotalParameters = TotalParameters + len(response['Parameters'])
+		logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
+		for param in response['Parameters']:
+			response2.append({'MgmtAcct'        : faws_acct.MgmtAccount,
+			                  'AccountNumber'   : faws_acct.acct_number,
+			                  'Region'          : session_ssm.region_name,
+			                  'Profile'         : session_ssm.profile_name,
+			                  'Description'     : param['Description'] if 'Description' in param.keys() else None,
+			                  'LastModifiedDate': param['LastModifiedDate'],
+			                  'LastModifiedUser': param['LastModifiedUser'],
+			                  'Name'            : param['Name'],
+			                  'Policies'        : param['Policies'],
+			                  'Tier'            : param['Tier'],
+			                  'Type'            : param['Type'],
+			                  'Version'         : param['Version']
+			                  })
+		if (len(response2) % 500 == 0) and (logging.getLogger().getEffectiveLevel() > 20):
+			print(f"{ERASE_LINE}Sorry this is taking a while - we've already found {len(response2)} parameters!", end="\r")
+
+	logging.error(f"Found {len(response2)} parameters")
 	return (response2)
 
 
 ############
 
 
-# def get_credentials_for_multiple_orgs(fProfileList, fSkipAccounts=[], fRootOnly=False):
-# 	"""
-# 	Note that this function returns the credentials of all the accounts underneath the Org passed to it.
-# 	"""
-# 	import logging
-# 	import boto3
-# 	from account_class import aws_acct_access
-# 	from datetime import datetime
-# 	from queue import Queue
-# 	from threading import Thread
-# 	from botocore.exceptions import ClientError
-#
-# 	class AssembleCredentials(Thread):
-#
-# 		def __init__(self, queue):
-# 			Thread.__init__(self)
-# 			self.queue = queue
-#
-# 		def run(self):
-# 			while True:
-# 				# Get the work from the queue and expand the tuple
-# 				c_profile = self.queue.get()
-# 				logging.info(f"De-queued info for account {c_profile}")
-# 				try:
-# 					aws_acct = aws_acct_access(c_profile)
-# 				except ClientError as my_Error:
-# 					if str(my_Error).find("AuthFailure") > 0:
-# 						logging.error(f"{account['AccountId']}: Authorization failure using role: {account_credentials['Role']}")
-# 						logging.info(my_Error)
-# 					elif str(my_Error).find("AccessDenied") > 0:
-# 						logging.error(f"{account['AccountId']}: Access Denied failure using role: {account_credentials['Role']}")
-# 						logging.info(my_Error)
-# 					else:
-# 						logging.error(f"{account['AccountId']}: Other kind of failure using role: {account_credentials['Role']}")
-# 						logging.info(my_Error)
-# 					continue
-# 				except KeyError as my_Error:
-# 					logging.error(f"Account Access failed - trying to access {account['AccountId']}")
-# 					logging.info(f"Actual Error: {my_Error}")
-# 					pass
-# 				except AttributeError as my_Error:
-# 					logging.error(f"Error: Likely that one of the supplied profiles was wrong")
-# 					logging.info(my_Error)
-# 					continue
-# 				finally:
-# 					self.queue.task_done()
-#
-#
-# 	account_credentials = {'Role': 'Nothing'}
-# 	AccountNum = 0
-# 	AllCreds = []
-# 	credqueue = Queue()
-# 	WorkerThreads = len(fProfileList)
-#
-# 	# Create x worker threads
-# 	for x in range(WorkerThreads):
-# 		worker = AssembleCredentials(credqueue)
-# 		# Setting daemon to True will let the main thread exit even though the workers are blocking
-# 		worker.daemon = True
-# 		worker.start()
-#
-# 	for profile in fProfileList:
-# 		if profile in fSkipAccounts:
-# 			continue
-# 		AccountNum += 1
-# 		logging.info(f"Queuing account info for {AccountNum} / {len(ChildAccounts)} accounts")
-# 		credqueue.put((profile))
-# 		print(f"Profile: {profile} | {datetime.now()}")
-# 	print(f"Profile: {faws_acct.session.profile_name} | {datetime.now()}")
-# 	credqueue.join()
-# 	return (AllCreds)
+def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_save=None):
+	from colorama import init, Fore
+	from datetime import datetime
+
+	init()
+	"""
+	Note that this function simply formats the output of the data within the list provided
+	- results_list: This should be a list of dictionaries, matching to the fields in fdisplay_dict
+	- fdisplay_dict: Should look like the below. It's simply a list of fields and formats
+	- defaultAction: this is a default string or type to assign to fields that (for some reason) don't exist within the results_list.
+	display_dict = {'ParentProfile': {'DisplayOrder': 1, 'Heading': 'Parent Profile'},
+	                'MgmtAccount'  : {'DisplayOrder': 2, 'Heading': 'Mgmt Acct'},
+	                'AccountId'    : {'DisplayOrder': 3, 'Heading': 'Acct Number'},
+	                'Region'       : {'DisplayOrder': 4, 'Heading': 'Region', 'Condition': ['us-east-2']},
+	                'Retention'    : {'DisplayOrder': 5, 'Heading': 'Days Retention', 'Condition': ['Never']},
+	                'Name'         : {'DisplayOrder': 7, 'Heading': 'CW Log Name'},
+                    'Size'         : {'DisplayOrder': 6, 'Heading': 'Size (Bytes)'}}
+		- The first field ("MgmtAccount") should match the field name within the list of dictionaries you're passing in (results_list)
+		- The first field within the nested dictionary is the SortOrder you want the results to show up in
+		- The second field within the nested dictionary is the heading you want to display at the top of the column (which allows spaces)
+		- The third field ('Condition') is new, and allows to highlight a special value within the output. This can be used multiple times. 
+		The dictionary doesn't have to be ordered, as long as the 'SortOrder' field is correct.
+		
+		Enhancements:
+			- How to create a break between rows, like after every account, or Management Org, or region, or whatever...  
+	"""
+	# If no results were passed, print nothing and just return
+	if len(results_list) == 0:
+		logging.warning("There were no results passed in to display")
+		return ()
+
+	# TODO:
+	# 	Probably have to do a pre-emptive error-check to ensure the SortOrder is unique within the Dictionary
+	# 	Also need to enclose this whole thing in a try...except to trap errors.
+	# 	Also need to find a way to order the data within this function.
+
+	sorted_display_dict = dict(sorted(fdisplay_dict.items(), key=lambda x: x[1]['DisplayOrder']))
+
+	# This is an effort to find the right size spaces for the dictionary to properly show the results
+	print()
+	needed_space = {}
+	for field, value in sorted_display_dict.items():
+		needed_space[field] = 0
+	try:
+		for result in results_list:
+			for field, value in sorted_display_dict.items():
+				if field not in result:
+					needed_space[field] = max(len(value['Heading']), needed_space[field])
+					continue
+				elif isinstance(result[field], int):
+					# This section is to compensate for the fact that the len of numbers in string format doesn't include the commas.
+					# I know - I've been very US-centric here, since I haven't figured out how to achieve this in a locale-agnostic way
+					num_width = len(str(result[field]))
+					if len(str(result[field])) % 3 == 0:
+						num_width += (len(str(result[field])) // 3) - 1
+					else:
+						num_width += len(str(result[field])) // 3
+					needed_space[field] = max(num_width, len(value['Heading']), needed_space[field])
+				elif isinstance(result[field], str):
+					needed_space[field] = max(len(result[field]), len(value['Heading']), needed_space[field])
+				elif isinstance(result[field], datetime):
+					# Recognizes the field as a date, and finds the necessary amount of string space to show that date, and assigns the length to "needed_space"
+					needed_space[field] = len(datetime.now().strftime('%x %X'))
+	except KeyError as my_Error:
+		logging.error(f"Error: {my_Error}")
+
+	# This writes out the headings
+	for field, value in sorted_display_dict.items():
+		header_format = needed_space[field]
+		print(f"{value['Heading']:{header_format}s} ", end='')
+	print()
+	# This writes out the dashes (separators)
+	for field, value in sorted_display_dict.items():
+		repeatvalue = needed_space[field]
+		print(f"{'-' * repeatvalue} ", end='')
+	print()
+
+	# This writes out the data
+	for result in results_list:
+		for field, value in sorted_display_dict.items():
+			# This assigns the proper space for the output
+			data_format = needed_space[field]
+			if field not in result.keys():
+				result[field] = defaultAction
+			# This allows for a condition to highlight a specific value
+			highlight = False
+			if 'Condition' in value and result[field] in value['Condition']:
+				highlight = True
+			if result[field] is None:
+				print(f"{'':{data_format}} ", end='')
+			elif isinstance(result[field], str):
+				print(f"{Fore.RED if highlight else ''}{result[field]:{data_format}s}{Fore.RESET if highlight else ''} ", end='')
+			elif isinstance(result[field], int):
+				print(f"{Fore.RED if highlight else ''}{result[field]:<{data_format},}{Fore.RESET if highlight else ''} ", end='')
+			elif isinstance(result[field], float):
+				print(f"{Fore.RED if highlight else ''}{result[field]:{data_format}f}{Fore.RESET if highlight else ''} ", end='')
+			elif isinstance(result[field], datetime):
+				print(f"{Fore.RED if highlight else ''}{result[field].strftime('%x %X')}{Fore.RESET if highlight else ''} ", end='')
+		print()  # This is the end of line character needed at the end of every line
+	print()  # This is the new line needed at the end of the script.
+	# TODO: We need to add some analytics here... Trying to come up with what would make sense across all displays.
+	#   Possibly we can have a setting where this data is written to a csv locally. We could create separate analytics once the data was saved.
+	if file_to_save is not None:
+		Heading = ''
+		with open(f'{file_to_save}-{datetime.now().strftime("%y-%m-%d--%H:%M:%S")}', 'w') as savefile:
+			for field, value in sorted_display_dict.items():
+				Heading += f"{value['Heading']}|"
+			Heading += '\n'
+			savefile.write(Heading)
+			for result in results_list:
+				row = ''
+				for field, value in sorted_display_dict.items():
+					data_format = 0
+					if field not in result.keys():
+						result[field] = defaultAction
+					# This allows for a condition to highlight a specific value
+					if result[field] is None:
+						row += "|"
+					elif isinstance(result[field], str):
+						row += f"{result[field]:{data_format}s}|"
+					elif isinstance(result[field], int):
+						row += f"{result[field]:<{data_format},}|"
+					elif isinstance(result[field], float):
+						row += f"{result[field]:{data_format}f}|"
+				row += '\n'
+				savefile.write(row)
 
 
-def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, accountlist=None, fprofile="default", fregions=None, fRoleNames=None):
+def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=None, fSkipAccounts=None, fRootOnly=False, fAccounts=None, fRegionList=None, RoleList=None):
+	"""
+	Note that this function returns the credentials of all the accounts in all the profiles passed to it
+
+	Note that this function creates a new credential for every region, even though today - that's not necessary.
+	However, some day accounts will be pegged to specific regions, and it will be necessary then.
+	"""
+	import logging
+	from account_class import aws_acct_access
+	from time import time
+	from colorama import init, Fore
+
+	init()
+	ERASE_LINE = '\x1b[2K'
+	begin_time = time()
+	print(f"{Fore.GREEN}Timing is enabled{Fore.RESET}") if fTiming else None
+
+	AllCredentials = []
+	if fSkipProfiles is None:
+		fSkipProfiles = []
+	if fSkipAccounts is None:
+		fSkipAccounts = []
+	if fAccounts is None:
+		fAccounts = []
+	if fRegionList is None:
+		fRegionList = ['us-east-1']
+	if fProfiles is None:  # Default use case from the classes
+		print("Getting Accounts to check: ", end='')
+		aws_acct = aws_acct_access()
+		# This doesn't mean the profile "default", this is just what the label for the Org Name will be, since there's no other text
+		profile = 'default'
+		RegionList = get_regions3(aws_acct, fRegionList)
+		logging.info(f"Queueing default profile for credentials")
+		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
+		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, RoleList, fTiming))
+	else:
+		ProfileList = get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
+		print(f"{ERASE_LINE}{Fore.GREEN}Finding {len(ProfileList)} profiles has taken {time() - begin_time:.2f} seconds{Fore.RESET}") if fTiming else None
+
+		logging.warning(f"These profiles are being checked {ProfileList}.")
+		print("Getting Accounts to check: ", end='')
+		for profile in ProfileList:
+			try:
+				aws_acct = aws_acct_access(profile)
+				if aws_acct.Success:
+					pass
+				else:
+					continue
+				RegionList = get_regions3(aws_acct, fRegionList)
+				logging.warning(f"Looking at {profile} account now across these regions {RegionList}... ")
+				logging.info(f"Queueing {profile} for credentials")
+				# This should populate the list "AllCreds" with the credentials for the relevant accounts.
+				AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, RoleList, fTiming))
+				if fTiming:
+					print(f"{ERASE_LINE}{Fore.GREEN}Finished profile {Fore.RED}'{profile}'{Fore.GREEN}. Finding credentials for {len(AllCredentials)} accounts and regions has taken {time() - begin_time:.2f} seconds{Fore.RESET}")
+			except AttributeError as my_Error:
+				logging.error(f"Profile {profile} didn't work... Skipping")
+				continue
+	return (AllCredentials)
+
+
+def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, accountlist=None, fprofile="default", fregions=None, fRoleNames=None, fTiming=False):
 	"""
 	Note that this function returns the credentials of all the accounts underneath the Org passed to it.
+
+	Note that this function creates a new credential for every region, even though today - that's not necessary.
+	However, some day accounts will be pegged to specific regions, and it will be necessary then.
 	"""
 	import logging
 	from datetime import datetime
 	from queue import Queue
 	from threading import Thread
 	from botocore.exceptions import ClientError
+	from time import time
+	from colorama import init, Fore
+
+	init()
+	begin_time = time()
 
 	class AssembleCredentials(Thread):
 
@@ -2645,35 +3707,34 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 					if faccount_credentials['Success']:
 						logging.info(f"Successfully connected to account {c_account_info['AccountId']}")
 						faccount_credentials.update({'ParentProfile': c_profile,
-													 'RolesTried'   : fRoleNames})
-					# elif faccount_credentials['Success']:
-					# 	pass
+						                             'RolesTried'   : fRoleNames})
 					else:
 						logging.error(f"Error connecting to account {c_account_info['AccountId']} in region {c_region}.\n"
-									  f"Parent Profile was {c_profile}\n"
-									  f"Error Message: {faccount_credentials['ErrorMessage']}")
-						faccount_credentials.update({'AccountId'    : c_account_info['AccountId'],
-													 'ParentProfile': c_profile,
-													 'Region'       : c_region})
+						              f"Parent Profile was {c_profile}\n"
+						              f"Error Message: {faccount_credentials['ErrorMessage']}")
+						faccount_credentials.update({'MgmtAccount'  : c_account_info['MgmtAccount'],
+						                             'AccountId'    : c_account_info['AccountId'],
+						                             'ParentProfile': c_profile,
+						                             'Region'       : c_region})
 					AllCreds.append(faccount_credentials)
 				except ClientError as my_Error:
 					if str(my_Error).find("AuthFailure") > 0:
 						logging.error(f"{account['AccountId']}: Authorization failure using role: {account_credentials['Role']}\n"
-									  f"Error: {my_Error}")
+						              f"Error: {my_Error}")
 					elif str(my_Error).find("AccessDenied") > 0:
 						logging.error(f"{account['AccountId']}: Access Denied failure using role: {account_credentials['Role']}\n"
-									  f"Error: {my_Error}")
+						              f"Error: {my_Error}")
 					else:
 						logging.error(f"{account['AccountId']}: Other kind of failure using role: {account_credentials['Role']}\n"
-									  f"Error: {my_Error}")
+						              f"Error: {my_Error}")
 					continue
 				except KeyError as my_Error:
 					logging.error(f"Account Access failed - trying to access {account['AccountId']}\n"
-								  f"Error: {my_Error}")
+					              f"Error: {my_Error}")
 					pass
 				except AttributeError as my_Error:
 					logging.error(f"Error: Likely that one of the supplied profiles was wrong\n"
-								  f"Error: {my_Error}")
+					              f"Error: {my_Error}")
 					continue
 				finally:
 					print(".", end='')
@@ -2691,8 +3752,11 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 	AccountNum = RegionNum = 0
 	AllCreds = []
 	credqueue = Queue()
-	WorkerThreads = len(ChildAccounts) * len(fregions)
-	# WorkerThreads = len(ChildAccounts)
+
+	if len(accountlist) > 0:  # If they supplied a list of accounts to check, use 50 worker threads
+		WorkerThreads = min(len(accountlist) * len(fregions), 50)
+	else:  # If they didn't, then use 100 worker threads - I don't know why.
+		WorkerThreads = min(len(ChildAccounts) * len(fregions), 100)
 
 	# Create x worker threads
 	for x in range(WorkerThreads):
@@ -2701,22 +3765,25 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		worker.daemon = True
 		worker.start()
 
+	logging.info(f"You asked to check {len(ChildAccounts) * len(fregions)} place{'s' if len(ChildAccounts) * len(fregions) > 1 else ''}... It's going to take a moment")
+	logging.debug(f"{Fore.GREEN}It's taken {time() - begin_time:.2f} seconds to prep WorkerThreads and such{Fore.RESET}") if fTiming else None
 	for account in ChildAccounts:
 		AccountNum += 1
-		RegionNum = 0
 		if account['AccountId'] in fSkipAccounts:
 			continue
 		elif fRootOnly and not account['AccountId'] == account['MgmtAccount']:
 			continue
 		elif accountlist and account['AccountId'] not in accountlist:
 			continue
-		logging.info(f"Queuing account info for {AccountNum} / {len(ChildAccounts)} accounts")
+		logging.info(f"Queuing account info for {AccountNum} / {len(ChildAccounts)} accounts in profile {fprofile}")
+		RegionNum = 0
 		for region in fregions:
 			RegionNum += 1
 			logging.info(f"\t\tRegion {RegionNum} of {len(fregions)}")
 			credqueue.put((account, fprofile, region))
 			logging.info(f"Account / Region: {account} / {region} | {datetime.now()}")
-	logging.info(f"Profile: {fprofile} | {datetime.now()}")
+	print(f"{Fore.GREEN}Enumerating {len(ChildAccounts) * len(fregions)} account{'s' if len(ChildAccounts) * len(fregions) > 1 else ''} and regions "
+	      f"took {time() - begin_time:.3f} seconds {Fore.RESET}") if fTiming else None
 	credqueue.join()
 	return (AllCreds)
 

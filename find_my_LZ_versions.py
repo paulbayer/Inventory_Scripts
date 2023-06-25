@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import sys
 
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
@@ -11,9 +10,12 @@ import logging
 
 init()
 
+__version__ = '2023.05.31'
+
 parser = CommonArguments()
-parser.verbosity()
 parser.multiprofile()
+parser.verbosity()
+parser.version(__version__)
 args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
@@ -26,8 +28,8 @@ ERASE_LINE = '\x1b[2K'
 SkipProfiles = ['default']
 
 if pProfiles is None:
-	print(f"This script requires a profile name to be submitted.")
-	sys.exit(1)
+	print(f"You've provided no profile, so we'll use the default")
+	AllProfiles = ['default']
 elif 'all' in pProfiles or 'ALL' in pProfiles or 'All' in pProfiles:
 	logging.info(f"You specified 'all' as the profile, so we're going to check ALL of the profiles to find all of the management accounts, and list out all of their ALZ versions.")
 	print("You've specified multiple profiles, so we've got to find them, determine which profiles represent Management Accounts, \n"

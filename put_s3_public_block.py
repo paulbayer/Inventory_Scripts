@@ -10,11 +10,13 @@ from botocore.exceptions import ClientError, ProfileNotFound
 import logging
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
 parser.singleregion()
 parser.singleprofile()
 parser.verbosity()
+parser.version(__version__)
 parser.my_parser.add_argument(
 		"-f", "--file",
 		dest="pFile",

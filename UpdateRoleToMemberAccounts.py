@@ -10,30 +10,19 @@ from colorama import init, Fore
 from botocore.exceptions import ClientError
 
 import logging
-import sys
 
 init()
+__version__ = "2023.05.10"
 
 parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
-parser.roles_to_use()
+parser.roletouse()
 parser.extendedargs()
 parser.rootOnly()
+parser.timing()
 parser.verbosity()
-# parser.my_parser.add_argument(
-# 		"-a", "--account",
-# 		dest="pAccount",
-# 		default=None,
-# 		metavar="Single account to check/ update",
-# 		help="To specify a specific account to check/ update, use this parameter. Default is to update all accounts within an Org.")
-# parser.my_parser.add_argument(
-# 	"--roles", "--RolesToUse",
-# 	dest="pRolesToUse",
-# 	default=None,
-# 	nargs='*',
-# 	metavar="Role name",
-# 	help="Role that should be used to access child accounts")
+parser.version(__version__)
 
 group = parser.my_parser.add_mutually_exclusive_group(required=True)
 group.add_argument(
@@ -62,7 +51,7 @@ pSkipAccounts = args.SkipAccounts
 pSkipProfiles = args.SkipProfiles
 pRootOnly = args.RootOnly
 pAccounts = args.Accounts
-pRolesToUse = args.RolesToUse
+pRoleToUse = args.AccessRole
 pRoleNameToAdd = args.pRoleNameToAdd
 pRoleNameToRemove = args.pRoleNameToRemove
 pRoleNameToCheck = args.pRoleNameToCheck
@@ -307,6 +296,52 @@ def roleexists(ocredentials, frole):
 	return (False)
 
 
+def get_credentials(fProfileList, fSkipAccounts, fRootOnly, fAccounts, fRegionList, fRolesToUse):
+	"""
+	fProfiles: This is a list (0..n) of profiles to be searched through
+	fSkipAccounts: This is a list (0..n) of accounts that shouldn't be checked or impacted
+	fRootOnly: This is a flag (True/ False) as to whether this script should impact this account only, or the Child accounts as well
+	fAccounts: This is a list (0..n) of Account Numbers which this script should be limited to
+	fRegionList: This is a list (1..n) of regions which this script should be run against.
+	fRolesToUse: This is a list (0..n) of roles to try to access the child accounts, assuming the role used isn't a commonly used one.
+		Commonly Used roles: [OrganizationAccountAccessRole, AWSCloudFormationStackSetExecutionRole, AWSControlTowerExecution, Owner]
+
+	Returned Values:
+	AccountList: A list of dictionaries, containing information about the accounts themselves - created by the "ChildAccounts" function of aws_acct_access from the account_class
+	AllCredentials: A list of dictionaries of all the info and credentials for all child accounts, including those that we weren't able to get credentials for.
+	"""
+	AccountList = []
+	AllCredentials = []
+
+	if pProfiles is None:  # Default use case from the classes
+		print("Using the default profile - gathering info")
+		aws_acct = aws_acct_access()
+		RegionList = Inventory_Modules.get_regions3(aws_acct, fRegionList)
+		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
+		logging.info(f"Queueing default profile for credentials")
+		profile = 'default'
+		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, fRolesToUse))
+		# TODO: There's a use-case here where oen of more of the accounts in 'fAccounts' doesn't show up in the list of accounts found by the profiles specified
+		# 	In that case - it would be nice if this script pointed that out. Right now - it does not, yet.
+		AccountList = aws_acct.ChildAccounts
+	else:
+		print(f"Capturing info for {len(ProfileList)} requested profiles {ProfileList}")
+		for profile in fProfileList:
+			# Eventually - getting credentials for a single account may require passing in the region in which it's valid, but not yet.
+			try:
+				aws_acct = aws_acct_access(profile)
+				print(f"Validating {len(aws_acct.ChildAccounts)} accounts within {profile} profile now... ")
+				RegionList = Inventory_Modules.get_regions3(aws_acct, fRegionList)
+				logging.info(f"Queueing {profile} for credentials")
+				# This should populate the list "AllCredentials" with the credentials for the relevant accounts.
+				AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, fRolesToUse))
+				AccountList.extend(aws_acct.ChildAccounts)
+			except AttributeError as my_Error:
+				logging.error(f"Profile {profile} didn't work... Skipping")
+				continue
+	return (AllCredentials, AccountList)
+
+
 ##########################
 
 ERASE_LINE = '\x1b[2K'
@@ -315,48 +350,23 @@ if pTiming:
 	begin_time = time()
 
 AllCredentials = []
+AccountList = []
 RegionList = ['us-east-1']
 Results = []
-AccountList = []
 
-if pProfiles is None:  # Default use case from the classes
-	print("Using the default profile - gathering info")
-	aws_acct = aws_acct_access()
-	# This should populate the list "AllCreds" with the credentials for the relevant accounts.
-	logging.info(f"Queueing default profile for credentials")
-	profile = 'default'
-	AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList, pRolesToUse))
-	AccountList = aws_acct.ChildAccounts
-else:
-	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=pSkipProfiles, fprofiles=pProfiles)
-	print(f"Capturing info for {len(ProfileList)} requested profiles {ProfileList}")
-	for profile in ProfileList:
-		# Eventually - getting credentials for a single account may require passing in the region in which it's valid, but not yet.
-		try:
-			aws_acct = aws_acct_access(profile)
-			print(f"Validating {len(aws_acct.ChildAccounts)} accounts within {profile} profile now... ")
-			logging.info(f"Queueing {profile} for credentials")
-			# This should populate the list "AllCredentials" with the credentials for the relevant accounts.
-			AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList, pRolesToUse))
-			AccountList.extend(aws_acct.ChildAccounts)
-		except AttributeError as my_Error:
-			logging.error(f"Profile {profile} didn't work... Skipping")
-			continue
+ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=pSkipProfiles, fprofiles=pProfiles)
 
+AllCredentials, AccountList = get_credentials(ProfileList, pSkipAccounts, pRootOnly, pAccounts, RegionList, pRoleToUse)
 AccountNum = len(set([acct['AccountId'] for acct in AllCredentials if 'AccountId' in acct]))
-
-# if pAccount is None:
-# 	ChildAccounts = aws_acct.ChildAccounts
-# else:
-# 	ChildAccounts = [{'AccountId': pAccount}]
 
 print()
 UpdatedAccounts = 0
-# if the user supplied a role to use, this parameter will cause the Inventory_Modules function to use it.
-# If the parameter wasn't supplied, the default value is None, where it will be translated into a number of commonly used role names inside the function
 
+# If the user specified only one account to check, and that account isn't found within the credentials found, this line will alert them of that fact.
+# However, if they specified multiple accounts to check, and SOME of them appeared, then they won't be notified of the ones that did NOT appear
 if not AllCredentials:
-	print(f"{Fore.RED}The account{'' if len(pAccounts) == 1 else 's'} you requested to check {pAccounts} doesn't appear to be within the profiles you specified.{Fore.RESET}")
+	# print(f"{Fore.RED}The account{'' if len(pAccounts) == 1 else 's'} you requested to check {pAccounts} doesn't appear to be within the profiles you specified.{Fore.RESET}")
+	print(f"{Fore.RED}The account you requested to check '{pAccounts}' doesn't appear to be within the profiles you specified.{Fore.RESET}")
 
 for cred in AllCredentials:
 	# account_credentials = Inventory_Modules.get_child_access3(aws_acct, cred['AccountId'], fRoleList=pRolesToUse)
@@ -404,8 +414,8 @@ else:
 	print(f"We found {AccountNum} accounts provided within the profiles you provided")
 	if verbose < 50:
 		print(f"Of these, we successfully found creds for {len(Results)} accounts using ", end='')
-		if pRolesToUse:
-			print(f"the roles '{pRolesToUse}' you supplied")
+		if pRoleToUse:
+			print(f"the roles '{pRoleToUse}' you supplied")
 		else:
 			print(f"the roles we commonly use for access")
 
@@ -434,7 +444,7 @@ elif pRoleNameToRemove is not None:
 
 if pTiming:
 	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 
 print()
 print("Thanks for using the tool.")

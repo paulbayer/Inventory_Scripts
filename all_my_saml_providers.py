@@ -9,11 +9,13 @@ from colorama import init, Fore
 from botocore.exceptions import ClientError
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
 parser.singleprofile()
 parser.singleregion()
 parser.verbosity()
+parser.version(__version__)
 parser.my_parser.add_argument(
 	"+delete", "+forreal",
 	dest="DeletionRun",
@@ -43,38 +45,47 @@ ChildAccounts = aws_acct.ChildAccounts
 NumofAccounts = len(ChildAccounts)
 IdpsFound = []
 for account in ChildAccounts:
-	try:
-		account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'])
-		account_credentials['AccountNumber'] = account['AccountId']
-	except ClientError as my_Error:
-		if str(my_Error).find("AuthFailure") > 0:
-			print(f"{pProfile}: Authorization Failure for account {account['AccountId']}")
-		else:
-			print(f"{pProfile}: Other kind of failure for account {account['AccountId']}")
-			print(my_Error)
-		break
-	try:
-		Idps = Inventory_Modules.find_saml_components_in_acct2(account_credentials, pRegion)
-		idpNum = len(Idps)
-		logging.warning(f"Account: {account['AccountId']} | Region: {pRegion} | Found {idpNum} Idps")
-		logging.warning(f"{ERASE_LINE}{Fore.RED}Account: {account['AccountId']} pRegion: {pRegion} Found {idpNum} Idps. Only {NumofAccounts} accounts left to go{Fore.RESET}")
-	except ClientError as my_Error:
-		if str(my_Error).find("AuthFailure") > 0:
-			print(f"{account['AccountId']}: Authorization Failure")
-		idpNum = 0
-	if idpNum > 0:
-		for y in range(len(Idps)):
-			logging.warning(f"Arn: {Idps[y]['Arn']}")
-			NameStart = Idps[y]['Arn'].find('/')+1
-			logging.debug(f"Name starts at character: {NameStart}")
-			IdpName = Idps[y]['Arn'][NameStart:]
-			print(fmt % (account['AccountId'], pRegion, IdpName))
-			IdpsFound.append({
-				'AccountId': account['AccountId'],
-				'pRegion': pRegion,
-				'IdpName': IdpName,
-				'Arn': Idps[y]['Arn']})
-	NumofAccounts -= 1
+	if account['AccountStatus'] == 'ACTIVE':
+		print(ERASE_LINE,
+				f"Getting credentials for account {account['AccountId']}",
+				end="\r")
+        
+		try:
+			account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'])
+			account_credentials['AccountNumber'] = account['AccountId']
+		except ClientError as my_Error:
+			if str(my_Error).find("AuthFailure") > 0:
+				print(f"{pProfile}: Authorization Failure for account {account['AccountId']}")
+			else:
+				print(f"{pProfile}: Other kind of failure for account {account['AccountId']}")
+				print(my_Error)
+			break
+		try:
+			Idps = Inventory_Modules.find_saml_components_in_acct2(account_credentials, pRegion)
+			idpNum = len(Idps)
+			logging.warning(f"Account: {account['AccountId']} | Region: {pRegion} | Found {idpNum} Idps")
+			logging.warning(f"{ERASE_LINE}{Fore.RED}Account: {account['AccountId']} pRegion: {pRegion} Found {idpNum} Idps. Only {NumofAccounts} accounts left to go{Fore.RESET}")
+		except ClientError as my_Error:
+			if str(my_Error).find("AuthFailure") > 0:
+				print(f"{account['AccountId']}: Authorization Failure")
+			idpNum = 0
+		if idpNum > 0:
+			for y in range(len(Idps)):
+				logging.warning(f"Arn: {Idps[y]['Arn']}")
+				NameStart = Idps[y]['Arn'].find('/')+1
+				logging.debug(f"Name starts at character: {NameStart}")
+				IdpName = Idps[y]['Arn'][NameStart:]
+				print(fmt % (account['AccountId'], pRegion, IdpName))
+				IdpsFound.append({
+					'AccountId': account['AccountId'],
+					'pRegion': pRegion,
+					'IdpName': IdpName,
+					'Arn': Idps[y]['Arn']})
+		NumofAccounts -= 1
+	else:
+		print(ERASE_LINE,
+			f"Skipping account {account['AccountId']} since it's SUSPENDED or CLOSED",
+			end="\r")
 
 print(ERASE_LINE)
 print(Fore.RED+f"Found {len(IdpsFound)} Idps across {len(ChildAccounts)} accounts in region {pRegion}"+Fore.RESET)

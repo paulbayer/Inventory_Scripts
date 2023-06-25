@@ -8,24 +8,27 @@ from colorama import init, Fore
 from botocore.exceptions import ClientError
 
 init()
+__version__ = "2023.05.04"
 
 parser = CommonArguments()
-parser.verbosity()
 parser.singleprofile()
 parser.multiregion()
-parser.my_parser.add_argument(
-	"-f", "--topic", "--fragment",
-	dest="pTopicFrag",
-	default=["all"],
-	nargs='*',
-	metavar="topic name string",
-	help="String fragment of the Topic you want to find.")
+parser.fragment()
+parser.verbosity()
+parser.version(__version__)
+# parser.my_parser.add_argument(
+# 	"-f", "--topic", "--fragment",
+# 	dest="pTopicFrag",
+# 	default=["all"],
+# 	nargs='*',
+# 	metavar="topic name string",
+# 	help="String fragment of the Topic you want to find.")
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
 pRegionList = args.Regions
+pTopicFrag = args.Fragments
 verbose = args.loglevel
-pTopicFrag = args.pTopicFrag
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
 
 ##########################

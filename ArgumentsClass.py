@@ -15,6 +15,7 @@ How to use:
 	verbose = args.loglevel
 
 """
+__version__ = "2023.06.15"
 
 
 class CommonArguments():
@@ -29,13 +30,13 @@ class CommonArguments():
 				allow_abbrev=True,
 				prefix_chars='-+')
 
-	def version(self):
-		self.my_parser.add_argument(
-			"--version",
-			dest="Version",
-			action="store_true",
-			default="store_false",  # Defaults to not providing the version
-			help="Version #")
+	def version(self, script_version):
+		# self.my_parser.add_argument(
+		# 	"--version", "-V",
+		# 	dest="Version",
+		# 	default=None,
+		# 	help="Version #")
+		self.my_parser.add_argument("--version", action="version", version=f"Version: {script_version}")
 
 	def rootOnly(self):
 		self.my_parser.add_argument(
@@ -44,14 +45,44 @@ class CommonArguments():
 			action="store_true",  # Defaults to False, so the script would continue to run
 			help="Only run this code for the root account, not the children")
 
-	def roles_to_use(self):
+	def roletouse(self):
 		self.my_parser.add_argument(
-			"--roles", "--RolesToUse",
-			dest="RolesToUse",
+			"--access_rolename",
+			dest="AccessRole",
 			default=None,
+			metavar="role to use for access to child accounts",
+			help="This parameter specifies the single role that will allow this script to have access to the children accounts.")
+
+	def rolestouse(self):
+		self.my_parser.add_argument(
+			"--access_rolename",
+			dest="AccessRoles",
 			nargs='*',
-			metavar="Role name",
-			help="Role that should be used to access child accounts")
+			default=None,
+			metavar="roles to use for access to child accounts",
+			help="This parameter specifies the list of roles that will allow this script to have access to the children accounts.")
+
+	# def roles_to_use(self):
+	# 	self.my_parser.add_argument(
+	# 		"--roles", "--RolesToUse",
+	# 		dest="RolesToUse",
+	# 		default=None,
+	# 		nargs='*',
+	# 		metavar="Role name",
+	# 		help="Role that should be used to access child accounts")
+
+	def deletion(self):
+		# self.my_parser.add_argument(
+		# 	"+forreal",
+		# 	help="By default, we report results without changing anything. If you want to remediate or change your environment - include this parameter",
+		# 	action="store_false",
+		# 	dest="DryRun")              # Default to Dry Run (no changes)
+		self.my_parser.add_argument(
+			"--force", "+force",
+			help="To force a change - despite indications to the contrary",
+			action="store_true",
+			dest="Force")  # Default to Dry Run (no changes)
+
 
 	def verbosity(self):
 		import logging
@@ -85,25 +116,15 @@ class CommonArguments():
 				default=logging.CRITICAL)  # args.loglevel = 50
 
 	def extendedargs(self):
-		# self.my_parser.add_argument(
-		# 	"+forreal",
-		# 	help="By default, we report results without changing anything. If you want to remediate or change your environment - include this parameter",
-		# 	action="store_false",
-		# 	dest="DryRun")              # Default to Dry Run (no changes)
 		self.my_parser.add_argument(
-			"--force", "+force",
-			help="To force a change - despite indications to the contrary",
-			action="store_true",
-			dest="Force")  # Default to Dry Run (no changes)
-		self.my_parser.add_argument(
-			"-k", "-ka", "--skip", "--skipaccount",
+			"-k", "-ka", "--skip", "--skipaccount", "--skipaccounts",
 			dest="SkipAccounts",
 			nargs="*",
 			metavar="Accounts to leave alone",
 			default=None,
 			help="These are the account numbers you don't want to screw with. Likely the core accounts.")
 		self.my_parser.add_argument(
-			"-kp", "--skipprofile",
+			"-kp", "--skipprofile", "--skipprofiles",
 			dest="SkipProfiles",
 			nargs="*",
 			metavar="Profile names",
@@ -116,11 +137,11 @@ class CommonArguments():
 			nargs="*",
 			metavar="Account",
 			help="Just the accounts you want to check")
-		self.my_parser.add_argument(
-			"--timing", "--time",
-			dest="Time",
-			action="store_true",
-			help="Use this parameter to add a timing for the scripts")
+		# self.my_parser.add_argument(
+		# 	"--timing", "--time",
+		# 	dest="Time",
+		# 	action="store_true",
+		# 	help="Use this parameter to add a timing for the scripts")
 
 	def timing(self):
 		self.my_parser.add_argument(
@@ -128,7 +149,6 @@ class CommonArguments():
 			dest="Time",
 			action="store_true",
 			help="Use this parameter to add a timing for the scripts")
-
 
 	def fragment(self):
 		self.my_parser.add_argument(
@@ -150,7 +170,7 @@ class CommonArguments():
 				dest="Profile",
 				metavar="Profile",
 				default=None,  # Default to boto3 defaults
-				help="Which single profile do you want to run against?")
+				help="Which *single* profile do you want to run against?")
 
 	def multiprofile(self):
 		self.my_parser.add_argument(
@@ -168,7 +188,8 @@ class CommonArguments():
 				dest="Regions",
 				metavar="region name string",
 				default=["us-east-1"],
-				help="String fragment of the region(s) you want to check for resources. You can supply multiple fragments.")
+				help="String fragment of the region(s) you want to check for resources. You can supply multiple fragments.\n"
+				     "Use 'all' for everything you've opted into, and 'global' for everything, regardless of opted-in status")
 
 	def multiregion_nodefault(self):
 		self.my_parser.add_argument(
@@ -185,4 +206,20 @@ class CommonArguments():
 				dest="Region",
 				metavar="region name string",
 				default="us-east-1",
-				help="Name of the single region(s) you want to check for resources.")
+				help="Name of the *single* region you want to check for resources.")
+
+	def singleregion_nodefault(self):
+		self.my_parser.add_argument(
+				"-r", "--region",
+				dest="Region",
+				metavar="region name string",
+				default=None,
+				help="Name of the *single* region you want to check for resources.")
+
+	def save_to_file(self):
+		self.my_parser.add_argument(
+			"--filename",
+			dest="Filename",
+			metavar="filename",
+			default=None,
+			help="Name of the filename you want to save results to.")

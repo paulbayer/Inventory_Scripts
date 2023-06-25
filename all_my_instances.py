@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import Inventory_Modules
-from Inventory_Modules import get_credentials_for_accounts_in_org
+from Inventory_Modules import get_credentials_for_accounts_in_org, display_results
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 from colorama import init, Fore
@@ -13,21 +13,25 @@ from time import time
 import logging
 
 init()
+__version__ = "2023.05.10"
 
 parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
-parser.verbosity()
-parser.rootOnly()
 parser.extendedargs()
+parser.rootOnly()
+parser.timing()
+parser.verbosity()
+parser.version(__version__)
 args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
 pRegionList = args.Regions
-pTiming = args.Time
+pAccounts = args.Accounts
 pSkipAccounts = args.SkipAccounts
 pSkipProfiles = args.SkipProfiles
 pRootOnly = args.RootOnly
+pTiming = args.Time
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
@@ -44,41 +48,79 @@ if pTiming:
 
 ##################
 
-def display_instances(instances_list):
+def display_results_old(results_list, fdisplay_dict, defaultAction=None):
 	"""
 	Note that this function simply formats the output of the data within the list provided
+	- results_list: This should be a list of dictionaries, matching to the fields in fdisplay_dict
+	- fdisplay_dict: Should look like the below. It's simply a list of fields and formats
+	- defaultAction: this is a default string or type to assign to fields that (for some reason) don't exist within the results_list.
+	display_dict = {'ParentProfile': {'Format': '20s', 'DisplayOrder': 1, 'Heading': 'Parent Profile'},
+	                'MgmtAccount'  : {'Format': '12s', 'DisplayOrder': 2, 'Heading': 'Mgmt Acct'},
+	                'AccountId'    : {'Format': '12s', 'DisplayOrder': 3, 'Heading': 'Acct Number'},
+	                'Region'       : {'Format': '15s', 'DisplayOrder': 4, 'Heading': 'Region'},
+	                'InstanceType' : {'Format': '15s', 'DisplayOrder': 5, 'Heading': 'Instance Type'},
+	                'Name'         : {'Format': '40s', 'DisplayOrder': 6, 'Heading': 'Name'},
+	                'InstanceId'   : {'Format': '40s', 'DisplayOrder': 7, 'Heading': 'Instance ID'},
+	                'PublicDNSName': {'Format': '62s', 'DisplayOrder': 8, 'Heading': 'Public Name'},
+	                'State'        : {'Format': '12s', 'DisplayOrder': 9, 'Heading': 'State', 'Condition': ['running']}}
+		- The first field ("MgmtAccount") should match the field name within the list of dictionaries you're passing in (results_list)
+		- The first field within the nested dictionary is the format you want to use to display the result of that field - generally a width
+		- The second field within the nested dictionary is the SortOrder you want the results to show up in
+		- The third field within the nested dictionary is the heading you want to display at the top of the column (which allows spaces)
+		- The fourth field ('Condition') is new, and allows to highlight a special value within the output. This can be used multiple times.
+		The dictionary doesn't have to be ordered, as long as the 'SortOrder' field is correct.
 	"""
-	print(ERASE_LINE)
-	fmt = '%-20s %-12s %-12s %-10s %-15s %-20s %-20s %-42s %-12s'
-	print(fmt % ("Parent Profile", "Root Acct #", "Account #", "Region", "InstanceType", "Name", "Instance ID", "Public DNS Name", "State"))
-	print(fmt % ("--------------", "-----------", "---------", "------", "------------", "----", "-----------", "---------------", "-----"))
-	sorted_instances_list = sorted(instances_list, key=lambda d: (d['ParentProfile'], d['MgmtAccount'], d['AccountId']))
-	for instance in instances_list:
-		# print(f"{subnet['MgmtAccount']:12s} {subnet['AccountId']:12s} {subnet['Region']:15s} {subnet['SubnetName']:40s} {subnet['CidrBlock']:18s} {subnet['AvailableIpAddressCount']:5d}")
-		if instance['State'] == 'running':
-			fmt = f"%-20s %-12s %-12s %-10s %-15s %-20s %-20s %-42s {Fore.RED}%-12s{Fore.RESET}"
-		else:
-			fmt = f"%-20s %-12s %-12s %-10s %-15s %-20s %-20s %-42s %-12s"
-		print(fmt % (instance['ParentProfile'],
-					 instance['MgmtAccount'],
-					 instance['AccountId'],
-					 instance['Region'],
-					 instance['InstanceType'],
-					 instance['Name'],
-					 instance['InstanceId'],
-					 instance['PublicDNSName'],
-					 instance['State']))
+	# TODO:
+	# 	Probably have to do a pre-emptive error-check to ensure the SortOrder is unique within the Dictionary
+	# 	Also need to enclose this whole thing in a try...except to trap errors.
+	# 	Also need to find a way to order the data within this function.
 
+	sorted_display_dict = dict(sorted(fdisplay_dict.items(), key=lambda x: x[1]['DisplayOrder']))
 
-## The point here is to templatize the multi-threading of a script...
+	# This is an effort to find the right size spaces for the dictionary
+	print()
+	needed_space = {}
+	for field, value in sorted_display_dict.items():
+		needed_space[field] = 0
+	for result in results_list:
+		for field, value in sorted_display_dict.items():
+			needed_space[field] = max(min(int(value['Format'][:-1]), len(result[field])),len(value['Heading']), needed_space[field])
+		# 	logging.debug(f"Heading: {value['Heading']} | Format Size: {value['Format']} | Data Length: {result[field]}({len(result[field])}) | space: {needed_space[field]}")
+		# logging.debug('---------')
+
+	# This writes out the headings
+	for field, value in sorted_display_dict.items():
+		header_format = needed_space[field]
+		print(f"{value['Heading']:{header_format}s} ", end='')
+	print()
+	# This writes out the dashes (separators)
+	for field, value in sorted_display_dict.items():
+		repeatvalue = needed_space[field]
+		print(f"{'-' * repeatvalue} ", end='')
+	print()
+
+	# This writes out the data
+	for result in results_list:
+		for field, value in sorted_display_dict.items():
+			# This assigns the proper space for the output
+			data_format = needed_space[field]
+			if field not in result.keys():
+				result[field] = defaultAction
+			# This allows for a condition to highlight a specific value
+			if 'Condition' in value and result[field] in value['Condition']:
+				print(f"{Fore.RED}{result[field]:{data_format}{value['Format'][-1:]}}{Fore.RESET} ", end='')
+			elif result[field] is None:
+				print(f"{'':{data_format}} ", end='')
+			else:
+				print(f"{result[field]:{data_format}{value['Format'][-1:]}} ", end='')
+		print()  # This is the end of line character needed at the end of every line
+	print()  # This is the new line needed at the end of the script.
 
 
 # The parameters passed to this function should be the dictionary of attributes that will be examined within the thread.
-def find_all_instances(fAllCredentials, fRegionList):
+def find_all_instances(fAllCredentials):
 	"""
 	Note that this function takes a list of stack set names and finds the stack instances within them
-
-	The way
 
 	"""
 
@@ -124,15 +166,15 @@ def find_all_instances(fAllCredentials, fRegionList):
 								# print(fmt % (
 								# 	c_account_credentials['MgmtAccount'], c_account_credentials['AccountId'], c_region, InstanceType, Name, InstanceId,
 								# 	PublicDnsName, State))
-								AllInstances.append({'MgmtAccount'     : c_account_credentials['MgmtAccount'],
-													 'AccountId'    : c_account_credentials['AccountId'],
-													 'Region'       : c_account_credentials['Region'],
-													 'State'        : State,
-													 'InstanceType' : InstanceType,
-													 'InstanceId'   : InstanceId,
-													 'PublicDNSName': PublicDnsName,
-													 'ParentProfile': c_account_credentials['ParentProfile'],
-													 'Name'         : Name, })
+								AllInstances.append({'MgmtAccount'  : c_account_credentials['MgmtAccount'],
+								                     'AccountId'    : c_account_credentials['AccountId'],
+								                     'Region'       : c_account_credentials['Region'],
+								                     'State'        : State,
+								                     'InstanceType' : InstanceType,
+								                     'InstanceId'   : InstanceId,
+								                     'PublicDNSName': PublicDnsName,
+								                     'ParentProfile': c_account_credentials['ParentProfile'],
+								                     'Name'         : Name, })
 				except KeyError as my_Error:
 					logging.error(f"Account Access failed - trying to access {c_account_credentials['AccountId']}")
 					logging.info(f"Actual Error: {my_Error}")
@@ -155,10 +197,8 @@ def find_all_instances(fAllCredentials, fRegionList):
 					print(".", end='')
 					self.queue.task_done()
 
-			###########
+	###########
 
-	if fRegionList is None:
-		fRegionList = ['us-east-1']
 	checkqueue = Queue()
 
 	AllInstances = []
@@ -207,7 +247,7 @@ if pProfiles is None:  # Default use case from the classes
 	# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 	logging.info(f"Queueing default profile for credentials")
 	profile = 'default'
-	AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, profile, RegionList))
+	AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList, fTiming=pTiming))
 else:
 	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=pSkipProfiles, fprofiles=pProfiles)
 	print(f"Capturing info for {len(ProfileList)} requested profiles {ProfileList}")
@@ -219,11 +259,13 @@ else:
 			RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
 			logging.info(f"Queueing {profile} for credentials")
 			# This should populate the list "AllCredentials" with the credentials for the relevant accounts.
-			AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, profile, RegionList))
+			AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList, fTiming=pTiming))
+			print()
 		except AttributeError as my_Error:
 			logging.error(f"Profile {profile} didn't work... Skipping")
 			continue
 
+# OrgNum = len(set([x['MgmtAccount'] for x in AllCredentials if x['OrgType'] == 'Root']))
 AccountNum = len(set([acct['AccountId'] for acct in AllCredentials]))
 
 cf_regions = Inventory_Modules.get_service_regions('config', RegionList)
@@ -236,16 +278,28 @@ if pTiming:
 	print()
 print(f"Now running through all accounts and regions identified to find resources...")
 
-AllInstances = find_all_instances(AllCredentials, RegionList)
-display_instances(AllInstances)
+display_dict = {'ParentProfile': {'Format': '20s', 'DisplayOrder': 1, 'Heading': 'Parent Profile'},
+                'MgmtAccount'  : {'Format': '12s', 'DisplayOrder': 2, 'Heading': 'Mgmt Acct'},
+                'AccountId'    : {'Format': '12s', 'DisplayOrder': 3, 'Heading': 'Acct Number'},
+                'Region'       : {'Format': '15s', 'DisplayOrder': 4, 'Heading': 'Region'},
+                'InstanceType' : {'Format': '15s', 'DisplayOrder': 5, 'Heading': 'Instance Type'},
+                'Name'         : {'Format': '40s', 'DisplayOrder': 6, 'Heading': 'Name'},
+                'InstanceId'   : {'Format': '40s', 'DisplayOrder': 7, 'Heading': 'Instance ID'},
+                'PublicDNSName': {'Format': '62s', 'DisplayOrder': 8, 'Heading': 'Public Name'},
+                'State'        : {'Format': '12s', 'DisplayOrder': 9, 'Heading': 'State', 'Condition': ['running']}}
+
+AllInstances = find_all_instances(AllCredentials)
+sorted_all_instances = sorted(AllInstances, key=lambda d: (d['ParentProfile'], d['MgmtAccount'], d['Region'], d['AccountId']))
+# display_instances(AllInstances)
+
+display_results(sorted_all_instances, display_dict)
 
 if pTiming:
 	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script took {time() - begin_time} seconds{Fore.RESET}")
+	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 print(ERASE_LINE)
-OrgNum = len(set([x['MgmtAccount'] for x in AllCredentials if x['OrgType'] == 'Root']))
 
-print(f"Found {len(AllInstances)} instances across {len(AllCredentials)} accounts across {len(RegionList)} regions")
+print(f"Found {len(AllInstances)} instances across {AccountNum} accounts across {len(RegionList)} regions")
 print()
 print("Thank you for using this script")
 print()
