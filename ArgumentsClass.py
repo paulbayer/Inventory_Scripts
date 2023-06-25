@@ -31,18 +31,27 @@ class CommonArguments():
 
 	def version(self):
 		self.my_parser.add_argument(
-				"--version",
-				dest="Version",
-				action="store_true",
-				default="store_false",  # Defaults to not providing the version
-				help="Version #")
+			"--version",
+			dest="Version",
+			action="store_true",
+			default="store_false",  # Defaults to not providing the version
+			help="Version #")
 
 	def rootOnly(self):
 		self.my_parser.add_argument(
-				"--rootonly",
-				dest="RootOnly",
-				action="store_true",  # Defaults to False, so the script would continue to run
-				help="Only run this code for the root account, not the children")
+			"--rootonly",
+			dest="RootOnly",
+			action="store_true",  # Defaults to False, so the script would continue to run
+			help="Only run this code for the root account, not the children")
+
+	def roles_to_use(self):
+		self.my_parser.add_argument(
+			"--roles", "--RolesToUse",
+			dest="RolesToUse",
+			default=None,
+			nargs='*',
+			metavar="Role name",
+			help="Role that should be used to access child accounts")
 
 	def verbosity(self):
 		import logging
@@ -91,20 +100,35 @@ class CommonArguments():
 			dest="SkipAccounts",
 			nargs="*",
 			metavar="Accounts to leave alone",
-			default=[],
+			default=None,
 			help="These are the account numbers you don't want to screw with. Likely the core accounts.")
 		self.my_parser.add_argument(
 			"-kp", "--skipprofile",
 			dest="SkipProfiles",
 			nargs="*",
 			metavar="Profile names",
-			default=[],
+			default=None,
 			help="These are the profiles you don't want to examine. You can specify 'skipplus' to skip over all profiles using a plus in them.")
+		self.my_parser.add_argument(
+			"-a", "--account",
+			dest="Accounts",
+			default=None,
+			nargs="*",
+			metavar="Account",
+			help="Just the accounts you want to check")
 		self.my_parser.add_argument(
 			"--timing", "--time",
 			dest="Time",
 			action="store_true",
 			help="Use this parameter to add a timing for the scripts")
+
+	def timing(self):
+		self.my_parser.add_argument(
+			"--timing", "--time",
+			dest="Time",
+			action="store_true",
+			help="Use this parameter to add a timing for the scripts")
+
 
 	def fragment(self):
 		self.my_parser.add_argument(
@@ -114,6 +138,11 @@ class CommonArguments():
 			metavar="CloudFormation stack fragment",
 			default=["all"],
 			help="List of fragments of the cloudformation stackset(s) you want to check for.")
+		self.my_parser.add_argument(
+			"-e", "--exact",
+			dest="Exact",
+			action="store_true",
+			help="Use this flag to make sure that ONLY the string you specified will be identified")
 
 	def singleprofile(self):
 		self.my_parser.add_argument(

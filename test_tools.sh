@@ -25,9 +25,9 @@ recover_stack_ids.py setup.py"
 
 declare -a arrScripts
 
-if [[ -n "$tool_to_test" && "$tool_to_test" = "all" ]]; then
-  arrScripts=("$tool_to_test")
-elif [[ -n "$tool_to_test" && "$tool_to_test" != "all" ]]; then 
+#if [[ -n "$tool_to_test" && "$tool_to_test" = "all" ]]; then
+#  arrScripts=("$tool_to_test")
+if [[ -n "$tool_to_test" && "$tool_to_test" != "all" ]]; then
   shift
   test_params=$@
   echo "Running $tool_to_test with params: $test_params"
@@ -37,6 +37,9 @@ elif [[ -n "$tool_to_test" && "$tool_to_test" != "all" ]]; then
 #  $(python "$tool_to_test" "$test_params" >> "$output_file" ; echo $? >> "$output_file" ; echo $(date) >> "$output_file" ) &
   $(python "$tool_to_test" $test_params >> "$output_file" ; echo $? >> "$output_file" ; echo $(date) >> "$output_file" ) &
 else
+  shift
+  test_params=$@
+  echo "Running $tool_to_test with params: $test_params"
   for file in *.py
   do
     if exists_in_list "$scripts_to_not_test" " " "$file" ; then
@@ -48,13 +51,13 @@ else
   done
 fi
 
+summary_file="test_output_summary.$(date).txt"
 for item in "${arrScripts[@]}"
 do
   echo "Running $item"
   output_file="test_output_$item.txt"
-  summary_file="test_output_summary.$(date).txt"
   echo $(date) > "$output_file"
-  $(python "$item" >> "$output_file" ; echo $? >> "$output_file" ; echo $(date) >> "$output_file" ) &
-  $(begin_date=$(date) ; echo -n $item >> "$summary_file"; echo -n " | " >> "$summary_file"; echo -n $begin_date >> "$summary_file"; echo -n " | " >> "$summary_file"; echo $(date) >> "$summary_file") &
+  $(echo "Script: $item Params: $test_params" >> $output_file ; python "$item" $test_params >> "$output_file" ; echo $? >> "$output_file" ; echo $(date) >> "$output_file" ) &
+  $(begin_date=$(date) ; echo -n $item $test_params >> "$summary_file"; echo -n " | " >> "$summary_file"; echo -n $begin_date >> "$summary_file"; echo -n " | " >> "$summary_file"; echo $(date) >> "$summary_file") &
 done
 

@@ -12,10 +12,10 @@ import logging
 init()
 
 parser = CommonArguments()
-parser.singleprofile()      # Allows for a single profile to be specified
-parser.multiregion()        # Allows for multiple regions to be specified at the command line
-parser.verbosity()          # Allows for the verbosity to be handled.
-parser.extendedargs()       # Allows for extended arguments like which accounts to skip, and whether Force is enabled.
+parser.singleprofile()  # Allows for a single profile to be specified
+parser.multiregion()  # Allows for multiple regions to be specified at the command line
+parser.verbosity()  # Allows for the verbosity to be handled.
+parser.extendedargs()  # Allows for extended arguments like which accounts to skip, and whether Force is enabled.
 parser.my_parser.add_argument(
 	"-f", "--fragment",
 	dest="stackfrag",
@@ -69,11 +69,11 @@ if DeletionRun:
 
 print()
 if pStackIdFlag:
-	fmt = '%-20s %-15s %-15s %-50s %-50s'
+	fmt = '%-15s %-15s %-15s %-15s %-50s %-50s'
 	print(fmt % ("Account", "Region", "Stack Status", "Stack Name", "Create Date", "Stack ID"))
 	print(fmt % ("-------", "------", "------------", "----------", "-----------", "--------"))
 else:
-	fmt = '%-20s %-15s %-15s %-50s'
+	fmt = '%-15s %-15s %-15s %-15s %-50s'
 	print(fmt % ("Account", "Region", "Stack Status", "Create Date", "Stack Name"))
 	print(fmt % ("-------", "------", "------------", "-----------", "----------"))
 
@@ -115,11 +115,11 @@ for account_number in AccountList:
 				else:
 					print(fmt % (account_number, region, StackStatus, StackName))
 				StacksFound.append({
-					'Account': account_number,
-					'Region': region,
-					'StackName': StackName,
+					'Account'    : account_number,
+					'Region'     : region,
+					'StackName'  : StackName,
 					'StackStatus': StackStatus,
-					'StackArn': StackID})
+					'StackArn'   : StackID})
 lAccounts = []
 lRegions = []
 lAccountsAndRegions = []
@@ -163,10 +163,9 @@ elif DeletionRun:
 			RoleSessionName="Delete-Stacks")['Credentials']
 		account_credentials['AccountNumber'] = StacksFound[y]['Account']
 		print(f"Deleting stack {StacksFound[y]['StackName']} from account {StacksFound[y]['Account']} in region {StacksFound[y]['Region']} with status: {StacksFound[y]['StackStatus']}")
-		print(f"Finished {y+1} of {len(StacksFound)}")
+		print(f"Finished {y + 1} of {len(StacksFound)}")
 		response = Inventory_Modules.delete_stack2(account_credentials, StacksFound[y]['Region'], StacksFound[y]['StackName'])
-		# pprint(response)
-
+	# pprint(response)
 
 print()
 print("Thanks for using this script...")

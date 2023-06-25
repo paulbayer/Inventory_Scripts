@@ -28,6 +28,7 @@ args = parser.my_parser.parse_args()
 pProfiles = args.Profiles
 pRegionList = args.Regions
 pFragments = args.Fragments
+pAccounts = args.Accounts
 pSkipAccounts = args.SkipAccounts
 pSkipProfiles = args.SkipProfiles
 pRootOnly = args.RootOnly
@@ -51,7 +52,7 @@ def mid(s, offset, amount):
 	return s[offset - 1:offset + amount - 1]
 
 
-def check_accounts_for_functions(CredentialList, fRegionList=None, fFragments=None):
+def check_accounts_for_functions(CredentialList, fFragments=None):
 	"""
 	Note that this function takes a list of Credentials and checks for functions in every account it has creds for
 	"""
@@ -65,11 +66,11 @@ def check_accounts_for_functions(CredentialList, fRegionList=None, fFragments=No
 		def run(self):
 			while True:
 				# Get the work from the queue and expand the tuple
-				c_account_credentials, c_region, c_fragment, c_PlacesToLook, c_PlaceCount = self.queue.get()
+				c_account_credentials, c_fragment_list, c_PlacesToLook, c_PlaceCount = self.queue.get()
 				logging.info(f"De-queued info for account {c_account_credentials['AccountId']}")
 				try:
 					logging.info(f"Attempting to connect to {c_account_credentials['AccountId']}")
-					Functions = Inventory_Modules.find_lambda_functions2(c_account_credentials, c_region, c_fragment)
+					Functions = Inventory_Modules.find_lambda_functions2(c_account_credentials, c_account_credentials['Region'], c_fragment_list)
 					# FunctionNum = len(Functions['Functions'])
 					# logging.info(f"{ERASE_LINE}Account: {acct['AccountId']} Region: {region} Found {FunctionNum} functions", end='\r')
 				except TypeError as my_Error:
@@ -84,16 +85,11 @@ def check_accounts_for_functions(CredentialList, fRegionList=None, fFragments=No
 					logging.info(f"Actual Error: {my_Error}")
 					continue
 				finally:
-					# print(f"Finished finding functions in account {c_account_credentials['AccountId']} in region {c_region} - {c_PlaceCount} / {c_PlacesToLook}\n"
-					# 	  f"Functions: {Functions}")
-					# print(f"{ERASE_LINE}Finished finding functions in account {c_account_credentials['AccountId']} in region {c_region} - {c_PlaceCount} / {c_PlacesToLook}", end='\r')
 					if len(Functions) > 0:
 						for _ in range(len(Functions)):
-							# print("Y:",y,"Number:",len(Functions['Functions']))
-							# print("Function Name:",Functions['Functions'][y]['FunctionName'])
 							Functions[_]['MgmtAccount'] = c_account_credentials['MgmtAccount']
 							Functions[_]['AccountId'] = c_account_credentials['AccountId']
-							Functions[_]['Region'] = c_region
+							Functions[_]['Region'] = c_account_credentials['Region']
 							# Functions[_]['FunctionName'] = Functions[_]['FunctionName']
 							# Functions[_]['FunctionName'] = Functions[_]['RunTime']
 							Rolet = Functions[_]['Role']
@@ -103,10 +99,9 @@ def check_accounts_for_functions(CredentialList, fRegionList=None, fFragments=No
 
 	AllFuncs = []
 	PlaceCount = 0
-	PlacesToLook = len(CredentialList) * len(fRegionList)
+	PlacesToLook = len(CredentialList)
+	WorkerThreads = min(len(CredentialList), 25)
 
-	if fRegionList is None:
-		fRegionList = ['us-east-1']
 	checkqueue = Queue()
 
 	for x in range(WorkerThreads):
@@ -117,16 +112,15 @@ def check_accounts_for_functions(CredentialList, fRegionList=None, fFragments=No
 
 	for credential in CredentialList:
 		logging.info(f"Connecting to account {credential['AccountId']}")
-		for region in fRegionList:
-			try:
-				# print(f"{ERASE_LINE}Queuing account {credential['AccountId']} in region {region}", end='\r')
-				checkqueue.put((credential, region, fFragments, PlacesToLook, PlaceCount))
-				PlaceCount += 1
-			except ClientError as my_Error:
-				if str(my_Error).find("AuthFailure") > 0:
-					logging.error(f"Authorization Failure accessing account {credential['AccountId']} in {region} region")
-					logging.warning(f"It's possible that the region {region} hasn't been opted-into")
-					pass
+		try:
+			print(f"{ERASE_LINE}Queuing account {credential['AccountId']} in region {credential['Region']}", end='\r')
+			checkqueue.put((credential, fFragments, PlacesToLook, PlaceCount))
+			PlaceCount += 1
+		except ClientError as my_Error:
+			if str(my_Error).find("AuthFailure") > 0:
+				logging.error(f"Authorization Failure accessing account {credential['AccountId']} in {credential['Region']} region")
+				logging.error(f"It's possible that the region {credential['Region']} hasn't been opted-into")
+				pass
 	checkqueue.join()
 	return (AllFuncs)
 
@@ -146,7 +140,8 @@ CredentialList = []
 if pProfiles is None:
 	aws_acct = aws_acct_access()
 	RegionList.extend(Inventory_Modules.get_ec2_regions3(aws_acct, pRegionList))
-	CredentialList = get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly)
+	profile = "None"
+	CredentialList = get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList)
 	# AllChildAccounts.extend(aws_acct.ChildAccounts)
 	# if aws_acct.AccountType.lower() == 'root':
 	# 	NumOfRootProfiles += 1
@@ -155,8 +150,8 @@ else:
 	for profile in ProfileList:
 		try:
 			aws_acct = aws_acct_access(profile)
-			RegionList.extend(Inventory_Modules.get_ec2_regions3(aws_acct, pRegionList))
-			CredentialList.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly))
+			RegionList = Inventory_Modules.get_ec2_regions3(aws_acct, pRegionList)
+			CredentialList.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList))
 			# print(f"{ERASE_LINE}Looking at account {aws_acct.acct_number} within profile: {profile}", end='\r')
 			# credentials = Inventory_Modules.get_child_access3(aws_acct, aws_acct.acct_number)
 			# credential_list.append(credentials)
@@ -170,46 +165,14 @@ else:
 
 RegionList = list(set(RegionList))
 if pTiming:
-	logging.critical(f"Time so far is {time()-begin_time}")
+	logging.critical(f"{Fore.GREEN}Time so far is {time()-begin_time}{Fore.RESET}")
+
+AccountNum = len(set([acct['AccountId'] for acct in CredentialList]))
 print()
-print(f"Looking through {len(RegionList)} regions and {len(CredentialList)} accounts")
+print(f"Looking through {AccountNum} accounts and {len(RegionList)} regions ")
 print()
-# fmt = '%-20s %-10s %-40s %-12s %-35s'
-# print(fmt % ("Account", "Region", "Function Name", "Runtime", "Role"))
-# print(fmt % ("-------", "------", "-------------", "-------", "----"))
 
-WorkerThreads = len(CredentialList) * len(RegionList)
-AllFunctions = check_accounts_for_functions(CredentialList, RegionList, pFragments)
-
-# for function in AllFunctions:
-# 	print(f"{function['AccountId']:20s}{function['Region']:10s}{function['FunctionName']:40s}{function['Runtime']:12s}{function['Role']:35s}")
-
-# for acct in CredentialList:
-# 	aws_acct = aws_acct_access(ocredentials=acct)
-# 	for region in RegionList:
-# 		print(f"{ERASE_LINE}Looking in account: {acct['AccountId']} in region {region}", end='\r')
-# 		try:
-# 			Functions = Inventory_Modules.find_lambda_functions3(aws_acct, region, pFragments)
-# 			FunctionNum = len(Functions['Functions'])
-# 			print(f"{ERASE_LINE}Account: {acct['AccountId']} Region: {region} Found {FunctionNum} functions", end='\r')
-# 		except TypeError as my_Error:
-# 			logging.info(f"Error: {my_Error}")
-# 			continue
-# 		except ClientError as my_Error:
-# 			if str(my_Error).find("AuthFailure") > 0:
-# 				print(f"{ERASE_LINE}Account {acct['AccountId']}: Authorization Failure")
-# 		if len(Functions['Functions']) > 0:
-# 			for function in range(len(Functions['Functions'])):
-# 				# print("Y:",y,"Number:",len(Functions['Functions']))
-# 				# print("Function Name:",Functions['Functions'][y]['FunctionName'])
-# 				FunctionName = Functions['Functions'][function]['FunctionName']
-# 				Runtime = Functions['Functions'][function]['Runtime']
-# 				Rolet = Functions['Functions'][function]['Role']
-# 				Role = mid(Rolet, Rolet.find("/") + 2, len(Rolet))
-# 				print(fmt % (acct['AccountId'], region, FunctionName, Runtime, Role))
-# 				NumInstancesFound += 1
-
-
+AllFunctions = check_accounts_for_functions(CredentialList, pFragments)
 
 print(f"This table represents the summary of functions within the Org:")
 x = PrettyTable()
@@ -228,7 +191,7 @@ if pTiming:
 	print(ERASE_LINE)
 	print(f"{Fore.GREEN}This script took {time()-begin_time} seconds{Fore.RESET}")
 print(ERASE_LINE)
-print(f"Found {NumInstancesFound} functions across {len(CredentialList)} profiles across {len(RegionList)} regions")
+print(f"Found {len(AllFunctions)} functions across {AccountNum} accounts, across {len(RegionList)} regions")
 print()
 print("Thank you for using this script")
 print()

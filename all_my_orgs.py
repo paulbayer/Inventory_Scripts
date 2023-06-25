@@ -25,7 +25,7 @@ parser.my_parser.add_argument(
 		const=True,
 		default=False)
 parser.my_parser.add_argument(
-		'-A', '--account',
+		'-A', '--acct',
 		help="Find which Org this account is a part of",
 		nargs="*",
 		dest="accountList",
@@ -75,6 +75,7 @@ logging.warning(f"These profiles are being checked {ProfileList}.")
 print(f"Please bear with us as we run through {len(ProfileList)} profiles")
 AllProfileAccounts = get_org_accounts_from_profiles(ProfileList, progress_bar=False)
 AccountList = []
+# Rather than even try to determine if a root account is using ALZ, I've just removed it. I'll take out the column eventually.
 landing_zone = 'N/A'
 
 if pTiming:

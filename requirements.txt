@@ -1,8 +1,7 @@
-boto3>=1.18.47
-botocore>=1.21.47
-colorama>=0.4.4
-prettytable>=2.2.0
-simplejson>=3.17.5
-urllib3>=1.26.7
+boto3>=1.26.84
+botocore>=1.29.84
+colorama>=0.4.6
+prettytable>=3.6.0
+simplejson>=3.18.3
+urllib3>=1.26.14
 randominfo>=2.0.2
-setuptools~=63.4.3
