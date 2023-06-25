@@ -3392,7 +3392,7 @@ def find_ssm_parameters2(ocredentials):
 
 def find_ssm_parameters3(faws_acct, fregion=None):
 	"""
-	fProfile is the Root Profile that owns the stackset
+	faws_acct is the a class object from account_class.py
 	fRegion is the region where the stackset resides
 
 	Return Value is a list that looks like this:
@@ -3424,24 +3424,24 @@ def find_ssm_parameters3(faws_acct, fregion=None):
 
 	try:
 		response = client_ssm.describe_parameters(MaxResults=50)
+		TotalParameters = TotalParameters + len(response['Parameters'])
+		logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
+		for param in response['Parameters']:
+			response2.append({'MgmtAcct'        : faws_acct.MgmtAccount,
+			                  'AccountNumber'   : faws_acct.acct_number,
+			                  'Region'          : fregion,
+			                  'Profile'         : session_ssm.profile_name,
+			                  'Description'     : param['Description'] if 'Description' in param.keys() else None,
+			                  'LastModifiedDate': param['LastModifiedDate'],
+			                  'LastModifiedUser': param['LastModifiedUser'],
+			                  'Name'            : param['Name'],
+			                  'Policies'        : param['Policies'],
+			                  'Tier'            : param['Tier'],
+			                  'Type'            : param['Type'],
+			                  'Version'         : param['Version']
+			                  })
 	except ClientError as my_Error:
 		logging.error(f"Error: {my_Error}")
-	TotalParameters = TotalParameters + len(response['Parameters'])
-	logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
-	for param in response['Parameters']:
-		response2.append({'MgmtAcct'        : faws_acct.MgmtAccount,
-		                  'AccountNumber'   : faws_acct.acct_number,
-		                  'Region'          : fregion,
-		                  'Profile'         : session_ssm.profile_name,
-		                  'Description'     : param['Description'] if 'Description' in param.keys() else None,
-		                  'LastModifiedDate': param['LastModifiedDate'],
-		                  'LastModifiedUser': param['LastModifiedUser'],
-		                  'Name'            : param['Name'],
-		                  'Policies'        : param['Policies'],
-		                  'Tier'            : param['Tier'],
-		                  'Type'            : param['Type'],
-		                  'Version'         : param['Version']
-		                  })
 	while 'NextToken' in response.keys():
 		response = client_ssm.describe_parameters(MaxResults=50, NextToken=response['NextToken'])
 		TotalParameters = TotalParameters + len(response['Parameters'])
@@ -3463,7 +3463,8 @@ def find_ssm_parameters3(faws_acct, fregion=None):
 		if (len(response2) % 500 == 0) and (logging.getLogger().getEffectiveLevel() > 20):
 			print(f"{ERASE_LINE}Sorry this is taking a while - we've already found {len(response2)} parameters!", end="\r")
 
-	logging.error(f"Found {len(response2)} parameters")
+	if logging.getLogger().getEffectiveLevel() < 50:
+		print(f"Found {len(response2)} parameters")
 	return (response2)
 
 
