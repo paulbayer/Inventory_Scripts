@@ -16,6 +16,7 @@ parser.my_parser.description = ("We're going to find all roles within any of the
 parser.multiprofile()
 parser.multiregion()
 parser.extendedargs()
+parser.deletion()
 parser.rootOnly()
 parser.verbosity()
 parser.timing()
