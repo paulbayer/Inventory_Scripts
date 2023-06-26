@@ -2285,7 +2285,10 @@ def find_stacks2(ocredentials, fRegion, fStackFragment=None, fStatus=None):
 	import boto3
 	import logging
 
-	if 'active' in fStatus or fStatus is None:
+	if fStatus is None:
+		fStatus = ['active']
+
+	if 'active' in fStatus:
 		fStatus = ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]
 		desired_status = 'active'
 	elif 'all' in fStatus:
