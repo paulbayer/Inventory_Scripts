@@ -23,6 +23,7 @@ parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
 parser.extendedargs()  # This adds additional *optional* arguments to the listing
+parser.deletion()
 parser.rootOnly()
 parser.roletouse()
 parser.timing()

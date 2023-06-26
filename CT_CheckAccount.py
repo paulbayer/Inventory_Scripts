@@ -22,6 +22,7 @@ parser.singleprofile()
 parser.multiregion()
 # The following includes "force", "skipaccount", "skipprofile", "account"
 parser.extendedargs()
+parser.deletion()
 parser.roletouse()
 parser.verbosity()
 parser.timing()

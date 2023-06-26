@@ -15,6 +15,7 @@ __version__ = "2023.05.04"
 parser = CommonArguments()
 parser.singleprofile()
 parser.multiregion_nodefault()
+parser.deletion()
 parser.verbosity()
 parser.version(__version__)
 parser.my_parser.add_argument(
@@ -22,11 +23,11 @@ parser.my_parser.add_argument(
     dest="flagDelete",
     action="store_true",
     help="Whether to delete the detectors it finds.")
-parser.my_parser.add_argument(
-    '+force',
-    help="force deletion without asking first",
-    action="store_true",
-    dest="ForceDelete")
+# parser.my_parser.add_argument(
+#     '+force',
+#     help="force deletion without asking first",
+#     action="store_true",
+#     dest="ForceDelete")
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
@@ -34,7 +35,8 @@ pProfile = args.Profile
 pRegions = args.Regions
 verbose = args.loglevel
 DeletionRun = args.flagDelete
-ForceDelete = args.ForceDelete
+# ForceDelete = args.ForceDelete
+ForceDelete = args.Force
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s")
 
 ##########################
