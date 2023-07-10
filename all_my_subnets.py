@@ -70,16 +70,17 @@ def check_accounts_for_subnets(CredentialList, fRegionList=None, fip=None):
 		def run(self):
 			while True:
 				# Get the work from the queue and expand the tuple
-				c_account_credentials, c_region, c_fip, c_PlacesToLook, c_PlaceCount = self.queue.get()
+				c_account_credentials, c_fip, c_PlacesToLook, c_PlaceCount = self.queue.get()
 				logging.info(f"De-queued info for account {c_account_credentials['AccountId']}")
 				try:
 					logging.info(f"Attempting to connect to {c_account_credentials['AccountId']}")
-					account_subnets = Inventory_Modules.find_account_subnets2(c_account_credentials, c_region, c_fip)
+					# account_subnets = Inventory_Modules.find_account_subnets2(c_account_credentials, c_account_credentials['Region'], c_fip)
+					account_subnets = Inventory_Modules.find_account_subnets2(c_account_credentials, c_fip)
 					logging.info(f"Successfully connected to account {c_account_credentials['AccountId']}")
 					for y in range(len(account_subnets['Subnets'])):
 						account_subnets['Subnets'][y]['MgmtAccount'] = c_account_credentials['MgmtAccount']
 						account_subnets['Subnets'][y]['AccountId'] = c_account_credentials['AccountId']
-						account_subnets['Subnets'][y]['Region'] = c_region
+						account_subnets['Subnets'][y]['Region'] = c_account_credentials['Region']
 						account_subnets['Subnets'][y]['SubnetName'] = "None"
 						if 'Tags' in account_subnets['Subnets'][y].keys():
 							for tag in account_subnets['Subnets'][y]['Tags']:
@@ -97,7 +98,7 @@ def check_accounts_for_subnets(CredentialList, fRegionList=None, fip=None):
 					logging.warning(my_Error)
 					continue
 				finally:
-					print(f"{ERASE_LINE}Finished finding subnets in account {c_account_credentials['AccountId']} in region {c_region} - {c_PlaceCount} / {c_PlacesToLook}", end='\r')
+					print(f"{ERASE_LINE}Finished finding subnets in account {c_account_credentials['AccountId']} in region {c_account_credentials['Region']} - {c_PlaceCount} / {c_PlacesToLook}", end='\r')
 					self.queue.task_done()
 
 	if fRegionList is None:
@@ -106,7 +107,8 @@ def check_accounts_for_subnets(CredentialList, fRegionList=None, fip=None):
 
 	AllSubnets = []
 	PlaceCount = 0
-	PlacesToLook = WorkerThreads = len(CredentialList)
+	PlacesToLook = len(CredentialList)
+	WorkerThreads = min(len(CredentialList), 50)
 
 	for x in range(WorkerThreads):
 		worker = FindSubnets(checkqueue)
@@ -116,16 +118,16 @@ def check_accounts_for_subnets(CredentialList, fRegionList=None, fip=None):
 
 	for credential in CredentialList:
 		logging.info(f"Connecting to account {credential['AccountId']}")
-		for region in fRegionList:
-			try:
-				# print(f"{ERASE_LINE}Queuing account {credential['AccountId']} in region {region}", end='\r')
-				checkqueue.put((credential, region, fip, PlacesToLook, PlaceCount))
-				PlaceCount += 1
-			except ClientError as my_Error:
-				if str(my_Error).find("AuthFailure") > 0:
-					logging.error(f"Authorization Failure accessing account {credential['AccountId']} in {region} region")
-					logging.warning(f"It's possible that the region {region} hasn't been opted-into")
-					pass
+		# for region in fRegionList:
+		try:
+			# print(f"{ERASE_LINE}Queuing account {credential['AccountId']} in region {region}", end='\r')
+			checkqueue.put((credential, fip, PlacesToLook, PlaceCount))
+			PlaceCount += 1
+		except ClientError as my_Error:
+			if str(my_Error).find("AuthFailure") > 0:
+				logging.error(f"Authorization Failure accessing account {credential['AccountId']} in {credential['Region']} region")
+				logging.warning(f"It's possible that the region {credential['Region']} hasn't been opted-into")
+				pass
 	checkqueue.join()
 	return (AllSubnets)
 
@@ -155,7 +157,7 @@ if pProfiles is None:  # Default use case from the classes
 	print("Using the default profile - gathering ")
 	aws_acct = aws_acct_access()
 	RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
-	WorkerThreads = len(aws_acct.ChildAccounts) + 4
+	# WorkerThreads = len(aws_acct.ChildAccounts) + 4
 	if pTiming:
 		logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time:.2f} seconds up till now{Fore.RESET}")
 	# This should populate the list "AllCreds" with the credentials for the relevant accounts.
@@ -168,7 +170,7 @@ else:
 	logging.warning(f"These profiles are being checked {ProfileList}.")
 	for profile in ProfileList:
 		aws_acct = aws_acct_access(profile)
-		WorkerThreads = len(aws_acct.ChildAccounts) + 4
+		# WorkerThreads = len(aws_acct.ChildAccounts) + 4
 		RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
 		if pTiming:
 			logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time:.2f} seconds up till now{Fore.RESET}")
