@@ -1401,13 +1401,15 @@ def find_account_cloudtrail2(ocredentials, fRegion='us-east-1'):
 	return (AllTrails)
 
 
-def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
+# def find_account_subnets2(ocredentials, fRegion=None, fipaddresses=None):
+def find_account_subnets2(ocredentials, fipaddresses=None):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the account number
+		- ['Region'] holds the region being accessed
 		- ['Profile'] can hold the profile, instead of the session credentials
 	"""
 	import boto3
@@ -1415,20 +1417,25 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 	import logging
 	import ipaddress
 
+	if 'Region' not in ocredentials.keys() or ocredentials['Region'] is None:
+		ocredentials['Region'] = 'us-east-1'
 	if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
 		ProfileAccountNumber = find_account_number(ocredentials['Profile'])
 		logging.info(
 			f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
 		if ProfileAccountNumber == ocredentials['AccountNumber']:
-			session_ec2 = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
+			session_ec2 = boto3.Session(profile_name=ocredentials['Profile'],
+			                            region_name=ocredentials['Region'])
 		else:
 			session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
 			                            aws_secret_access_key=ocredentials['SecretAccessKey'],
 			                            aws_session_token=ocredentials['SessionToken'],
-			                            region_name=fRegion)
+			                            region_name=ocredentials['Region'])
 	else:
-		session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
-			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+		session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+		                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+		                            aws_session_token=ocredentials['SessionToken'],
+		                            region_name=ocredentials['Region'])
 	subnet_info = session_ec2.client('ec2')
 	Subnets = {'NextToken': None}
 	AllSubnets = {'Subnets': []}
@@ -1438,11 +1445,11 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 		Subnets = dict()
 		try:
 			if fipaddresses is None:
-				logging.info(f"Looking for all subnets in account #{ocredentials['AccountNumber']} in region {fRegion}")
+				logging.info(f"Looking for all subnets in account #{ocredentials['AccountNumber']} in region {ocredentials['Region']}")
 				Subnets = subnet_info.describe_subnets()
 				AllSubnets = Subnets
 			else:
-				logging.info(f"Looking for Subnets that match any of {fipaddresses} in account #{ocredentials['AccountNumber']} in region {fRegion}")
+				logging.info(f"Looking for Subnets that match any of {fipaddresses} in account #{ocredentials['AccountNumber']} in region {ocredentials['Region']}")
 				Subnets = subnet_info.describe_subnets()
 				# Run through each of the subnets, and determine if the passed in IP address fits within any of them
 				# If it does - then include that data within the array, otherwise next...
@@ -1452,8 +1459,8 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 						if ipaddress.ip_address(address) in ipaddress.ip_network(subnet['CidrBlock']):
 							AllSubnets['Subnets'].append(subnet)
 		except ClientError as my_Error:
-			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
-			              f"This is likely due to '{fRegion}' not being enabled for your account\n"
+			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {ocredentials['Region']}\n"
+			              f"This is likely due to '{ocredentials['Region']}' not being enabled for your account\n"
 			              f"Error Message: {my_Error}")
 			continue
 	return (AllSubnets)
