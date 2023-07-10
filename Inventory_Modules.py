@@ -1401,13 +1401,15 @@ def find_account_cloudtrail2(ocredentials, fRegion='us-east-1'):
 	return (AllTrails)
 
 
-def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
+# def find_account_subnets2(ocredentials, fRegion=None, fipaddresses=None):
+def find_account_subnets2(ocredentials, fipaddresses=None):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the account number
+		- ['Region'] holds the region being accessed
 		- ['Profile'] can hold the profile, instead of the session credentials
 	"""
 	import boto3
@@ -1415,20 +1417,25 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 	import logging
 	import ipaddress
 
+	if 'Region' not in ocredentials.keys() or ocredentials['Region'] is None:
+		ocredentials['Region'] = 'us-east-1'
 	if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
 		ProfileAccountNumber = find_account_number(ocredentials['Profile'])
 		logging.info(
 			f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
 		if ProfileAccountNumber == ocredentials['AccountNumber']:
-			session_ec2 = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
+			session_ec2 = boto3.Session(profile_name=ocredentials['Profile'],
+			                            region_name=ocredentials['Region'])
 		else:
 			session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
 			                            aws_secret_access_key=ocredentials['SecretAccessKey'],
 			                            aws_session_token=ocredentials['SessionToken'],
-			                            region_name=fRegion)
+			                            region_name=ocredentials['Region'])
 	else:
-		session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
-			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+		session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+		                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+		                            aws_session_token=ocredentials['SessionToken'],
+		                            region_name=ocredentials['Region'])
 	subnet_info = session_ec2.client('ec2')
 	Subnets = {'NextToken': None}
 	AllSubnets = {'Subnets': []}
@@ -1438,11 +1445,11 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 		Subnets = dict()
 		try:
 			if fipaddresses is None:
-				logging.info(f"Looking for all subnets in account #{ocredentials['AccountNumber']} in region {fRegion}")
+				logging.info(f"Looking for all subnets in account #{ocredentials['AccountNumber']} in region {ocredentials['Region']}")
 				Subnets = subnet_info.describe_subnets()
 				AllSubnets = Subnets
 			else:
-				logging.info(f"Looking for Subnets that match any of {fipaddresses} in account #{ocredentials['AccountNumber']} in region {fRegion}")
+				logging.info(f"Looking for Subnets that match any of {fipaddresses} in account #{ocredentials['AccountNumber']} in region {ocredentials['Region']}")
 				Subnets = subnet_info.describe_subnets()
 				# Run through each of the subnets, and determine if the passed in IP address fits within any of them
 				# If it does - then include that data within the array, otherwise next...
@@ -1452,8 +1459,8 @@ def find_account_subnets2(ocredentials, fRegion='us-east-1', fipaddresses=None):
 						if ipaddress.ip_address(address) in ipaddress.ip_network(subnet['CidrBlock']):
 							AllSubnets['Subnets'].append(subnet)
 		except ClientError as my_Error:
-			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {fRegion}\n"
-			              f"This is likely due to '{fRegion}' not being enabled for your account\n"
+			logging.error(f"Error connecting to account {ocredentials['AccountNumber']} in region {ocredentials['Region']}\n"
+			              f"This is likely due to '{ocredentials['Region']}' not being enabled for your account\n"
 			              f"Error Message: {my_Error}")
 			continue
 	return (AllSubnets)
@@ -2298,7 +2305,10 @@ def find_stacks2(ocredentials, fRegion, fStackFragment=None, fStatus=None):
 	import boto3
 	import logging
 
-	if 'active' in fStatus or fStatus is None:
+	if fStatus is None:
+		fStatus = ['active']
+
+	if 'active' in fStatus:
 		fStatus = ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]
 		desired_status = 'active'
 	elif 'all' in fStatus:
@@ -3405,7 +3415,7 @@ def find_ssm_parameters2(ocredentials):
 
 def find_ssm_parameters3(faws_acct, fregion=None):
 	"""
-	fProfile is the Root Profile that owns the stackset
+	faws_acct is the a class object from account_class.py
 	fRegion is the region where the stackset resides
 
 	Return Value is a list that looks like this:
@@ -3437,24 +3447,24 @@ def find_ssm_parameters3(faws_acct, fregion=None):
 
 	try:
 		response = client_ssm.describe_parameters(MaxResults=50)
+		TotalParameters = TotalParameters + len(response['Parameters'])
+		logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
+		for param in response['Parameters']:
+			response2.append({'MgmtAcct'        : faws_acct.MgmtAccount,
+			                  'AccountNumber'   : faws_acct.acct_number,
+			                  'Region'          : fregion,
+			                  'Profile'         : session_ssm.profile_name,
+			                  'Description'     : param['Description'] if 'Description' in param.keys() else None,
+			                  'LastModifiedDate': param['LastModifiedDate'],
+			                  'LastModifiedUser': param['LastModifiedUser'],
+			                  'Name'            : param['Name'],
+			                  'Policies'        : param['Policies'],
+			                  'Tier'            : param['Tier'],
+			                  'Type'            : param['Type'],
+			                  'Version'         : param['Version']
+			                  })
 	except ClientError as my_Error:
 		logging.error(f"Error: {my_Error}")
-	TotalParameters = TotalParameters + len(response['Parameters'])
-	logging.info(f"Found another {len(response['Parameters'])} parameters, bringing the total up to {TotalParameters}")
-	for param in response['Parameters']:
-		response2.append({'MgmtAcct'        : faws_acct.MgmtAccount,
-		                  'AccountNumber'   : faws_acct.acct_number,
-		                  'Region'          : fregion,
-		                  'Profile'         : session_ssm.profile_name,
-		                  'Description'     : param['Description'] if 'Description' in param.keys() else None,
-		                  'LastModifiedDate': param['LastModifiedDate'],
-		                  'LastModifiedUser': param['LastModifiedUser'],
-		                  'Name'            : param['Name'],
-		                  'Policies'        : param['Policies'],
-		                  'Tier'            : param['Tier'],
-		                  'Type'            : param['Type'],
-		                  'Version'         : param['Version']
-		                  })
 	while 'NextToken' in response.keys():
 		response = client_ssm.describe_parameters(MaxResults=50, NextToken=response['NextToken'])
 		TotalParameters = TotalParameters + len(response['Parameters'])
@@ -3476,7 +3486,8 @@ def find_ssm_parameters3(faws_acct, fregion=None):
 		if (len(response2) % 500 == 0) and (logging.getLogger().getEffectiveLevel() > 20):
 			print(f"{ERASE_LINE}Sorry this is taking a while - we've already found {len(response2)} parameters!", end="\r")
 
-	logging.error(f"Found {len(response2)} parameters")
+	if logging.getLogger().getEffectiveLevel() < 50:
+		print(f"Found {len(response2)} parameters")
 	return (response2)
 
 

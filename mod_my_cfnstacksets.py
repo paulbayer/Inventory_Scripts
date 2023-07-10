@@ -40,9 +40,11 @@ __version__ = "2023.06.15"
 parser = CommonArguments()
 parser.singleprofile()
 parser.singleregion()
-# This next parameter includes picking a specific account, ignoring specific accounts or profiles, and *forcing* an operation
+# This next parameter includes picking a specific account, ignoring specific accounts or profiles
 parser.extendedargs()
 parser.fragment()
+# This next parameter includes *forcing* an operation
+parser.deletion()
 parser.roletouse()
 # parser.save_to_file()
 parser.timing()
