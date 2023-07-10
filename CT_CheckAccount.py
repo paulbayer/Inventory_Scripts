@@ -293,7 +293,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 	      f"{'which this account is not, so we are continuing...' if not account_credentials['AccountId'] == account_credentials['ParentAcctId'] else None}") if verbose < 50 else None
 	# Checks to see if 'config.amazonaws.com' is a trusted org service in the Management Account. If so - we'll FAIL, since Control Tower wants to turn it on.
 	result = Inventory_Modules.find_org_services2(account_credentials, [serviceName]) if account_credentials['AccountId'] == account_credentials['ParentAcctId'] else None
-	if result is not None and len(result) == 0:
+	if result is not None and len(result) != 0:
 		print() if verbose < 50 else None
 		print(f"{serviceName} is enabled within your Organization. Control Tower needs it to be disabled before continuing.") if verbose < 50 else None
 		print("This is easiest done manually right now, or you could re-run this script with the '+fix' parameter and we'll fix EVERYTHING we find - without asking first.") if verbose < 50 else None
