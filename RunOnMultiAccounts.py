@@ -13,7 +13,6 @@ init()
 __version__ = "2023.05.04"
 
 parser = CommonArguments()
-parser.version()
 parser.singleprofile()
 parser.verbosity()          # Allows for the verbosity to be handled.
 parser.version(__version__)

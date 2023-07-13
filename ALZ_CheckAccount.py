@@ -266,7 +266,7 @@ for childaccount in ChildAccountList:
 			      f"Checking account {childaccount} in region {region} for {Fore.RED}default VPCs{Fore.RESET}",
 			      end='\r')
 			logging.info("Looking for Default VPCs in account {} from Region {}}", childaccount, region)
-			DefaultVPC = Inventory_Modules.find_account_vpcs2(account_credentials, region, True)
+			DefaultVPC = Inventory_Modules.find_account_vpcs2(account_credentials, True)
 			if len(DefaultVPC['Vpcs']) > 0:
 				DefaultVPCs.append({
 					'VPCId'    : DefaultVPC['Vpcs'][0]['VpcId'],
