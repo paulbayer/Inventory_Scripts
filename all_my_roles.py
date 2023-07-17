@@ -55,7 +55,6 @@ ERASE_LINE = '\x1b[2K'
 if pTiming:
 	begin_time = time()
 
-
 ##########################
 
 
