@@ -49,8 +49,6 @@ parser.my_parser.add_argument(
 	default=False,
 	action="store_const",
 	help="This will fix the issues found. If default VPCs must be deleted, you'll be asked to confirm.")
-# TODO: There should be an additional parameter here that would take a role name for access into the account,
-#  since it's likely that users won't be able to use the AWSControlTowerExecution role
 # parser.my_parser.add_argument(
 # 	"+force",
 # 	dest="pVPCConfirm",
@@ -616,7 +614,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 
 	# Step 9
 	# Checking for Role names - unfortunately, this gets called for every region, even though the results will be the same in every region.
-	# Need to find a way to only run this once, instead of for every region.
+	# TODO: Need to find a way to only run this once, instead of for every region.
 	Step = 'Step9'
 	try:
 		print(f"{Fore.BLUE}{Step}:{Fore.RESET}") if verbose < 50 else None
@@ -803,7 +801,7 @@ x = PrettyTable()
 y = PrettyTable()
 
 x.field_names = ['Account', '# of Regions', 'Issues Found', 'Issues Fixed', 'Ready?']
-y.field_names = ['Account', 'Region', 'Account Access', 'Config', 'CloudTrail', 'GuardDuty', 'Org Member', 'CT OU', 'SNS Topics', 'Lambda', 'Roles', 'CW Log Groups', 'Ready?']
+y.field_names = ['Account', 'Region', 'Account Access', 'Org Config', 'Config', 'CloudTrail', 'GuardDuty', 'Org Member', 'CT OU', 'SNS Topics', 'Lambda', 'Roles', 'CW Log Groups', 'Ready?']
 for i in SummarizedOrgResults:
 	x.add_row([SummarizedOrgResults[i]['AccountId'], len(SummarizedOrgResults[i]['Regions']), SummarizedOrgResults[i]['IssuesFound'], SummarizedOrgResults[i]['IssuesFixed'], SummarizedOrgResults[i]['Ready']])
 
@@ -820,6 +818,7 @@ for i in sorted_OrgResults:
 		y.add_row([
 			i['AccountId'], i['Region'],
 			i['Step0']['IssuesFound'] - i['Step0']['IssuesFixed'],
+			i['Step1']['IssuesFound'] - i['Step1']['IssuesFixed'],
 			i['Step2']['IssuesFound'] - i['Step2']['IssuesFixed'],
 			i['Step3']['IssuesFound'] - i['Step3']['IssuesFixed'],
 			i['Step4']['IssuesFound'] - i['Step4']['IssuesFixed'],
@@ -829,11 +828,16 @@ for i in sorted_OrgResults:
 			i['Step8']['IssuesFound'] - i['Step8']['IssuesFixed'],
 			i['Step9']['IssuesFound'] - i['Step9']['IssuesFixed'],
 			i['Step10']['IssuesFound'] - i['Step10']['IssuesFixed'],
-			i['Step0']['Success'] and i['Step2']['Success'] and i['Step3']['Success'] and i['Step4']['Success'] and
-			i['Step5']['Success'] and i['Step6']['Success'] and i['Step7']['Success'] and i['Step8']['Success'] and
+			i['Step0']['Success'] and i['Step1']['Success'] and i['Step2']['Success'] and
+			i['Step3']['Success'] and i['Step4']['Success'] and i['Step5']['Success'] and
+			i['Step6']['Success'] and i['Step7']['Success'] and i['Step8']['Success'] and
 			i['Step9']['Success'] and i['Step10']['Success']
 		])
 print("The following table represents the accounts looked at, and whether they are ready to be incorporated into a Control Tower environment.")
+print()
+if aws_acct.AccountType.lower() == 'root' and (pChildAccountId is None or aws_acct.acct_number in pChildAccountId):
+	print(f"Please note that for the Org Root account {aws_acct.acct_number}, the number of issues found for 'Org Config' will mistakenly show as 1 per region, since these issues are checked on a per-region basis.")
+	print(f"Additionally, issues found with 'Roles', though global, will show as regional as well. This will be remedied in future versions of this script.")
 print(x)
 print()
 print("The following table represents the accounts looked at, and gives details under each type of issue as to what might prevent a successful migration of this account into a Control Tower environment.")
