@@ -15,7 +15,7 @@ from account_class import aws_acct_access
 import logging
 
 init()
-__version__ = "2023.05.22"
+__version__ = "2023.07.17"
 
 parser = CommonArguments()
 parser.singleprofile()
