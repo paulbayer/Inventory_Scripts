@@ -799,13 +799,13 @@ def find_org_services2(ocredentials, serviceNameList=None):
 	client_org = session_org.client('organizations')
 	EnabledOrgServicesList = []
 	FirstTime = True
-	response = {'nextToken': None}
-	while 'nextToken' in response.keys() or FirstTime:
+	response = {'NextToken': None}
+	while 'NextToken' in response.keys() or FirstTime:
 		if FirstTime:
 			response = client_org.list_aws_service_access_for_organization()
 			FirstTime = False
 		else:
-			response = client_org.describe_log_groups(nextToken=response['nextToken'])
+			response = client_org.list_aws_service_access_for_organization(NextToken=response['NextToken'])
 		EnabledOrgServicesList.extend(response['EnabledServicePrincipals'])
 	if 'all' in serviceNameList or 'All' in serviceNameList or 'ALL' in serviceNameList:
 		logging.info(f"Looking for all Org-Enabled services in account {ocredentials['AccountNumber']} from Region {ocredentials['Region']}\n"

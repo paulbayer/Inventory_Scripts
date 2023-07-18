@@ -3,6 +3,8 @@
 
 # Ootput files for tool tests
 test_output_*.txt
+SmallestCFNEver.yaml
+*.png
 
 # Created by https://www.gitignore.io/api/osx,node,linux,python,windows,visualstudiocode
 # Edit at https://www.gitignore.io/?templates=osx,node,linux,python,windows,visualstudiocode

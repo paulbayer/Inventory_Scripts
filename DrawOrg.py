@@ -184,7 +184,7 @@ for ou in root_OUs:
 	traverse_ous_and_accounts(ou['Id'], dot)
 
 # Render the diagram to a PNG image
-dot.render('aws_organization', view=True)
+# dot.render('aws_organization', view=True)
 dot_unflat = dot.unflatten(stagger=round_up(len(root_OUs)/5))
 dot_unflat.render('aws_organization2', view=True)
 
