@@ -23,6 +23,7 @@ parser.extendedargs()
 parser.rootOnly()
 parser.fragment()
 parser.timing()
+parser.save_to_file()
 parser.verbosity()
 parser.version(__version__)
 parser.my_parser.add_argument(
@@ -43,6 +44,7 @@ pRootOnly = args.RootOnly
 pActions = args.paction
 pExact = args.Exact
 pTiming = args.Time
+pFilename = args.Filename
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
@@ -160,7 +162,7 @@ if pTiming:
 
 PoliciesFound.extend(check_accounts_for_policies(AllCredentials, RegionList, pActions, pFragments))
 sorted_policies = sorted(PoliciesFound, key=lambda x: (x['MgmtAccount'], x['AccountNumber'], x['Region'], x['PolicyName']))
-display_results(sorted_policies, display_dict, pActions)
+display_results(sorted_policies, display_dict, pActions, pFilename)
 
 if pTiming:
 	print(ERASE_LINE)
