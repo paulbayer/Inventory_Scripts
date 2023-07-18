@@ -279,7 +279,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 	
 	If you're really interested in the code that used to be here - check out the "ALZ_CheckAccount.py" script; the code is still in there.
 	
-	New Step 1 - We should check whether Config is enabled as an Orgganizationally Trusted Service here. 
+	New Step 1 - We should check whether Config is enabled as an Organizationally Trusted Service here. 
 	Unfortunately, there is no way to check for this currently, only to enable or disable it. Therefore, only if the user has asked us to *fix* things, will this script take any action.
 	 
 	"""
