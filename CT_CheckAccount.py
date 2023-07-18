@@ -100,7 +100,7 @@ Objective: This script aims to identify issues and make it easier to "adopt" an 
 ** TODO ** - update the JSON to be able to update the role to ensure it trusts the least privileged roles from management account, instead of the whole account.
 0b. STS must be active in all regions checked. You can check from the Account Settings page in IAM. Since we're using STS to connect to the account from the Management, this requirement is checked by successfully completing step 0.
 
-1. Previously - this was a default VPC check, but this is no longer needed, so we're using this step to check for Organizationally connected Config Service instead.
+1. We're using this step to check to see if your Org has Config Service enabled at the Org level.
 
 2. There must be no active config channel and recorder in the account as “there can be only one” of each. 
 	This must also be deleted via CLI, not console, switching config off in the console is NOT good enough and just disables it. To Delete the delivery channel and the configuration recorder (can be done via CLI and Python script only):
@@ -274,13 +274,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 	print() if verbose < 50 else None
 
 	"""
-	# Step 1 -- Obsoleted due to Control Tower no longer checking this --
-	# This part will find and delete the Default VPCs in each region for the child account. We only delete if you provided that in the parameters list.
-	
-	If you're really interested in the code that used to be here - check out the "ALZ_CheckAccount.py" script; the code is still in there.
-	
-	New Step 1 - We should check whether Config is enabled as an Organizationally Trusted Service here. 
-	Unfortunately, there is no way to check for this currently, only to enable or disable it. Therefore, only if the user has asked us to *fix* things, will this script take any action.
+	Step 1 - We should check whether Config is enabled as an Organizationally Trusted Service here. 
 	 
 	"""
 	Step = 'Step1'
@@ -291,7 +285,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 	      f"{'which this account is not, so we are continuing...' if not account_credentials['AccountId'] == account_credentials['ParentAcctId'] else None}") if verbose < 50 else None
 	# Checks to see if 'config.amazonaws.com' is a trusted org service in the Management Account. If so - we'll FAIL, since Control Tower wants to turn it on.
 	result = Inventory_Modules.find_org_services2(account_credentials, [serviceName]) if account_credentials['AccountId'] == account_credentials['ParentAcctId'] else None
-	if result is not None and len(result) == 0:
+	if result is not None and len(result) != 0:
 		print() if verbose < 50 else None
 		print(f"{serviceName} is enabled within your Organization. Control Tower needs it to be disabled before continuing.") if verbose < 50 else None
 		print("This is easiest done manually right now, or you could re-run this script with the '+fix' parameter and we'll fix EVERYTHING we find - without asking first.") if verbose < 50 else None
