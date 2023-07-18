@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError
 import logging
 
 init()
-__version__ = "2023.05.04"
+__version__ = "2023.07.17"
 
 parser = CommonArguments()
 parser.my_parser.description = ("We're going to find all roles within any of the accounts we have access to, given the profile(s) provided.")
@@ -20,6 +20,7 @@ parser.deletion()
 parser.rootOnly()
 parser.verbosity()
 parser.timing()
+parser.save_to_file()
 parser.version(__version__)
 parser.my_parser.add_argument(
 	"--role",
@@ -45,6 +46,7 @@ pSkipProfiles = args.SkipProfiles
 pDelete = args.pDelete
 pForce = args.Force
 pRootOnly = args.RootOnly
+pFilename = args.Filename
 pTiming = args.Time
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(""message)s")
 
@@ -52,7 +54,6 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(fu
 ERASE_LINE = '\x1b[2K'
 if pTiming:
 	begin_time = time()
-
 
 ##########################
 
@@ -160,7 +161,7 @@ if pDelete:
 	elif pForce and len(sorted_Results) > 0:
 		print(f"You specified a fragment that matched multiple roles.\n"
 		      f"And you specified the 'FORCE' parameter - so we're not asking again, BUT we'll wait {time_to_sleep} seconds to give you the option to Ctrl-C here...")
-		sleep(5)
+		sleep(time_to_sleep)
 
 if (pDelete and confirm) or (pDelete and pForce):
 	for i in range(len(sorted_Results)):
@@ -171,12 +172,12 @@ if (pDelete and confirm) or (pDelete and pForce):
 		else:
 			sorted_Results[i].update({'Action': 'delete failed'})
 
-display_dict = {'AccountId': {'Format': '15s', 'DisplayOrder': 2, 'Heading': 'Account Number'},
-                'MgmtAcct' : {'Format': '15s', 'DisplayOrder': 1, 'Heading': 'Parent Acct'},
-                'RoleName' : {'Format': '40s', 'DisplayOrder': 3, 'Heading': 'Role Name'},
-                'Action'   : {'Format': '10s', 'DisplayOrder': 4, 'Heading': 'Action Taken'}}
+display_dict = {'AccountId': {'DisplayOrder': 2, 'Heading': 'Account Number'},
+                'MgmtAcct' : {'DisplayOrder': 1, 'Heading': 'Parent Acct'},
+                'RoleName' : {'DisplayOrder': 3, 'Heading': 'Role Name'},
+                'Action'   : {'DisplayOrder': 4, 'Heading': 'Action Taken'}}
 
-display_results(sorted_Results, display_dict, "No Action")
+display_results(sorted_Results, display_dict, "No Action", pFilename)
 
 print()
 if pRole is None:

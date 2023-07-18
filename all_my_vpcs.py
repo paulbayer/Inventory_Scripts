@@ -5,6 +5,7 @@ import Inventory_Modules
 from Inventory_Modules import get_all_credentials, display_results
 from ArgumentsClass import CommonArguments
 from time import time
+from tqdm.auto import tqdm
 from threading import Thread
 from queue import Queue
 from colorama import init, Fore
@@ -13,7 +14,7 @@ from botocore.exceptions import ClientError
 import logging
 
 init()
-__version__ = "2023.05.04"
+__version__ = "2023.07.12"
 
 parser = CommonArguments()
 parser.multiprofile()
@@ -21,6 +22,7 @@ parser.multiregion()
 parser.extendedargs()
 parser.rootOnly()
 parser.timing()
+parser.save_to_file()
 parser.verbosity()
 parser.version(__version__)
 parser.my_parser.add_argument(
@@ -40,6 +42,7 @@ pSkipProfiles = args.SkipProfiles
 pSkipAccounts = args.SkipAccounts
 pRootOnly = args.RootOnly
 pTiming = args.Time
+pFilename = args.Filename
 pDefault = args.pDefault
 verbose = args.loglevel
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
@@ -157,12 +160,13 @@ NumOfRootProfiles = 0
 AllCredentials = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
 AllRegionsList = list(set([x['Region'] for x in AllCredentials]))
 AllAccountList = list(set([x['AccountId'] for x in AllCredentials]))
-display_dict = {'MgmtAccount': {'Format': '12s', 'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
-                'AccountId'  : {'Format': '12s', 'DisplayOrder': 2, 'Heading': 'Acct Number'},
-                'Region'     : {'Format': '15s', 'DisplayOrder': 3, 'Heading': 'Region'},
-                'VpcName'    : {'Format': '20s', 'DisplayOrder': 4, 'Heading': 'VPC Name'},
-                'CIDR'       : {'Format': '18s', 'DisplayOrder': 5, 'Heading': 'CIDR Block'},
-                'VpcId'      : {'Format': '15s', 'DisplayOrder': 6, 'Heading': 'VPC Id'}}
+display_dict = {'MgmtAccount': {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
+                'AccountId'  : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
+                'Region'     : {'DisplayOrder': 3, 'Heading': 'Region'},
+                'VpcName'    : {'DisplayOrder': 4, 'Heading': 'VPC Name'},
+                'CIDR'       : {'DisplayOrder': 5, 'Heading': 'CIDR Block'},
+                'IsDefault'  : {'DisplayOrder': 6, 'Heading': 'Default VPC', 'Condition': [True, 1, '1']},
+                'VpcId'      : {'DisplayOrder': 7, 'Heading': 'VPC Id'}}
 
 logging.info(f"# of Regions: {len(pRegionList)}")
 logging.info(f"# of Management Accounts: {NumOfRootProfiles}")
@@ -171,7 +175,7 @@ logging.info(f"# of Child Accounts: {len(AllCredentials)}")
 All_VPCs_Found = find_all_vpcs(AllCredentials, pDefault)
 sorted_AllVPCs = sorted(All_VPCs_Found, key=lambda d: (d['MgmtAccount'], d['AccountId'], d['Region'], d['VpcName'], d['CIDR']))
 print()
-display_results(sorted_AllVPCs, display_dict, None)
+display_results(sorted_AllVPCs, display_dict, None, pFilename)
 
 if pTiming:
 	print(ERASE_LINE)

@@ -51,6 +51,7 @@ verbose = args.loglevel
 DeletionRun = args.DeletionRun
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
+
 # if pTiming:
 # 	timing_logging_level = 45
 # 	logging.addLevelName(timing_logging_level, 'timing')

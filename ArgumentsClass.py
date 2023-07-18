@@ -155,9 +155,9 @@ class CommonArguments():
 			"-f", "--fragment",
 			dest="Fragments",
 			nargs='*',
-			metavar="CloudFormation stack fragment",
+			metavar="string fragment",
 			default=["all"],
-			help="List of fragments of the cloudformation stackset(s) you want to check for.")
+			help="List of fragments of the string(s) you want to check for.")
 		self.my_parser.add_argument(
 			"-e", "--exact",
 			dest="Exact",

@@ -15,7 +15,7 @@ from account_class import aws_acct_access
 import logging
 
 init()
-__version__ = "2023.05.22"
+__version__ = "2023.07.17"
 
 parser = CommonArguments()
 parser.singleprofile()
@@ -49,8 +49,6 @@ parser.my_parser.add_argument(
 	default=False,
 	action="store_const",
 	help="This will fix the issues found. If default VPCs must be deleted, you'll be asked to confirm.")
-# TODO: There should be an additional parameter here that would take a role name for access into the account,
-#  since it's likely that users won't be able to use the AWSControlTowerExecution role
 # parser.my_parser.add_argument(
 # 	"+force",
 # 	dest="pVPCConfirm",
@@ -102,7 +100,7 @@ Objective: This script aims to identify issues and make it easier to "adopt" an 
 ** TODO ** - update the JSON to be able to update the role to ensure it trusts the least privileged roles from management account, instead of the whole account.
 0b. STS must be active in all regions checked. You can check from the Account Settings page in IAM. Since we're using STS to connect to the account from the Management, this requirement is checked by successfully completing step 0.
 
-1. Previously - this was a default VPC check, but this is no longer needed, so we're using this step to check for Organizationally connected Config Service instead.
+1. We're using this step to check to see if your Org has Config Service enabled at the Org level.
 
 2. There must be no active config channel and recorder in the account as “there can be only one” of each. 
 	This must also be deleted via CLI, not console, switching config off in the console is NOT good enough and just disables it. To Delete the delivery channel and the configuration recorder (can be done via CLI and Python script only):
@@ -276,13 +274,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 	print() if verbose < 50 else None
 
 	"""
-	# Step 1 -- Obsoleted due to Control Tower no longer checking this --
-	# This part will find and delete the Default VPCs in each region for the child account. We only delete if you provided that in the parameters list.
-	
-	If you're really interested in the code that used to be here - check out the "ALZ_CheckAccount.py" script; the code is still in there.
-	
-	New Step 1 - We should check whether Config is enabled as an Orgganizationally Trusted Service here. 
-	Unfortunately, there is no way to check for this currently, only to enable or disable it. Therefore, only if the user has asked us to *fix* things, will this script take any action.
+	Step 1 - We should check whether Config is enabled as an Organizationally Trusted Service here. 
 	 
 	"""
 	Step = 'Step1'
@@ -293,7 +285,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 	      f"{'which this account is not, so we are continuing...' if not account_credentials['AccountId'] == account_credentials['ParentAcctId'] else None}") if verbose < 50 else None
 	# Checks to see if 'config.amazonaws.com' is a trusted org service in the Management Account. If so - we'll FAIL, since Control Tower wants to turn it on.
 	result = Inventory_Modules.find_org_services2(account_credentials, [serviceName]) if account_credentials['AccountId'] == account_credentials['ParentAcctId'] else None
-	if result is not None and len(result) == 0:
+	if result is not None and len(result) != 0:
 		print() if verbose < 50 else None
 		print(f"{serviceName} is enabled within your Organization. Control Tower needs it to be disabled before continuing.") if verbose < 50 else None
 		print("This is easiest done manually right now, or you could re-run this script with the '+fix' parameter and we'll fix EVERYTHING we find - without asking first.") if verbose < 50 else None
@@ -616,7 +608,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 
 	# Step 9
 	# Checking for Role names - unfortunately, this gets called for every region, even though the results will be the same in every region.
-	# Need to find a way to only run this once, instead of for every region.
+	# TODO: Need to find a way to only run this once, instead of for every region.
 	Step = 'Step9'
 	try:
 		print(f"{Fore.BLUE}{Step}:{Fore.RESET}") if verbose < 50 else None
@@ -803,7 +795,7 @@ x = PrettyTable()
 y = PrettyTable()
 
 x.field_names = ['Account', '# of Regions', 'Issues Found', 'Issues Fixed', 'Ready?']
-y.field_names = ['Account', 'Region', 'Account Access', 'Config', 'CloudTrail', 'GuardDuty', 'Org Member', 'CT OU', 'SNS Topics', 'Lambda', 'Roles', 'CW Log Groups', 'Ready?']
+y.field_names = ['Account', 'Region', 'Account Access', 'Org Config', 'Config', 'CloudTrail', 'GuardDuty', 'Org Member', 'CT OU', 'SNS Topics', 'Lambda', 'Roles', 'CW Log Groups', 'Ready?']
 for i in SummarizedOrgResults:
 	x.add_row([SummarizedOrgResults[i]['AccountId'], len(SummarizedOrgResults[i]['Regions']), SummarizedOrgResults[i]['IssuesFound'], SummarizedOrgResults[i]['IssuesFixed'], SummarizedOrgResults[i]['Ready']])
 
@@ -820,6 +812,7 @@ for i in sorted_OrgResults:
 		y.add_row([
 			i['AccountId'], i['Region'],
 			i['Step0']['IssuesFound'] - i['Step0']['IssuesFixed'],
+			i['Step1']['IssuesFound'] - i['Step1']['IssuesFixed'],
 			i['Step2']['IssuesFound'] - i['Step2']['IssuesFixed'],
 			i['Step3']['IssuesFound'] - i['Step3']['IssuesFixed'],
 			i['Step4']['IssuesFound'] - i['Step4']['IssuesFixed'],
@@ -829,11 +822,16 @@ for i in sorted_OrgResults:
 			i['Step8']['IssuesFound'] - i['Step8']['IssuesFixed'],
 			i['Step9']['IssuesFound'] - i['Step9']['IssuesFixed'],
 			i['Step10']['IssuesFound'] - i['Step10']['IssuesFixed'],
-			i['Step0']['Success'] and i['Step2']['Success'] and i['Step3']['Success'] and i['Step4']['Success'] and
-			i['Step5']['Success'] and i['Step6']['Success'] and i['Step7']['Success'] and i['Step8']['Success'] and
+			i['Step0']['Success'] and i['Step1']['Success'] and i['Step2']['Success'] and
+			i['Step3']['Success'] and i['Step4']['Success'] and i['Step5']['Success'] and
+			i['Step6']['Success'] and i['Step7']['Success'] and i['Step8']['Success'] and
 			i['Step9']['Success'] and i['Step10']['Success']
 		])
 print("The following table represents the accounts looked at, and whether they are ready to be incorporated into a Control Tower environment.")
+print()
+if aws_acct.AccountType.lower() == 'root' and (pChildAccountId is None or aws_acct.acct_number in pChildAccountId):
+	print(f"Please note that for the Org Root account {aws_acct.acct_number}, the number of issues found for 'Org Config' will mistakenly show as 1 per region, since these issues are checked on a per-region basis.")
+	print(f"Additionally, issues found with 'Roles', though global, will show as regional as well. This will be remedied in future versions of this script.")
 print(x)
 print()
 print("The following table represents the accounts looked at, and gives details under each type of issue as to what might prevent a successful migration of this account into a Control Tower environment.")

@@ -14,7 +14,7 @@ from time import time
 import logging
 
 init()
-__version__ = "2023.05.04"
+__version__ = "2023.06.10"
 
 parser = CommonArguments()
 parser.multiprofile()
@@ -179,6 +179,9 @@ else:
 		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList))
 
+AccountNum = len(set([acct['AccountId'] for acct in AllCredentials]))
+RegionNum = len(set([acct['Region'] for acct in AllCredentials]))
+
 SubnetsFound.extend(check_accounts_for_subnets(AllCredentials, RegionList, fip=pIPaddressList))
 
 # display_results(SubnetsFound, display_dict)
@@ -193,7 +196,7 @@ print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAc
 print(f"These profiles were skipped - as requested: {pSkipProfiles}") if pSkipProfiles is not None else ""
 print(f"The output has also been written to a file beginning with '{pFilename}' + the date and time")
 print()
-print(f"Found {len(SubnetsFound)} subnets across {len(AllCredentials)} accounts across {len(RegionList)} regions")
+print(f"Found {len(SubnetsFound)} subnets across {AccountNum} accounts across {RegionNum} regions")
 print()
 print("Thank you for using this script")
 print()

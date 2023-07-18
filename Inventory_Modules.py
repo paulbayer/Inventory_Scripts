@@ -632,19 +632,6 @@ def enable_drift_on_stacks2(ocredentials, fRegion, fStackName):
 	return (response)  # Since this is an async process, there is no response to send back
 
 
-def enable_drift_on_stack_set(ocredentials, fRegion, fStackSetName):
-	import boto3
-	import logging
-
-	session_cfn = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
-		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
-	client_cfn = session_cfn.client('cloudformation')
-	logging.info(f"Enabling drift detection on Stack {fStackSetName} in "
-	             f"Account {ocredentials['AccountNumber']} in region {fRegion}")
-	response = client_cfn.detect_stack_set_drift(StackSetName=fStackSetName)
-	return (response)  # Since this is an async process, there is no response to send back
-
-
 """
 Above - Generic functions
 Below - Specific functions to specific features
@@ -812,13 +799,13 @@ def find_org_services2(ocredentials, serviceNameList=None):
 	client_org = session_org.client('organizations')
 	EnabledOrgServicesList = []
 	FirstTime = True
-	response = {'nextToken': None}
-	while 'nextToken' in response.keys() or FirstTime:
+	response = {'NextToken': None}
+	while 'NextToken' in response.keys() or FirstTime:
 		if FirstTime:
 			response = client_org.list_aws_service_access_for_organization()
 			FirstTime = False
 		else:
-			response = client_org.describe_log_groups(nextToken=response['nextToken'])
+			response = client_org.list_aws_service_access_for_organization(NextToken=response['NextToken'])
 		EnabledOrgServicesList.extend(response['EnabledServicePrincipals'])
 	if 'all' in serviceNameList or 'All' in serviceNameList or 'ALL' in serviceNameList:
 		logging.info(f"Looking for all Org-Enabled services in account {ocredentials['AccountNumber']} from Region {ocredentials['Region']}\n"
@@ -3543,6 +3530,10 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 				if field not in result:
 					needed_space[field] = max(len(value['Heading']), needed_space[field])
 					continue
+				elif isinstance(result[field], bool):
+					# Recognizes the field as a Boolean, and finds the necessary amount of space to show that data, and assigns the length to "needed_space"
+					# I use "5" as the minimum space, to show that displaying "False" would take up 5 spaces...
+					needed_space[field] = max(5, len(value['Heading']), needed_space[field])
 				elif isinstance(result[field], int):
 					# This section is to compensate for the fact that the len of numbers in string format doesn't include the commas.
 					# I know - I've been very US-centric here, since I haven't figured out how to achieve this in a locale-agnostic way
@@ -3553,10 +3544,11 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 						num_width += len(str(result[field])) // 3
 					needed_space[field] = max(num_width, len(value['Heading']), needed_space[field])
 				elif isinstance(result[field], str):
+					# Recognizes the field as a string, and finds the necessary amount of space to show that data, and assigns the length to "needed_space"
 					needed_space[field] = max(len(result[field]), len(value['Heading']), needed_space[field])
 				elif isinstance(result[field], datetime):
 					# Recognizes the field as a date, and finds the necessary amount of string space to show that date, and assigns the length to "needed_space"
-					needed_space[field] = len(datetime.now().strftime('%x %X'))
+					needed_space[field] = max(len(result[field]), len(datetime.now().strftime('%x %X')))
 	except KeyError as my_Error:
 		logging.error(f"Error: {my_Error}")
 
@@ -3586,6 +3578,13 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 				print(f"{'':{data_format}} ", end='')
 			elif isinstance(result[field], str):
 				print(f"{Fore.RED if highlight else ''}{result[field]:{data_format}s}{Fore.RESET if highlight else ''} ", end='')
+			elif isinstance(result[field], bool):
+				# This is needed, otherwise it prints "0" for False and "1" for True... Essentially treating the bool like an integer.
+				if result[field]:
+					display_text = 'True'
+				else:
+					display_text = 'False'
+				print(f"{Fore.RED if highlight else ''}{display_text:{data_format}s}{Fore.RESET if highlight else ''} ", end='')
 			elif isinstance(result[field], int):
 				print(f"{Fore.RED if highlight else ''}{result[field]:<{data_format},}{Fore.RESET if highlight else ''} ", end='')
 			elif isinstance(result[field], float):
@@ -3609,7 +3608,6 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 					data_format = 0
 					if field not in result.keys():
 						result[field] = defaultAction
-					# This allows for a condition to highlight a specific value
 					if result[field] is None:
 						row += "|"
 					elif isinstance(result[field], str):
