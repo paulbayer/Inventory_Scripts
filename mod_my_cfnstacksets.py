@@ -92,7 +92,7 @@ pForce = args.Force
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 # Seems low, but this fits under the API threshold. Make it too high and it will not.
-DefaultMaxWorkerThreads = 5
+DefaultMaxWorkerThreads = 3
 
 
 ###################
