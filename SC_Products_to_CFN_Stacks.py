@@ -175,7 +175,7 @@ def find_account_stacksets(faws_acct, f_SCProducts, fRegion=None, fstacksetname=
 
 	AllSubnets = []
 	PlaceCount = 0
-	PlacesToLook = WorkerThreads = min(len(f_SCProducts), 50)
+	PlacesToLook = WorkerThreads = min(len(f_SCProducts), 10)
 
 	for x in range(WorkerThreads):
 		worker = CheckProducts(checkqueue)
