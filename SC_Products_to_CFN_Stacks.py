@@ -279,6 +279,9 @@ if pFragment is None:
 	while 'NextPageToken' in result.keys():
 		result = client_sc.search_products_as_admin()
 		prod_ids.extend(result['ProductViewDetails'])
+		if verbose < 50:
+			print(f"{ERASE_LINE}Found {len(result['ProductViewDetails'])} products | Total found: {len(prod_ids)}", end='\r')
+	print()
 	for product in prod_ids:
 		if product['ProductViewSummary']['Name'].find('Account-Vending-Machine') > 0:
 			AVM_prod_id = product['ProductViewSummary']['ProductId']
