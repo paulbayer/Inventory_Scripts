@@ -276,21 +276,23 @@ AVM_prod_id = None
 if pFragment is None:
 	result = client_sc.search_products_as_admin()
 	prod_ids = result['ProductViewDetails']
-	while 'NextPageToken' in result.keys() and 'NextPageToken'is not None:
-		result = client_sc.search_products_as_admin()
-		prod_ids.extend(result['ProductViewDetails'])
-		if verbose < 50:
-			print(f"{ERASE_LINE}Found {len(result['ProductViewDetails'])} products | Total found: {len(prod_ids)}", end='\r')
-	print()
+	# while 'NextPageToken' in result.keys() and 'NextPageToken' is not None:
+	# 	result = client_sc.search_products_as_admin()
+	# 	prod_ids.extend(result['ProductViewDetails'])
+	# 	if verbose < 50:
+	# 		print(f"{ERASE_LINE}Found {len(result['ProductViewDetails'])} products | Total found: {len(prod_ids)}", end='\r')
+	# print()
 	for product in prod_ids:
 		if product['ProductViewSummary']['Name'].find('Account-Vending-Machine') > 0:
 			AVM_prod_id = product['ProductViewSummary']['ProductId']
 elif pFragment is not None and not pExact:
 	result = client_sc.search_products_as_admin()
 	prod_ids = result['ProductViewDetails']
-	while 'NextPageToken' in result.keys() and 'NextPageToken' is not None:
-		result = client_sc.search_products_as_admin()
-		prod_ids.extend(result['ProductViewDetails'])
+	# while 'NextPageToken' in result.keys() and 'NextPageToken' is not None:
+	# 	result = client_sc.search_products_as_admin()
+	# 	prod_ids.extend(result['ProductViewDetails'])
+	# 	if verbose < 50:
+	# 		print(f"{ERASE_LINE}Found {len(result['ProductViewDetails'])} products | Total found: {len(prod_ids)}", end='\r')
 	for product in prod_ids:
 		if product['ProductViewSummary']['Name'].find(pFragment) > -1 or product['ProductViewSummary']['ProductId'].find(pFragment) > -1:
 			AVM_prod_id = product['ProductViewSummary']['ProductId']
