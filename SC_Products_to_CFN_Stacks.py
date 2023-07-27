@@ -263,7 +263,7 @@ SuspendedAccounts = []
 ClosedAccts = []
 
 # Creates AccountHistogram which tracks which accounts have SC Products built for them, and which do not.
-# The Historgram is initialized with ALL accounts and their status.
+# The Histogram is initialized with ALL accounts and their status.
 # It's then later overwritten with the count of how many SC Products relate to that account.
 # So the accounts which only have a status as their value - are missing the SC Product
 for account in aws_acct.ChildAccounts:
