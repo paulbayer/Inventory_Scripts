@@ -278,7 +278,7 @@ if pFragment is None:
 	prod_ids = result['ProductViewDetails']
 	while 'NextPageToken' in result.keys():
 		result = client_sc.search_products_as_admin()
-		prod_ids.extend = result['ProductViewDetails']
+		prod_ids.extend(result['ProductViewDetails'])
 	for product in prod_ids:
 		if product['ProductViewSummary']['Name'].find('Account-Vending-Machine') > 0:
 			AVM_prod_id = product['ProductViewSummary']['ProductId']
@@ -287,7 +287,7 @@ elif pFragment is not None and not pExact:
 	prod_ids = result['ProductViewDetails']
 	while 'NextPageToken' in result.keys():
 		result = client_sc.search_products_as_admin()
-		prod_ids.extend = result['ProductViewDetails']
+		prod_ids.extend(result['ProductViewDetails'])
 	for product in prod_ids:
 		if product['ProductViewSummary']['Name'].find(pFragment) > -1 or product['ProductViewSummary']['ProductId'].find(pFragment) > -1:
 			AVM_prod_id = product['ProductViewSummary']['ProductId']

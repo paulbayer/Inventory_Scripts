@@ -445,7 +445,7 @@ if pCheckAccount:
 			                             'RolesTried': my_creds['RolesTried']})
 	print()
 	logging.info(f"Found {len(InaccessibleAccounts) + len(RemovedAccounts)} accounts that don't belong")
-	print(f"There were {len(RemovedAccounts)} accounts found in the {len(StackSetNames['StackSets'])} Stacksets we looked through, that are not a part of the Organization")
+	print(f"There were {len(RemovedAccounts)} accounts in the {len(StackSetNames['StackSets'])} Stacksets we looked through, that are not a part of the Organization")
 	print(f"There are {len(InaccessibleAccounts)} accounts that appear inaccessible, using typical role names")
 	for item in RemovedAccounts:
 		print(f"Account {item} is not in the Organization")
