@@ -33,16 +33,19 @@ pManaged = args.aws_managed
 verbose = args.loglevel
 logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(""message)s")
 
-# Create an AWS Organizations client
-org_client = boto3.Session(profile_name=pProfile).client('organizations')
-ERASE_LINE = '\x1b[2K'
 if pTiming:
 	begin_time = time()
+print(f"Beginning to look through the Org in order to create the diagram")
+# Create an AWS Organizations client
+org_session = boto3.Session(profile_name=pProfile)
+org_client = org_session.client('organizations')
+ERASE_LINE = '\x1b[2K'
 
 root = org_client.list_roots()['Roots'][0]['Id']
+max_accounts_per_ou = 1
 account_fillcolor = 'orange'
 account_shape = 'ellipse'
-policy_fillcolor = 'azure'
+policy_fillcolor = 'azure'  # Pretty color - nothing to do with the Azure Cloud...
 policy_linecolor = 'red'
 policy_shape = 'hexagon'
 ou_fillcolor = 'burlywood'
@@ -57,6 +60,9 @@ TAG_POLICY
 """
 aws_policy_type_list = ['SERVICE_CONTROL_POLICY', 'TAG_POLICY', 'BACKUP_POLICY', 'AISERVICES_OPT_OUT_POLICY']
 #####################
+"""
+Function Definitions
+"""
 
 
 def round_up(number):
@@ -64,9 +70,16 @@ def round_up(number):
 
 
 def get_root_OUS(root_id):
+	AllChildOUs = []
 	try:
 		ChildOUs = org_client.list_children(ParentId=root_id, ChildType='ORGANIZATIONAL_UNIT')
-		return (ChildOUs['Children'])
+		AllChildOUs.extend(ChildOUs['Children'])
+		logging.info(f"Found {len(AllChildOUs)} children from parent {root_id}")
+		while 'NextToken' in ChildOUs.keys():
+			ChildOUs = org_client.list_children(ParentId=root_id, ChildType='ORGANIZATIONAL_UNIT', NextToken=ChildOUs['NextToken'])
+			AllChildOUs.extend(ChildOUs['Children'])
+			logging.info(f"Found {len(AllChildOUs)} children from parent {root_id}")
+		return (AllChildOUs)
 	except (org_client.exceptions.AccessDeniedException,
 	        org_client.exceptions.AWSOrganizationsNotInUseException,
 	        org_client.exceptions.InvalidInputException,
@@ -96,14 +109,19 @@ def traverse_ous_and_accounts(ou_id, dot):
 				dot.edge(ou_id, policy['Id'])
 
 	# Retrieve the accounts under the current OU
+	all_accounts = []
 	accounts = org_client.list_accounts_for_parent(ParentId=ou_id)
+	all_accounts.extend(accounts['Accounts'])
+	while 'NextToken' in accounts.keys():
+		accounts = org_client.list_accounts_for_parent(ParentId=ou_id, NextToken=accounts['NextToken'])
+		all_accounts.extend(accounts['Accounts'])
 
 	# Add the current OU as a node in the diagram, with the number of direct accounts it has under it
-	dot.node(ou_id, label=f"{ou_name} | {len(accounts['Accounts'])}\n{ou_id}", shape=ou_shape, style='filled', fillcolor=ou_fillcolor)
+	dot.node(ou_id, label=f"{ou_name} | {len(all_accounts)}\n{ou_id}", shape=ou_shape, style='filled', fillcolor=ou_fillcolor)
 
 	all_account_associated_policies = []
 	account_associated_policies = []
-	for account in accounts['Accounts']:
+	for account in all_accounts:
 		account_id = account['Id']
 		account_name = account['Name']
 		# Add the account as a node in the diagram
@@ -140,6 +158,7 @@ def traverse_ous_and_accounts(ou_id, dot):
 		child_ou_id = child_ou['Id']
 
 		# Recursively traverse the child OU and add edges to the diagram
+		# max_accounts_per_ou = max(len(all_accounts), max_accounts_per_ou)
 		traverse_ous_and_accounts(child_ou_id, dot)
 		dot.edge(ou_id, child_ou_id)
 
@@ -170,7 +189,36 @@ def create_policy_nodes(dot):
 			dot.node(policy_id, label=f"{policy_name}\n {policy_id} | {policy_type}", shape=policy_shape, color=policy_linecolor, style='filled', fillcolor=policy_fillcolor)
 
 
+def find_max_accounts_per_ou(ou_id, max_accounts=0):
+	all_accounts = []
+	accounts = org_client.list_accounts_for_parent(ParentId=ou_id)
+	all_accounts.extend(accounts['Accounts'])
+	while 'NextToken' in accounts.keys():
+		accounts = org_client.list_accounts_for_parent(ParentId=ou_id, NextToken=accounts['NextToken'])
+		all_accounts.extend(accounts['Accounts'])
+		logging.info(f"Found {len(all_accounts)} more accounts in ou {ou_id} - totaling {len(all_accounts)} accounts so far")
+	max_accounts = max(len(all_accounts), max_accounts)
+	return(max_accounts)
+
+
+def find_accounts_in_org():
+	all_accounts = []
+	org_accounts = org_client.list_accounts()
+	all_accounts.extend(org_accounts['Accounts'])
+	while 'NextToken' in org_accounts.keys():
+		org_accounts = org_client.list_accounts(NextToken=org_accounts['NextToken'])
+		all_accounts.extend(org_accounts['Accounts'])
+		logging.info(f"Finding another {len(org_accounts['Accounts'])}. Total accounts found: {len(all_accounts)}")
+	return(all_accounts)
+
+
+#####################################
 # Specify the AWS root organization ID
+all_org_accounts = find_accounts_in_org()
+if pPolicy:
+	print(f"Due to there being {len(all_org_accounts)} accounts in this Org, this process will likely take about {5+(len(all_org_accounts)/10)} seconds")
+else:
+	print(f"Due to there being {len(all_org_accounts)} accounts in this Org, this process will likely take about {5+(len(all_org_accounts)/10)} seconds")
 root_OUs = get_root_OUS(root)
 
 # Create a new Digraph object for the diagram
@@ -180,13 +228,18 @@ dot = Digraph('AWS Organization', format='png', comment="Organization Structure"
 if pPolicy:
 	create_policy_nodes(dot)
 # Call the function to traverse the OUs and accounts starting from the root
+print(f"Beginning to traverse OUs and draw the diagram... ")
 for ou in root_OUs:
 	traverse_ous_and_accounts(ou['Id'], dot)
-
+	max_accounts_per_ou = find_max_accounts_per_ou(ou['Id'], max_accounts_per_ou)
+if pTiming and pPolicy:
+	print(f"{Fore.GREEN}\tDrawing the Org structure when policies are included took {time()-begin_time:.2f} seconds{Fore.RESET}")
+elif pTiming:
+	print(f"{Fore.GREEN}\tDrawing the Org structure without policies took {time()-begin_time:.2f} seconds{Fore.RESET}")
 # Render the diagram to a PNG image
 # dot.render('aws_organization', view=True)
-dot_unflat = dot.unflatten(stagger=round_up(len(root_OUs)/5))
-dot_unflat.render('aws_organization2', view=True)
+dot_unflat = dot.unflatten(stagger=round_up(max_accounts_per_ou/5))
+dot_unflat.render('aws_organization', view=True)
 
 if pTiming:
 	print(f"{Fore.GREEN}\tThis script took {time()-begin_time:.2f} seconds{Fore.RESET}")
