@@ -3,6 +3,7 @@
 import sys
 import Inventory_Modules
 import boto3
+from Inventory_Modules import get_all_credentials
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 from colorama import init, Fore
@@ -10,12 +11,16 @@ from botocore.exceptions import ClientError
 import logging
 
 init()
-__version__ = "2023.05.04"
+__version__ = "2023.07.18"
 
 parser = CommonArguments()
 parser.singleprofile()
 parser.multiregion_nodefault()
+parser.extendedargs()
 parser.deletion()
+parser.rootOnly()
+parser.rolestouse()
+parser.timing()
 parser.verbosity()
 parser.version(__version__)
 parser.my_parser.add_argument(
@@ -31,13 +36,18 @@ parser.my_parser.add_argument(
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
-# AccountsToSkip = args.SkipAccounts
 pRegions = args.Regions
+pSkipAccounts = args.SkipAccounts
+pSkipProfiles = args.SkipProfiles
+pAccounts = args.Accounts
+pRootOnly = args.RootOnly
+pRolesToUse = args.AccessRoles
 verbose = args.loglevel
 DeletionRun = args.flagDelete
 # ForceDelete = args.ForceDelete
 ForceDelete = args.Force
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s")
+pTiming = args.Time
+logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s")
 
 ##########################
 ERASE_LINE = '\x1b[2K'
@@ -45,116 +55,120 @@ ERASE_LINE = '\x1b[2K'
 aws_acct = aws_acct_access(pProfile)
 
 NumObjectsFound = 0
-NumAccountsInvestigated = 0
-ChildAccounts = aws_acct.ChildAccounts
-
 session_gd = aws_acct.session
 # This check ensures that we're checking only those regions where GuardDuty is enabled.
 if pRegions is None:
-    gd_regions = session_gd.get_available_regions(service_name='guardduty')
-else:
-    gd_regions = Inventory_Modules.get_regions3(aws_acct, pRegions)
+    pRegions = ['all']
+gd_regions = Inventory_Modules.get_regions3(aws_acct, pRegions)
 all_gd_detectors = []
 all_gd_invites = []
 GD_Admin_Accounts = []
-print(f"Searching {len(ChildAccounts)} accounts and {len(gd_regions)} regions")
+
+AllCredentials = get_all_credentials(pProfile, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, gd_regions, pRolesToUse)
+RegionList = list(set([x['Region'] for x in AllCredentials]))
+AccountList = list(set([x['AccountId'] for x in AllCredentials]))
+print(f"Searching {len(AccountList)} accounts and {len(RegionList)} regions")
 
 sts_session = aws_acct.session
 sts_client = sts_session.client('sts')
-places_to_try = len(ChildAccounts) * len(gd_regions)
-for account in ChildAccounts:
-    logging.info(f"Checking Account: {account['AccountId']}")
-    NumProfilesInvestigated = 0  # I only care about the last run - so I don't get profiles * regions.
+places_to_try = len(AllCredentials)
+for credential in AllCredentials:
+    logging.info(f"Checking Account: {credential['AccountId']}")
+    # try:
+    #     account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'])
+    # except ClientError as my_Error:
+    #     if str(my_Error).find("AuthFailure") > 0:
+    #         print(f"Authorization Failure for account {account['AccountId']}")
+    #     sys.exit("Credentials failure")
+    # for region in gd_regions:
+    logging.info(f"Checking Region: {credential['Region']}")
+    places_to_try -= 1
     try:
-        account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'])
+        session_aws = boto3.Session(
+            aws_access_key_id=credential['AccessKeyId'],
+            aws_secret_access_key=credential['SecretAccessKey'],
+            aws_session_token=credential['SessionToken'],
+            region_name=credential['Region'])
+        client_aws = session_aws.client('guardduty')
+        logging.debug(f"Token Info: {credential} in region {credential['Region']}")
+        # List Invitations
+        logging.info(f"Finding any invites for account: {credential['AccountId']} in region {credential['Region']}")
+        response = client_aws.list_invitations()
+        logging.debug(f"Finished listing invites for account: {credential['AccountId']} in region {credential['Region']}")
     except ClientError as my_Error:
         if str(my_Error).find("AuthFailure") > 0:
-            print(f"Authorization Failure for account {account['AccountId']}")
-        sys.exit("Credentials failure")
-    for region in gd_regions:
-        logging.info(f"Checking Region: {region}")
-        NumAccountsInvestigated += 1
-        places_to_try -= 1
-        try:
-            session_aws = boto3.Session(
-                aws_access_key_id=account_credentials['AccessKeyId'],
-                aws_secret_access_key=account_credentials['SecretAccessKey'],
-                aws_session_token=account_credentials['SessionToken'],
-                region_name=region)
-            client_aws = session_aws.client('guardduty')
-            logging.debug(f"Token Info: {account_credentials} in region {region}")
-            # List Invitations
-            logging.info(f"Finding any invites for account: {account} in region {region}")
-            response = client_aws.list_invitations()
-            logging.debug(f"Finished listing invites for account: {account} in region {region}")
-        except ClientError as my_Error:
-            if str(my_Error).find("AuthFailure") > 0:
-                print(f"{account['AccountId']}: Authorization Failure for account {account['AccountId']}")
-                continue
-            if str(my_Error).find("security token included in the request is invalid") > 0:
-                logging.error(
-                    f"Account #:{account['AccountId']} - The region you're trying ({region}) isn't enabled for your "
-                    f"account")
-                continue
-        except Exception as my_Error:
-            print(my_Error)
+            print(f"{credential['AccountId']}: Authorization Failure for account {credential['AccountId']}")
             continue
-        try:
-            if 'Invitations' in response.keys():
-                for i in range(len(response['Invitations'])):
-                    all_gd_invites.append({
-                        'AccountId': response['Invitations'][i]['AccountId'],
-                        'InvitationId': response['Invitations'][i]['InvitationId'],
-                        'Region': region,
-                        'AccessKeyId': account_credentials['AccessKeyId'],
-                        'SecretAccessKey': account_credentials['SecretAccessKey'],
-                        'SessionToken': account_credentials['SessionToken']
-                    })
-                    logging.error(f"Found invite ID {response['Invitations'][i]['InvitationId']} in account {response['Invitations'][i]['AccountId']} in region {region}")
-        except NameError:
-            pass
-        try:
-            print(
-                f"{ERASE_LINE}Trying account {account['AccountId']} in region {region} -- {places_to_try} left of {len(ChildAccounts) * len(gd_regions)}",
-                end='\r')
-            response = client_aws.list_detectors()
-            if len(response['DetectorIds']) > 0:
-                NumObjectsFound = NumObjectsFound + len(response['DetectorIds'])
-                admin_acct_response = client_aws.list_members(
-                    DetectorId=str(response['DetectorIds'][0]),
-                    OnlyAssociated='False',
-                )
-                logging.warning(
-                    f"Found another detector {str(response['DetectorIds'][0])} in account {account['AccountId']} in region {region} bringing the total found to {str(NumObjectsFound)}")
-                if len(admin_acct_response['Members']) > 0:
-                    all_gd_detectors.append({
-                        'AccountId': account['AccountId'],
-                        'Region': region,
-                        'DetectorIds': response['DetectorIds'],
-                        'AccessKeyId': account_credentials['AccessKeyId'],
-                        'SecretAccessKey': account_credentials['SecretAccessKey'],
-                        'SessionToken': account_credentials['SessionToken'],
-                        'GD_Admin_Accounts': admin_acct_response['Members']
-                    })
-                    logging.error(f"Found account {account['AccountId']} in region {region} to be a GuardDuty Admin account."
-                                  f"It has {len(admin_acct_response['Members'])} member accounts connected to detector {response['DetectorIds'][0]}")
-                else:
-                    all_gd_detectors.append({
-                        'AccountId': account['AccountId'],
-                        'Region': region,
-                        'DetectorIds': response['DetectorIds'],
-                        'AccessKeyId': account_credentials['AccessKeyId'],
-                        'SecretAccessKey': account_credentials['SecretAccessKey'],
-                        'SessionToken': account_credentials['SessionToken'],
-                        'GD_Admin_Accounts': "Not an Admin Account"
-                    })
+        if str(my_Error).find("security token included in the request is invalid") > 0:
+            logging.error(f"Account #:{credential['AccountId']} - The region you're trying '{credential['Region']}' isn't enabled for your account")
+            continue
+    except Exception as my_Error:
+        print(my_Error)
+        continue
+    try:
+        if 'Invitations' in response.keys():
+            for i in range(len(response['Invitations'])):
+                all_gd_invites.append({
+                    'AccountId': response['Invitations'][i]['AccountId'],
+                    'InvitationId': response['Invitations'][i]['InvitationId'],
+                    'Region': credential['Region'],
+                    'AccessKeyId': credential['AccessKeyId'],
+                    'SecretAccessKey': credential['SecretAccessKey'],
+                    'SessionToken': credential['SessionToken']
+                })
+                logging.error(f"Found invite ID {response['Invitations'][i]['InvitationId']} in account {response['Invitations'][i]['AccountId']} in region {credential['Region']}")
+    except NameError:
+        pass
+    try:
+        print(
+            f"{ERASE_LINE}Trying account {credential['AccountId']} in region {credential['Region']} -- {places_to_try} left of {len(AllCredentials)}",
+            end='\r')
+        response = client_aws.list_detectors()
+        if len(response['DetectorIds']) > 0:
+            NumObjectsFound = NumObjectsFound + len(response['DetectorIds'])
+            admin_acct_response = client_aws.list_members(
+                DetectorId=str(response['DetectorIds'][0]),
+                OnlyAssociated='False',
+            )
+            logging.warning(
+                f"Found another detector {str(response['DetectorIds'][0])} in account {credential['AccountId']} in region {credential['Region']} bringing the total found to {str(NumObjectsFound)}")
+            if len(admin_acct_response['Members']) > 0:
+                all_gd_detectors.append({
+                    'AccountId': credential['AccountId'],
+                    'Region': credential['Region'],
+                    'DetectorIds': response['DetectorIds'],
+                    'AccessKeyId': credential['AccessKeyId'],
+                    'SecretAccessKey': credential['SecretAccessKey'],
+                    'SessionToken': credential['SessionToken'],
+                    'GD_Admin_Accounts': admin_acct_response['Members']
+                })
+                logging.error(f"Found account {credential['AccountId']} in region {credential['Region']} to be a GuardDuty Admin account."
+                              f"It has {len(admin_acct_response['Members'])} member accounts connected to detector {response['DetectorIds'][0]}")
             else:
-                print(ERASE_LINE,
-                      f"{Fore.RED}No luck in account: {account['AccountId']} in region {region}{Fore.RESET} -- {places_to_try} of {len(ChildAccounts) * len(gd_regions)}",
-                      end='\r')
-        except ClientError as my_Error:
-            if str(my_Error).find("AuthFailure") > 0:
-                print(f"Authorization Failure for account {account['AccountId']}")
+                all_gd_detectors.append({
+                    'AccountId': credential['AccountId'],
+                    'Region': credential['Region'],
+                    'DetectorIds': response['DetectorIds'],
+                    'AccessKeyId': credential['AccessKeyId'],
+                    'SecretAccessKey': credential['SecretAccessKey'],
+                    'SessionToken': credential['SessionToken'],
+                    'GD_Admin_Accounts': "Not an Admin Account"
+                })
+        else:
+            print(ERASE_LINE,
+                  f"{Fore.RED}No luck in account: {credential['AccountId']} in region {credential['Region']}{Fore.RESET} -- {places_to_try} of {len(AllCredentials)}",
+                  end='\r')
+    except ClientError as my_Error:
+        if str(my_Error).find("AuthFailure") > 0:
+            print(f"Authorization Failure for account {credential['AccountId']}")
+
+display_dict = {'ParentProfile': {'DisplayOrder': 1, 'Heading': 'Parent Profile'},
+                'MgmtAccount'  : {'DisplayOrder': 2, 'Heading': 'Mgmt Acct'},
+                'AccountId'    : {'DisplayOrder': 3, 'Heading': 'Acct Number'},
+                'Region'       : {'DisplayOrder': 4, 'Heading': 'Region', 'Condition': ['us-east-2']},
+                'DetectorIds'    : {'DisplayOrder': 5, 'Heading': 'DetectorId', 'Condition': ['Never']},
+                'DG_Admin_Accpunts'         : {'DisplayOrder': 7, 'Heading': 'CW Log Name'},
+                'Size'         : {'DisplayOrder': 6, 'Heading': 'Size (Bytes)'}}
 
 if args.loglevel < 50:
     print()
@@ -175,10 +189,8 @@ if args.loglevel < 50:
                     all_gd_detectors[i]['DetectorIds'], "Not an Admin Account"))
 
 print(ERASE_LINE)
-print(
-    f"We scanned {len(ChildAccounts)} accounts and {len(gd_regions)} regions totalling {len(ChildAccounts) * len(gd_regions)} possible areas for resources.")
-print(f"Found {len(all_gd_invites)} Invites across {len(ChildAccounts)} accounts across {len(gd_regions)} regions")
-print(f"Found {NumObjectsFound} Detectors across {len(ChildAccounts)} profiles across {len(gd_regions)} regions")
+print(f"We scanned {len(AccountList)} accounts and {len(RegionList)} regions totalling {len(AllCredentials)} possible areas for resources.")
+print(f"Found {len(all_gd_invites)} Invites and {NumObjectsFound} Detectors")
 print()
 
 if DeletionRun and not ForceDelete:
@@ -263,3 +275,4 @@ elif not DeletionRun or (DeletionRun and not ReallyDelete):
 
 print()
 print("Thank you for using this tool")
+print()

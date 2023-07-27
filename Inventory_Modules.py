@@ -3657,7 +3657,7 @@ def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=None, fSkip
 		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, RoleList, fTiming))
 	else:
 		ProfileList = get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
-		print(f"{ERASE_LINE}{Fore.GREEN}Finding {len(ProfileList)} profiles has taken {time() - begin_time:.2f} seconds{Fore.RESET}") if fTiming else None
+		# print(f"{ERASE_LINE}{Fore.GREEN}Finding {len(ProfileList)} profiles has taken {time() - begin_time:.2f} seconds{Fore.RESET}") if fTiming else None
 
 		logging.warning(f"These profiles are being checked {ProfileList}.")
 		print("Getting Accounts to check: ", end='')
@@ -3777,13 +3777,13 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 	logging.info(f"You asked to check {len(ChildAccounts) * len(fregions)} place{'s' if len(ChildAccounts) * len(fregions) > 1 else ''}... It's going to take a moment")
 	logging.debug(f"{Fore.GREEN}It's taken {time() - begin_time:.2f} seconds to prep WorkerThreads and such{Fore.RESET}") if fTiming else None
 	for account in ChildAccounts:
-		AccountNum += 1
 		if account['AccountId'] in fSkipAccounts:
 			continue
 		elif fRootOnly and not account['AccountId'] == account['MgmtAccount']:
 			continue
 		elif accountlist and account['AccountId'] not in accountlist:
 			continue
+		AccountNum += 1
 		logging.info(f"Queuing account info for {AccountNum} / {len(ChildAccounts)} accounts in profile {fprofile}")
 		RegionNum = 0
 		for region in fregions:
@@ -3791,7 +3791,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 			logging.info(f"\t\tRegion {RegionNum} of {len(fregions)}")
 			credqueue.put((account, fprofile, region))
 			logging.info(f"Account / Region: {account} / {region} | {datetime.now()}")
-	print(f"{Fore.GREEN}Enumerating {len(ChildAccounts) * len(fregions)} account{'s' if len(ChildAccounts) * len(fregions) > 1 else ''} and regions "
+	print(f"{Fore.GREEN}Enumerating {AccountNum} account{'s' if len(ChildAccounts) * len(fregions) > 1 else ''} and {len(fregions)} regions "
 	      f"took {time() - begin_time:.3f} seconds {Fore.RESET}") if fTiming else None
 	credqueue.join()
 	return (AllCreds)
