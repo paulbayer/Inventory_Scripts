@@ -276,7 +276,7 @@ AVM_prod_id = None
 if pFragment is None:
 	result = client_sc.search_products_as_admin()
 	prod_ids = result['ProductViewDetails']
-	while 'NextPageToken' is not None:
+	while 'NextPageToken' in result.keys() and 'NextPageToken'is not None:
 		result = client_sc.search_products_as_admin()
 		prod_ids.extend(result['ProductViewDetails'])
 		if verbose < 50:
@@ -288,7 +288,7 @@ if pFragment is None:
 elif pFragment is not None and not pExact:
 	result = client_sc.search_products_as_admin()
 	prod_ids = result['ProductViewDetails']
-	while 'NextPageToken' is not None:
+	while 'NextPageToken' in result.keys() and 'NextPageToken' is not None:
 		result = client_sc.search_products_as_admin()
 		prod_ids.extend(result['ProductViewDetails'])
 	for product in prod_ids:
