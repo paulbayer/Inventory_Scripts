@@ -14,7 +14,7 @@ from botocore.exceptions import ClientError
 import logging
 
 init()
-__version__ = "2023.05.31"
+__version__ = "2023.08.09"
 
 parser = CommonArguments()
 parser.singleprofile()
@@ -148,21 +148,27 @@ if verbose < 50:
 			CTSummary[trail['AccountId']][trail['Region']].append({'TrailName': trail['TrailName'], 'Bucket': trail['Bucket'], 'OrgTrail': trail['OrgTrail']})
 print()
 
-display_dict = {'AccountId'  : {'Format': '15s', 'DisplayOrder': 2, 'Heading': 'Account Number'},
-				'MgmtAccount': {'Format': '15s', 'DisplayOrder': 1, 'Heading': 'Parent Acct'},
-				'Region'     : {'Format': '15s', 'DisplayOrder': 3, 'Heading': 'Region'},
-				'TrailName'  : {'Format': '40s', 'DisplayOrder': 4, 'Heading': 'Trail Name'},
-				'OrgTrail'   : {'Format': '15s', 'DisplayOrder': 5, 'Heading': 'Org Trail?'},
-				'Bucket'     : {'Format': '20s', 'DisplayOrder': 6, 'Heading': 'S3 Bucket'}}
+display_dict = {'AccountId'  : {'DisplayOrder': 2, 'Heading': 'Account Number'},
+				'MgmtAccount': {'DisplayOrder': 1, 'Heading': 'Parent Acct'},
+				'Region'     : {'DisplayOrder': 3, 'Heading': 'Region'},
+				'TrailName'  : {'DisplayOrder': 4, 'Heading': 'Trail Name'},
+				'OrgTrail'   : {'DisplayOrder': 5, 'Heading': 'Trail Type'},
+				'Bucket'     : {'DisplayOrder': 6, 'Heading': 'S3 Bucket'}}
 sorted_Results = sorted(TrailsFound, key=lambda d: (d['MgmtAccount'], d['AccountId'], d['Region'], d['TrailName']))
 ProblemAccountsandRegions.sort()
 display_results(sorted_Results, display_dict, "None", pSaveFilename)
 
-print(f"These accounts were skipped - as requested: {pSkipAccounts}")
-print(f"There were {len(ProblemAccountsandRegions)} accounts and regions that didn't seem to have a CloudTrail associated: \n")
-for item in ProblemAccountsandRegions:
-	print(item)
-print()
+if pSkipAccounts is not None:
+	print(f"These accounts were skipped - as requested: {pSkipAccounts}")
+if pSkipProfiles is not None:
+	print(f"These profiles were skipped - as requested: {pSkipProfiles}")
+if len(ProblemAccountsandRegions) > 0:
+	print(f"There were {len(ProblemAccountsandRegions)} accounts and regions that didn't seem to have a CloudTrail associated: \n")
+	for item in ProblemAccountsandRegions:
+		print(item)
+	print()
+else:
+	print(f"All accounts and regions checked seem to have a CloudTrail associated")
 if verbose < 50:
 	print(f"We found {ExtraCloudTrails} extra cloud trails in use")
 	print(f"Which is silly because we have an Org Trail enabled for the whole Organization") if OrgTrailInUse else ''
