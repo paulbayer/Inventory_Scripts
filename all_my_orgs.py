@@ -22,10 +22,10 @@ parser.verbosity()
 parser.version(__version__)
 
 parser.my_parser.add_argument(
-	'-s', '--q', '--short',
+	'-s', '-q', '--short',
 	help="Display only brief listing of the profile accounts, and not the Child Accounts under them",
 	action="store_const",
-	dest="shortform",
+	dest="pShortform",
 	const=True,
 	default=False)
 parser.my_parser.add_argument(
@@ -43,7 +43,7 @@ pSkipAccounts = args.SkipAccounts
 pSkipProfiles = args.SkipProfiles
 verbose = args.loglevel
 pSaveFilename = args.Filename
-shortform = args.shortform
+pShortform = args.pShortform
 pAccountList = args.accountList
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(processName)s %(threadName)s %(funcName)20s() ] %(message)s")
 
@@ -61,8 +61,8 @@ TODO:
 
 ##################
 
-def main():
-	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=pSkipProfiles, fprofiles=pProfiles)
+def main(fProfiles, fSkipProfiles, fAccountList, fTiming, fRootOnly, fSaveFilename, fShortform):
+	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
 	# print("Capturing info for supplied profiles")
 	logging.warning(f"These profiles are being checked {ProfileList}.")
 	print(f"Please bear with us as we run through {len(ProfileList)} profiles")
@@ -71,7 +71,7 @@ def main():
 	# Rather than even try to determine if a root account is using ALZ, I've just removed it. I'll take out the column eventually.
 	landing_zone = 'N/A'
 
-	if pTiming:
+	if fTiming:
 		print()
 		print(f"It's taken {Fore.GREEN}{time() - begin_time:.2f}{Fore.RESET} seconds to find profile accounts...")
 		print()
@@ -83,7 +83,7 @@ def main():
 	for item in AllProfileAccounts:
 		# Print results for all profiles
 		try:
-			if pRootOnly and not item['RootAcct']:
+			if fRootOnly and not item['RootAcct']:
 				continue
 			else:
 				# display_results(item)
@@ -107,12 +107,12 @@ def main():
 	print(ERASE_LINE)
 	print("-------------------")
 
-	if not shortform:
+	if not fShortform:
 		NumOfOrgAccounts = 0
 		ClosedAccounts = []
 		FailedAccounts = 0
 		account = dict()
-		if pSaveFilename is None:
+		if fSaveFilename is None:
 			fmt = '%-23s %-15s %-6s'
 			child_fmt = "\t\t%-20s %-20s %-20s"
 			print()
@@ -139,14 +139,14 @@ def main():
 					FailedAccounts += 1
 					continue
 
-		elif pSaveFilename is not None:
+		elif fSaveFilename is not None:
 			# The user specified a file name, which means they want a (pipe-delimited) CSV file with the relevant output.
 			display_dict = {'MgmtAccount'  : {'DisplayOrder': 1, 'Heading': 'Parent Acct'},
 			                'AccountId'    : {'DisplayOrder': 2, 'Heading': 'Account Number'},
 			                'AccountStatus': {'DisplayOrder': 3, 'Heading': 'Account Status', 'Condition': ['SUSPENDED', 'CLOSED']},
 			                'AccountEmail' : {'DisplayOrder': 4, 'Heading': 'Email'}}
 			sorted_Results = sorted(AllProfileAccounts, key=lambda d: (d['MgmtAccount'], d['AccountId']))
-			display_results(sorted_Results, display_dict, "None", pSaveFilename)
+			display_results(sorted_Results, display_dict, "None", fSaveFilename)
 
 		StandAloneAccounts = [x['AccountId'] for x in AccountList if x['MgmtAccount'] == x['AccountId'] and x['AccountEmail'] == 'Not an Org Management Account']
 		FailedProfiles = [i['profile'] for i in AllProfileAccounts if not i['Success']]
@@ -174,17 +174,17 @@ def main():
 		# The user specified "short-form" which means they don't want any information on child accounts.
 		pass
 
-	if pAccountList is not None:
+	if fAccountList is not None:
 		for acct in AccountList:
-			if acct['AccountId'] in pAccountList:
+			if acct['AccountId'] in fAccountList:
 				print("Found the requested account number:")
 				print(f"Profile: {acct['Profile']} | Org: {acct['MgmtAccount']} | Account: {acct['AccountId']} | Status: {acct['AccountStatus']} | Email: {acct['AccountEmail']}")
 
 	print()
-	if pTiming:
+	if fTiming:
 		print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 	print("Thanks for using this script")
 	print()
 
 if __name__ == '__main__':
-	main()
+	main(pProfiles, pSkipProfiles, pAccountList, pTiming, pRootOnly, pSaveFilename, pShortform)
