@@ -47,9 +47,6 @@ pShortform = args.pShortform
 pAccountList = args.accountList
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(processName)s %(threadName)s %(funcName)20s() ] %(message)s")
 
-if pTiming:
-	begin_time = time()
-
 ERASE_LINE = '\x1b[2K'
 
 """
@@ -59,9 +56,12 @@ TODO:
 	This will be difficult, since we don't know which profile that belongs to. Hmmm...
 """
 
+
 ##################
 
-def main(fProfiles, fSkipProfiles, fAccountList, fTiming, fRootOnly, fSaveFilename, fShortform):
+def all_my_orgs(fProfiles, fSkipProfiles, fAccountList, fTiming, fRootOnly, fSaveFilename, fShortform):
+	if fTiming:
+		begin_time = time()
 	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
 	# print("Capturing info for supplied profiles")
 	logging.warning(f"These profiles are being checked {ProfileList}.")
@@ -94,6 +94,9 @@ def main(fProfiles, fSkipProfiles, fAccountList, fTiming, fRootOnly, fSaveFilena
 		except TypeError as my_Error:
 			print(f"Error - {my_Error} on {item}")
 			pass
+	FailedProfiles = [i['profile'] for i in AllProfileAccounts if not i['Success']]
+	OrgsFound = [i['MgmtAcct'] for i in AllProfileAccounts if i['RootAcct']]
+
 	'''
 	If I create a dictionary from the Root Accts and Root Profiles Lists - 
 	I can use that to determine which profile belongs to the root user of my (child) account.
@@ -119,6 +122,7 @@ def main(fProfiles, fSkipProfiles, fAccountList, fTiming, fRootOnly, fSaveFilena
 			print(fmt % ("Organization's Profile", "Root Account", "ALZ"))
 			print(fmt % ("----------------------", "------------", "---"))
 			for item in AllProfileAccounts:
+				# AllProfileAccounts holds the list of account class objects of the accounts associated with the profiles it found.
 				if item['Success'] and not item['RootAcct']:
 					account.update(item['aws_acct'].ChildAccounts[0])
 					account.update({'Profile': item['profile']})
@@ -129,7 +133,7 @@ def main(fProfiles, fSkipProfiles, fAccountList, fTiming, fRootOnly, fSaveFilena
 						account.update({'Profile': item['profile']})
 						AccountList.append(account.copy())
 					NumOfOrgAccounts += len(item['aws_acct'].ChildAccounts)
-					print(f"{item['profile']:23s}{Style.BRIGHT} {item['MgmtAcct']:15s}{Style.RESET_ALL} {Fore.RED if landing_zone else Fore.RESET}{landing_zone}{Fore.RESET}")
+					print(f"{item['profile']:23s}{Style.BRIGHT} {item['MgmtAcct']:15s}{Style.RESET_ALL} {Fore.RED if landing_zone else Fore.RESET}{landing_zone:6s}{Fore.RESET}")
 					print(f"\t\t{'Child Account Number':20s} {'Child Account Status':20s} {'Child Email Address':20s}")
 					for child_acct in item['aws_acct'].ChildAccounts:
 						print(f"\t\t{Fore.RED if not child_acct['AccountStatus'] == 'ACTIVE' else ''}{child_acct['AccountId']:20s} {child_acct['AccountStatus']:20s} {child_acct['AccountEmail']:20s}{Fore.RESET if not child_acct['AccountStatus'] == 'ACTIVE' else ''}")
@@ -170,8 +174,16 @@ def main(fProfiles, fSkipProfiles, fAccountList, fTiming, fRootOnly, fSaveFilena
 			print(f"The following profiles failed: {FailedProfiles}")
 			print("----------------------")
 		print()
+		return_response = {'OrgsFound'         : OrgsFound,
+		                   'StandAloneAccounts': StandAloneAccounts,
+		                   'ClosedAccounts'    : ClosedAccounts,
+		                   'FailedProfiles'    : FailedProfiles,
+		                   'AccountList'       : AccountList}
 	else:
 		# The user specified "short-form" which means they don't want any information on child accounts.
+		return_response = {'OrgsFound'         : OrgsFound,
+		                   'FailedProfiles'    : FailedProfiles,
+		                   'AllProfileAccounts': AllProfileAccounts}
 		pass
 
 	if fAccountList is not None:
@@ -185,6 +197,8 @@ def main(fProfiles, fSkipProfiles, fAccountList, fTiming, fRootOnly, fSaveFilena
 		print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 	print("Thanks for using this script")
 	print()
+	return (return_response)
+
 
 if __name__ == '__main__':
-	main(pProfiles, pSkipProfiles, pAccountList, pTiming, pRootOnly, pSaveFilename, pShortform)
+	all_my_orgs(pProfiles, pSkipProfiles, pAccountList, pTiming, pRootOnly, pSaveFilename, pShortform)
