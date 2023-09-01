@@ -39,6 +39,15 @@ parameters1 = {
 	'pSaveFilename': None,
 	'pShortform'   : False,
 	'pverbose'     : 50}
+RootOnlyParams = {
+	'pProfiles'    : ['LZRoot'],
+	'pSkipProfiles': [],
+	'pAccountList' : [],
+	'pTiming'      : True,
+	'pRootOnly'    : True,
+	'pSaveFilename': None,
+	'pShortform'   : False,
+	'pverbose'     : 50}
 list_accounts_test_data1 = {
 	'Accounts' : [
 		{
@@ -173,9 +182,10 @@ list_accounts_test_data1 = {
 
 
 @pytest.mark.parametrize(
-	"test_value, parameters",
+	"parameters,test_value",
 	[
-		(list_accounts_test_data1, parameters1),
+		(parameters1, list_accounts_test_data1),
+		(RootOnlyParams, list_accounts_test_data1),
 		# str(1993),
 		# json.dumps({"SecretString": "my-secret"}),
 		# json.dumps([2, 3, 5, 7, 11, 13, 17, 19]),
@@ -183,7 +193,7 @@ list_accounts_test_data1 = {
 		# ValueError("Oh my goodness you even have the guts to repeat it!!!"),
 	],
 )
-def test_get_account_data(test_value, parameters, mocker):
+def test_get_account_data(parameters, test_value, mocker):
 	pProfiles = parameters['pProfiles']
 	pSkipProfiles = parameters['pSkipProfiles']
 	pAccountList = parameters['pAccountList']
