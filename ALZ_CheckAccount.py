@@ -66,7 +66,7 @@ args = parser.my_parser.parse_args()
 
 Quick = args.Quick
 pProfile = args.Profile
-pChildAccountId = args.pChildAccountId
+pChildAccountId = args.pChildAccountList
 verbose = args.loglevel
 pRole = args.Role
 FixRun = args.FixRun

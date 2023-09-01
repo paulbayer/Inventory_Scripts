@@ -65,7 +65,7 @@ pSkipAccounts = args.SkipAccounts
 pTiming = args.Time
 verbose = args.loglevel
 pAccessRole = args.AccessRole
-pChildAccountId = args.Accounts
+pChildAccountList = args.Accounts
 FixRun = args.FixRun
 pExplain = args.pExplain
 pVPCConfirm = args.Force
@@ -77,86 +77,7 @@ def intersection(lst1, lst2):
 	return lst3
 
 
-aws_acct = aws_acct_access(pProfile)
-if not aws_acct.Success:
-	logging.error(f"Error: {aws_acct.ErrorType}")
-	sys.exit(9)
-
-if Quick:
-	RegionList = ['us-east-1']
-else:
-	# Control Tower now published its regions.
-	GlobalRegionList = Inventory_Modules.get_service_regions('controltower', faws_acct=aws_acct)
-	AllowedRegionList = Inventory_Modules.get_regions3(aws_acct, pRegions)
-	RegionList = intersection(GlobalRegionList, AllowedRegionList)
-
-ERASE_LINE = '\x1b[2K'
-
-ExplainMessage = """
-Objective: This script aims to identify issues and make it easier to "adopt" an existing account into a Control Tower environment.
-
-0. The targeted account MUST allow the Management account access into the Child IAM role called "AWSControlTowerExecution" or another coded role, so that we have access to do read-only operations (by default).
-0a. There must be an "AWSControlTowerExecution" role present in the account so that StackSets can assume it and deploy stack instances. This role must trust the Organizations Management account or at least the necessary Lambda functions.
-** TODO ** - update the JSON to be able to update the role to ensure it trusts the least privileged roles from management account, instead of the whole account.
-0b. STS must be active in all regions checked. You can check from the Account Settings page in IAM. Since we're using STS to connect to the account from the Management, this requirement is checked by successfully completing step 0.
-
-1. We're using this step to check to see if your Org has Config Service enabled at the Org level.
-
-2. There must be no active config channel and recorder in the account as “there can be only one” of each. 
-	This must also be deleted via CLI, not console, switching config off in the console is NOT good enough and just disables it. To Delete the delivery channel and the configuration recorder (can be done via CLI and Python script only):
-aws configservice describe-delivery-channels
-aws configservice describe-delivery-channel-status
-aws configservice describe-configuration-recorders
-aws configservice stop-configuration-recorder --configuration-recorder-name <NAME-FROM-DESCRIBE-OUTPUT>
-aws configservice delete-delivery-channel --delivery-channel-name <NAME-FROM-DESCRIBE-OUTPUT>
-aws configservice delete-configuration-recorder --configuration-recorder-name <NAME-FROM-DESCRIBE-OUTPUT
-
-3. The account must not have a Cloudtrail Trail name with 'ControlTower' in the name ("aws-controltower-BaselineCloudTrail")
-
-4. The account must not have a pending guard duty invite. You can check from the Guard Duty Console
-
-5. The account must be part of the Organization and the email address being entered into the CT parameters must match the account. 
-	If you try to add an email from an account which is not part of the Org, you will get an error that you are not using a unique email address. If it’s part of the Org, CT just finds the account and uses the CFN roles.
-** TODO ** - If the existing account will be a child account in the Organization, use the Account Factory and enter the appropriate email address.
-
-6. The existing account can not be in any of the CT-managed Organizations OUs. By default, these OUs are Core and Applications, but the customer may have chosen different or additional OUs to manage by CT.
--- not yet implemented --
-
-7. SNS topics name containing "ControlTower"
-8. Lambda Functions name containing "ControlTower"
-9. Role name containing "ControlTower"
-Bucket created for AWS Config -- not yet implemented
-SNS topic created for AWS Config -- not yet implemented
-10. CloudWatch Log group containing "aws-controltower/CloudTrailLogs" -- not yet implemented --
-"""
-
-if pExplain:
-	print(ExplainMessage)
-	sys.exit("Exiting after Script Explanation...")
-
-if pTiming:
-	begin_time = time()
-
-logging.info(f"Confirming that this profile {pProfile} represents a Management Account")
-
-if aws_acct.AccountType.lower() == 'root' and pChildAccountId is None:
-	# Creates a list of the account numbers in the Org.
-	ChildAccountList = [d['AccountId'] for d in aws_acct.ChildAccounts]
-	print(f"Since you didn't specify a specific account, we'll check all {len(aws_acct.ChildAccounts)} accounts in the Org.")
-elif aws_acct.AccountType.lower() == 'root' and pChildAccountId is not None:
-	print(f"Account {aws_acct.acct_number} is a {aws_acct.AccountType} account.\n"
-	      f"We're specifically checking to validate that account{'' if len(pChildAccountId) == 1 else 's'} {pChildAccountId} can be adopted into the Landing Zone")
-	ChildAccountList = pChildAccountId
-else:
-	sys.exit(f"Account {aws_acct.acct_number} is a {aws_acct.AccountType} account.\n"
-	         f" This script should be run with Management Account credentials.")
-
-print()
-
-# Step 0 -
-# 0. The Child account MUST allow the Management account access into the Child IAM role called "AWSControlTowerExecution"
-
-if verbose < 50:
+def explain_script():
 	print("This script does the following... ")
 	print(f"{Fore.BLUE}  0.{Fore.RESET} Checks to ensure you have the necessary cross-account role access to the child account.")
 	print(f"{Fore.BLUE}  1.{Fore.RESET} This check previously checked for default VPCs, but has since been removed.")
@@ -164,8 +85,6 @@ if verbose < 50:
 	print(f"     to see if there's already a {Fore.RED}Config Recorder and Delivery Channel {Fore.RESET}enabled...")
 	print(f"{Fore.BLUE}  3.{Fore.RESET} Checks that there isn't a duplicate {Fore.RED}CloudTrail{Fore.RESET} trail in the account.")
 	print(f"{Fore.BLUE}  4.{Fore.RESET} This check previously checked for the presence of GuardDuty within this account, but has since been removed.")
-	# print(Fore.BLUE+"  4."+Fore.RESET+" Checks to see if "+Fore.RED+"GuardDuty"+Fore.RESET+" has been enabled for this child account.")
-	# print("     If it has been, it needs to be deleted before we can adopt this new account into the Control Tower Organization.")
 	print(f"{Fore.BLUE}  5.{Fore.RESET} This child account {Fore.RED}must exist{Fore.RESET} within the Parent Organization.")
 	print("     If it doesn't - then you must move it into this Org - this script can't do that for you.")
 	print(f"{Fore.BLUE}  6.{Fore.RESET} The target account {Fore.RED}can't exist{Fore.RESET} within an already managed OU.")
@@ -275,7 +194,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 
 	"""
 	Step 1 - We should check whether Config is enabled as an Organizationally Trusted Service here. 
-	 
+
 	"""
 	Step = 'Step1'
 	serviceName = 'config.amazonaws.com'
@@ -299,7 +218,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 		ProcessStatus[Step]['ProblemsFound'].extend({'Name'     : result['ServicePrincipal'],
 		                                             'AccountId': account_credentials['AccountId'],
 		                                             'Region'   : account_credentials['Region']})
-		logging.warning(f"Deleting in account {account_credentials['AccountId']} in region {account_credentials['AccountId']['Region']}")
+		logging.warning(f"Deleting in account {account_credentials['AccountId']} in region {account_credentials['Region']}")
 		DelConfigService = Inventory_Modules.disable_org_service2(account_credentials, serviceName)
 		if DelConfigService['Success']:
 			ProcessStatus[Step]['IssuesFixed'] += 1
@@ -322,7 +241,6 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 	# This part will check the Config Recorder and  Delivery Channel. If they have one, we need to delete it, so we can create another. We'll ask whether this is ok before we delete.
 	Step = 'Step2'
 	try:
-		# fRegionList=Inventory_Modules.get_service_regions('config', 'all')
 		print(f"{Fore.BLUE}{Step}:{Fore.RESET}") if verbose < 50 else None
 		print(f" Checking account {fChildAccountId} for a Config Recorders and Delivery Channels in any region") if verbose < 50 else None
 		ConfigList = []
@@ -451,7 +369,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 	except ClientError as my_Error:
 		print(my_Error)
 		ProcessStatus[Step]['Success']=False
-	
+
 	for i in range(len(GDinvites2)):
 		logging.warning(Fore.RED+"I found a GuardDuty invitation for account %s in region %s from account %s ", fChildAccountId, GDinvites2[i]['Region'], GDinvites2[i]['AccountId']+Fore.RESET)
 		ProcessStatus[Step]['IssuesFound']+=1
@@ -465,7 +383,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 					# We assume the process worked. We should probably NOT assume this.
 				except ClientError as my_Error:
 					print(my_Error)
-	
+
 	if ProcessStatus[Step]['Success']:
 		print(ERASE_LINE+Fore.GREEN+"** {} completed with no issues".format(Step)+Fore.RESET)
 	elif ProcessStatus[Step]['IssuesFound']-ProcessStatus[Step]['IssuesFixed']==0:
@@ -772,85 +690,179 @@ def DoThreadedAccountSteps(fChildAccountList, aws_account, fFixRun, fRegionList=
 	return (AllOrgSteps)
 
 
-####
-# Summary at the end
-####
+def display_results():
+	print()
+	x = PrettyTable()
+	y = PrettyTable()
 
-if pSkipAccounts is not None:
-	for account_to_skip in pSkipAccounts:
-		ChildAccountList.remove(account_to_skip)
+	x.field_names = ['Account', '# of Regions', 'Issues Found', 'Issues Fixed', 'Ready?']
+	y.field_names = ['Account', 'Region', 'Account Access', 'Org Config', 'Config', 'CloudTrail', 'GuardDuty', 'Org Member', 'CT OU', 'SNS Topics', 'Lambda', 'Roles', 'CW Log Groups', 'Ready?']
+	for i in SummarizedOrgResults:
+		x.add_row([SummarizedOrgResults[i]['AccountId'], len(SummarizedOrgResults[i]['Regions']), SummarizedOrgResults[i]['IssuesFound'], SummarizedOrgResults[i]['IssuesFixed'], SummarizedOrgResults[i]['Ready']])
 
-print(f"Beginning to evaluate the Org and Accounts to see if they're ready to deploy Control Tower")
-OrgResults = DoThreadedAccountSteps(ChildAccountList, aws_acct, FixRun, RegionList)
+	sorted_OrgResults = sorted(OrgResults, key=lambda k: (k['AccountId'], k['Region']))
 
-if pSkipAccounts is not None:
-	for MemberAccount in pSkipAccounts:
-		OrgResults.append({'AccountId'  : MemberAccount, 'Region': 'None', 'IssuesFound': 'N/A',
-		                   'IssuesFixed': 'N/A', 'Ready': 'Skipped'})
-
-SummarizedOrgResults = summarizeOrgResults(OrgResults)
-
-print()
-x = PrettyTable()
-y = PrettyTable()
-
-x.field_names = ['Account', '# of Regions', 'Issues Found', 'Issues Fixed', 'Ready?']
-y.field_names = ['Account', 'Region', 'Account Access', 'Org Config', 'Config', 'CloudTrail', 'GuardDuty', 'Org Member', 'CT OU', 'SNS Topics', 'Lambda', 'Roles', 'CW Log Groups', 'Ready?']
-for i in SummarizedOrgResults:
-	x.add_row([SummarizedOrgResults[i]['AccountId'], len(SummarizedOrgResults[i]['Regions']), SummarizedOrgResults[i]['IssuesFound'], SummarizedOrgResults[i]['IssuesFixed'], SummarizedOrgResults[i]['Ready']])
-
-sorted_OrgResults = sorted(OrgResults, key=lambda x: (x['AccountId'], x['Region']))
-
-for i in sorted_OrgResults:
-	if pSkipAccounts is not None and i['AccountId'] in pSkipAccounts:
-		y.add_row([i['AccountId'], i['Region'],
-		           'N/A', 'N/A', 'N/A', 'N/A',
-		           'N/A', 'N/A', 'N/A', 'N/A',
-		           'N/A', 'N/A', 'Skipped'])
-	else:
-		# x.add_row([i['AccountId'], i['Region'], i['IssuesFound'], i['IssuesFixed'], i['Ready']])
-		y.add_row([
-			i['AccountId'], i['Region'],
-			i['Step0']['IssuesFound'] - i['Step0']['IssuesFixed'],
-			i['Step1']['IssuesFound'] - i['Step1']['IssuesFixed'],
-			i['Step2']['IssuesFound'] - i['Step2']['IssuesFixed'],
-			i['Step3']['IssuesFound'] - i['Step3']['IssuesFixed'],
-			i['Step4']['IssuesFound'] - i['Step4']['IssuesFixed'],
-			i['Step5']['IssuesFound'] - i['Step5']['IssuesFixed'],
-			i['Step6']['IssuesFound'] - i['Step6']['IssuesFixed'],
-			i['Step7']['IssuesFound'] - i['Step7']['IssuesFixed'],
-			i['Step8']['IssuesFound'] - i['Step8']['IssuesFixed'],
-			i['Step9']['IssuesFound'] - i['Step9']['IssuesFixed'],
-			i['Step10']['IssuesFound'] - i['Step10']['IssuesFixed'],
-			i['Step0']['Success'] and i['Step1']['Success'] and i['Step2']['Success'] and
-			i['Step3']['Success'] and i['Step4']['Success'] and i['Step5']['Success'] and
-			i['Step6']['Success'] and i['Step7']['Success'] and i['Step8']['Success'] and
-			i['Step9']['Success'] and i['Step10']['Success']
-		])
-print("The following table represents the accounts looked at, and whether they are ready to be incorporated into a Control Tower environment.")
-print()
-if aws_acct.AccountType.lower() == 'root' and (pChildAccountId is None or aws_acct.acct_number in pChildAccountId):
-	print(f"Please note that for the Org Root account {aws_acct.acct_number}, the number of issues found for 'Org Config' will mistakenly show as 1 per region, since these issues are checked on a per-region basis.")
-	print(f"Additionally, issues found with 'Roles', though global, will show as regional as well. This will be remedied in future versions of this script.")
-print(x)
-print()
-print("The following table represents the accounts looked at, and gives details under each type of issue as to what might prevent a successful migration of this account into a Control Tower environment.")
-print(y)
-
-if verbose < 50:
-	for account in OrgResults:
-		print()
-		FixesWorked = (account['IssuesFound'] - account['IssuesFixed'] == 0)
-		if account['Ready'] and account['IssuesFound'] == 0:
-			print(f"{Fore.GREEN}**** We've found NO issues that would hinder the adoption of account {account['AccountId']} ****{Fore.RESET}")
-		elif account['Ready'] and FixesWorked:
-			print(f"{Fore.GREEN}We've found and fixed{Fore.RED}", f"{account['IssuesFixed']}{Fore.RESET}", f"{Fore.GREEN}issues that would have otherwise blocked the adoption of account {account['AccountId']}{Fore.RESET}")
+	for i in sorted_OrgResults:
+		if pSkipAccounts is not None and i['AccountId'] in pSkipAccounts:
+			y.add_row([i['AccountId'], i['Region'],
+			           'N/A', 'N/A', 'N/A', 'N/A',
+			           'N/A', 'N/A', 'N/A', 'N/A',
+			           'N/A', 'N/A', 'Skipped'])
 		else:
-			print(f"{Fore.RED}Account # {account['AccountId']} has {account['IssuesFound'] - account['IssuesFixed']} issues that would hinder the adoption of this account{Fore.RESET}")
-		for step in account:
-			if step[:4] == 'Step' and len(account[step]['ProblemsFound']) > 0:
-				print(f"{Fore.LIGHTRED_EX}Issues Found for {step} in account {account['AccountId']}:{Fore.RESET}")
-				pprint(account[step]['ProblemsFound'])
+			# x.add_row([i['AccountId'], i['Region'], i['IssuesFound'], i['IssuesFixed'], i['Ready']])
+			y.add_row([
+				i['AccountId'], i['Region'],
+				i['Step0']['IssuesFound'] - i['Step0']['IssuesFixed'],
+				i['Step1']['IssuesFound'] - i['Step1']['IssuesFixed'],
+				i['Step2']['IssuesFound'] - i['Step2']['IssuesFixed'],
+				i['Step3']['IssuesFound'] - i['Step3']['IssuesFixed'],
+				i['Step4']['IssuesFound'] - i['Step4']['IssuesFixed'],
+				i['Step5']['IssuesFound'] - i['Step5']['IssuesFixed'],
+				i['Step6']['IssuesFound'] - i['Step6']['IssuesFixed'],
+				i['Step7']['IssuesFound'] - i['Step7']['IssuesFixed'],
+				i['Step8']['IssuesFound'] - i['Step8']['IssuesFixed'],
+				i['Step9']['IssuesFound'] - i['Step9']['IssuesFixed'],
+				i['Step10']['IssuesFound'] - i['Step10']['IssuesFixed'],
+				i['Step0']['Success'] and i['Step1']['Success'] and i['Step2']['Success'] and
+				i['Step3']['Success'] and i['Step4']['Success'] and i['Step5']['Success'] and
+				i['Step6']['Success'] and i['Step7']['Success'] and i['Step8']['Success'] and
+				i['Step9']['Success'] and i['Step10']['Success']
+			])
+	print("The following table represents the accounts looked at, and whether they are ready to be incorporated into a Control Tower environment.")
+	print()
+	if aws_acct.AccountType.lower() == 'root' and (pChildAccountList is None or aws_acct.acct_number in pChildAccountList):
+		print(f"Please note that for the Org Root account {aws_acct.acct_number}, the number of issues found for 'Org Config' will mistakenly show as 1 per region, since these issues are checked on a per-region basis.")
+		print(f"Additionally, issues found with 'Roles', though global, will show as regional as well. This will be remedied in future versions of this script.")
+	print(x)
+	print()
+	print("The following table represents the accounts looked at, and gives details under each type of issue as to what might prevent a successful migration of this account into a Control Tower environment.")
+	print(y)
+
+	if verbose < 50:
+		for account in OrgResults:
+			print()
+			FixesWorked = (account['IssuesFound'] - account['IssuesFixed'] == 0)
+			if account['Ready'] and account['IssuesFound'] == 0:
+				print(f"{Fore.GREEN}**** We've found NO issues that would hinder the adoption of account {account['AccountId']} ****{Fore.RESET}")
+			elif account['Ready'] and FixesWorked:
+				print(f"{Fore.GREEN}We've found and fixed{Fore.RED}", f"{account['IssuesFixed']}{Fore.RESET}", f"{Fore.GREEN}issues that would have otherwise blocked the adoption of account {account['AccountId']}{Fore.RESET}")
+			else:
+				print(f"{Fore.RED}Account # {account['AccountId']} has {account['IssuesFound'] - account['IssuesFixed']} issues that would hinder the adoption of this account{Fore.RESET}")
+			for step in account:
+				if step[:4] == 'Step' and len(account[step]['ProblemsFound']) > 0:
+					print(f"{Fore.LIGHTRED_EX}Issues Found for {step} in account {account['AccountId']}:{Fore.RESET}")
+					pprint(account[step]['ProblemsFound'])
+
+
+def setup(fProfile, fRegions):
+
+	f_aws_acct = aws_acct_access(fProfile)
+	if not f_aws_acct.Success:
+		logging.error(f"Error: {f_aws_acct.ErrorType}")
+		print(f"{Fore.RED}\nThere was an error with profile {fProfile}. Unable to continue.\n{Fore.RESET}")
+		sys.exit(9)
+
+	if Quick:
+		f_RegionList = ['us-east-1']
+	else:
+		# Control Tower now published its regions.
+		GlobalRegionList = Inventory_Modules.get_service_regions('controltower', faws_acct=f_aws_acct)
+		AllowedRegionList = Inventory_Modules.get_regions3(f_aws_acct, fRegions)
+		f_RegionList = intersection(GlobalRegionList, AllowedRegionList)
+
+
+	if pExplain:
+		explain_script()
+		sys.exit("Exiting after Script Explanation...")
+	return(f_aws_acct, f_RegionList)
+
+
+def CT_CheckAccount(faws_acct):
+	logging.info(f"Confirming that this profile {pProfile} represents a Management Account")
+
+	if faws_acct.AccountType.lower() == 'root' and pChildAccountList is None:
+		# Creates a list of the account numbers in the Org.
+		ChildAccountList = [d['AccountId'] for d in faws_acct.ChildAccounts]
+		print(f"Since you didn't specify a specific account, we'll check all {len(faws_acct.ChildAccounts)} accounts in the Org.")
+	elif aws_acct.AccountType.lower() == 'root' and pChildAccountList is not None:
+		print(f"Account {faws_acct.acct_number} is a {faws_acct.AccountType} account.\n"
+		      f"We're specifically checking to validate that account{'' if len(pChildAccountList) == 1 else 's'} {pChildAccountList} can be adopted into the Landing Zone")
+		ChildAccountList = pChildAccountList
+	else:
+		sys.exit(f"Account {faws_acct.acct_number} is a {faws_acct.AccountType} account.\n"
+		         f" This script should be run with Management Account credentials.")
+
+	print()
+
+	if pSkipAccounts is not None:
+		for account_to_skip in pSkipAccounts:
+			ChildAccountList.remove(account_to_skip)
+
+	print(f"Beginning to evaluate the Org and Accounts to see if they're ready to deploy Control Tower")
+	f_OrgResults = DoThreadedAccountSteps(ChildAccountList, faws_acct, FixRun, RegionList)
+
+	if pSkipAccounts is not None:
+		for MemberAccount in pSkipAccounts:
+			f_OrgResults.append({'AccountId'  : MemberAccount, 'Region': 'None', 'IssuesFound': 'N/A',
+			                   'IssuesFixed': 'N/A', 'Ready': 'Skipped'})
+
+	####
+	# Summary at the end
+	####
+
+	f_SummarizedOrgResults = summarizeOrgResults(f_OrgResults)
+
+	return(f_OrgResults, f_SummarizedOrgResults)
+
+
+###################
+ExplainMessage = """
+
+Objective: This script aims to identify issues and make it easier to "adopt" an existing account into a Control Tower environment.
+
+0. The targeted account MUST allow the Management account access into the Child IAM role called "AWSControlTowerExecution" or another coded role, so that we have access to do read-only operations (by default).
+0a. There must be an "AWSControlTowerExecution" role present in the account so that StackSets can assume it and deploy stack instances. This role must trust the Organizations Management account or at least the necessary Lambda functions.
+** TODO ** - update the JSON to be able to update the role to ensure it trusts the least privileged roles from management account, instead of the whole account.
+0b. STS must be active in all regions checked. You can check from the Account Settings page in IAM. Since we're using STS to connect to the account from the Management, this requirement is checked by successfully completing step 0.
+
+1. We're using this step to check to see if your Org has Config Service enabled at the Org level.
+
+2. There must be no active config channel and recorder in the account as “there can be only one” of each. 
+	This must also be deleted via CLI, not console, switching config off in the console is NOT good enough and just disables it. To Delete the delivery channel and the configuration recorder (can be done via CLI and Python script only):
+aws configservice describe-delivery-channels
+aws configservice describe-delivery-channel-status
+aws configservice describe-configuration-recorders
+aws configservice stop-configuration-recorder --configuration-recorder-name <NAME-FROM-DESCRIBE-OUTPUT>
+aws configservice delete-delivery-channel --delivery-channel-name <NAME-FROM-DESCRIBE-OUTPUT>
+aws configservice delete-configuration-recorder --configuration-recorder-name <NAME-FROM-DESCRIBE-OUTPUT
+
+3. The account must not have a Cloudtrail Trail name with 'ControlTower' in the name ("aws-controltower-BaselineCloudTrail")
+
+4. The account must not have a pending guard duty invite. You can check from the Guard Duty Console
+
+5. The account must be part of the Organization and the email address being entered into the CT parameters must match the account. 
+	If you try to add an email from an account which is not part of the Org, you will get an error that you are not using a unique email address. If it’s part of the Org, CT just finds the account and uses the CFN roles.
+** TODO ** - If the existing account will be a child account in the Organization, use the Account Factory and enter the appropriate email address.
+
+6. The existing account can not be in any of the CT-managed Organizations OUs. By default, these OUs are Core and Applications, but the customer may have chosen different or additional OUs to manage by CT.
+-- not yet implemented --
+
+7. SNS topics name containing "ControlTower"
+8. Lambda Functions name containing "ControlTower"
+9. Role name containing "ControlTower"
+Bucket created for AWS Config -- not yet implemented
+SNS topic created for AWS Config -- not yet implemented
+10. CloudWatch Log group containing "aws-controltower/CloudTrailLogs" -- not yet implemented --
+
+"""
+
+ERASE_LINE = '\x1b[2K'
+begin_time = time()
+
+if __name__ == '__main__':
+	aws_acct, RegionList = setup(pProfile, pRegions)
+	OrgResults, SummarizedOrgResults = CT_CheckAccount(aws_acct)
+	display_results()
 
 if pTiming:
 	print(ERASE_LINE)
