@@ -8,46 +8,37 @@ from Inventory_Modules import get_org_accounts_from_profiles, display_results
 from time import time
 # from botocore.exceptions import ClientError, NoCredentialsError, InvalidConfigError
 from colorama import init, Fore, Style
+import sys
 
 init()
-__version__ = "2023.05.31"
-
-parser = CommonArguments()
-parser.multiprofile()
-parser.extendedargs()
-parser.rootOnly()
-parser.timing()
-parser.save_to_file()
-parser.verbosity()
-parser.version(__version__)
-
-parser.my_parser.add_argument(
-	'-s', '-q', '--short',
-	help="Display only brief listing of the profile accounts, and not the Child Accounts under them",
-	action="store_const",
-	dest="pShortform",
-	const=True,
-	default=False)
-parser.my_parser.add_argument(
-	'-A', '--acct',
-	help="Find which Org this account is a part of",
-	nargs="*",
-	dest="accountList",
-	default=None)
-args = parser.my_parser.parse_args()
-
-pProfiles = args.Profiles
-pRootOnly = args.RootOnly
-pTiming = args.Time
-pSkipAccounts = args.SkipAccounts
-pSkipProfiles = args.SkipProfiles
-verbose = args.loglevel
-pSaveFilename = args.Filename
-pShortform = args.pShortform
-pAccountList = args.accountList
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(processName)s %(threadName)s %(funcName)20s() ] %(message)s")
-
+__version__ = "2023.08.31"
 ERASE_LINE = '\x1b[2K'
+
+
+def parse_args(args):
+	parser = CommonArguments()
+	parser.multiprofile()
+	parser.extendedargs()
+	parser.rootOnly()
+	parser.timing()
+	parser.save_to_file()
+	parser.verbosity()
+	parser.version(__version__)
+
+	parser.my_parser.add_argument(
+		'-s', '-q', '--short',
+		help="Display only brief listing of the profile accounts, and not the Child Accounts under them",
+		action="store_const",
+		dest="pShortform",
+		const=True,
+		default=False)
+	parser.my_parser.add_argument(
+		'-A', '--acct',
+		help="Find which Org this account is a part of",
+		nargs="*",
+		dest="accountList",
+		default=None)
+	return parser.my_parser.parse_args(args)
 
 """
 TODO:
@@ -59,7 +50,7 @@ TODO:
 
 ##################
 
-def all_my_orgs(fProfiles, fSkipProfiles, fAccountList, fTiming, fRootOnly, fSaveFilename, fShortform):
+def all_my_orgs(fProfiles, fSkipProfiles, fAccountList, fTiming, fRootOnly, fSaveFilename, fShortform, fverbose):
 	if fTiming:
 		begin_time = time()
 	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
@@ -166,7 +157,7 @@ def all_my_orgs(fProfiles, fSkipProfiles, fAccountList, fTiming, fRootOnly, fSav
 		print(f"Number of Standalone Accounts: {len(StandAloneAccounts)}")
 		print(f"Number of suspended or closed accounts: {len(ClosedAccounts)}")
 		print(f"Number of profiles that failed: {len(FailedProfiles)}")
-		if verbose < 50:
+		if fverbose < 50:
 			print("----------------------")
 			print(f"The following accounts are the Org Accounts: {OrgsFound}")
 			print(f"The following accounts are Standalone: {StandAloneAccounts}")
@@ -201,4 +192,17 @@ def all_my_orgs(fProfiles, fSkipProfiles, fAccountList, fTiming, fRootOnly, fSav
 
 
 if __name__ == '__main__':
-	all_my_orgs(pProfiles, pSkipProfiles, pAccountList, pTiming, pRootOnly, pSaveFilename, pShortform)
+	args = parse_args(sys.argv[1:])
+
+	pProfiles = args.Profiles
+	pRootOnly = args.RootOnly
+	pTiming = args.Time
+	pSkipAccounts = args.SkipAccounts
+	pSkipProfiles = args.SkipProfiles
+	pverbose = args.loglevel
+	pSaveFilename = args.Filename
+	pShortform = args.pShortform
+	pAccountList = args.accountList
+	logging.basicConfig(level=pverbose, format="[%(filename)s:%(lineno)s - %(processName)s %(threadName)s %(funcName)20s() ] %(message)s")
+
+	all_my_orgs(pProfiles, pSkipProfiles, pAccountList, pTiming, pRootOnly, pSaveFilename, pShortform, pverbose)

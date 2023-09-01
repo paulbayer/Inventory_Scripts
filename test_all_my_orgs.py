@@ -1,12 +1,11 @@
-import botocore
-import json
+from botocore import client
 import pytest
 from datetime import datetime
 
-from src import do_stuff, sendgrid_api_key_arn
+from all_my_orgs import all_my_orgs
 
 def _amend_get_account_data(test_key, test_value, mocker):
-	orig = botocore.client.BaseClient._make_api_call
+	orig = client.BaseClient._make_api_call
 
 	def amend_make_api_call(self, operation_name, kwargs):
 		# Intercept boto3 operations for <secretsmanager.get_secret_value>. Optionally, you can also
@@ -20,8 +19,8 @@ def _amend_get_account_data(test_key, test_value, mocker):
 			print(f"OperationName: {operation_name}\n"
 			      f"Key Name: {test_key}\n"
 			      f"kwargs: {kwargs}")
-			# return test_value
 			return test_value
+		# elif operation_name == ''
 
 		return_response = orig(self, operation_name, kwargs)
 		print(f"OperationName: {operation_name}\n"
@@ -31,7 +30,16 @@ def _amend_get_account_data(test_key, test_value, mocker):
 	mocker.patch('botocore.client.BaseClient._make_api_call', new=amend_make_api_call)
 
 
-list_accounts_test_data = {
+parameters1 = {
+	'pProfiles'    : ['LZRoot'],
+	'pSkipProfiles': [],
+	'pAccountList' : [],
+	'pTiming'      : True,
+	'pRootOnly'    : False,
+	'pSaveFilename': None,
+	'pShortform'   : False,
+	'pverbose'     : 50}
+list_accounts_test_data1 = {
 	'Accounts' : [
 		{
 			'Id'             : '073323372301',
@@ -165,9 +173,9 @@ list_accounts_test_data = {
 
 
 @pytest.mark.parametrize(
-	'test_value',
+	"test_value, parameters",
 	[
-		list_accounts_test_data,
+		(list_accounts_test_data1, parameters1),
 		# str(1993),
 		# json.dumps({"SecretString": "my-secret"}),
 		# json.dumps([2, 3, 5, 7, 11, 13, 17, 19]),
@@ -175,15 +183,23 @@ list_accounts_test_data = {
 		# ValueError("Oh my goodness you even have the guts to repeat it!!!"),
 	],
 )
-def test_get_account_data(test_value, mocker):
-	_amend_get_account_data(sendgrid_api_key_arn, test_value, mocker)
+def test_get_account_data(test_value, parameters, mocker):
+	pProfiles = parameters['pProfiles']
+	pSkipProfiles = parameters['pSkipProfiles']
+	pAccountList = parameters['pAccountList']
+	pTiming = parameters['pTiming']
+	pRootOnly = parameters['pRootOnly']
+	pSaveFilename = parameters['pSaveFilename']
+	pShortform = parameters['pShortform']
+	pverbose = parameters['pverbose']
+	_amend_get_account_data(pProfiles[0], test_value, mocker)
 
 	if isinstance(test_value, Exception):
 		print("Expected Error...")
 		with pytest.raises(type(test_value)) as error:
-			do_stuff()
+			all_my_orgs(pProfiles, pSkipProfiles, pAccountList, pTiming, pRootOnly, pSaveFilename, pShortform, pverbose)
 		result = error
 	else:
-		result = do_stuff()
+		result = all_my_orgs(pProfiles, pSkipProfiles, pAccountList, pTiming, pRootOnly, pSaveFilename, pShortform, pverbose)
 
-	print("Result:", result)
+	# print("Result:", result)
