@@ -440,11 +440,13 @@ def RemoveCoreAccounts(MainList, AccountsToRemove=None):
 
 
 def make_creds(faws_acct):
-	return ({'AccessKeyId': faws_acct.creds.access_key,
+	return ({'AccessKeyId'    : faws_acct.creds.access_key,
 	         'SecretAccessKey': faws_acct.creds.secret_key,
-	         'SessionToken': faws_acct.creds.token,
-	         'Profile': faws_acct.profile,
-	         'AccountNumber': faws_acct.acct_number})
+	         'SessionToken'   : faws_acct.creds.token,
+	         'Profile'        : faws_acct.credentials.Profile,
+	         'Region'         : faws_acct.Region,
+	         'AccountNumber'  : faws_acct.acct_number,
+	         'MgmtAccount'    : faws_acct.MgmtAccount})
 
 
 def get_child_access(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleList=None):
@@ -1867,9 +1869,10 @@ def find_lambda_functions2(ocredentials, fRegion='us-east-1', fSearchStrings=Non
 
 	if fSearchStrings is None:
 		fSearchStrings = ['all']
-	session_lambda = boto3.Session(region_name=fRegion, aws_access_key_id=ocredentials[
-		'AccessKeyId'], aws_secret_access_key=ocredentials['SecretAccessKey'], aws_session_token=ocredentials[
-		'SessionToken'])
+	session_lambda = boto3.Session(region_name=fRegion,
+	                               aws_access_key_id=ocredentials['AccessKeyId'],
+	                               aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                               aws_session_token=ocredentials['SessionToken'])
 	client_lambda = session_lambda.client('lambda')
 	functions = client_lambda.list_functions()['Functions']
 	functions2 = []
@@ -1884,10 +1887,11 @@ def find_lambda_functions2(ocredentials, fRegion='us-east-1', fSearchStrings=Non
 	else:
 		for i in range(len(functions)):
 			for searchitem in fSearchStrings:
-				if searchitem in functions[i]['FunctionName']:
-					logging.info(f"Found function {functions[i]['FunctionName']}")
+				if searchitem in functions[i]['FunctionName'] or searchitem in functions[i]['Runtime']:
+					logging.info(f"Found function {functions[i]['FunctionName']} with runtime {functions[i]['Runtime']}")
 					functions2.append({'FunctionName': functions[i]['FunctionName'],
-					                   'FunctionArn' : functions[i]['FunctionArn'], 'Role': functions[i]['Role'],
+					                   'FunctionArn' : functions[i]['FunctionArn'],
+					                   'Role'        : functions[i]['Role'],
 					                   'Runtime'     : functions[i]['Runtime']})
 		return (functions2)
 
@@ -3488,6 +3492,73 @@ def find_ssm_parameters3(faws_acct, fregion=None):
 	if logging.getLogger().getEffectiveLevel() < 50:
 		print(f"Found {len(response2)} parameters")
 	return (response2)
+
+
+def get_region_azs2(ocredentials):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['Region'] holds the Region where the authentication was done
+		- ['MgmtAccount'] holds the AccountId
+		- ['AccountNumber'] holds the AccountId
+
+	Return Value is a list that looks like this:
+	[
+		{
+			['AccountNumber'] holds the account number
+			['Region'] holds the region name
+			['Availability_Zone_Name'] holds the az *name*
+			['Availability_Zone_id'] holds the az *id*
+			'MgmtAccount'   : ocredentials['MgmtAccount'],
+            'AccountNumber' : ocredentials['AccountNumber'],
+            'Region'        : ocredentials['Region'],
+            'Profile'       : ocredentials['Profile'],
+            'ZoneName'      : az['ZoneName'],
+            'ZoneId'        : az['ZoneId'],
+            'OptInStatus'   : az['OptInStatus'],
+            'ZoneType'      : az['ZoneType'],
+            'State'         : az['State'],
+            'ParentZoneName': az['ParentZoneName'] if 'ParentZoneName' in az.keys() else az['ZoneName'],
+            'ParentZoneId'  : az['ParentZoneId'] if 'ParentZoneId' in az.keys() else az['ZoneId'],
+
+		},
+	]
+	"""
+	import logging
+	import boto3
+	from botocore.exceptions import ClientError
+
+	logging.info(f"Finding available availability zones for account {ocredentials['AccountNumber']} in Region {ocredentials['Region']}")
+	session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
+	client_ec2 = session_ec2.client('ec2')
+	return_response = []
+
+	try:
+		region_az_listing = client_ec2.describe_availability_zones(AllAvailabilityZones=True)
+		for az in region_az_listing['AvailabilityZones']:
+			if logging.getLogger().getEffectiveLevel() < 50:
+				logging.info(f"Found another AZ called {az['ZoneName']} in region {az['RegionName']}")
+			return_response.append({'MgmtAccount'   : ocredentials['MgmtAccount'],
+			                        'AccountNumber' : ocredentials['AccountNumber'],
+			                        'Region'        : ocredentials['Region'],
+			                        'Profile'       : ocredentials['Profile'],
+			                        'ZoneName'      : az['ZoneName'],
+			                        'ZoneId'        : az['ZoneId'],
+			                        'OptInStatus'   : az['OptInStatus'],
+			                        'ZoneType'      : az['ZoneType'],
+			                        'State'         : az['State'],
+			                        'ParentZoneName': az['ParentZoneName'] if 'ParentZoneName' in az.keys() else az['ZoneName'],
+			                        'ParentZoneId'  : az['ParentZoneId'] if 'ParentZoneId' in az.keys() else az['ZoneId'],
+			                        })
+	except ClientError as my_Error:
+		logging.error(f"Error: {my_Error}")
+
+	return (return_response)
 
 
 ############
