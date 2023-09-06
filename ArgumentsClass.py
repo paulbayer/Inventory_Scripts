@@ -15,7 +15,7 @@ How to use:
 	verbose = args.loglevel
 
 """
-__version__ = "2023.06.15"
+__version__ = "2023.09.06"
 
 
 class CommonArguments():
@@ -78,11 +78,17 @@ class CommonArguments():
 		# 	action="store_false",
 		# 	dest="DryRun")              # Default to Dry Run (no changes)
 		self.my_parser.add_argument(
-			"--force", "+force",
+			"+force",
 			help="To force a change - despite indications to the contrary",
 			action="store_true",
 			dest="Force")  # Default to Dry Run (no changes)
 
+	def fix(self):
+		self.my_parser.add_argument(
+			"+fix",
+			help="To intrusively fix something in your accounts",
+			action="store_true",
+			dest="Fix")
 
 	def verbosity(self):
 		import logging
