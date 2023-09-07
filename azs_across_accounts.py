@@ -78,16 +78,33 @@ if __name__ == '__main__':
 	pSkipAccounts = args.SkipAccounts
 	pverbose = args.loglevel
 	pSaveFilename = args.Filename
-	pAccountList = args.accountList
+	pAccountList = args.Accounts
 	pRoleList = args.AccessRoles
 	logging.basicConfig(level=pverbose, format="[%(filename)s:%(lineno)s - %(processName)s %(threadName)s %(funcName)20s() ] %(message)s")
 
+	print(f"Collecting credentials for all accounts in your org, across multiple regions")
 	AllOrgAZs = azs_across_accounts(pProfiles, pRegions, pSkipProfiles, pSkipAccounts, pAccountList, pTiming, pRootOnly, pverbose, pRoleList)
-	display_dict = {'MgmtAccount': {'DisplayOrder': 1, 'Heading': 'Parent Acct'},
-	                'AccountId'  : {'DisplayOrder': 2, 'Heading': 'Account Number'},
-	                'Region'     : {'DisplayOrder': 3, 'Heading': 'Region Name'},
-	                'ZoneName'   : {'DisplayOrder': 4, 'Heading': 'Zone Name'},
-	                'ZoneId'     : {'DisplayOrder': 5, 'Heading': 'Zone Id'},
-	                'ZoneType'   : {'DisplayOrder': 6, 'Heading': 'Zone Type'}}
-	sorted_Results = sorted(AllOrgAZs, key=lambda d: (d['MgmtAccount'], d['AccountId'], d['Region']))
-	display_results(sorted_Results, display_dict, "None", pSaveFilename)
+	histogram = list()
+	for account in AllOrgAZs:
+		for az in account:
+			if az['ZoneType'] == 'availability-zone':
+				print(az)
+				histogram.append({'Region': az['Region'], 'Name': az['ZoneName'], 'Id': az['ZoneId']})
+
+	histogram_sorted = sorted(histogram, key=lambda k: (k['Region'], k['Name'], k['Id']))
+	summary = dict()
+	for item in histogram_sorted:
+		if item['Region'] not in summary.keys():
+			summary[item['Region']] = dict()
+		if item['Name'] not in summary[item['Region']].keys():
+			summary[item['Region']][item['Name']] = list()
+		summary[item['Region']][item['Name']].append(item['Id'])
+
+	# display_dict = {'MgmtAccount': {'DisplayOrder': 1, 'Heading': 'Parent Acct'},
+	#                 'AccountId'  : {'DisplayOrder': 2, 'Heading': 'Account Number'},
+	#                 'Region'     : {'DisplayOrder': 3, 'Heading': 'Region Name'},
+	#                 'ZoneName'   : {'DisplayOrder': 4, 'Heading': 'Zone Name'},
+	#                 'ZoneId'     : {'DisplayOrder': 5, 'Heading': 'Zone Id'},
+	#                 'ZoneType'   : {'DisplayOrder': 6, 'Heading': 'Zone Type'}}
+	# sorted_Results = sorted(summary, key=lambda d: (d['MgmtAccount'], d['AccountId'], d['Region']))
+	# display_results(sorted_Results, display_dict, "None", pSaveFilename)
