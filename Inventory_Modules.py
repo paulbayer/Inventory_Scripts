@@ -1,6 +1,6 @@
 import logging
 
-__version__ = "2023.06.22"
+__version__ = "2023.08.08"
 
 """
 ** Why are some functions "function" vs. "function2" vs. "function3"?**
@@ -33,6 +33,8 @@ def get_regions3(faws_acct, fregion_list=None):
 
 	The first parameter to this library must provide a valid account object that includes a boto3 session,
 	so that regions can be looked up.
+
+	Please note that there is no paging functionality for the "describe_regions" method within EC2, hence no paging below.
 	"""
 	import logging
 
@@ -74,6 +76,8 @@ def get_ec2_regions(fprofile=None, fregion_list=None):
 
 	Thr first parameter to this library must provide a valid profile, which is used to instantiate a boto3 session,
 	so that regions can be looked up.
+
+	Please note that there is no paging functionality for the "describe_regions" method within EC2, hence no paging below.
 	"""
 	import boto3
 	import logging
@@ -96,6 +100,15 @@ def get_ec2_regions(fprofile=None, fregion_list=None):
 
 
 def get_ec2_regions3(faws_acct, fkey=None):
+	"""
+	This is a library function to get the AWS region names that correspond to the
+	fragments that may have been provided via the command line.
+
+	The first parameter to this library must provide a valid session object, which is used to instantiate a boto3 session,
+	so that regions can be looked up.
+
+	Please note that there is no paging functionality for the "describe_regions" method within EC2, hence no paging below.
+	"""
 	import logging
 
 	RegionNames = []
@@ -136,8 +149,10 @@ def get_service_regions(service, fkey=None, fprofile=None, ocredentials=None, fa
 	if fprofile is not None:
 		s = boto3.Session(profile_name=fprofile)
 	elif ocredentials is not None:
-		s = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials['SecretAccessKey'],
-		                  aws_session_token=ocredentials['SessionToken'], region_name=ocredentials['Region'])
+		s = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+		                  aws_secret_access_key=ocredentials['SecretAccessKey'],
+		                  aws_session_token=ocredentials['SessionToken'],
+		                  region_name=ocredentials['Region'])
 	elif faws_acct is not None:
 		s = faws_acct.session
 	else:
@@ -197,8 +212,9 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 		# Update the string to become a list
 		return ([fprofiles])
 	elif isinstance(fprofiles, str):
-		logging.error(f"There was an error: The profile passed in '{fprofiles}' doesn't exist.")
-		return ()
+		error_message = f"Error: The profile passed in '{fprofiles}' doesn't exist."
+		logging.error(error_message)
+		return (error_message)
 	for profile in my_profiles:
 		logging.info(f"Found profile {profile}")
 		if ("skipplus" in fSkipProfiles and profile.find("+") >= 0) or profile in fSkipProfiles:
@@ -380,7 +396,7 @@ def find_calling_identity(fProfile):
 
 	try:
 		session_sts = boto3.Session(profile_name=fProfile)
-		logging.info("Getting creds used within profile %s", fProfile)
+		logging.info(f"Getting creds used within profile {fProfile}")
 		client_sts = session_sts.client('sts')
 		response = client_sts.get_caller_identity()
 		creds = {'Arn'  : response['Arn'], 'AccountId': response['Account'],
@@ -415,7 +431,7 @@ def RemoveCoreAccounts(MainList, AccountsToRemove=None):
 	NewCA = []
 	for i in range(len(MainList)):
 		if MainList[i]['AccountId'] in AccountsToRemove:
-			logging.info(f"Comparing {str(MainList[i]['AccountId'])} to above")
+			logging.info(f"Found {str(MainList[i]['AccountId'])} in AccountsToRemove, removing from list")
 			continue
 		else:
 			logging.info(f"Account {str(MainList[i]['AccountId'])} was allowed")
@@ -424,7 +440,13 @@ def RemoveCoreAccounts(MainList, AccountsToRemove=None):
 
 
 def make_creds(faws_acct):
-	return ({'AccessKeyId': faws_acct.creds.access_key, 'SecretAccessKey': faws_acct.creds.secret_key, 'SessionToken': faws_acct.creds.token, 'AccountNumber': faws_acct.acct_number})
+	return ({'AccessKeyId'    : faws_acct.creds.access_key,
+	         'SecretAccessKey': faws_acct.creds.secret_key,
+	         'SessionToken'   : faws_acct.creds.token,
+	         'Profile'        : faws_acct.credentials.Profile,
+	         'Region'         : faws_acct.Region,
+	         'AccountNumber'  : faws_acct.acct_number,
+	         'MgmtAccount'    : faws_acct.MgmtAccount})
 
 
 def get_child_access(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleList=None):
@@ -658,11 +680,15 @@ def find_sns_topics2(ocredentials, fRegion, fTopicFrag=None):
 	                            aws_session_token=ocredentials['SessionToken'],
 	                            region_name=fRegion)
 	client_sns = session_sns.client('sns')
-	# TODO: Enable pagination
-	response = client_sns.list_topics()
+	response = {'NextToken': ''}
 	TopicList = []
-	for item in response['Topics']:
-		TopicList.append(item['TopicArn'])
+	while 'NextToken' in response:
+		response = client_sns.list_topics(NextToken=response['NextToken'])
+		for item in response['Topics']:
+			TopicList.append(item['TopicArn'])
+	# response = client_sns.list_topics()
+	# for item in response['Topics']:
+	# 	TopicList.append(item['TopicArn'])
 	if 'all' in fTopicFrag:
 		logging.info(f"Looking for all SNS Topics in account {ocredentials['AccountNumber']} from Region {fRegion}\n"
 		             f"Topic Arns Returned: {TopicList}\n"
@@ -902,6 +928,7 @@ def find_account_vpcs3(faws_acct, fRegion, defaultOnly=False):
 	import logging
 
 	client_vpc = faws_acct.session.client('ec2')
+	# TODO: Enable pagination
 	if defaultOnly:
 		logging.info(f"Looking for default VPCs in account {faws_acct.acct_number} from Region {fRegion}")
 		logging.info(f"defaultOnly: {str(defaultOnly)}")
@@ -910,7 +937,6 @@ def find_account_vpcs3(faws_acct, fRegion, defaultOnly=False):
 		logging.info(f"Looking for all VPCs in account {faws_acct.acct_number} from Region {fRegion}")
 		logging.info(f"defaultOnly: {str(defaultOnly)}")
 		response = client_vpc.describe_vpcs()
-	# TODO: Enable pagination
 	logging.info(f"We found {len(response['Vpcs'])} VPCs")
 	return (response)
 
@@ -1550,7 +1576,7 @@ def find_account_volumes2(ocredentials):
 	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
 	                            aws_session_token=ocredentials['SessionToken'],
 	                            region_name=ocredentials['Region'])
-	eni_info = session_ec2.client('ec2')
+	ebs_info = session_ec2.client('ec2')
 	Volumes = {'NextToken': None}
 	AllVolumes = []
 	# return_this_result = True if fipaddresses is None else False
@@ -1560,22 +1586,10 @@ def find_account_volumes2(ocredentials):
 		Volumes = dict()
 		try:
 			logging.info(f"Looking for all volumes in account #{ocredentials['AccountNumber']} in region {ocredentials['Region']}")
-			Volumes = eni_info.describe_volumes()
+			Volumes = ebs_info.describe_volumes()
 			# Run through each of the volumes, and determine if the passed in fragment fits within any of them
 			# If it does - then include that data within the array, otherwise next...
 			for volume in Volumes['Volumes']:
-				# if fipaddresses is not None:
-				# 	return_this_result = False
-				# 	for address in fipaddresses:
-				# 		if address == volume['PrivateIpAddress']:
-				# 			logging.info(f"Found it - {volume['PrivateIpAddress']} - ENI: {volume['NetworkInterfaceId']}")
-				# 			return_this_result = True
-				# 		elif 'Association' in volume.keys() and 'PublicIp' in volume['Association'].keys() and address == volume['Association']['PublicIp']:
-				# 			logging.info(f"Found it - {volume['Association']['PublicIp']} - ENI: {volume['NetworkInterfaceId']}")
-				# 			return_this_result = True
-				# 		else:
-				# 			continue
-				# if return_this_result:
 				Name = 'None'
 				AttachmentList = []
 				if 'Tags' in volume.keys():
@@ -1855,9 +1869,10 @@ def find_lambda_functions2(ocredentials, fRegion='us-east-1', fSearchStrings=Non
 
 	if fSearchStrings is None:
 		fSearchStrings = ['all']
-	session_lambda = boto3.Session(region_name=fRegion, aws_access_key_id=ocredentials[
-		'AccessKeyId'], aws_secret_access_key=ocredentials['SecretAccessKey'], aws_session_token=ocredentials[
-		'SessionToken'])
+	session_lambda = boto3.Session(region_name=fRegion,
+	                               aws_access_key_id=ocredentials['AccessKeyId'],
+	                               aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                               aws_session_token=ocredentials['SessionToken'])
 	client_lambda = session_lambda.client('lambda')
 	functions = client_lambda.list_functions()['Functions']
 	functions2 = []
@@ -1872,10 +1887,11 @@ def find_lambda_functions2(ocredentials, fRegion='us-east-1', fSearchStrings=Non
 	else:
 		for i in range(len(functions)):
 			for searchitem in fSearchStrings:
-				if searchitem in functions[i]['FunctionName']:
-					logging.info(f"Found function {functions[i]['FunctionName']}")
+				if searchitem in functions[i]['FunctionName'] or searchitem in functions[i]['Runtime']:
+					logging.info(f"Found function {functions[i]['FunctionName']} with runtime {functions[i]['Runtime']}")
 					functions2.append({'FunctionName': functions[i]['FunctionName'],
-					                   'FunctionArn' : functions[i]['FunctionArn'], 'Role': functions[i]['Role'],
+					                   'FunctionArn' : functions[i]['FunctionArn'],
+					                   'Role'        : functions[i]['Role'],
 					                   'Runtime'     : functions[i]['Runtime']})
 		return (functions2)
 
@@ -3476,6 +3492,73 @@ def find_ssm_parameters3(faws_acct, fregion=None):
 	if logging.getLogger().getEffectiveLevel() < 50:
 		print(f"Found {len(response2)} parameters")
 	return (response2)
+
+
+def get_region_azs2(ocredentials):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['Region'] holds the Region where the authentication was done
+		- ['MgmtAccount'] holds the AccountId
+		- ['AccountNumber'] holds the AccountId
+
+	Return Value is a list that looks like this:
+	[
+		{
+			['AccountNumber'] holds the account number
+			['Region'] holds the region name
+			['Availability_Zone_Name'] holds the az *name*
+			['Availability_Zone_id'] holds the az *id*
+			'MgmtAccount'   : ocredentials['MgmtAccount'],
+            'AccountNumber' : ocredentials['AccountNumber'],
+            'Region'        : ocredentials['Region'],
+            'Profile'       : ocredentials['Profile'],
+            'ZoneName'      : az['ZoneName'],
+            'ZoneId'        : az['ZoneId'],
+            'OptInStatus'   : az['OptInStatus'],
+            'ZoneType'      : az['ZoneType'],
+            'State'         : az['State'],
+            'ParentZoneName': az['ParentZoneName'] if 'ParentZoneName' in az.keys() else az['ZoneName'],
+            'ParentZoneId'  : az['ParentZoneId'] if 'ParentZoneId' in az.keys() else az['ZoneId'],
+
+		},
+	]
+	"""
+	import logging
+	import boto3
+	from botocore.exceptions import ClientError
+
+	logging.info(f"Finding available availability zones for account {ocredentials['AccountNumber']} in Region {ocredentials['Region']}")
+	session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
+	client_ec2 = session_ec2.client('ec2')
+	return_response = []
+
+	try:
+		region_az_listing = client_ec2.describe_availability_zones(AllAvailabilityZones=True)
+		for az in region_az_listing['AvailabilityZones']:
+			if logging.getLogger().getEffectiveLevel() < 50:
+				logging.info(f"Found another AZ called {az['ZoneName']} in region {az['RegionName']}")
+			return_response.append({'MgmtAccount'   : ocredentials['MgmtAccount'],
+			                        'AccountNumber' : ocredentials['AccountNumber'],
+			                        'Region'        : ocredentials['Region'],
+			                        'Profile'       : ocredentials['Profile'],
+			                        'ZoneName'      : az['ZoneName'],
+			                        'ZoneId'        : az['ZoneId'],
+			                        'OptInStatus'   : az['OptInStatus'],
+			                        'ZoneType'      : az['ZoneType'],
+			                        'State'         : az['State'],
+			                        'ParentZoneName': az['ParentZoneName'] if 'ParentZoneName' in az.keys() else az['ZoneName'],
+			                        'ParentZoneId'  : az['ParentZoneId'] if 'ParentZoneId' in az.keys() else az['ZoneId'],
+			                        })
+	except ClientError as my_Error:
+		logging.error(f"Error: {my_Error}")
+
+	return (return_response)
 
 
 ############

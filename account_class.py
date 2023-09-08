@@ -211,8 +211,9 @@ class aws_acct_access:
 			                         'SecretAccessKey': self.creds[1],
 			                         'SessionToken'   : self.creds[2],
 			                         'AccountNumber'  : self.acct_number,
+			                         'MgmtAccount'    : self.MgmtAccount,
 			                         'Region'         : fRegion,
-			                         'Profile'        : None})
+			                         'Profile'        : fProfile if fProfile is not None else None})
 			if self.AccountType.lower() == 'root':
 				logging.info("Enumerating all of the child accounts")
 				self.ChildAccounts = self.find_child_accounts()

@@ -115,6 +115,7 @@ Generic Scripts
 
 - **all_my_functions.py**
   - The objective of this script was to find all the various Lambda functions you've created and left in various accounts.
+  - I just added the ability to provide a new runtime at the command line, so if you specify the "+fix" parameter, and the new runtime, it will find the functions you specify, and then update the runtime for those functions (across your org and regions you specify) to the new runtime. If the Lambda functions aren't valid, the update will fail, but it will still succeed on those functions which work.
 
 - **all_my_gd-detectors.py**
   - This script was created to help remove all the various GuardDuty pieces that are created when GuardDuty is enabled in an organization and its children. Trying to remove all the pieces by hand is crazy, so this script is really long and complex - but it does the job well.
