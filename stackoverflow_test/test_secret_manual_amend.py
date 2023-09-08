@@ -1,11 +1,12 @@
-from botocore import client
+import botocore
+import json
 import pytest
 from datetime import datetime
 
-from all_my_orgs import all_my_orgs
+from src import do_stuff, sendgrid_api_key_arn
 
 def _amend_get_account_data(test_key, test_value, mocker):
-	orig = client.BaseClient._make_api_call
+	orig = botocore.client.BaseClient._make_api_call
 
 	def amend_make_api_call(self, operation_name, kwargs):
 		# Intercept boto3 operations for <secretsmanager.get_secret_value>. Optionally, you can also
@@ -19,8 +20,8 @@ def _amend_get_account_data(test_key, test_value, mocker):
 			print(f"OperationName: {operation_name}\n"
 			      f"Key Name: {test_key}\n"
 			      f"kwargs: {kwargs}")
+			# return test_value
 			return test_value
-		# elif operation_name == ''
 
 		return_response = orig(self, operation_name, kwargs)
 		print(f"OperationName: {operation_name}\n"
@@ -30,25 +31,7 @@ def _amend_get_account_data(test_key, test_value, mocker):
 	mocker.patch('botocore.client.BaseClient._make_api_call', new=amend_make_api_call)
 
 
-parameters1 = {
-	'pProfiles'    : ['LZRoot'],
-	'pSkipProfiles': [],
-	'pAccountList' : [],
-	'pTiming'      : True,
-	'pRootOnly'    : False,
-	'pSaveFilename': None,
-	'pShortform'   : False,
-	'pverbose'     : 50}
-RootOnlyParams = {
-	'pProfiles'    : ['LZRoot'],
-	'pSkipProfiles': [],
-	'pAccountList' : [],
-	'pTiming'      : True,
-	'pRootOnly'    : True,
-	'pSaveFilename': None,
-	'pShortform'   : False,
-	'pverbose'     : 50}
-list_accounts_test_data1 = {
+list_accounts_test_data = {
 	'Accounts' : [
 		{
 			'Id'             : '073323372301',
@@ -182,10 +165,9 @@ list_accounts_test_data1 = {
 
 
 @pytest.mark.parametrize(
-	"parameters,test_value",
+	'test_value',
 	[
-		(parameters1, list_accounts_test_data1),
-		(RootOnlyParams, list_accounts_test_data1),
+		list_accounts_test_data,
 		# str(1993),
 		# json.dumps({"SecretString": "my-secret"}),
 		# json.dumps([2, 3, 5, 7, 11, 13, 17, 19]),
@@ -193,23 +175,15 @@ list_accounts_test_data1 = {
 		# ValueError("Oh my goodness you even have the guts to repeat it!!!"),
 	],
 )
-def test_get_account_data(parameters, test_value, mocker):
-	pProfiles = parameters['pProfiles']
-	pSkipProfiles = parameters['pSkipProfiles']
-	pAccountList = parameters['pAccountList']
-	pTiming = parameters['pTiming']
-	pRootOnly = parameters['pRootOnly']
-	pSaveFilename = parameters['pSaveFilename']
-	pShortform = parameters['pShortform']
-	pverbose = parameters['pverbose']
-	_amend_get_account_data(pProfiles[0], test_value, mocker)
+def test_get_account_data(test_value, mocker):
+	_amend_get_account_data(sendgrid_api_key_arn, test_value, mocker)
 
 	if isinstance(test_value, Exception):
 		print("Expected Error...")
 		with pytest.raises(type(test_value)) as error:
-			all_my_orgs(pProfiles, pSkipProfiles, pAccountList, pTiming, pRootOnly, pSaveFilename, pShortform, pverbose)
+			do_stuff()
 		result = error
 	else:
-		result = all_my_orgs(pProfiles, pSkipProfiles, pAccountList, pTiming, pRootOnly, pSaveFilename, pShortform, pverbose)
+		result = do_stuff()
 
-	# print("Result:", result)
+	print("Result:", result)
