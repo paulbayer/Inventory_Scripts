@@ -2,11 +2,10 @@
 import boto3
 
 import Inventory_Modules
-from Inventory_Modules import get_credentials_for_accounts_in_org, display_results
+from Inventory_Modules import get_all_credentials, display_results
 from colorama import init, Fore
 from botocore.exceptions import ClientError
 from ArgumentsClass import CommonArguments
-from account_class import aws_acct_access
 from queue import Queue
 from threading import Thread
 from time import time
@@ -15,53 +14,40 @@ import sys
 import logging
 
 init()
-__version__ = "2023.09.06"
+__version__ = "2023.09.07"
 
-parser = CommonArguments()
-parser.multiprofile()  # Allows for a single profile to be specified
-parser.multiregion()  # Allows for multiple regions to be specified at the command line
-parser.fragment()  # Allows for soecifying a string fragment to be looked for
-parser.extendedargs()
-parser.rootOnly()
-parser.save_to_file()
-parser.timing()
-parser.fix()
-parser.deletion()
-parser.verbosity()  # Allows for the verbosity to be handled.
-parser.version(__version__)
-parser.my_parser.add_argument(
-	"--runtime", "--run", "--rt",
-	dest="Runtime",
-	nargs="*",
-	metavar="language and version",
-	default=None,
-	help="Language runtime(s) you're looking for within your accounts")
-parser.my_parser.add_argument(
-	"--new_runtime", "--new",
-	dest="NewRuntime",
-	metavar="language and version",
-	default=None,
-	help="Language runtime(s) you will replace what you've found with... ")
-args = parser.my_parser.parse_args()
+ERASE_LINE = '\x1b[2K'
 
-pProfiles = args.Profiles
-pRegionList = args.Regions
-pFragments = args.Fragments
-pAccounts = args.Accounts
-pSkipAccounts = args.SkipAccounts
-pSkipProfiles = args.SkipProfiles
-pRootOnly = args.RootOnly
-pTiming = args.Time
-pFix = args.Fix
-pForceDelete = args.Force
-pSaveFilename = args.Filename
-pRuntime = args.Runtime
-pNewRuntime = args.NewRuntime
-verbose = args.loglevel
 
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
-
-SkipProfiles = ["default"]
+def parse_args(args):
+	parser = CommonArguments()
+	parser.multiprofile()  # Allows for a single profile to be specified
+	parser.multiregion()  # Allows for multiple regions to be specified at the command line
+	parser.fragment()  # Allows for soecifying a string fragment to be looked for
+	parser.extendedargs()
+	parser.rootOnly()
+	parser.save_to_file()
+	parser.timing()
+	parser.rolestouse()
+	parser.fix()
+	parser.deletion()
+	parser.verbosity()  # Allows for the verbosity to be handled.
+	parser.version(__version__)
+	local = parser.my_parser.add_argument_group('all_my_functions', 'Parameters specific to this script')
+	local.add_argument(
+		"--runtime", "--run", "--rt",
+		dest="Runtime",
+		nargs="*",
+		metavar="language and version",
+		default=None,
+		help="Language runtime(s) you're looking for within your accounts")
+	local.add_argument(
+		"--new_runtime", "--new", "--new-runtime",
+		dest="NewRuntime",
+		metavar="language and version",
+		default=None,
+		help="Language runtime(s) you will replace what you've found with... ")
+	return (parser.my_parser.parse_args(args))
 
 
 def left(s, amount):
@@ -75,6 +61,7 @@ def right(s, amount):
 def mid(s, offset, amount):
 	return s[offset - 1:offset + amount - 1]
 
+
 def fix_runtime(CredentialList, new_runtime):
 	from time import sleep
 	class UpdateRuntime(Thread):
@@ -85,10 +72,11 @@ def fix_runtime(CredentialList, new_runtime):
 		def run(self):
 			while True:
 				c_account_credentials, c_function_name, c_new_runtime = self.queue.get()
+				Updated_Function = {}
 				logging.info(f"De-queued info for account {c_account_credentials['AccountId']}")
+				Success = False
 				try:
 					logging.info(f"Attempting to update {c_function_name} to {c_new_runtime}")
-					Success = False
 					session = boto3.Session(aws_access_key_id=c_account_credentials['AccessKeyId'],
 					                        aws_secret_access_key=c_account_credentials['SecretAccessKey'],
 					                        aws_session_token=c_account_credentials['SessionToken'],
@@ -171,6 +159,7 @@ def check_accounts_for_functions(CredentialList, fFragments=None):
 			while True:
 				# Get the work from the queue and expand the tuple
 				c_account_credentials, c_fragment_list, c_PlacesToLook, c_PlaceCount = self.queue.get()
+				Functions = []
 				logging.info(f"De-queued info for account {c_account_credentials['AccountId']}")
 				try:
 					logging.info(f"Attempting to connect to {c_account_credentials['AccountId']}")
@@ -229,91 +218,102 @@ def check_accounts_for_functions(CredentialList, fFragments=None):
 
 
 ##########################
+def all_my_functions(AllCredentials, fFragments):
 
-if pTiming:
-	begin_time = time()
+	AllFunctions = check_accounts_for_functions(AllCredentials, fFragments)
+	sorted_AllFunctions = sorted(AllFunctions, key=lambda k: (k['MgmtAccount'], k['AccountId'], k['Region'], k['FunctionName']))
+	return (sorted_AllFunctions)
 
-ERASE_LINE = '\x1b[2K'
-NumInstancesFound = 0
-NumOfRootProfiles = 0
-AllChildAccounts = []
-RegionList = []
-CredentialList = []
 
-print(f"Collecting credentials... ")
-
-if pProfiles is None:
-	aws_acct = aws_acct_access()
-	RegionList.extend(Inventory_Modules.get_ec2_regions3(aws_acct, pRegionList))
-	profile = "None"
-	CredentialList = get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList)
-else:
-	ProfileList = Inventory_Modules.get_profiles(SkipProfiles, pProfiles)
-	for profile in ProfileList:
-		try:
-			aws_acct = aws_acct_access(profile)
-			RegionList = Inventory_Modules.get_ec2_regions3(aws_acct, pRegionList)
-			CredentialList.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList))
-		except AttributeError as myError:
-			print(f"Failed on profile: {profile}, but continuing on...")
-			continue
-
-RegionList = list(set(RegionList))
-if pTiming:
-	print(f"{Fore.GREEN}Took {time() - begin_time:.3f} seconds to find all credentials{Fore.RESET}")
-
-AccountNum = len(set([acct['AccountId'] for acct in CredentialList]))
-print()
-print(f"Looking through {AccountNum} accounts and {len(RegionList)} regions ")
-print()
-
-AllFunctions = check_accounts_for_functions(CredentialList, pFragments)
-
-display_dict = {'MgmtAccount' : {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
-                'AccountId'   : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
-                'Region'      : {'DisplayOrder': 3, 'Heading': 'Region'},
-                'FunctionName': {'DisplayOrder': 4, 'Heading': 'Function Name'},
-                'Runtime'     : {'DisplayOrder': 5, 'Heading': 'Runtime'},
-                'Role'        : {'DisplayOrder': 6, 'Heading': 'Role'}}
-sorted_results = sorted(AllFunctions, key=lambda k: (k['MgmtAccount'], k['AccountId'], k['Region'], k['FunctionName']))
-
-display_results(sorted_results, display_dict, None, pSaveFilename)
-
-if pTiming and pFix:
-	print(ERASE_LINE)
-	print(f"{Fore.GREEN}Finding all functions took {time() - begin_time:.3f} seconds{Fore.RESET}")
+def fix_my_functions(fAllFunctions, fRuntime, fNewRuntime, fForceDelete, fTiming):
 	begin_fix_time = time()
 
-pFix = pFix and len(AllFunctions) > 0
 
-if pFix and pNewRuntime is None:
-	print(f"You provided the parameter at the command line to *fix* errors found, but didn't supply a new runtime to use, so exiting now... ")
-	sys.exit(8)
-elif pFix and not pForceDelete:
-	print(f"You provided the parameter at the command line to *fix* errors found")
-	ReallyDelete = (input("Having seen what will change, are you still sure? (y/n): ") in ['y', 'Y', 'Yes', 'yes'])
-elif pFix and pForceDelete:
-	print(f"You provided the parameter at the command line to *fix* errors found, as well as FORCING this change to happen... ")
-	ReallyDelete = True
-else:
-	ReallyDelete = False
+	if fNewRuntime is None:
+		print(f"You provided the parameter at the command line to *fix* errors found, but didn't supply a new runtime to use, so exiting now... ")
+		sys.exit(8)
+	elif not fForceDelete:
+		print(f"You provided the parameter at the command line to *fix* errors found")
+		ReallyDelete = (input("Having seen what will change, are you still sure? (y/n): ") in ['y', 'Y', 'Yes', 'yes'])
+	elif fForceDelete:
+		print(f"You provided the parameter at the command line to *fix* errors found, as well as FORCING this change to happen... ")
+		ReallyDelete = True
+	else:
+		ReallyDelete = False
 
-if ReallyDelete:
-	print(f"Updating Runtime for all functions found to {pNewRuntime}")
-	FixedFunctions = fix_runtime(AllFunctions, pNewRuntime)
+	if ReallyDelete:
+		print(f"Updating Runtime for all functions found from {fRuntime} to {fNewRuntime}")
+		return_response = fix_runtime(fAllFunctions, fNewRuntime)
+	else:
+		return_response = "No functions were remediated."
 
+		if fTiming:
+			print(ERASE_LINE)
+			print(f"{Fore.GREEN}Fixing {len(return_response)} functions took {time() - begin_fix_time:.3f} seconds{Fore.RESET}")
+
+	return (return_response)
+
+
+if __name__ == '__main__':
+	args = parse_args(sys.argv[1:])
+
+	pProfiles = args.Profiles
+	pRegionList = args.Regions
+	pFragments = args.Fragments
+	pAccounts = args.Accounts
+	pFix = args.Fix
+	pForceDelete = args.Force
+	pSaveFilename = args.Filename
+	pRuntime = args.Runtime
+	pNewRuntime = args.NewRuntime
+	pSkipAccounts = args.SkipAccounts
+	pSkipProfiles = args.SkipProfiles
+	pRootOnly = args.RootOnly
+	pRoleList = args.AccessRoles
+	pTiming = args.Time
+	pverbose = args.loglevel
+	logging.basicConfig(level=pverbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+
+	display_dict = {'MgmtAccount' : {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
+	                'AccountId'   : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
+	                'Region'      : {'DisplayOrder': 3, 'Heading': 'Region'},
+	                'FunctionName': {'DisplayOrder': 4, 'Heading': 'Function Name'},
+	                'Runtime'     : {'DisplayOrder': 5, 'Heading': 'Runtime'},
+	                'Role'        : {'DisplayOrder': 6, 'Heading': 'Role'}}
+
+	if pTiming:
+		begin_time = time()
+
+	print(f"Collecting credentials... ")
+
+	CredentialList = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList, pRoleList)
+	AccountNum = len(set([acct['AccountId'] for acct in CredentialList]))
+	RegionNum = len(set([acct['Region'] for acct in CredentialList]))
 	print()
-	print(f"New results:")
-	display_results(FixedFunctions, display_dict, None, pSaveFilename) if len(FixedFunctions) > 0 else None
+	print(f"Looking through {AccountNum} accounts and {RegionNum} regions ")
+	print()
+
+	AllFunctions = all_my_functions(CredentialList, pFragments)
+	AccountNum = len(set([x['AccountId'] for x in AllFunctions]))
+	RegionNum = len(set([x['Region'] for x in AllFunctions]))
+	display_results(AllFunctions, display_dict, None, pSaveFilename)
+
+
+	if pFix:
+		if pRuntime is None or pNewRuntime is None:
+			print(f"You neglected to provide the runtime you want to change from and to. Exiting here... ")
+			sys.exit(7)
+		FixedFunctions = fix_my_functions(AllFunctions, pRuntime, pNewRuntime, pForceDelete, pTiming)
+		print()
+		print("And since we remediated the functions - here's the updated list... ")
+		print()
+		display_results(FixedFunctions, display_dict, None, pSaveFilename)
+
 	if pTiming:
 		print(ERASE_LINE)
-		print(f"{Fore.GREEN}Fixing {len(FixedFunctions)} functions took {time() - begin_fix_time:.3f} seconds{Fore.RESET}")
-
-if pTiming:
+		print(f"{Fore.GREEN}This script took {time() - begin_time:.3f} seconds{Fore.RESET}")
 	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script took {time() - begin_time:.3f} seconds{Fore.RESET}")
-print(ERASE_LINE)
-print(f"Found {len(AllFunctions)} functions across {AccountNum} accounts, across {len(RegionList)} regions")
-print()
-print("Thank you for using this script")
-print()
+	print(f"Found {len(AllFunctions)} functions across {AccountNum} accounts, across {RegionNum} regions")
+	print()
+	print("Thank you for using this script")
+	print()
