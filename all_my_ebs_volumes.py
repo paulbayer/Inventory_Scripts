@@ -141,6 +141,8 @@ AccountList = list(set([x['AccountId'] for x in CredentialList]))
 
 VolumesFound.extend(check_accounts_for_ebs_volumes(CredentialList, pFragments))
 OrphanedVolumes = [x for x in VolumesFound if x['State'] in ['available', 'error']]
+RegionsFound = list(set([x['Region'] for x in VolumesFound]))
+AccountsFound = list(set([x['AccountId'] for x in VolumesFound]))
 
 sorted_Volumes_Found = sorted(VolumesFound, key=lambda x: (x['MgmtAccount'], x['AccountId'], x['Region'], x['VolumeName'], x['Size']))
 display_results(sorted_Volumes_Found, display_dict, 'None', pFilename)
@@ -153,8 +155,8 @@ print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAc
 print(f"These profiles were skipped - as requested: {pSkipProfiles}") if pSkipProfiles is not None else ""
 print(f"This output has also been written to a file beginning with '{pFilename}' + the date and time") if pFilename is not None else ""
 print()
-print(f"Found {len(VolumesFound)} volumes across {len(AccountList)} account{'' if len(AccountList) == 1 else 's'} "
-      f"across {len(RegionList)} region{'' if len(RegionList) == 1 else 's'}")
+print(f"Found {len(VolumesFound)} volumes across {len(AccountsFound)} account{'' if len(AccountsFound) == 1 else 's'} "
+      f"across {len(RegionsFound)} region{'' if len(RegionsFound) == 1 else 's'}")
 print()
 print(f"{Fore.RED}Found {len(OrphanedVolumes)} volume{'' if len(OrphanedVolumes) == 1 else 's'} that aren't attached to anything.\n"
       f"Th{'is' if len(OrphanedVolumes) == 1 else 'ese'} are likely orphaned, and should be considered for deletion to save costs.{Fore.RESET}") if len(OrphanedVolumes) > 0 else ""
