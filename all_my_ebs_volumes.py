@@ -12,7 +12,7 @@ from time import time
 import logging
 
 init()
-__version__ = "2023.07.18"
+__version__ = "2023.09.11"
 
 parser = CommonArguments()
 parser.multiprofile()
@@ -83,7 +83,7 @@ def check_accounts_for_ebs_volumes(fCredentialList, ffragment_list=None):
 					logging.warning(my_Error)
 					continue
 				finally:
-					print(f"{ERASE_LINE}Finished finding subnets in account {c_account_credentials['AccountId']} in region {c_account_credentials['Region']} - {c_PlaceCount} / {c_PlacesToLook}", end='\r')
+					print(f"{ERASE_LINE}Finished finding EBS volumes in account {c_account_credentials['AccountId']} in region {c_account_credentials['Region']} - {c_PlaceCount} / {c_PlacesToLook}", end='\r')
 					self.queue.task_done()
 
 	checkqueue = Queue()
