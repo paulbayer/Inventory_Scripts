@@ -218,16 +218,17 @@ def check_accounts_for_functions(CredentialList, fFragments=None):
 
 
 ##########################
-def all_my_functions(AllCredentials, fFragments):
+def all_my_functions(AllCredentials, fFragments, fverbose=50):
 
 	AllFunctions = check_accounts_for_functions(AllCredentials, fFragments)
 	sorted_AllFunctions = sorted(AllFunctions, key=lambda k: (k['MgmtAccount'], k['AccountId'], k['Region'], k['FunctionName']))
+	if fverbose < 50:
+		print(f"We found {len(AllFunctions)} functions in {len(AllCredentials)} places")
 	return (sorted_AllFunctions)
 
 
 def fix_my_functions(fAllFunctions, fRuntime, fNewRuntime, fForceDelete, fTiming):
 	begin_fix_time = time()
-
 
 	if fNewRuntime is None:
 		print(f"You provided the parameter at the command line to *fix* errors found, but didn't supply a new runtime to use, so exiting now... ")
@@ -293,7 +294,7 @@ if __name__ == '__main__':
 	print(f"Looking through {AccountNum} accounts and {RegionNum} regions ")
 	print()
 
-	AllFunctions = all_my_functions(CredentialList, pFragments)
+	AllFunctions = all_my_functions(CredentialList, pFragments, pverbose)
 	AccountNum = len(set([x['AccountId'] for x in AllFunctions]))
 	RegionNum = len(set([x['Region'] for x in AllFunctions]))
 	display_results(AllFunctions, display_dict, None, pSaveFilename)
