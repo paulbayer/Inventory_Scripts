@@ -18,6 +18,7 @@ __version__ = "2023.09.07"
 
 ERASE_LINE = '\x1b[2K'
 
+# TODO: Need a table at the bottom that creates a summary of the runtimes used, so that action can be taken if older runtimes are in use.
 
 def parse_args(args):
 	parser = CommonArguments()
