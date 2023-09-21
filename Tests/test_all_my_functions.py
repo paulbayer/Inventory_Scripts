@@ -1292,9 +1292,9 @@ test_result_dictionary = [
 	{'operation_name': 'ListFunctions',
 	 'test_result'   : function_response_data},
 	{'operation_name': 'AssumeRole',
-	 'test_result': xxx},
+	 'test_result'   : xxx},
 	{'operation_name': 'DescribeRegions',
-	 'test_result': xxx}
+	 'test_result'   : xxx}
 ]
 
 
