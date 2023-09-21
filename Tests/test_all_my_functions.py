@@ -536,11 +536,6 @@ t = [
 	 'SessionToken': '***SessionTokenHere***'}]
 
 
-
-# Generate a test function to test out the "all_my_functions" function that I've imported
-
-
-
 @pytest.mark.parametrize(
 	"parameters,test_value",
 	[
