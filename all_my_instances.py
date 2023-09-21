@@ -15,6 +15,9 @@ import logging
 init()
 __version__ = "2023.05.10"
 
+# TODO: Need a table at the bottom that summarizes the results, by instance-type, by running/ stopped, maybe by account and region
+# TODO: Need to make this function multi-threaded, so it runs more quickly.
+
 parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()

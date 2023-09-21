@@ -3705,6 +3705,14 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 
 def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=None, fSkipAccounts=None, fRootOnly=False, fAccounts=None, fRegionList=None, RoleList=None):
 	"""
+	Flow for this function:
+		* DescribeRegion (to validate the region that's been provided)
+		* GetCallerIdentity (to get the info from the profile(s) that's been provided - to determine if it's an Org account, the child accounts, etc.)
+		* DescribeOrganization (Describes the Org for the profile that's been provided - so it understands whether it's an Org or a standalone account)
+		* ListAccounts (to get information for the child/ member accounts within the Org)
+		* xxxxx (One by one, it goes into each account to get STS credentials for each account, wihtin each region that's been provided)
+		* Once it has all STS credentials, it arranges everything into a single list (of dicts) and returns the result.
+
 	Note that this function returns the credentials of all the accounts in all the profiles passed to it
 
 	Note that this function creates a new credential for every region, even though today - that's not necessary.
@@ -3757,7 +3765,9 @@ def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=None, fSkip
 				# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 				AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, RoleList, fTiming))
 				if fTiming:
+					print()
 					print(f"{ERASE_LINE}{Fore.GREEN}Finished profile {Fore.RED}'{profile}'{Fore.GREEN}. Finding credentials for {len(AllCredentials)} accounts and regions has taken {time() - begin_time:.2f} seconds{Fore.RESET}")
+					print()
 			except AttributeError as my_Error:
 				logging.error(f"Profile {profile} didn't work... Skipping")
 				continue
