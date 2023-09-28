@@ -46,8 +46,6 @@ def parse_args(args):
 	# This next parameter includes picking a specific account, ignoring specific accounts or profiles
 	parser.extendedargs()
 	parser.fragment()
-	# This next parameter includes *forcing* an operation
-	parser.deletion()
 	parser.roletouse()
 	# parser.save_to_file()
 	parser.timing()
@@ -76,6 +74,11 @@ def parse_args(args):
 		help="[Default] Do a Dry-run; if this parameter is specified, we'll delete stacksets we find, with no additional confirmation.",
 		action="store_true",
 		dest="DryRun")
+	parser.my_parser.add_argument(
+		'--retain', '--disassociate',
+		help="Remove the stack instances from the stackset, but retain the resources. You must also specify '+delete' to use this parameter",
+		action="store_true",
+		dest="Retain")
 	return (parser.my_parser.parse_args(args))
 
 
@@ -269,10 +272,7 @@ def _delete_stack_instances(faws_acct, fRegion, fStackSetName, fForce, fAccountL
 		# Note: The "Success" is True below to show that the calling function can move forward, even though the Account / Regions are null
 		return_response = {'Success': False, 'ErrorMessage': "Failed - StackSet is 'Service_Managed' but no deployment target was provided"}
 		return (return_response)
-	# if fPermissionModel == 'SELF_MANAGED':
 	try:
-		# def delete_stack_instances3(faws_acct, fRegion, lRegions, fStackSetName, fRetainStacks=False,
-		# 							fOperationName=None, lAccounts=None, fPermissionModel='SELF', fDeploymentTarget=None)
 		delete_stack_instance_response = Inventory_Modules.delete_stack_instances3(faws_acct, fRegion, fRegionList, fStackSetName, fForce, StackSetOpId,
 		                                                                           fAccountList, fPermissionModel, fDeploymentTargets)
 		if delete_stack_instance_response['Success']:
@@ -286,12 +286,6 @@ def _delete_stack_instances(faws_acct, fRegion, fStackSetName, fForce, fAccountL
 			logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
 			return_response = {'Success': False, 'ErrorMessage': "Failed - StackSet not found"}
 			return (return_response)
-		# except  as my_Error:
-		# 	print(my_Error)
-		# 	if my_Error.response['Error']['Code'] == 'StackSetNotFoundException':
-		# 		logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
-		# 		return_response = {'Success': False, 'ErrorMessage': "Failed - StackSet not found"}
-		# 		return (return_response)
 		else:
 			print("Failure to run: ", my_Error)
 			return_response = {'Success': False, 'ErrorMessage': "Failed-Other"}
@@ -300,8 +294,8 @@ def _delete_stack_instances(faws_acct, fRegion, fStackSetName, fForce, fAccountL
 
 def display_stack_set_health(StackSet_Dict, Account_Dict):
 	combined_stack_set_instances = StackSet_Dict['combined_stack_set_instances']
-	RemovedAccounts = Account_Dict['RemovedAccounts']
-	InaccessibleAccounts = Account_Dict['InaccessibleAccounts']
+	RemovedAccounts = Account_Dict['RemovedAccounts'] if pCheckAccount else None
+	InaccessibleAccounts = Account_Dict['InaccessibleAccounts']  if pCheckAccount else None
 	StackSetNames = StackSet_Dict['StackSetNames']
 	summary = {}
 	stack_set_permission_models = dict()
@@ -331,12 +325,13 @@ def display_stack_set_health(StackSet_Dict, Account_Dict):
 						stack_instances[stack_instance['Account']] = []
 					stack_instances[stack_instance['Account']].append(stack_instance['Region'])
 				for k, v in stack_instances.items():
-					if k in RemovedAccounts:
+					if pCheckAccount and k in RemovedAccounts:
 						print(f"{Style.BRIGHT}{Fore.MAGENTA}\t\t{k}: {v}\t <----- Look here for orphaned accounts!{Style.RESET_ALL}")
 					else:
 						print(f"\t\t{k}: {v}")
 	# Print the summary of any accounts that were found in the StackSets, but not in the Org.
 	if pCheckAccount:
+		print("Displaying accounts within the stacksets that aren't a part of the Organization")
 		print()
 		logging.info(f"Found {len(InaccessibleAccounts) + len(RemovedAccounts)} accounts that don't belong")
 		print(f"There were {len(RemovedAccounts)} accounts in the {len(StackSetNames['StackSets'])} Stacksets we looked through, that are not a part of the Organization")
@@ -428,7 +423,6 @@ def check_accounts(faws_acct, Account_Dict):
 	AccountList = Account_Dict['AccountList']
 	InaccessibleAccounts = []
 	OrgAccountList = [i['AccountId'] for i in faws_acct.ChildAccounts]
-	print("Displaying accounts within the stacksets that aren't a part of the Organization")
 	logging.info(f"There are {len(OrgAccountList)} accounts in the Org, and {len(AccountList)} unique accounts in all stacksets found")
 	RemovedAccounts = list(set(AccountList) - set(OrgAccountList))
 	for accountnum in AccountList:
@@ -530,7 +524,7 @@ def modify_stacksets(StackSet_Dict, Account_Dict, Region_Dict):
 				RemoveStackInstanceResult = _delete_stack_instances(aws_acct,
 				                                                    pRegion,
 				                                                    StackSetName,
-				                                                    pForce,
+				                                                    pRetain,
 				                                                    AccountList,
 				                                                    FoundRegionList,
 				                                                    StackSet['PermissionModel'],
@@ -549,19 +543,19 @@ def modify_stacksets(StackSet_Dict, Account_Dict, Region_Dict):
 				else:
 					logging.info(f"About to remove account {pAccountRemoveList} from stackset {StackSetName} in regions {str(FoundRegionList)}")
 					RemoveStackSet = False
-				RemoveStackInstanceResult = _delete_stack_instances(aws_acct, pRegion, StackSetName, pForce, AccountList, FoundRegionList)
+				RemoveStackInstanceResult = _delete_stack_instances(aws_acct, pRegion, StackSetName, pRetain, AccountList, FoundRegionList)
 			if RemoveStackInstanceResult['Success']:
 				Instances = [item for item in combined_stack_set_instances if item['StackSetName'] == StackSetName]
 				print(f"{ERASE_LINE}Successfully initiated removal of {len(Instances)} instances from StackSet {StackSetName}")
-			elif RemoveStackInstanceResult['ErrorMessage'] == 'Failed-ForceIt' and pForce:
+			elif RemoveStackInstanceResult['ErrorMessage'] == 'Failed-ForceIt' and pRetain:
 				print("We tried to force the deletion, but some other problem happened.")
-			elif RemoveStackInstanceResult['ErrorMessage'] == 'Failed-ForceIt' and not pForce:
+			elif RemoveStackInstanceResult['ErrorMessage'] == 'Failed-ForceIt' and not pRetain:
 				Decision = (input("Deletion of Stack Instances failed, but might work if we force it. Shall we force it? (y/n): ") in ['y', 'Y'])
 				if Decision:
 					RemoveStackInstanceResult = _delete_stack_instances(aws_acct, pRegion, StackSetName, True, AccountList, FoundRegionList)  # Try it again, forcing it this time
 					if RemoveStackInstanceResult['Success']:
 						print(f"{ERASE_LINE}Successfully retried StackSet {StackSetName}")
-					elif pForce is True and RemoveStackInstanceResult['ErrorMessage'] == 'Failed-ForceIt':
+					elif pRetain is True and RemoveStackInstanceResult['ErrorMessage'] == 'Failed-ForceIt':
 						print(f"{ERASE_LINE}Some other problem happened on the retry.")
 					elif RemoveStackInstanceResult['ErrorMessage'] == 'Failed-Other':
 						print(f"{ERASE_LINE}Something else failed on the retry... Please report the error received.")
@@ -618,6 +612,8 @@ def refresh_stacksets(StackSet_Dict):
 	ApplicableStackSetsList = StackSet_Dict['ApplicableStackSetsList']
 	RefreshOpsList = []
 	cfn_client = aws_acct.session.client('cloudformation')
+	print(f"Found {len(ApplicableStackSetsList)} stacksets that matched {pStackfrag}")
+	print()
 	for stackset in ApplicableStackSetsList:
 		print(f"Beginning to refresh stackset {Fore.RED}{stackset}{Fore.RESET} as you requested...")
 		# Get current attributes for the stacksets we've found...
@@ -626,11 +622,11 @@ def refresh_stacksets(StackSet_Dict):
 		ReallyRefresh = False
 		ReallyRefresh = (input(f"Refresh of {Fore.RED}{stackset}{Fore.RESET} has been requested.\n"
 		                       f"Drift Status of the stackset is: {stacksetAttributes['StackSet']['StackSetDriftDetectionDetails']['DriftStatus']}\n"
-		                       f"Are you still sure? (y/n): ") in ['y', 'Y']) if not pForce else False
-		if ReallyRefresh or pForce:
+		                       f"Are you still sure? (y/n): ") in ['y', 'Y']) if not pRetain else False
+		if ReallyRefresh or pRetain:
 			# WE have to separate the use-cases here, since the "Service Managed" update operation won't accept a "AdministrationRoleArn",
 			# but the "Self Managed" *requires* it.
-			if stacksetAttributes['StackSet']['PermissionModel'] == 'SERVICE_MANAGED':
+			if 'PermissionModel' in stacksetAttributes['StackSet'].keys() and stacksetAttributes['StackSet']['PermissionModel'] == 'SERVICE_MANAGED':
 				refresh_stack_set = cfn_client.update_stack_set(StackSetName=stacksetAttributes['StackSet']['StackSetName'],
 				                                                UsePreviousTemplate=True,
 				                                                Capabilities=stacksetAttributes['StackSet']['Capabilities'],
@@ -673,9 +669,10 @@ if __name__ == '__main__':
 	pCheckAccount = args.AccountCheck
 	pRole = args.AccessRole
 	pdelete = args.DryRun
+	pRetain = args.Retain
 	pRegionRemove = args.pRegionRemove
 	pRefresh = args.Refresh
-	pForce = args.Force
+	# pForce = args.Force
 	# pSaveFilename = args.Filename
 	logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
