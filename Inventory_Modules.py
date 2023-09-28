@@ -1,6 +1,6 @@
 import logging
 
-__version__ = "2023.08.08"
+__version__ = "2023.09.27"
 
 """
 ** Why are some functions "function" vs. "function2" vs. "function3"?**
@@ -2981,7 +2981,11 @@ def delete_stack_instances3(faws_acct, fRegion, lRegions, fStackSetName, fRetain
 	lAccounts is a list of accounts
 	lRegion is a list of regions
 	fStackSetName is a string
+	fRetainStacks is a boolean
 	fOperationName is a string (to identify the operation)
+	lAccounts should be a list of accounts
+	fPermissionModel is either "SELF_MANAGED" or "SERVICE_MANAGED"
+	fDeploymentTarget is the Organizational Unit (or root) for the stackset to be associated to
 	"""
 	import logging
 	from random import choices

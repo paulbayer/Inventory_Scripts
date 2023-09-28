@@ -12,7 +12,7 @@ import logging
 
 init()
 
-__version__ = '2023.05.04'
+__version__ = '2023.09.27'
 
 parser = CommonArguments()
 parser.singleprofile()  # Allows for a single profile to be specified
@@ -50,6 +50,7 @@ pProfile = args.Profile
 pRegionList = args.Regions
 pSkipProfiles = args.SkipProfiles
 pSkipAccounts = args.SkipAccounts
+pAccountList = args.Accounts
 verbose = args.loglevel
 pstackfrag = args.Fragments
 pstatus = args.status
@@ -63,7 +64,10 @@ aws_acct = aws_acct_access(pProfile)
 ChildAccounts = aws_acct.ChildAccounts
 RegionList = Inventory_Modules.get_service_regions('cloudformation', pRegionList)
 ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, pSkipAccounts)
-AccountList = [account['AccountId'] for account in ChildAccounts]
+if pAccountList is None:
+	AccountList = [account['AccountId'] for account in ChildAccounts]
+else:
+	AccountList = [account['AccountId'] for account in ChildAccounts if account['AccountId'] in pAccountList]
 
 print(f"You asked to find stacks with this fragment {Fore.RED}'{pstackfrag}'{Fore.RESET}")
 print(f"in these accounts:\n{Fore.RED}{AccountList}{Fore.RESET}")
@@ -118,16 +122,16 @@ for account_number in AccountList:
 					'StackName'  : StackName,
 					'StackCreate': StackCreate.strftime("%Y-%m-%d"),
 					'StackStatus': StackStatus,
-					'StackArn'   : StackID})
+					'StackArn'   : StackID if pStackIdFlag else 'None'})
 sortedStacksFound = sorted(StacksFound, key=lambda x: (x['Account'], x['Region'], x['StackName']))
-display_dict = {'Account'    : {'Format': '12s', 'DisplayOrder': 1, 'Heading': 'Account'},
-                'Region'     : {'Format': '15s', 'DisplayOrder': 2, 'Heading': 'Region'},
-                'StackStatus': {'Format': '15s', 'DisplayOrder': 3, 'Heading': 'Stack Status'},
-                'StackCreate': {'Format': '12s', 'DisplayOrder': 4, 'Heading': 'Create Date'},
-                'StackName'  : {'Format': '30s', 'DisplayOrder': 5, 'Heading': 'Stack Name'},
-                'StackId'    : {'Format': '25s', 'DisplayOrder': 6, 'Heading': 'Stack ID'}}
+display_dict = {'Account'    : {'DisplayOrder': 1, 'Heading': 'Account'},
+                'Region'     : {'DisplayOrder': 2, 'Heading': 'Region'},
+                'StackStatus': {'DisplayOrder': 3, 'Heading': 'Stack Status'},
+                'StackCreate': {'DisplayOrder': 4, 'Heading': 'Create Date'},
+                'StackName'  : {'DisplayOrder': 5, 'Heading': 'Stack Name'},
+                'StackArn'   : {'DisplayOrder': 6, 'Heading': 'Stack ID'}}
 
-display_results(sortedStacksFound, display_dict)
+display_results(sortedStacksFound, display_dict, None, )
 lAccounts = []
 lRegions = []
 lAccountsAndRegions = []
@@ -136,7 +140,7 @@ for i in range(len(StacksFound)):
 	lRegions.append(StacksFound[i]['Region'])
 	lAccountsAndRegions.append((StacksFound[i]['Account'], StacksFound[i]['Region']))
 print(ERASE_LINE)
-print(f"{Fore.RED}Found {len(StacksFound)} stacks across {len(ChildAccounts)} accounts across {len(RegionList)} regions{Fore.RESET}")
+print(f"{Fore.RED}Found {len(StacksFound)} stacks across {len(AccountList)} accounts across {len(RegionList)} regions{Fore.RESET}")
 print()
 if args.loglevel < 21:  # INFO level
 	print("The list of accounts and regions:")
