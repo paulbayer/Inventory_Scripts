@@ -220,6 +220,12 @@ def check_accounts_for_functions(CredentialList, fFragments=None):
 
 ##########################
 def all_my_functions(AllCredentials, fFragments, fverbose=50):
+	# Generate parameter descriptions
+	"""
+	@AllCredentials - This is a list of all the credentials we have to check
+	@fFragments - This is a list of fragments we want to search for
+	@fverbose - This is a level of verbosity
+	"""
 
 	AllFunctions = check_accounts_for_functions(AllCredentials, fFragments)
 	sorted_AllFunctions = sorted(AllFunctions, key=lambda k: (k['MgmtAccount'], k['AccountId'], k['Region'], k['FunctionName']))
