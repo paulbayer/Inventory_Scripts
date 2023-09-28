@@ -443,8 +443,9 @@ def make_creds(faws_acct):
 	return ({'AccessKeyId'    : faws_acct.creds.access_key,
 	         'SecretAccessKey': faws_acct.creds.secret_key,
 	         'SessionToken'   : faws_acct.creds.token,
-	         'Profile'        : faws_acct.credentials.Profile,
+	         'Profile'        : faws_acct.credentials['Profile'],
 	         'Region'         : faws_acct.Region,
+	         'AccountId'      : faws_acct.acct_number,
 	         'AccountNumber'  : faws_acct.acct_number,
 	         'MgmtAccount'    : faws_acct.MgmtAccount})
 
@@ -1861,6 +1862,7 @@ def find_lambda_functions2(ocredentials, fRegion='us-east-1', fSearchStrings=Non
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the AccountId
+		- ['Region'] holds the region for the credentials (optional)
 	fRegion is a string
 	fSearchString is a list of strings
 	"""
@@ -1869,11 +1871,14 @@ def find_lambda_functions2(ocredentials, fRegion='us-east-1', fSearchStrings=Non
 
 	if fSearchStrings is None:
 		fSearchStrings = ['all']
+	if 'Region' in ocredentials.keys():
+		fRegion = ocredentials['Region']
 	session_lambda = boto3.Session(region_name=fRegion,
 	                               aws_access_key_id=ocredentials['AccessKeyId'],
 	                               aws_secret_access_key=ocredentials['SecretAccessKey'],
 	                               aws_session_token=ocredentials['SessionToken'])
 	client_lambda = session_lambda.client('lambda')
+	# TODO: Consider using try..except here to handle errors in the API call
 	functions = client_lambda.list_functions()['Functions']
 	functions2 = []
 	if 'all' in fSearchStrings:
