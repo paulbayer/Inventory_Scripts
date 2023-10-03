@@ -39,7 +39,12 @@ __version__ = "2023.09.27"
 
 
 ###################
-def parse_args(args):
+def parse_args(args: object) -> object:
+	"""
+	Description: Parses the arguments passed into the script
+	@param args: args represents the list of arguments passed in
+	@return: returns an object namespace that contains the individualized parameters passed in
+	"""
 	parser = CommonArguments()
 	parser.singleprofile()
 	parser.singleregion()
@@ -82,7 +87,14 @@ def parse_args(args):
 	return (parser.my_parser.parse_args(args))
 
 
-def setup_auth_and_regions(fProfile):
+def setup_auth_and_regions(fProfile:str) -> (aws_acct_access, list):
+	"""
+	Description: This function takes in a profile, and returns the account object and the regions valid for this account / org.
+	@param fProfile: A string representing the profile provided by the user. If nothing, then use the default profile or credentials
+	@return:
+		- an object of the type "aws_acct_access"
+		- a list of regions valid for this particular profile/ account.
+	"""
 	try:
 		aws_acct = aws_acct_access(fProfile)
 	except ConnectionError as my_Error:
@@ -122,9 +134,12 @@ def setup_auth_and_regions(fProfile):
 	return (aws_acct, RegionList)
 
 
-def find_stack_set_instances(fStackSetNames, fRegion):
+def find_stack_set_instances(fStackSetNames:list, fRegion:str) -> list:
 	"""
 	Note that this function takes a list of stack set names and finds the stack instances within them
+	fStackSetNames - This is a list of stackset names to look for. The reserved word "all" will return everything
+	fRegion - This is a string containing the region in which to look for stacksets.
+
 	"""
 
 	class FindStackSets(Thread):
@@ -236,6 +251,11 @@ def find_stack_set_instances(fStackSetNames, fRegion):
 
 
 def random_string(stringLength=10):
+	"""
+	Description: Generates a random string, to add to the session object when connecting to an account - to make the session unique
+	@param stringLength: to determine the length of the random number generated
+	@return: returns a random string of characters of length "stringlength"
+	"""
 	import random
 	import string
 	# Generate a random string of fixed length
@@ -244,7 +264,7 @@ def random_string(stringLength=10):
 	return (randomstring)
 
 
-def _delete_stack_instances(faws_acct, fRegion, fStackSetName, fForce, fAccountList=None, fRegionList=None, fPermissionModel='SELF_MANAGED', fDeploymentTargets=None):
+def _delete_stack_instances(faws_acct: aws_acct_access, fRegion: str, fStackSetName: str, fRetain: bool, fAccountList:list=None, fRegionList:list=None, fPermissionModel='SELF_MANAGED', fDeploymentTargets=None):
 	"""
 	Required Parameters:
 	faws_acct - the object containing the account credentials and such
@@ -252,7 +272,7 @@ def _delete_stack_instances(faws_acct, fRegion, fStackSetName, fForce, fAccountL
 	fAccountList - this is the listing of accounts that were FOUND to be within stack instances
 	fRegionList - The list of regions within the stackset to remove as well
 	fStackSetName - the stackset we're removing stack instances from
-	fForce - By passing a "True" here, the API will pass on "RetainStacks" to the child stack - which will allow the stackset to be deleted more easily,
+	fRetain - By passing a "True" here, the API will pass on "RetainStacks" to the child stack - which will allow the stackset to be deleted more easily,
 	 	but also leaves a remnant in the child account to clean up later..
 	fPermissionModel - Whether the StackSet is using SELF_MANAGED or SERVICE_MANAGED permission model (associating the stack with individual accounts, or with an OU itself)
 	fDeploymentTargets - When fPermissionModel is 'SELF_MANAGED', this should be None.
@@ -273,7 +293,7 @@ def _delete_stack_instances(faws_acct, fRegion, fStackSetName, fForce, fAccountL
 		return_response = {'Success': False, 'ErrorMessage': "Failed - StackSet is 'Service_Managed' but no deployment target was provided"}
 		return (return_response)
 	try:
-		delete_stack_instance_response = Inventory_Modules.delete_stack_instances3(faws_acct, fRegion, fRegionList, fStackSetName, fForce, StackSetOpId,
+		delete_stack_instance_response = Inventory_Modules.delete_stack_instances3(faws_acct, fRegion, fRegionList, fStackSetName, fRetain, StackSetOpId,
 		                                                                           fAccountList, fPermissionModel, fDeploymentTargets)
 		if delete_stack_instance_response['Success']:
 			return_response = {'Success': True, 'OperationId': delete_stack_instance_response['OperationId']}
@@ -292,7 +312,7 @@ def _delete_stack_instances(faws_acct, fRegion, fStackSetName, fForce, fAccountL
 			return (return_response)
 
 
-def display_stack_set_health(StackSet_Dict, Account_Dict):
+def display_stack_set_health(StackSet_Dict:dict, Account_Dict:dict):
 	combined_stack_set_instances = StackSet_Dict['combined_stack_set_instances']
 	RemovedAccounts = Account_Dict['RemovedAccounts'] if pCheckAccount else None
 	InaccessibleAccounts = Account_Dict['InaccessibleAccounts']  if pCheckAccount else None
@@ -345,7 +365,7 @@ def display_stack_set_health(StackSet_Dict, Account_Dict):
 		print()
 
 
-def get_stack_set_deployment_target_info(faws_acct, fRegion, fStackSetName, fAccountRemovalList=None):
+def get_stack_set_deployment_target_info(faws_acct:aws_acct_access, fRegion:str, fStackSetName:str, fAccountRemovalList:list=None):
 	"""
 	Required Parameters:
 	faws_acct - the object containing the account credentials and such
@@ -376,7 +396,16 @@ def get_stack_set_deployment_target_info(faws_acct, fRegion, fStackSetName, fAcc
 	return (return_result)
 
 
-def collect_cfnstacksets(faws_acct, fRegion):
+def collect_cfnstacksets(faws_acct:aws_acct_access, fRegion:str) -> (dict, dict, dict):
+	"""
+
+	@param faws_acct: Account Object of type "aws_acct_access"
+	@param fRegion: String for the region in which to collect the stacksets
+	@return:
+		- dict of lists, containing 1/ Aggregate list of stack instances found, 2/ list of stackset names found, 3/ list of stacksets that are in-scope for this script
+		- dict of Accounts found within those stacksets
+		- dict of Regions found within the stacksets
+	"""
 	# Get the StackSet names from the Management Account
 	StackSetNames = Inventory_Modules.find_stacksets3(faws_acct, fRegion, pStackfrag, pExact)
 	if not StackSetNames['Success']:
