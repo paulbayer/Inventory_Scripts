@@ -303,7 +303,7 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
 	setattr(logging, methodName, logToRoot)
 
 
-def find_if_alz(fProfile):
+def find_if_alz(fProfile: str) -> dict:
 	import boto3
 
 	session_org = boto3.Session(profile_name=fProfile)
@@ -2565,6 +2565,7 @@ def delete_stack2(ocredentials, fRegion, fStackName, **kwargs):
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the AccountId
+		- ['Region'] holds the Region string
 	fRegion is a string
 	fStackName is a string
 	RetainResources should be a boolean
@@ -2768,7 +2769,7 @@ def find_stacksets2(ocredentials, fRegion='us-east-1', fStackFragment=None, fSta
 	return (stacksetsCopy)
 
 
-def find_stacksets3(faws_acct, fRegion=None, fStackFragment=None, fExact=False):
+def find_stacksets3(faws_acct, fRegion:str=None, fStackFragment: list=None, fExact: bool=False) -> dict:
 	"""
 	faws_acct is a class containing the account information
 	fRegion is a string
@@ -2777,7 +2778,6 @@ def find_stacksets3(faws_acct, fRegion=None, fStackFragment=None, fExact=False):
 	returns a dict object with the list of stacksets if successful.
 	"""
 	import logging
-	# from urllib3.exceptions import NewConnectionError
 	from botocore.exceptions import EndpointConnectionError
 
 	# Logging Settings
@@ -2802,6 +2802,7 @@ def find_stacksets3(faws_acct, fRegion=None, fStackFragment=None, fExact=False):
 
 	try:
 		stacksets_prelim = client_cfn.list_stack_sets(Status='ACTIVE')
+	# TODO: Need more error-handling here to handle if this fails...
 	except EndpointConnectionError as myError:
 		logging.info(f"Likely that the region passed in wasn't correct. Please check and try again: {myError}")
 		return_response = {'Success': False, 'ErrorMessage': "Region Endpoint Failure"}
@@ -3712,7 +3713,7 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 				savefile.write(row)
 
 
-def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=None, fSkipAccounts=None, fRootOnly=False, fAccounts=None, fRegionList=None, RoleList=None):
+def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProfiles: list = None, fSkipAccounts: list = None, fRootOnly: bool = False, fAccounts: list = None, fRegionList: list = None, RoleList: list = None) -> list:
 	"""
 	Flow for this function:
 		* DescribeRegion (to validate the region that's been provided)
@@ -3726,6 +3727,16 @@ def get_all_credentials(fProfiles=None, fTiming=False, fSkipProfiles=None, fSkip
 
 	Note that this function creates a new credential for every region, even though today - that's not necessary.
 	However, some day accounts will be pegged to specific regions, and it will be necessary then.
+	Description:
+	@param fProfiles: list of profiles to look through (generally profiles of Organizations)
+	@param fTiming: whether to display timings for functions
+	@param fSkipProfiles: Profiles to skip (typically things like "_admin")
+	@param fSkipAccounts: Accounts to skip over (like Core Accounts you want to avoid changing)
+	@param fRootOnly: Whether you want to run for only the root account in the Org
+	@param fAccounts: A list of specific accounts you're interested in, instead of all of them
+	@param fRegionList: A list of regions you're interested in running this script against
+	@param RoleList: A list of roles you want to use to gain access to child accounts
+	@return: Returns a list of Credentials to the child accounts for use in many other functions
 	"""
 	import logging
 	from account_class import aws_acct_access
