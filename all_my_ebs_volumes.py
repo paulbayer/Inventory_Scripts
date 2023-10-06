@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
+import sys
 
-# import boto3
 from Inventory_Modules import display_results, get_all_credentials, find_account_volumes2
 from ArgumentsClass import CommonArguments
 from colorama import init, Fore
@@ -12,46 +12,69 @@ from time import time
 import logging
 
 init()
-__version__ = "2023.09.11"
+__version__ = "2023.10.06"
 
-parser = CommonArguments()
-parser.multiprofile()
-parser.multiregion()
-parser.extendedargs()
-parser.fragment()
-parser.rootOnly()
-parser.save_to_file()
-parser.timing()
-parser.verbosity()
-parser.version(__version__)
-args = parser.my_parser.parse_args()
-
-pProfiles = args.Profiles
-pRegionList = args.Regions
-pAccounts = args.Accounts
-pFragments = args.Fragments
-pSkipAccounts = args.SkipAccounts
-pSkipProfiles = args.SkipProfiles
-pRootOnly = args.RootOnly
-# pText_to_find = args.pText_To_Find
-pFilename = args.Filename
-pTiming = args.Time
-verbose = args.loglevel
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 ##################
+def parse_args(args):
+	"""
+	Description: Parses the arguments passed into the script
+	@param args: args represents the list of arguments passed in
+	@return: returns an object namespace that contains the individualized parameters passed in
+	"""
 
-ERASE_LINE = '\x1b[2K'
+	parser = CommonArguments()
+	parser.multiprofile()
+	parser.multiregion()
+	parser.extendedargs()
+	parser.fragment()
+	parser.rootOnly()
+	parser.save_to_file()
+	parser.timing()
+	parser.verbosity()
+	parser.version(__version__)
+	return(parser.my_parser.parse_args(args))
 
-logging.info(f"Profiles: {pProfiles}")
 
-##################
+def present_results(fVolumesFound:list):
+	"""
+	Description: This will present the results found by the main function
+	@param fVolumesFound: A list of all the volumes found across all the child accounts
+	"""
+	display_dict = {'MgmtAccount': {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
+	                'AccountId'  : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
+	                'Region'     : {'DisplayOrder': 3, 'Heading': 'Region'},
+	                'VolumeName' : {'DisplayOrder': 4, 'Heading': 'Volume Name'},
+	                'State'      : {'DisplayOrder': 5, 'Heading': 'State', 'Condition': ['available', 'creating', 'deleting', 'deleted', 'error']},
+	                'Size'       : {'DisplayOrder': 6, 'Heading': 'Size (GBs)'},
+	                # 'KmsKeyId'   : {'DisplayOrder': 9, 'Heading': 'Encryption Key'},
+	                'Throughput'   : {'DisplayOrder': 8, 'Heading': 'Throughput'},
+	                'VolumeType' : {'DisplayOrder': 7, 'Heading': 'Type'}}
+	OrphanedVolumes = [x for x in fVolumesFound if x['State'] in ['available', 'error']]
+	RegionsFound = list(set([x['Region'] for x in fVolumesFound]))
+	AccountsFound = list(set([x['AccountId'] for x in fVolumesFound]))
+
+	sorted_Volumes_Found = sorted(fVolumesFound, key=lambda x: (x['MgmtAccount'], x['AccountId'], x['Region'], x['VolumeName'], x['Size']))
+	display_results(sorted_Volumes_Found, display_dict, 'None', pFilename)
+
+	print()
+	print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else ""
+	print(f"These profiles were skipped - as requested: {pSkipProfiles}") if pSkipProfiles is not None else ""
+	print(f"This output has also been written to a file beginning with '{pFilename}' + the date and time") if pFilename is not None else ""
+	print()
+	print(f"Found {len(VolumesFound)} volumes across {len(AccountsFound)} account{'' if len(AccountsFound) == 1 else 's'} "
+	      f"across {len(RegionsFound)} region{'' if len(RegionsFound) == 1 else 's'}")
+	print()
+	print(f"{Fore.RED}Found {len(OrphanedVolumes)} volume{'' if len(OrphanedVolumes) == 1 else 's'} that aren't attached to anything.\n"
+	      f"Th{'is' if len(OrphanedVolumes) == 1 else 'ese'} are likely orphaned, and should be considered for deletion to save costs.{Fore.RESET}") if len(OrphanedVolumes) > 0 else ""
 
 
-# def check_accounts_for_ebs_volumes(CredentialList, fRegionList=None, ftext_to_find=None):
 def check_accounts_for_ebs_volumes(fCredentialList, ffragment_list=None):
 	"""
 	Note that this function takes a list of Credentials and checks for EBS Volumes in every account it has creds for
+	@param fCredentialList: List of credentials for all accounts to check
+	@param ffragment_list: List of name tag fragments to limit the searching to
+	@return:
 	"""
 
 	class FindVolumes(Thread):
@@ -118,48 +141,45 @@ def check_accounts_for_ebs_volumes(fCredentialList, ffragment_list=None):
 
 ##################
 
-if pTiming:
-	begin_time = time()
-print()
-print(f"Checking for EBS Volumes... ")
-print()
+if __name__ == '__main__':
+	args = parse_args(sys.argv[1:])
+	pProfiles = args.Profiles
+	pRegionList = args.Regions
+	pAccounts = args.Accounts
+	pFragments = args.Fragments
+	pSkipAccounts = args.SkipAccounts
+	pSkipProfiles = args.SkipProfiles
+	pRootOnly = args.RootOnly
+	# pText_to_find = args.pText_To_Find
+	pFilename = args.Filename
+	pTiming = args.Time
+	verbose = args.loglevel
+	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
-display_dict = {'MgmtAccount': {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
-                'AccountId'  : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
-                'Region'     : {'DisplayOrder': 3, 'Heading': 'Region'},
-                'VolumeName' : {'DisplayOrder': 4, 'Heading': 'Volume Name'},
-                'State'      : {'DisplayOrder': 5, 'Heading': 'State', 'Condition': ['available', 'creating', 'deleting', 'deleted', 'error']},
-                'Size'       : {'DisplayOrder': 6, 'Heading': 'Size (GBs)'},
-                # 'KmsKeyId'   : {'DisplayOrder': 9, 'Heading': 'Encryption Key'},
-                'Throughput'   : {'DisplayOrder': 8, 'Heading': 'Throughput'},
-                'VolumeType' : {'DisplayOrder': 7, 'Heading': 'Type'}}
+	ERASE_LINE = '\x1b[2K'
 
-VolumesFound = []
-CredentialList = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
-RegionList = list(set([x['Region'] for x in CredentialList]))
-AccountList = list(set([x['AccountId'] for x in CredentialList]))
+	if pTiming:
+		begin_time = time()
+	print()
+	print(f"Checking for EBS Volumes... ")
+	logging.info(f"Profiles: {pProfiles}")
+	print()
 
-VolumesFound.extend(check_accounts_for_ebs_volumes(CredentialList, pFragments))
-OrphanedVolumes = [x for x in VolumesFound if x['State'] in ['available', 'error']]
-RegionsFound = list(set([x['Region'] for x in VolumesFound]))
-AccountsFound = list(set([x['AccountId'] for x in VolumesFound]))
+	# Get credentials for all accounts in scope.
+	CredentialList = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
+	# RegionList = list(set([x['Region'] for x in CredentialList]))
+	# AccountList = list(set([x['AccountId'] for x in CredentialList]))
 
-sorted_Volumes_Found = sorted(VolumesFound, key=lambda x: (x['MgmtAccount'], x['AccountId'], x['Region'], x['VolumeName'], x['Size']))
-display_results(sorted_Volumes_Found, display_dict, 'None', pFilename)
+	# Collect EBS Information
+	VolumesFound = check_accounts_for_ebs_volumes(CredentialList, pFragments)
 
-if pTiming:
-	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script completed in {time() - begin_time:.2f} seconds{Fore.RESET}")
-print()
-print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else ""
-print(f"These profiles were skipped - as requested: {pSkipProfiles}") if pSkipProfiles is not None else ""
-print(f"This output has also been written to a file beginning with '{pFilename}' + the date and time") if pFilename is not None else ""
-print()
-print(f"Found {len(VolumesFound)} volumes across {len(AccountsFound)} account{'' if len(AccountsFound) == 1 else 's'} "
-      f"across {len(RegionsFound)} region{'' if len(RegionsFound) == 1 else 's'}")
-print()
-print(f"{Fore.RED}Found {len(OrphanedVolumes)} volume{'' if len(OrphanedVolumes) == 1 else 's'} that aren't attached to anything.\n"
-      f"Th{'is' if len(OrphanedVolumes) == 1 else 'ese'} are likely orphaned, and should be considered for deletion to save costs.{Fore.RESET}") if len(OrphanedVolumes) > 0 else ""
+	# Display Results
+	present_results(VolumesFound)
+
+	if pTiming:
+		print(ERASE_LINE)
+		print(f"{Fore.GREEN}This script completed in {time() - begin_time:.2f} seconds{Fore.RESET}")
+
 print()
 print("Thank you for using this script")
 print()
