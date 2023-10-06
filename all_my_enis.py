@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import sys
 
 import Inventory_Modules
 from Inventory_Modules import display_results, get_all_credentials
@@ -14,46 +15,31 @@ import logging
 
 init()
 
-__version__ = '2023.06.22'
+__version__ = '2023.10.06'
 
-parser = CommonArguments()
-parser.multiprofile()
-parser.multiregion()
-parser.extendedargs()
-parser.rootOnly()
-parser.timing()
-parser.save_to_file()
-parser.verbosity()
-parser.version(__version__)
-parser.my_parser.add_argument(
-	"--ipaddress", "--ip",
-	dest="pipaddresses",
-	nargs="*",
-	metavar="IP address",
-	default=None,
-	help="IP address(es) you're looking for within your accounts")
-args = parser.my_parser.parse_args()
-
-pProfiles = args.Profiles
-pRegionList = args.Regions
-pSkipAccounts = args.SkipAccounts
-pSkipProfiles = args.SkipProfiles
-pAccounts = args.Accounts
-pRootOnly = args.RootOnly
-pIPaddressList = args.pipaddresses
-pFilename = args.Filename
-pTiming = args.Time
-verbose = args.loglevel
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
-
-##################
-
-ERASE_LINE = '\x1b[2K'
-
-logging.info(f"Profiles: {pProfiles}")
-
-
-##################
+def parse_args(args):
+	"""
+	Description: Parses the arguments passed into the script
+	@param args: args represents the list of arguments passed in
+	@return: returns an object namespace that contains the individualized parameters passed in
+	"""
+	parser = CommonArguments()
+	parser.multiprofile()
+	parser.multiregion()
+	parser.extendedargs()
+	parser.rootOnly()
+	parser.timing()
+	parser.save_to_file()
+	parser.verbosity()
+	parser.version(__version__)
+	parser.my_parser.add_argument(
+		"--ipaddress", "--ip",
+		dest="pipaddresses",
+		nargs="*",
+		metavar="IP address",
+		default=None,
+		help="IP address(es) you're looking for within your accounts")
+	return (parser.my_parser.parse_args(args))
 
 
 def check_accounts_for_enis(fCredentialList, fip=None):
@@ -117,49 +103,78 @@ def check_accounts_for_enis(fCredentialList, fip=None):
 	checkqueue.join()
 	return (Results)
 
+def present_results(ENIsFound:list):
+	"""
+	Description: Presents results at the end of the script
+	@param ENIsFound: The list of records to show...
+	"""
+	display_dict = {'MgmtAccount'     : {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
+	                'AccountId'       : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
+	                'Region'          : {'DisplayOrder': 3, 'Heading': 'Region'},
+	                'PrivateDnsName'  : {'DisplayOrder': 4, 'Heading': 'ENI Name'},
+	                'Status'          : {'DisplayOrder': 5, 'Heading': 'Status', 'Condition': ['available', 'attaching', 'detaching']},
+	                'PublicIp'        : {'DisplayOrder': 6, 'Heading': 'Public IP Address'},
+	                'ENIId'           : {'DisplayOrder': 7, 'Heading': 'ENI Id'},
+	                'PrivateIpAddress': {'DisplayOrder': 8, 'Heading': 'Assoc. IP'}}
+
+	sorted_ENIs_Found = sorted(ENIsFound, key=lambda d: (d['MgmtAccount'], d['AccountId'], d['Region'], d['VpcId']))
+	display_results(sorted_ENIs_Found, display_dict, 'None', pFilename)
+
+	DetachedENIs = [x for x in sorted_ENIs_Found if x['Status'] in ['available', 'attaching', 'detaching']]
+	RegionList = list(set([x['Region'] for x in CredentialList]))
+	AccountList = list(set([x['AccountId'] for x in CredentialList]))
+
+	print()
+	print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else ""
+	print(f"These profiles were skipped - as requested: {pSkipProfiles}") if pSkipProfiles is not None else ""
+	print()
+	print(f"Your output will be saved to {Fore.GREEN}'{pFilename}-{datetime.now().strftime('%y-%m-%d--%H:%M:%S')}'{Fore.RESET}") if pFilename is not None else ""
+	print(f"Found {len(ENIsFound)} ENIs across {len(AccountList)} accounts across {len(RegionList)} regions")
+	print(f"{Fore.RED}Found {len(DetachedENIs)} ENIs that are not listed as 'in-use' and may therefore be costing you additional money while they're unused.{Fore.RESET}")
+	print()
+	if verbose < 40:
+		for x in DetachedENIs:
+			print(x)
+
 
 ##################
 
-begin_time = time()
-print()
-print(f"Checking for Elastic Network Interfaces... ")
-print()
+ERASE_LINE = '\x1b[2K'
 
-ENIsFound = []
-subnet_list = []
+if __name__ == '__main__':
+	args = parse_args(sys.argv[1:])
+	pProfiles = args.Profiles
+	pRegionList = args.Regions
+	pSkipAccounts = args.SkipAccounts
+	pSkipProfiles = args.SkipProfiles
+	pAccounts = args.Accounts
+	pRootOnly = args.RootOnly
+	pIPaddressList = args.pipaddresses
+	pFilename = args.Filename
+	pTiming = args.Time
+	verbose = args.loglevel
+	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
-CredentialList = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
-RegionList = list(set([x['Region'] for x in CredentialList]))
-AccountList = list(set([x['AccountId'] for x in CredentialList]))
+	if pTiming:
+		begin_time = time()
+	print()
+	print(f"Checking for Elastic Network Interfaces... ")
+	print()
 
-display_dict = {'MgmtAccount'     : {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
-                'AccountId'       : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
-                'Region'          : {'DisplayOrder': 3, 'Heading': 'Region'},
-                'PrivateDnsName'  : {'DisplayOrder': 4, 'Heading': 'ENI Name'},
-                'Status'          : {'DisplayOrder': 5, 'Heading': 'Status', 'Condition': ['available', 'attaching', 'detaching']},
-                'PublicIp'        : {'DisplayOrder': 6, 'Heading': 'Public IP Address'},
-                'ENIId'           : {'DisplayOrder': 7, 'Heading': 'ENI Id'},
-                'PrivateIpAddress': {'DisplayOrder': 8, 'Heading': 'Assoc. IP'}}
+	logging.info(f"Profiles: {pProfiles}")
 
-ENIsFound.extend(check_accounts_for_enis(CredentialList, fip=pIPaddressList))
-sorted_ENIs_Found = sorted(ENIsFound, key=lambda d: (d['MgmtAccount'], d['AccountId'], d['Region'], d['VpcId']))
-display_results(sorted_ENIs_Found, display_dict, 'None', pFilename)
+	# Get credentials for all relevant children accounts
+	CredentialList = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
 
-DetachedENIs = [x for x in sorted_ENIs_Found if x['Status'] in ['available', 'attaching', 'detaching']]
+	# Find ENIs across all children accounts
+	ENIsFound = check_accounts_for_enis(CredentialList, fip=pIPaddressList)
+	# Display results
+	present_results(ENIsFound)
 
-if pTiming:
-	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
-print()
-print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else ""
-print(f"These profiles were skipped - as requested: {pSkipProfiles}") if pSkipProfiles is not None else ""
-print()
-print(f"Found {len(ENIsFound)} ENIs across {len(AccountList)} accounts across {len(RegionList)} regions")
-print(f"{Fore.RED}Found {len(DetachedENIs)} ENIs that are not listed as 'in-use' and may therefore be costing you additional money while they're unused.{Fore.RESET}")
-if verbose < 40:
-	for x in DetachedENIs:
-		print(x)
+	if pTiming:
+		print(ERASE_LINE)
+		print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
+
 print()
 print("Thank you for using this script")
-print(f"Your output was saved to {Fore.GREEN}'{pFilename}-{datetime.now().strftime('%y-%m-%d--%H:%M:%S')}'{Fore.RESET}") if pFilename is not None else ""
 print()
