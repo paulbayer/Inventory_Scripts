@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-
-# import boto3
+import sys
 import Inventory_Modules
-from Inventory_Modules import get_credentials_for_accounts_in_org, display_results
+from Inventory_Modules import get_all_credentials, display_results
 from ArgumentsClass import CommonArguments
-from account_class import aws_acct_access
 from colorama import init, Fore
 from botocore.exceptions import ClientError
 from queue import Queue
@@ -14,49 +12,36 @@ from time import time
 import logging
 
 init()
-__version__ = "2023.06.10"
-
-parser = CommonArguments()
-parser.multiprofile()
-parser.multiregion()
-parser.extendedargs()
-parser.rootOnly()
-parser.save_to_file()
-parser.timing()
-parser.verbosity()
-parser.version(__version__)
-parser.my_parser.add_argument(
-	"--ipaddress", "--ip",
-	dest="pipaddresses",
-	nargs="*",
-	metavar="IP address",
-	default=None,
-	help="IP address(es) you're looking for within your VPCs")
-args = parser.my_parser.parse_args()
-
-pProfiles = args.Profiles
-pRegionList = args.Regions
-pAccounts = args.Accounts
-pSkipAccounts = args.SkipAccounts
-pSkipProfiles = args.SkipProfiles
-pRootOnly = args.RootOnly
-pIPaddressList = args.pipaddresses
-pFilename = args.Filename
-pTiming = args.Time
-verbose = args.loglevel
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
-
-##################
-
-ERASE_LINE = '\x1b[2K'
-
-logging.info(f"Profiles: {pProfiles}")
+__version__ = "2023.10.06"
 
 
 ##################
+def parse_args(args):
+	"""
+	Description: Parses the arguments passed into the script
+	@param args: args represents the list of arguments passed in
+	@return: returns an object namespace that contains the individualized parameters passed in
+	"""
+	parser = CommonArguments()
+	parser.multiprofile()
+	parser.multiregion()
+	parser.extendedargs()
+	parser.rootOnly()
+	parser.save_to_file()
+	parser.timing()
+	parser.verbosity()
+	parser.version(__version__)
+	parser.my_parser.add_argument(
+		"--ipaddress", "--ip",
+		dest="pipaddresses",
+		nargs="*",
+		metavar="IP address",
+		default=None,
+		help="IP address(es) you're looking for within your VPCs")
+	return (parser.my_parser.parse_args(args))
 
 
-def check_accounts_for_subnets(CredentialList, fRegionList=None, fip=None):
+def check_accounts_for_subnets(CredentialList, fip=None):
 	"""
 	Note that this function takes a list of Credentials and checks for subnets in every account it has creds for
 	"""
@@ -101,8 +86,6 @@ def check_accounts_for_subnets(CredentialList, fRegionList=None, fip=None):
 					print(f"{ERASE_LINE}Finished finding subnets in account {c_account_credentials['AccountId']} in region {c_account_credentials['Region']} - {c_PlaceCount} / {c_PlacesToLook}", end='\r')
 					self.queue.task_done()
 
-	if fRegionList is None:
-		fRegionList = ['us-east-1']
 	checkqueue = Queue()
 
 	AllSubnets = []
@@ -132,71 +115,66 @@ def check_accounts_for_subnets(CredentialList, fRegionList=None, fip=None):
 	return (AllSubnets)
 
 
+def present_results(fSubnetsFound: list):
+	"""
+	Description: Shows off results at the end
+	@param fSubnetsFound: List of subnets found and their attributes.
+	"""
+	display_dict = {'MgmtAccount'            : {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
+	                'AccountId'              : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
+	                'Region'                 : {'DisplayOrder': 3, 'Heading': 'Region'},
+	                'SubnetName'             : {'DisplayOrder': 4, 'Heading': 'Subnet Name'},
+	                'CidrBlock'              : {'DisplayOrder': 5, 'Heading': 'CIDR Block'},
+	                'AvailableIpAddressCount': {'DisplayOrder': 6, 'Heading': 'Available IPs'}}
+	AccountNum = len(set([acct['AccountId'] for acct in AllCredentials]))
+	RegionNum = len(set([acct['Region'] for acct in AllCredentials]))
+	sorted_Subnets_Found = sorted(fSubnetsFound, key=lambda x: (x['MgmtAccount'], x['AccountId'], x['Region'], x['SubnetName']))
+	display_results(sorted_Subnets_Found, display_dict, 'None', pFilename)
+	print()
+	print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else ""
+	print(f"These profiles were skipped - as requested: {pSkipProfiles}") if pSkipProfiles is not None else ""
+	print(f"The output has also been written to a file beginning with '{pFilename}' + the date and time")
+	print()
+	print(f"Found {len(SubnetsFound)} subnets across {AccountNum} accounts across {RegionNum} regions")
+
+
 ##################
 
-if pTiming:
-	begin_time = time()
-print()
-print(f"Checking for Subnets... ")
-print()
+ERASE_LINE = '\x1b[2K'
 
-SubnetsFound = []
-AllChildAccounts = []
-RegionList = ['us-east-1']
-subnet_list = []
-AllCredentials = []
+if '__name__' == '__main__':
+	args = parse_args(sys.argv[1:])
+	pProfiles = args.Profiles
+	pRegionList = args.Regions
+	pAccounts = args.Accounts
+	pSkipAccounts = args.SkipAccounts
+	pSkipProfiles = args.SkipProfiles
+	pRootOnly = args.RootOnly
+	pIPaddressList = args.pipaddresses
+	pFilename = args.Filename
+	pTiming = args.Time
+	verbose = args.loglevel
+	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
-display_dict = {'MgmtAccount'            : {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
-                'AccountId'              : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
-                'Region'                 : {'DisplayOrder': 3, 'Heading': 'Region'},
-                'SubnetName'             : {'DisplayOrder': 4, 'Heading': 'Subnet Name'},
-                'CidrBlock'              : {'DisplayOrder': 5, 'Heading': 'CIDR Block'},
-                'AvailableIpAddressCount': {'DisplayOrder': 6, 'Heading': 'Available IPs'}}
+	logging.info(f"Profiles: {pProfiles}")
 
-if pProfiles is None:  # Default use case from the classes
-	print("Using the default profile - gathering ")
-	aws_acct = aws_acct_access()
-	RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
-	# WorkerThreads = len(aws_acct.ChildAccounts) + 4
 	if pTiming:
-		logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time:.2f} seconds up till now{Fore.RESET}")
-	# This should populate the list "AllCreds" with the credentials for the relevant accounts.
-	logging.info(f"Queueing default profile for credentials")
-	AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, 'default', RegionList))
+		begin_time = time()
+	print()
+	print(f"Checking for Subnets... ")
+	print()
 
-else:
-	ProfileList = Inventory_Modules.get_profiles(fprofiles=pProfiles)
-	print(f"Capturing info for supplied profiles")
-	logging.warning(f"These profiles are being checked {ProfileList}.")
-	for profile in ProfileList:
-		aws_acct = aws_acct_access(profile)
-		# WorkerThreads = len(aws_acct.ChildAccounts) + 4
-		RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
-		if pTiming:
-			logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time:.2f} seconds up till now{Fore.RESET}")
-		logging.warning(f"Looking at {profile} account now... ")
-		logging.info(f"Queueing {profile} for credentials")
-		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
-		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList))
+	# Get credentials from all relevant Children accounts
+	AllCredentials = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
+	# Get relevant subnets
+	SubnetsFound = check_accounts_for_subnets(AllCredentials, fip=pIPaddressList)
+	# display_results(SubnetsFound, display_dict)
+	present_results(SubnetsFound)
 
-AccountNum = len(set([acct['AccountId'] for acct in AllCredentials]))
-RegionNum = len(set([acct['Region'] for acct in AllCredentials]))
+	if pTiming:
+		print(ERASE_LINE)
+		print(f"{Fore.GREEN}This script completed in {time() - begin_time:.2f} seconds{Fore.RESET}")
 
-SubnetsFound.extend(check_accounts_for_subnets(AllCredentials, RegionList, fip=pIPaddressList))
-
-# display_results(SubnetsFound, display_dict)
-sorted_Subnets_Found = sorted(SubnetsFound, key=lambda x: (x['MgmtAccount'], x['AccountId'], x['Region'], x['SubnetName']))
-display_results(sorted_Subnets_Found, display_dict, 'None', pFilename)
-
-if pTiming:
-	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script completed in {time() - begin_time:.2f} seconds{Fore.RESET}")
-print()
-print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else ""
-print(f"These profiles were skipped - as requested: {pSkipProfiles}") if pSkipProfiles is not None else ""
-print(f"The output has also been written to a file beginning with '{pFilename}' + the date and time")
-print()
-print(f"Found {len(SubnetsFound)} subnets across {AccountNum} accounts across {RegionNum} regions")
 print()
 print("Thank you for using this script")
 print()
