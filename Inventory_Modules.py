@@ -2769,7 +2769,7 @@ def find_stacksets2(ocredentials, fRegion='us-east-1', fStackFragment=None, fSta
 	return (stacksetsCopy)
 
 
-def find_stacksets3(faws_acct, fRegion:str=None, fStackFragment: list=None, fExact: bool=False) -> dict:
+def find_stacksets3(faws_acct, fRegion: str = None, fStackFragment: list = None, fExact: bool = False) -> dict:
 	"""
 	faws_acct is a class containing the account information
 	fRegion is a string
@@ -3836,6 +3836,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 						              f"Error Message: {faccount_credentials['ErrorMessage']}")
 						faccount_credentials.update({'MgmtAccount'  : c_account_info['MgmtAccount'],
 						                             'AccountId'    : c_account_info['AccountId'],
+						                             'AccountNumber': c_account_info['AccountId'],
 						                             'ParentProfile': c_profile,
 						                             'Region'       : c_region})
 					AllCreds.append(faccount_credentials)

@@ -83,6 +83,13 @@ class CommonArguments():
 			action="store_true",
 			dest="Force")  # Default to Dry Run (no changes)
 
+	def confirm(self):
+		self.my_parser.add_argument(
+			"+confirm",
+			help="To skip confirmation of a change",
+			action="store_true",
+			dest="Confirm")  # Default to Dry Run (no changes)
+
 	def fix(self):
 		self.my_parser.add_argument(
 			"+fix",
