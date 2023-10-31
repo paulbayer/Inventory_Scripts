@@ -2,7 +2,7 @@ import pytest
 
 from common_test_data import CredentialResponseData, get_all_my_functions_test_result_dict
 from common_test_functions import _amend_make_api_call, _amend_create_boto3_session, _amend_make_api_call_specific
-from all_my_functions import all_my_functions, fix_my_functions
+from all_my_functions import collect_all_my_functions, fix_my_functions
 
 # CredentialList = test_get_all_credentials()
 # This is what the response from the tested function should look like, given the parameters supplied
@@ -54,7 +54,7 @@ def test_all_my_functions(parameters, test_value_dict, mocker):
 	# 		all_my_functions(CredentialList, pFragments, verbose)
 	# 	result = error
 	# else:
-	result = all_my_functions(CredentialList, pFragments, verbose)
+	result = collect_all_my_functions(CredentialList, pFragments, verbose)
 
 	print("Result:", result)
 	print()

@@ -219,7 +219,7 @@ def check_accounts_for_functions(CredentialList, fFragments=None):
 
 
 ##########################
-def all_my_functions(AllCredentials, fFragments, fverbose=50):
+def collect_all_my_functions(AllCredentials, fFragments, fverbose=50):
 	# Generate parameter descriptions
 	"""
 	@AllCredentials - This is a list of all the credentials we have to check
@@ -301,7 +301,7 @@ if __name__ == '__main__':
 	print(f"Looking through {AccountNum} accounts and {RegionNum} regions ")
 	print()
 
-	AllFunctions = all_my_functions(CredentialList, pFragments, pverbose)
+	AllFunctions = collect_all_my_functions(CredentialList, pFragments, pverbose)
 	AccountNum = len(set([x['AccountId'] for x in AllFunctions]))
 	RegionNum = len(set([x['Region'] for x in AllFunctions]))
 	display_results(AllFunctions, display_dict, None, pSaveFilename)

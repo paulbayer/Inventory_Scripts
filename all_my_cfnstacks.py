@@ -13,7 +13,7 @@ import logging
 
 init()
 
-__version__ = '2023.09.29'
+__version__ = '2023.10.31'
 
 
 def parse_args(args):
@@ -107,16 +107,20 @@ def setup_auth_accounts_and_regions(fProfile: str) -> (aws_acct_access, list):
 def collect_cfnstacks(fCredentialList: list) -> list:
 	StacksFound = []
 	item_counter = 0
+	# TODO: Need to thread this to make it faster...
 	for credential in CredentialList:
 		item_counter += 1
 		Stacks = False
-		try:
-			Stacks = Inventory_Modules.find_stacks2(credential, credential['Region'], pStackfrag, pstatus)
-			logging.warning(f"Account: {credential['AccountId']} | Region: {credential['Region']} | Found {len(Stacks)} Stacks")
-			print(f"{ERASE_LINE}{Fore.RED}Account: {credential['AccountId']} Region: {credential['Region']} Found {len(Stacks)} Stacks{Fore.RESET} ({item_counter} of {len(CredentialList)})", end='\r')
-		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
-				print(f"{credential['AccountId']}: Authorization Failure")
+		if credential['Success']:
+			try:
+				Stacks = Inventory_Modules.find_stacks2(credential, credential['Region'], pStackfrag, pstatus)
+				logging.warning(f"Account: {credential['AccountId']} | Region: {credential['Region']} | Found {len(Stacks)} Stacks")
+				print(f"{ERASE_LINE}{Fore.RED}Account: {credential['AccountId']} Region: {credential['Region']} Found {len(Stacks)} Stacks{Fore.RESET} ({item_counter} of {len(CredentialList)})", end='\r')
+			except ClientError as my_Error:
+				if str(my_Error).find("AuthFailure") > 0:
+					print(f"{credential['AccountId']}: Authorization Failure")
+		else:
+			continue
 		# TODO: Currently we're using this "Stacks" list as a boolean if it's populated. We should change this.
 		if Stacks and len(Stacks) > 0:
 			for y in range(len(Stacks)):
