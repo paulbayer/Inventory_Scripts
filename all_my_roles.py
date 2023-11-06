@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError
 import logging
 
 init()
-__version__ = "2023.07.17"
+__version__ = "2023.11.06"
 
 parser = CommonArguments()
 parser.my_parser.description = ("We're going to find all roles within any of the accounts we have access to, given the profile(s) provided.")
