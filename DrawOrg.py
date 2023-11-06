@@ -7,7 +7,7 @@ from time import time
 from colorama import init, Fore
 from ArgumentsClass import CommonArguments
 
-__version__ = '2023.10.03'
+__version__ = '2023.11.06'
 init()
 
 account_fillcolor = 'orange'
@@ -17,6 +17,10 @@ policy_linecolor = 'red'
 policy_shape = 'hexagon'
 ou_fillcolor = 'burlywood'
 ou_shape = 'box'
+
+"""
+TODO: This tool doesn't show the accounts that reside in the root. Need to figure out how to resolve that.
+"""
 
 #####################
 """
@@ -35,7 +39,7 @@ def parse_args(args):
 		"--policy",
 		dest='policy',
 		action="store_true",  # Defaults to False, meaning it won't show policies by default
-		help="Only run this code for the root account, not the children")
+		help="Include the various policies within the Organization in the diagram")
 	parser.my_parser.add_argument(
 		"--aws", "--managed",
 		dest='aws_managed',
@@ -65,6 +69,8 @@ def get_root_OUS(root_id):
 	        org_client.exceptions.ParentNotFoundException,
 	        org_client.exceptions.ServiceException,
 	        org_client.exceptions.TooManyRequestsException) as myError:
+		logging.error(f"Error: {myError}")
+	except KeyError as myError:
 		logging.error(f"Error: {myError}")
 	return ()
 
@@ -255,10 +261,12 @@ if __name__ == '__main__':
 	# Find all the Organization Accounts
 	all_org_accounts = find_accounts_in_org()
 	if pPolicy:
-		print(f"Due to there being {len(all_org_accounts)} accounts in this Org, this process will likely take about {(len(all_org_accounts) / 2)} seconds")
+		print(f"Due to there being {len(all_org_accounts)} accounts in this Org, this process will likely take about {5 + (len(all_org_accounts) / 2)} seconds")
 	else:
 		print(f"Due to there being {len(all_org_accounts)} accounts in this Org, this process will likely take about {5 + (len(all_org_accounts) / 10)} seconds")
 	# Specifying the root Org ID, get all the root OUs we'll have to traverse
+
+
 	root_OUs = get_root_OUS(root)
 	# Draw the Org itself and save it to the local filesystem
 	draw_org(root_OUs)
