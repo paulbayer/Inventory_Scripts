@@ -108,7 +108,10 @@ def check_accounts_for_policies(CredentialList, fRegionList=None, fActions=None,
 		try:
 			Policies = Inventory_Modules.find_account_policies2(credential, fRegionList[0], fFragments, pExact)
 			AccountCount += 1
-			PlacesToLook = len(Policies) * len(fActions)
+			if fActions is None:
+				PlacesToLook = len(Policies)
+			else:
+				PlacesToLook = len(Policies) * len(fActions)
 			print(f"{ERASE_LINE}Found {PlacesToLook} matching policies in account {credential['AccountId']} ({AccountCount}/{len(CredentialList)})", end='\r')
 			# print(f"{ERASE_LINE}Queuing account {credential['AccountId']} in region {region}", end='\r')
 			if fActions is None:
