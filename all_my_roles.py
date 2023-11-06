@@ -29,7 +29,7 @@ parser.my_parser.add_argument(
 	default=None,
 	help="Please specify the role you're searching for")
 parser.my_parser.add_argument(
-	"+d", "--delete",
+	"+d", "+delete",
 	dest="pDelete",
 	action="store_const",
 	const=True,
