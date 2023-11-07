@@ -23,6 +23,7 @@ def parse_args(args):
 	@return: returns an object namespace that contains the individualized parameters passed in
 	"""
 	parser = CommonArguments()
+	parser.my_parser.description = ("We're going to find all policies (and maybe the actions) within any of the accounts we have access to, given the profile(s) provided.")
 	parser.multiprofile()
 	parser.multiregion()
 	parser.extendedargs()
