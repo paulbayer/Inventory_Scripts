@@ -3646,7 +3646,8 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 					needed_space[field] = max(len(result[field]), len(value['Heading']), needed_space[field])
 				elif isinstance(result[field], datetime):
 					# Recognizes the field as a date, and finds the necessary amount of string space to show that date, and assigns the length to "needed_space"
-					needed_space[field] = max(len(result[field]), len(datetime.now().strftime('%x %X')))
+					# needed_space[field] = max(len(result[field]), len(datetime.now().strftime('%x %X')))
+					needed_space[field] = len(datetime.now().strftime('%x %X'))
 	except KeyError as my_Error:
 		logging.error(f"Error: {my_Error}")
 
