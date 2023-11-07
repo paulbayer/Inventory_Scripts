@@ -234,7 +234,7 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 	return (ProfileList)
 
 
-def find_in(list_to_search, list_to_find=None):
+def find_in(list_to_search, list_to_find=None, fexact=False):
 	import logging
 
 	if list_to_find is None or None in list_to_find:
@@ -245,7 +245,12 @@ def find_in(list_to_search, list_to_find=None):
 	for x in list_to_search:
 		for y in list_to_find:
 			logging.info(f"Have {x} | Looking for {y}")
-			if x.find(y) >= 0:
+			if fexact:
+				if x == y:
+					list_to_return.append(y)
+				else:
+					continue
+			elif x.find(y) >= 0:
 				logging.info(f"Found {y}")
 				list_to_return.append(y)
 	return (list_to_return)
@@ -3690,7 +3695,9 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 	#   Possibly we can have a setting where this data is written to a csv locally. We could create separate analytics once the data was saved.
 	if file_to_save is not None:
 		Heading = ''
-		with open(f'{file_to_save}-{datetime.now().strftime("%y-%m-%d--%H:%M:%S")}', 'w') as savefile:
+		my_filename = f'{file_to_save}-{datetime.now().strftime("%y-%m-%d--%H:%M:%S")}'
+		logging.info(f"Writing your data to: {my_filename}")
+		with open(my_filename, 'w') as savefile:
 			for field, value in sorted_display_dict.items():
 				Heading += f"{value['Heading']}|"
 			Heading += '\n'
@@ -3711,7 +3718,7 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 						row += f"{result[field]:{data_format}f}|"
 				row += '\n'
 				savefile.write(row)
-
+		print(f"\nData written to {my_filename}\n")
 
 def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProfiles: list = None, fSkipAccounts: list = None, fRootOnly: bool = False, fAccounts: list = None, fRegionList: list = None, RoleList: list = None) -> list:
 	"""
