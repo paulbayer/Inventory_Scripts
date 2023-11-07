@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 # import boto3
+import sys
 import Inventory_Modules
+from Inventory_Modules import display_results
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 from time import time
@@ -12,36 +14,32 @@ import logging
 
 init()
 
-__version__ = '2023.05.04'
-
-parser = CommonArguments()
-parser.multiprofile()
-parser.multiregion()
-parser.timing()
-parser.verbosity()
-parser.version(__version__)
-args = parser.my_parser.parse_args()
-
-pProfiles = args.Profiles
-pRegionList = args.Regions
-verbose = args.loglevel
-pTiming = args.Time
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
-
-##################
-
-if pTiming:
-	begin_time = time()
-
-ERASE_LINE = '\x1b[2K'
-
-logging.info(f"Profiles: {pProfiles}")
+__version__ = '2023.11.06'
 
 
-##################
-def check_accounts_for_instances(faws_acct, fRegionList=None):
+def parse_args(args):
 	"""
-	Note that this function checks the account AND any children accounts in the Org.
+	Description: Parses the arguments passed into the script
+	@param args: args represents the list of arguments passed in
+	@return: returns an object namespace that contains the individualized parameters passed in
+	"""
+	parser = CommonArguments()
+	parser.my_parser.description = ("We're going to find all rds instances within any of the accounts we have access to, given the profile(s) provided.")
+	parser.multiprofile()
+	parser.multiregion()
+	parser.timing()
+	parser.save_to_file()
+	parser.verbosity()
+	parser.version(__version__)
+	return (parser.my_parser.parse_args(args))
+
+
+def check_accounts_for_instances(faws_acct: aws_acct_access, fRegionList: list = None) -> list:
+	"""
+	Description: Note that this function checks the account AND any children accounts in the Org.
+	@param faws_acct: the well-known account class object
+	@param fRegionList: listing of regions to look in
+	@return: The list of RDS instances found
 	"""
 	ChildAccounts = faws_acct.ChildAccounts
 	AllInstances = []
@@ -49,6 +47,7 @@ def check_accounts_for_instances(faws_acct, fRegionList=None):
 	if fRegionList is None:
 		fRegionList = ['us-east-1']
 	for account in ChildAccounts:
+		acct_instances = []
 		logging.info(f"Connecting to account {account['AccountId']}")
 		try:
 			account_credentials = Inventory_Modules.get_child_access3(faws_acct, account['AccountId'])
@@ -81,55 +80,83 @@ def check_accounts_for_instances(faws_acct, fRegionList=None):
 					pass
 			if 'DBInstances' in Instances.keys():
 				for y in range(len(Instances['DBInstances'])):
-					InstanceType = Instances['DBInstances'][y]['DBInstanceClass']
-					State = Instances['DBInstances'][y]['DBInstanceStatus']
-					Name = Instances['DBInstances'][y]['DBName'] if 'DBName' in Instances['DBInstances'][y].keys() else "No Name"
-					DBId = Instances['DBInstances'][y]['DBInstanceIdentifier']
-					Engine = Instances['DBInstances'][y]['Engine']
-					fmt = '%-12s %-12s %-10s %-15s %-20s %-12s %-20s %-12s'
-					print(fmt % (faws_acct.acct_number, account['AccountId'], region, InstanceType, Name, DBId, Engine, State))
-		AllInstances.extend(Instances['DBInstances'])
+					Name = Instances['DBInstances'][y]['DBName'] if 'DBName' in Instances['DBInstances'][y].keys() else 'No Name'
+					LastBackup = Instances['DBInstances'][y]['LatestRestorableTime'] if 'LatestRestorableTime' in Instances['DBInstances'][y].keys() else 'No Backups'
+					acct_instances.append({
+						'MgmtAccount'  : faws_acct.acct_number,
+						'AccountNumber': account['AccountId'],
+						'Region'       : region,
+						'InstanceType' : Instances['DBInstances'][y]['DBInstanceClass'],
+						'State'        : Instances['DBInstances'][y]['DBInstanceStatus'],
+						'DBId'         : Instances['DBInstances'][y]['DBInstanceIdentifier'],
+						'Name'         : Name,
+						'Size'         : Instances['DBInstances'][y]['AllocatedStorage'],
+						'LastBackup'   : LastBackup,
+						'Engine'       : Instances['DBInstances'][y]['Engine']
+					})
+		AllInstances.extend(acct_instances)
 	return (AllInstances)
 
 
 ##################
 
 
-print()
-print(f"Checking for instances... ")
-print()
+if __name__ == '__main__':
+	args = parse_args(sys.argv[1:])
+	pProfiles = args.Profiles
+	pRegionList = args.Regions
+	pTiming = args.Time
+	pFilename = args.Filename
+	verbose = args.loglevel
+	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
-print()
-fmt = '%-12s %-12s %-10s %-15s %-20s %-12s %-20s %-12s'
-print(fmt % ("Root Acct #", "Account #", "Region", "InstanceType", "Name", "DB ID", "Engine", "State"))
-print(fmt % ("-----------", "---------", "------", "------------", "----", "-----", "------", "-----"))
+	ERASE_LINE = '\x1b[2K'
+	begin_time = time()
+	logging.info(f"Profiles: {pProfiles}")
 
-InstancesFound = []
-AllChildAccounts = []
-RegionList = ['us-east-1']
+	print()
+	print(f"Checking for rds instances... ")
+	print()
 
-if pProfiles is None:  # Default use case from the classes
-	logging.info("Using whatever the default profile is")
-	aws_acct = aws_acct_access()
-	RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
-	logging.warning(f"Default profile will be used")
-	InstancesFound.extend(check_accounts_for_instances(aws_acct, RegionList))
-	AllChildAccounts.extend(aws_acct.ChildAccounts)
-else:
-	ProfileList = Inventory_Modules.get_profiles(fprofiles=pProfiles, fSkipProfiles="skipplus")
-	logging.warning(f"These profiles are being checked {ProfileList}.")
-	for profile in ProfileList:
-		aws_acct = aws_acct_access(profile)
-		logging.warning(f"Looking at {profile} account now... ")
+	InstancesFound = []
+	AllChildAccounts = []
+	RegionList = ['us-east-1']
+
+	if pProfiles is None:  # Default use case from the classes
+		logging.info("Using whatever the default profile is")
+		aws_acct = aws_acct_access()
 		RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
+		logging.warning(f"Default profile will be used")
 		InstancesFound.extend(check_accounts_for_instances(aws_acct, RegionList))
 		AllChildAccounts.extend(aws_acct.ChildAccounts)
+	else:
+		ProfileList = Inventory_Modules.get_profiles(fprofiles=pProfiles, fSkipProfiles="skipplus")
+		logging.warning(f"These profiles are being checked {ProfileList}.")
+		for profile in ProfileList:
+			aws_acct = aws_acct_access(profile)
+			logging.warning(f"Looking at {profile} account now... ")
+			RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
+			InstancesFound.extend(check_accounts_for_instances(aws_acct, RegionList))
+			AllChildAccounts.extend(aws_acct.ChildAccounts)
 
-print(ERASE_LINE)
-print(f"Found {len(InstancesFound)} instances across {len(AllChildAccounts)} accounts across {len(RegionList)} regions")
-if pTiming:
+	# Display RDS Instances found
+	display_dict = {'MgmtAccount'  : {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
+	                'AccountNumber': {'DisplayOrder': 2, 'Heading': 'Acct Number'},
+	                'Region'       : {'DisplayOrder': 3, 'Heading': 'Region'},
+	                'InstanceType' : {'DisplayOrder': 4, 'Heading': 'Instance Type'},
+	                'Name'         : {'DisplayOrder': 5, 'Heading': 'DB Name'},
+	                'DBId'         : {'DisplayOrder': 6, 'Heading': 'Database ID'},
+	                'Engine'       : {'DisplayOrder': 7, 'Heading': 'DB Engine'},
+	                'Size'         : {'DisplayOrder': 8, 'Heading': 'Size (GB)'},
+	                'LastBackup'   : {'DisplayOrder': 9, 'Heading': 'Latest Backup'},
+	                'State'        : {'DisplayOrder': 10, 'Heading': 'State', 'Condition': ['Failed', 'Deleting', 'Maintenance', 'Rebooting', 'Upgrading']}}
+	display_results(InstancesFound, display_dict, None, pFilename)
+
 	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
-print()
-print("Thank you for using this script")
-print()
+	print(f"Found {len(InstancesFound)} instances across {len(AllChildAccounts)} accounts across {len(RegionList)} regions")
+	if pTiming:
+		print(ERASE_LINE)
+		print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
+	print()
+	print("Thank you for using this script")
+	print()
