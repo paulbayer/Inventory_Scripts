@@ -31,12 +31,6 @@ def parse_args(args):
 	parser.timing()
 	parser.save_to_file()
 	parser.version(__version__)
-	# parser.my_parser.add_argument(
-	# 	"--role",
-	# 	dest="pRole",
-	# 	metavar="specific role to find",
-	# 	default=None,
-	# 	help="Please specify the role you're searching for")
 	parser.my_parser.add_argument(
 		"+d", "+delete",
 		dest="pDelete",

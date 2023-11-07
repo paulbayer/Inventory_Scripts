@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 # import boto3
+import sys
 import Inventory_Modules
 from Inventory_Modules import display_results, get_all_credentials
 from ArgumentsClass import CommonArguments
-# from account_class import aws_acct_access
 from colorama import init, Fore
 from botocore.exceptions import ClientError
 from queue import Queue
@@ -16,46 +16,30 @@ import logging
 init()
 __version__ = "2023.11.06"
 
-parser = CommonArguments()
-parser.multiprofile()
-parser.multiregion()
-parser.extendedargs()
-parser.rootOnly()
-parser.fragment()
-parser.timing()
-parser.save_to_file()
-parser.verbosity()
-parser.version(__version__)
-parser.my_parser.add_argument(
-	"--action",
-	dest="paction",
-	nargs="*",
-	metavar="AWS Action",
-	default=None,
-	help="An action you're looking for within the policies")
-args = parser.my_parser.parse_args()
-
-pProfiles = args.Profiles
-pSkipAccounts = args.SkipAccounts
-pSkipProfiles = args.SkipProfiles
-pAccounts = args.Accounts
-pFragments = args.Fragments
-pRootOnly = args.RootOnly
-pActions = args.paction
-pExact = args.Exact
-pTiming = args.Time
-pFilename = args.Filename
-verbose = args.loglevel
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
-
-##################
-
-ERASE_LINE = '\x1b[2K'
-
-logging.info(f"Profiles: {pProfiles}")
-
-##################
-
+def parse_args(args):
+	"""
+	Description: Parses the arguments passed into the script
+	@param args: args represents the list of arguments passed in
+	@return: returns an object namespace that contains the individualized parameters passed in
+	"""
+	parser = CommonArguments()
+	parser.multiprofile()
+	parser.multiregion()
+	parser.extendedargs()
+	parser.rootOnly()
+	parser.fragment()
+	parser.timing()
+	parser.save_to_file()
+	parser.verbosity()
+	parser.version(__version__)
+	parser.my_parser.add_argument(
+		"--action",
+		dest="paction",
+		nargs="*",
+		metavar="AWS Action",
+		default=None,
+		help="An action you're looking for within the policies")
+	return(parser.my_parser.parse_args(args))
 
 def check_accounts_for_policies(CredentialList, fRegionList=None, fActions=None, fFragments=None):
 	"""
@@ -127,7 +111,7 @@ def check_accounts_for_policies(CredentialList, fRegionList=None, fActions=None,
 				pass
 
 	# WorkerThreads = min(len(Policies) * len(fAction), 250)
-	WorkerThreads = min(PlacesToLook, 12)
+	WorkerThreads = min(round(len(AllPolicies)/len(CredentialList)), 200)
 
 	for x in range(WorkerThreads):
 		worker = FindActions(checkqueue)
@@ -141,39 +125,57 @@ def check_accounts_for_policies(CredentialList, fRegionList=None, fActions=None,
 
 ##################
 
-if pTiming:
+if __name__ == '__main__':
+	args = parse_args(sys.argv[1:])
+	pProfiles = args.Profiles
+	pSkipAccounts = args.SkipAccounts
+	pSkipProfiles = args.SkipProfiles
+	pAccounts = args.Accounts
+	pFragments = args.Fragments
+	pRootOnly = args.RootOnly
+	pActions = args.paction
+	pExact = args.Exact
+	pTiming = args.Time
+	pFilename = args.Filename
+	verbose = args.loglevel
+	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+
+	ERASE_LINE = '\x1b[2K'
+	logging.info(f"Profiles: {pProfiles}")
+
+##################
 	begin_time = time()
-print()
-print(f"Checking for matching Policies... ")
-print()
+	print()
+	print(f"Checking for matching Policies... ")
+	print()
 
-display_dict = {'MgmtAccount'  : {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
-				'AccountNumber': {'DisplayOrder': 2, 'Heading': 'Acct Number'},
-				'Region'       : {'DisplayOrder': 3, 'Heading': 'Region'},
-				'PolicyName'   : {'DisplayOrder': 4, 'Heading': 'Policy Name'},
-				'Action'       : {'DisplayOrder': 5, 'Heading': 'Action'}}
+	PoliciesFound = []
+	AllChildAccounts = []
+	# TODO: Will have to be changed to support single region-only accounts, but that's a ways off yet.
+	pRegionList = RegionList = ['us-east-1']
 
-PoliciesFound = []
-AllChildAccounts = []
-# TODO: Will have to be changed to support single region-only accounts, but that's a ways off yet.
-pRegionList = RegionList = ['us-east-1']
+	# Get credentials for all Child Accounts
+	AllCredentials = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
+	# Find all the policies
+	PoliciesFound.extend(check_accounts_for_policies(AllCredentials, RegionList, pActions, pFragments))
+	# Display the information we've found this far
+	sorted_policies = sorted(PoliciesFound, key=lambda x: (x['MgmtAccount'], x['AccountNumber'], x['Region'], x['PolicyName']))
 
-AllCredentials = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
+	display_dict = {'MgmtAccount'  : {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
+					'AccountNumber': {'DisplayOrder': 2, 'Heading': 'Acct Number'},
+					'Region'       : {'DisplayOrder': 3, 'Heading': 'Region'},
+					'PolicyName'   : {'DisplayOrder': 4, 'Heading': 'Policy Name'},
+					'Action'       : {'DisplayOrder': 5, 'Heading': 'Action'}}
 
-if pTiming:
-	logging.info(f"{Fore.GREEN}Overhead consumed {time() - begin_time:.2f} seconds up till now{Fore.RESET}")
+	display_results(sorted_policies, display_dict, pActions, pFilename)
 
-PoliciesFound.extend(check_accounts_for_policies(AllCredentials, RegionList, pActions, pFragments))
-sorted_policies = sorted(PoliciesFound, key=lambda x: (x['MgmtAccount'], x['AccountNumber'], x['Region'], x['PolicyName']))
-display_results(sorted_policies, display_dict, pActions, pFilename)
-
-if pTiming:
-	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
-print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else print()
-print()
-print(f"Found {len(PoliciesFound)} policies across {len(AllCredentials)} accounts across {len(RegionList)} regions\n"
-	  f"	that matched the fragment{'s' if len(pFragments) > 1 else ''} that you specified: {pFragments}")
-print()
-print("Thank you for using this script")
-print()
+	if pTiming:
+		print(ERASE_LINE)
+		print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
+	print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else print()
+	print()
+	print(f"Found {len(PoliciesFound)} policies across {len(AllCredentials)} accounts across {len(RegionList)} regions\n"
+		  f"	that matched the fragment{'s' if len(pFragments) > 1 else ''} that you specified: {pFragments}")
+	print()
+	print("Thank you for using this script")
+	print()
