@@ -81,7 +81,7 @@ def parse_args(args: object) -> object:
 		metavar="region-name",
 		dest="pRegionModify")
 	parser.my_parser.add_argument(
-		'-check',
+		'-c', '-check', '--check',
 		help="Do a comparison of the accounts found in the stacksets to the accounts found in the Organization and list out any that have been closed or suspended, but never removed from the stacksets.",
 		action="store_true",
 		dest="AccountCheck")
@@ -424,8 +424,8 @@ def collect_cfnstacksets(faws_acct:aws_acct_access, fRegion:str) -> (dict, dict,
 	# Get the StackSet names from the Management Account
 	StackSetNames = Inventory_Modules.find_stacksets3(faws_acct, fRegion, pStackfrag, pExact)
 	if not StackSetNames['Success']:
-		logging.error("Something went wrong with the AWS connection. Please check the parameters supplied and try again.")
-		sys.exit(StackSetNames)
+		error_message = "Something went wrong with the AWS connection. Please check the parameters supplied and try again."
+		sys.exit(error_message)
 	logging.info(f"Found {len(StackSetNames['StackSets'])} StackSetNames that matched your fragment")
 
 	combined_stack_set_instances = find_stack_set_instances(StackSetNames['StackSets'], fRegion)
