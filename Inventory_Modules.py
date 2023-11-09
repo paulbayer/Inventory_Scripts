@@ -2690,20 +2690,19 @@ def find_stacks_in_acct3(faws_acct, fRegion, fStackFragment="all", fStatus="acti
 	return (stacksCopy)
 
 
-def find_saml_components_in_acct2(ocredentials, fRegion):
+def find_saml_components_in_acct2(ocredentials):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['Region'] holds the region
 		- ['AccountNumber'] holds the AccountId
-
-	fRegion is a string
 	"""
 	import boto3
 	import logging
-	logging.info(f"Acct ID #: {str(ocredentials['AccountNumber'])} | Region: {fRegion}")
-	session_aws = boto3.Session(region_name=fRegion,
+	logging.info(f"Acct ID #: {str(ocredentials['AccountNumber'])} | Region: {ocredentials['Region']}")
+	session_aws = boto3.Session(region_name=ocredentials['Region'],
 	                            aws_access_key_id=ocredentials['AccessKeyId'],
 	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
 	                            aws_session_token=ocredentials['SessionToken'])
