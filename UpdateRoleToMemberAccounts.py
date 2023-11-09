@@ -379,6 +379,7 @@ for cred in AllCredentials:
 	if cred['Role'] == pRoleNameToRemove:
 		print(f"{Fore.RED}We gained access to this account using the role you specified to remove.\n"
 			  f"Is this definitely what you want to do?{Fore.RESET}")
+		# TODO: We ask a question here, but don't wait for an answer...
 	# Checking to see if the role already exists
 	if pRoleNameToCheck is not None:
 		logging.info(f"Checking to see if role {pRoleNameToCheck} exists in account {cred['AccountId']}")
