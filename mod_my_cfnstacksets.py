@@ -199,7 +199,7 @@ def find_stack_set_instances(fStackSetNames:list, fRegion:str) -> list:
 									'ChildAccount'        : StackInstance['Account'],
 									'ChildRegion'         : StackInstance['Region'],
 									'StackStatus'         : StackInstance['Status'],
-									'DetailedStatus'      : StackInstance['StackInstanceStatus']['DetailedStatus'],
+									'DetailedStatus'      : StackInstance['StackInstanceStatus']['DetailedStatus'] if 'DetailedStatus' in StackInstance else None,
 									'OrganizationalUnitId': StackInstance['OrganizationalUnitId'] if 'OrganizationalUnitId' in StackInstance else None,
 									'PermissionModel'     : c_stackset_info['PermissionModel'] if 'PermissionModel' in c_stackset_info else 'SELF_MANAGED',
 									'StackSetName'        : c_stacksetname
