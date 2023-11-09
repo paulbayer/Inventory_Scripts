@@ -378,7 +378,7 @@ def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):
 						print(f"\t\t{k}: {v['Region']}")
 						# print(f"\t\t{k}: {v}")
 					if pCheckAccount and verbose <= 30:
-						if stack_status in ['OUTDATED', 'INOPERABLE']:
+						if not stack_status == 'CURRENT':
 							print(f"\t\t\tAccount: {k}\n"
 							      f"\t\t\tRegion: {v['Region']}\n"
 							      f"\t\t\tDetailed Status: {v['DetailedStatus']}\n"
