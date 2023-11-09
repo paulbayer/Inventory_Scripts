@@ -16,7 +16,6 @@ init()
 
 __version__ = '2023.11.06'
 
-
 def parse_args(args):
 	"""
 	Description: Parses the arguments passed into the script
