@@ -133,7 +133,7 @@ def present_results(fSubnetsFound: list):
 	print()
 	print(f"These accounts were skipped - as requested: {pSkipAccounts}") if pSkipAccounts is not None else ""
 	print(f"These profiles were skipped - as requested: {pSkipProfiles}") if pSkipProfiles is not None else ""
-	print(f"The output has also been written to a file beginning with '{pFilename}' + the date and time")
+	print(f"The output has also been written to a file beginning with '{pFilename}' + the date and time") if pFilename is not None else ""
 	print()
 	print(f"Found {len(SubnetsFound)} subnets across {AccountNum} accounts across {RegionNum} regions")
 
@@ -141,6 +141,7 @@ def present_results(fSubnetsFound: list):
 ##################
 
 ERASE_LINE = '\x1b[2K'
+begin_time = time()
 
 if __name__ == '__main__':
 	args = parse_args(sys.argv[1:])
@@ -158,10 +159,8 @@ if __name__ == '__main__':
 
 	logging.info(f"Profiles: {pProfiles}")
 
-	if pTiming:
-		begin_time = time()
 	print()
-	print(f"Checking for Subnets... ")
+	print(f"Checking accounts for Subnets... ")
 	print()
 
 	# Get credentials from all relevant Children accounts
