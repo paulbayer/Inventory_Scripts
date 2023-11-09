@@ -666,12 +666,13 @@ Below - Specific functions to specific features
 """
 
 
-def find_sns_topics2(ocredentials, fRegion, fTopicFrag=None):
+def find_sns_topics2(ocredentials, fTopicFrag:str=None, fExact:bool=False):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['Region'] holds the region
 		- ['AccountNumber'] holds the account number
 
 	Returns:
@@ -684,30 +685,32 @@ def find_sns_topics2(ocredentials, fRegion, fTopicFrag=None):
 	session_sns = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
 	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
 	                            aws_session_token=ocredentials['SessionToken'],
-	                            region_name=fRegion)
+	                            region_name=ocredentials['Region'])
 	client_sns = session_sns.client('sns')
 	response = {'NextToken': ''}
 	TopicList = []
 	while 'NextToken' in response:
 		response = client_sns.list_topics(NextToken=response['NextToken'])
 		for item in response['Topics']:
-			TopicList.append(item['TopicArn'])
-	# response = client_sns.list_topics()
-	# for item in response['Topics']:
-	# 	TopicList.append(item['TopicArn'])
+			topic_name = item['TopicArn'][item['TopicArn'].rfind(':')+1:]
+			TopicList.append(topic_name)
 	if 'all' in fTopicFrag:
-		logging.info(f"Looking for all SNS Topics in account {ocredentials['AccountNumber']} from Region {fRegion}\n"
-		             f"Topic Arns Returned: {TopicList}\n"
+		logging.info(f"Looking for all SNS Topics in account {ocredentials['AccountNumber']} from Region {ocredentials['Region']}\n"
+		             f"Topics Returned: {TopicList}\n"
 		             f"We found {len(TopicList)} SNS Topics")
 		return (TopicList)
 	else:
-		logging.info(
-			f"Looking for specific SNS Topics in account {ocredentials['AccountNumber']} from Region {fRegion}")
+		logging.info(f"Looking for specific SNS Topics in account {ocredentials['AccountNumber']} from Region {ocredentials['Region']}")
 		topic_list2 = []
 		for item in fTopicFrag:
 			for topic in TopicList:
 				logging.info(f"Have {topic} | Looking for {item}")
-				if topic.find(item) >= 0:
+				if fExact:
+					logging.info("Looking for EXACT matches")
+					if topic == item:
+						logging.error(f"Found {topic}")
+						topic_list2.append(topic)
+				elif topic.find(item) >= 0:
 					logging.error(f"Found {topic}")
 					topic_list2.append(topic)
 		logging.info(f"We found {len(topic_list2)} SNS Topics", )

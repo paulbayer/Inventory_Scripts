@@ -142,7 +142,7 @@ def present_results(fSubnetsFound: list):
 
 ERASE_LINE = '\x1b[2K'
 
-if '__name__' == '__main__':
+if __name__ == '__main__':
 	args = parse_args(sys.argv[1:])
 	pProfiles = args.Profiles
 	pRegionList = args.Regions
