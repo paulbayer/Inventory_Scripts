@@ -2,15 +2,16 @@
 
 import logging
 import sys
-import Inventory_Modules
-from Inventory_Modules import display_results
-from ArgumentsClass import CommonArguments
-from account_class import aws_acct_access
-from colorama import init, Fore, Style
 from queue import Queue
 from threading import Thread
 from time import sleep, time
+
 from botocore.exceptions import ClientError
+from colorama import Fore, Style, init
+
+import Inventory_Modules
+from ArgumentsClass import CommonArguments
+from account_class import aws_acct_access
 
 '''
 	- There are four possible use-cases when trying to modify or remove a stack instance from a stack set:
@@ -93,7 +94,7 @@ def parse_args(args: object) -> object:
 	return (parser.my_parser.parse_args(args))
 
 
-def setup_auth_and_regions(fProfile:str) -> (aws_acct_access, list):
+def setup_auth_and_regions(fProfile: str) -> (aws_acct_access, list):
 	"""
 	Description: This function takes in a profile, and returns the account object and the regions valid for this account / org.
 	@param fProfile: A string representing the profile provided by the user. If nothing, then use the default profile or credentials
@@ -140,7 +141,7 @@ def setup_auth_and_regions(fProfile:str) -> (aws_acct_access, list):
 	return (aws_acct, RegionList)
 
 
-def find_stack_set_instances(fStackSetNames:list, fRegion:str) -> list:
+def find_stack_set_instances(fStackSetNames: list, fRegion: str) -> list:
 	"""
 	Note that this function takes a list of stack set names and finds the stack instances within them
 	fStackSetNames - This is a list of stackset names to look for. The reserved word "all" will return everything
@@ -199,7 +200,8 @@ def find_stack_set_instances(fStackSetNames:list, fRegion:str) -> list:
 									'ChildAccount'        : StackInstance['Account'],
 									'ChildRegion'         : StackInstance['Region'],
 									'StackStatus'         : StackInstance['Status'],
-									'DetailedStatus'      : StackInstance['StackInstanceStatus']['DetailedStatus'] if 'DetailedStatus' in StackInstance else None,
+									'DetailedStatus'      : StackInstance['StackInstanceStatus']['DetailedStatus'] if 'DetailedStatus' in StackInstance['StackInstanceStatus'] else None,
+									'StatusReason'        : StackInstance['StatusReason'] if 'StatusReason' in StackInstance else None,
 									'OrganizationalUnitId': StackInstance['OrganizationalUnitId'] if 'OrganizationalUnitId' in StackInstance else None,
 									'PermissionModel'     : c_stackset_info['PermissionModel'] if 'PermissionModel' in c_stackset_info else 'SELF_MANAGED',
 									'StackSetName'        : c_stacksetname
@@ -271,7 +273,7 @@ def random_string(stringLength=10):
 	return (randomstring)
 
 
-def _delete_stack_instances(faws_acct: aws_acct_access, fRegion: str, fStackSetName: str, fRetain: bool, fAccountList:list=None, fRegionList:list=None, fPermissionModel='SELF_MANAGED', fDeploymentTargets=None):
+def _delete_stack_instances(faws_acct: aws_acct_access, fRegion: str, fStackSetName: str, fRetain: bool, fAccountList: list = None, fRegionList: list = None, fPermissionModel='SELF_MANAGED', fDeploymentTargets=None):
 	"""
 	Required Parameters:
 	faws_acct - the object containing the account credentials and such
@@ -318,7 +320,8 @@ def _delete_stack_instances(faws_acct: aws_acct_access, fRegion: str, fStackSetN
 			return_response = {'Success': False, 'ErrorMessage': "Failed-Other"}
 			return (return_response)
 
-def display_stack_set_health(StackSet_Dict:dict, Account_Dict:dict):
+
+def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):
 	"""
 	Description: This function shows off the health of the stacksets at the end of the script
 	@param StackSet_Dict: Dictionary containing the stacksets that were updated
@@ -329,7 +332,7 @@ def display_stack_set_health(StackSet_Dict:dict, Account_Dict:dict):
 	"""
 	combined_stack_set_instances = StackSet_Dict['combined_stack_set_instances']
 	RemovedAccounts = Account_Dict['RemovedAccounts'] if pCheckAccount else None
-	InaccessibleAccounts = Account_Dict['InaccessibleAccounts']  if pCheckAccount else None
+	InaccessibleAccounts = Account_Dict['InaccessibleAccounts'] if pCheckAccount else None
 	StackSetNames = StackSet_Dict['StackSetNames']
 	summary = {}
 	stack_set_permission_models = dict()
@@ -337,6 +340,7 @@ def display_stack_set_health(StackSet_Dict:dict, Account_Dict:dict):
 		stack_set_name = record['StackSetName']
 		stack_status = record['StackStatus']
 		detailed_status = record['DetailedStatus']
+		status_reason = record['StatusReason']
 		stack_region = record['ChildRegion']
 		ou = record['OrganizationalUnitId']
 		stack_set_permission_models.update({stack_set_name: record['PermissionModel']})
@@ -344,7 +348,12 @@ def display_stack_set_health(StackSet_Dict:dict, Account_Dict:dict):
 			summary[stack_set_name] = {}
 		if stack_status not in summary[stack_set_name]:
 			summary[stack_set_name][stack_status] = []
-		summary[stack_set_name][stack_status].append({'Account': record['ChildAccount'], 'Region': stack_region, 'DetailedStatus': detailed_status})
+		summary[stack_set_name][stack_status].append({
+			'Account'       : record['ChildAccount'],
+			'Region'        : stack_region,
+			'DetailedStatus': detailed_status,
+			'StatusReason'  : status_reason
+		})
 
 	# Print the summary
 	sorted_summary = dict(sorted(summary.items()))
@@ -357,17 +366,30 @@ def display_stack_set_health(StackSet_Dict:dict, Account_Dict:dict):
 				stack_instances = {}
 				for stack_instance in instances:
 					if stack_instance['Account'] not in stack_instances.keys():
-						stack_instances[stack_instance['Account']] = []
-					stack_instances[stack_instance['Account']].append(stack_instance['Region'])
+						stack_instances[stack_instance['Account']] = {'Region':[], 'DetailedStatus': stack_instance['DetailedStatus'], 'StatusReason':stack_instance['StatusReason']}
+						# stack_instances[stack_instance['Account']] = []
+					stack_instances[stack_instance['Account']]['Region'].append(stack_instance['Region'])
+					# stack_instances[stack_instance['Account']].append(stack_instance['Region'])
 				for k, v in stack_instances.items():
 					if pCheckAccount and k in RemovedAccounts:
-						print(f"{Style.BRIGHT}{Fore.MAGENTA}\t\t{k}: {v}\t <----- Look here for orphaned accounts!{Style.RESET_ALL}")
+						print(f"{Style.BRIGHT}{Fore.MAGENTA}\t\t{k}: {v['Region']}\t <----- Look here for orphaned accounts!{Style.RESET_ALL}")
+						# print(f"{Style.BRIGHT}{Fore.MAGENTA}\t\t{k}: {v}\t <----- Look here for orphaned accounts!{Style.RESET_ALL}")
 					else:
-						print(f"\t\t{k}: {v}")
+						print(f"\t\t{k}: {v['Region']}")
+						# print(f"\t\t{k}: {v}")
+					if pCheckAccount and verbose <= 30:
+						if stack_status in ['OUTDATED', 'INOPERABLE']:
+							print(f"\t\t\tAccount: {k}\n"
+							      f"\t\t\tRegion: {v['Region']}\n"
+							      f"\t\t\tDetailed Status: {v['DetailedStatus']}\n"
+							      f"\t\t\tStatus Reason: {v['StatusReason']}")
+							pass
+
 	# Print the summary of any accounts that were found in the StackSets, but not in the Org.
 	if pCheckAccount:
 		print("Displaying accounts within the stacksets that aren't a part of the Organization")
 		print()
+		# TODO: Adding together these two lists - which are likely full of the same accounts gives an incorrect number
 		logging.info(f"Found {len(InaccessibleAccounts) + len(RemovedAccounts)} accounts that don't belong")
 		print(f"There were {len(RemovedAccounts)} accounts in the {len(StackSetNames['StackSets'])} Stacksets we looked through, that are not a part of the Organization")
 		for item in RemovedAccounts:
@@ -380,7 +402,7 @@ def display_stack_set_health(StackSet_Dict:dict, Account_Dict:dict):
 		print()
 
 
-def get_stack_set_deployment_target_info(faws_acct:aws_acct_access, fRegion:str, fStackSetName:str, fAccountRemovalList:list=None):
+def get_stack_set_deployment_target_info(faws_acct: aws_acct_access, fRegion: str, fStackSetName: str, fAccountRemovalList: list = None):
 	"""
 	Required Parameters:
 	faws_acct - the object containing the account credentials and such
@@ -411,7 +433,7 @@ def get_stack_set_deployment_target_info(faws_acct:aws_acct_access, fRegion:str,
 	return (return_result)
 
 
-def collect_cfnstacksets(faws_acct:aws_acct_access, fRegion:str) -> (dict, dict, dict):
+def collect_cfnstacksets(faws_acct: aws_acct_access, fRegion: str) -> (dict, dict, dict):
 	"""
 	Description: This function collects the information about existing stacksets
 	@param faws_acct: Account Object of type "aws_acct_access"
@@ -448,7 +470,7 @@ def collect_cfnstacksets(faws_acct:aws_acct_access, fRegion:str) -> (dict, dict,
 				AccountList.append(combined_stack_set_instances[_]['ChildAccount'])
 				FoundRegionList.append(combined_stack_set_instances[_]['ChildRegion'])
 	if pAddNew:
-		ApplicableStackSetsList = [_['StackSetName'] for _ in StackSetNames['StackSets'] ]
+		ApplicableStackSetsList = [_['StackSetName'] for _ in StackSetNames['StackSets']]
 	# I had to add this list comprehension to filter out the "None" types that happen when there are no stack-instances within a stack-set
 	AccountList = sorted(list(set([item for item in AccountList if item is not None])))
 	# RegionList isn't specific per account, as the deletion API doesn't need it to be, and it's easier to keep a single list of all regions, instead of per StackSet
@@ -519,7 +541,7 @@ The next section is broken up into a few pieces. I should try to re-write this t
 # 	display_stack_set_health(StackSet_Dict, RemovedAccounts)
 #
 
-def check_on_stackset_operations(OpsList:list, f_cfn_client):
+def check_on_stackset_operations(OpsList: list, f_cfn_client):
 	"""
 	Description: Showing the health and status of the stacksets operated on within this script.
 	@param OpsList: Ths list of stacksets that were modified
@@ -678,7 +700,7 @@ def modify_stacksets(StackSet_Dict, Account_Dict, Region_Dict):
 		refresh_stacksets(StackSet_Dict)
 
 
-def refresh_stacksets(StackSet_Dict:dict):
+def refresh_stacksets(StackSet_Dict: dict):
 	ApplicableStackSetsList = StackSet_Dict['ApplicableStackSetsList']
 	RefreshOpsList = []
 	cfn_client = aws_acct.session.client('cloudformation')
@@ -721,7 +743,7 @@ def refresh_stacksets(StackSet_Dict:dict):
 	check_on_stackset_operations(RefreshOpsList, cfn_client)
 
 
-def add_instances_to_stacksets(StackSet_Dict:dict, accounts_to_add:list):
+def add_instances_to_stacksets(StackSet_Dict: dict, accounts_to_add: list):
 	ApplicableStackSetsList = StackSet_Dict['ApplicableStackSetsList']
 	AddStacksList = []
 	cfn_client = aws_acct.session.client('cloudformation')
@@ -730,19 +752,19 @@ def add_instances_to_stacksets(StackSet_Dict:dict, accounts_to_add:list):
 	for stackset in ApplicableStackSetsList:
 		if not pConfirm:
 			ReallyAdd = (input(f"{Fore.RED}Adding {len(accounts_to_add)} accounts to {stackset}...{Fore.RESET}\n"
-                   f"Are you still sure? (y/n): ") in ['y', 'Y'])
+			                   f"Are you still sure? (y/n): ") in ['y', 'Y'])
 		if pConfirm or ReallyAdd:
-			OperationId='Add-Accounts--'+random_string(6)
+			OperationId = 'Add-Accounts--' + random_string(6)
 			stackset_add = cfn_client.create_stack_instances(StackSetName=stackset,
 			                                                 Accounts=accounts_to_add,
 			                                                 Regions=RegionList,
-			                                                 OperationPreferences={'RegionConcurrencyType': 'PARALLEL',
-			                                                                       'MaxConcurrentPercentage':100,
-			                                                                       'FailureToleranceCount':0},
+			                                                 OperationPreferences={'RegionConcurrencyType'  : 'PARALLEL',
+			                                                                       'MaxConcurrentPercentage': 100,
+			                                                                       'FailureToleranceCount'  : 0},
 			                                                 OperationId=OperationId,
 			                                                 CallAs='SELF')
 			AddStacksList.append({'StackSetName': stackset,
-			                       'OperationId' : OperationId})
+			                      'OperationId' : OperationId})
 		else:
 			print(f"{Fore.RED}Skipping {stackset}...{Fore.RESET}")
 	check_on_stackset_operations(AddStacksList, cfn_client)
@@ -776,7 +798,7 @@ if __name__ == '__main__':
 		begin_time = time()
 
 	# Seems low, but this fits under the API threshold. Make it too high and it will not.
-	DefaultMaxWorkerThreads = 3
+	DefaultMaxWorkerThreads = 5
 	ERASE_LINE = '\x1b[2K'
 	sleep_interval = 5
 
