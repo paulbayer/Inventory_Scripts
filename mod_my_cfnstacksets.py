@@ -366,22 +366,22 @@ def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):
 				stack_instances = {}
 				for stack_instance in instances:
 					if stack_instance['Account'] not in stack_instances.keys():
-						stack_instances[stack_instance['Account']] = {'Region':[], 'DetailedStatus': stack_instance['DetailedStatus'], 'StatusReason':stack_instance['StatusReason']}
-						# stack_instances[stack_instance['Account']] = []
+						stack_instances[stack_instance['Account']] = {'Region': [], 'DetailedStatus': stack_instance['DetailedStatus'], 'StatusReason': stack_instance['StatusReason']}
+					# stack_instances[stack_instance['Account']] = []
 					stack_instances[stack_instance['Account']]['Region'].append(stack_instance['Region'])
-					# stack_instances[stack_instance['Account']].append(stack_instance['Region'])
+				# stack_instances[stack_instance['Account']].append(stack_instance['Region'])
 				for k, v in stack_instances.items():
 					if pCheckAccount and k in RemovedAccounts:
 						print(f"{Style.BRIGHT}{Fore.MAGENTA}\t\t{k}: {v['Region']}\t <----- Look here for orphaned accounts!{Style.RESET_ALL}")
-						# print(f"{Style.BRIGHT}{Fore.MAGENTA}\t\t{k}: {v}\t <----- Look here for orphaned accounts!{Style.RESET_ALL}")
+					# print(f"{Style.BRIGHT}{Fore.MAGENTA}\t\t{k}: {v}\t <----- Look here for orphaned accounts!{Style.RESET_ALL}")
 					else:
 						print(f"\t\t{k}: {v['Region']}")
-						# print(f"\t\t{k}: {v}")
-					if pCheckAccount and verbose <= 30:
+					# print(f"\t\t{k}: {v}")
+					if verbose <= 30:
 						if not stack_status == 'CURRENT':
-							print(f"\t\t\tAccount: {k}\n"
-							      f"\t\t\tRegion: {v['Region']}\n"
-							      f"\t\t\tDetailed Status: {v['DetailedStatus']}\n"
+							logging.info(f"\t\t\tAccount: {k}\n"
+							             f"\t\t\tRegion: {v['Region']}\n")
+							print(f"\t\t\t{Fore.RED}Detailed Status: {v['DetailedStatus']}{Fore.RESET}\n"
 							      f"\t\t\tStatus Reason: {v['StatusReason']}")
 							pass
 
