@@ -70,7 +70,7 @@ def parse_args(args: object) -> object:
 		action="store_true",
 		dest="AddNew")
 	operation_group.add_argument(
-		'+delete',
+		'+delete', "+remove",
 		help="If this parameter is specified, we'll delete stacksets we find, with no additional confirmation.",
 		action="store_true",
 		dest="DryRun")
@@ -118,7 +118,15 @@ def setup_auth_and_regions(fProfile: str) -> (aws_acct_access, list):
 		sys.exit(9)
 
 	print()
-	print(f"You asked me to find {'(and delete)' if pdelete else '(but not delete)'} stacksets that match the following:")
+	if pdelete:
+		action = "and delete"
+	elif pAddNew:
+		action = "and add to"
+	elif pRefresh:
+		action = "and refresh"
+	else:
+		action = "but not modify"
+	print(f"You asked me to find ({action}) stacksets that match the following:")
 	print(f"\t\tIn the {aws_acct.AccountType} account {aws_acct.acct_number}")
 	print(f"\t\tIn this Region: {pRegion}")
 
