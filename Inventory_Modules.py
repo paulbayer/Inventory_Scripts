@@ -1,6 +1,6 @@
 import logging
 
-__version__ = "2023.10.31"
+__version__ = "2023.12.12"
 
 """
 ** Why are some functions "function" vs. "function2" vs. "function3"?**
@@ -666,7 +666,7 @@ Below - Specific functions to specific features
 """
 
 
-def find_sns_topics2(ocredentials, fTopicFrag:str=None, fExact:bool=False):
+def find_sns_topics2(ocredentials, fTopicFrag: str = None, fExact: bool = False):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -692,7 +692,7 @@ def find_sns_topics2(ocredentials, fTopicFrag:str=None, fExact:bool=False):
 	while 'NextToken' in response:
 		response = client_sns.list_topics(NextToken=response['NextToken'])
 		for item in response['Topics']:
-			topic_name = item['TopicArn'][item['TopicArn'].rfind(':')+1:]
+			topic_name = item['TopicArn'][item['TopicArn'].rfind(':') + 1:]
 			TopicList.append(topic_name)
 	if 'all' in fTopicFrag:
 		logging.info(f"Looking for all SNS Topics in account {ocredentials['AccountNumber']} from Region {ocredentials['Region']}\n"
@@ -1636,7 +1636,7 @@ def find_account_volumes2(ocredentials):
 	return (AllVolumes)
 
 
-def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None, fExact=False):
+def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments:list=None, fExact:bool=False, fCMP:bool=False) -> list:
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -1646,6 +1646,8 @@ def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None, f
 		- ['Profile'] can hold the profile, instead of the session credentials
 	fRegion is the region in which you're looking for policies
 	fFragments is a list of fragments you might be looking for in the policy name
+	fExact is whether the string fragment passed in should match what's found exactly, or not.
+	fCMP is a flag to determine whether you want to retrieve ONLY Customer Managed Policies, to limit the policies passed back
 	"""
 	import boto3
 	from botocore.exceptions import ClientError
@@ -1656,20 +1658,28 @@ def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments=None, f
 	                            aws_session_token=ocredentials['SessionToken'],
 	                            region_name=ocredentials['Region'])
 	policy_info = session_iam.client('iam')
-	Policies = {'IsTruncated': True}
 	AllPolicies = []
 	first_time = True
-
-	while Policies['IsTruncated']:
+	marker = Policies = None
+	while first_time or Policies['IsTruncated']:
 		# Had to add this so that a failure of the describe_policy function doesn't cause a race condition
 		try:
-			PoliciesFound = 0
 			if first_time:
 				logging.info(f"Looking in account #{ocredentials['AccountNumber']} for policies")
-				Policies = policy_info.list_policies()
+				if fCMP:
+					Policies = policy_info.list_policies(Scope='Local')
+				else:
+					Policies = policy_info.list_policies()
 				first_time = False
 			else:
-				Policies = policy_info.list_policies(Marker=Policies['Marker'])
+				if fCMP:
+					Policies = policy_info.list_policies(Marker=marker, Scope='Local')
+					# Policies = policy_info.list_policies(Marker=Policies['Marker'])
+				else:
+					Policies = policy_info.list_policies(Marker=marker)
+					# Policies = policy_info.list_policies(Marker=Policies['Marker'], Scope='Local')
+			marker = Policies['Marker'] if Policies['IsTruncated'] else None
+			# marker = "skfjhskfjhsdfkjh"
 			for policy in Policies['Policies']:
 				if fFragments is None or 'all' in fFragments:
 					policy.update({'AccountNumber': ocredentials['AccountNumber'],
@@ -1750,7 +1760,7 @@ def find_account_policies3(faws_acct, fRegion='us-east-1', fFragments=None):
 	return (AllPolicies)
 
 
-def find_policy_action(ocredentials, fpolicy, f_action):
+def find_policy_action2(ocredentials, fpolicy, f_action):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -2305,13 +2315,14 @@ def find_stacks(fProfile, fRegion, fStackFragment="all", fStatus="active"):
 	return (stacksCopy)
 
 
-def find_stacks2(ocredentials, fRegion, fStackFragment=None, fStatus=None):
+def find_stacks2(ocredentials: dict, fRegion: str, fStackFragment: list = None, fStatus: list = None):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the AccountId
+		- ['Region'] holds the Region
 
 	fRegion is a string
 	fStackFragment is a list - default to ["all"]
@@ -2323,11 +2334,11 @@ def find_stacks2(ocredentials, fRegion, fStackFragment=None, fStatus=None):
 
 	if fStatus is None:
 		fStatus = ['active']
-
+	logging.info(f"Status looked for is {fStatus}")
 	if 'active' in fStatus:
 		fStatus = ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]
 		desired_status = 'active'
-	elif 'all' in fStatus:
+	elif 'all' in fStatus or 'All' in fStatus or 'ALL' in fStatus:
 		fStatus = ['CREATE_IN_PROGRESS', 'CREATE_FAILED',
 		           'CREATE_COMPLETE', 'ROLLBACK_IN_PROGRESS',
 		           'ROLLBACK_FAILED', 'ROLLBACK_COMPLETE',
@@ -2371,7 +2382,7 @@ def find_stacks2(ocredentials, fRegion, fStackFragment=None, fStatus=None):
 		# Send back all stacks.
 		# TODO: Need paging here
 		stacks = client_cfn.list_stacks(StackStatusFilter=fStatus)
-		logging.info(f"4-Found {len(stacks['StackSummaries'])} stacks in Account: {ocredentials['AccountNumber']} in "
+		logging.info(f"Found {len(stacks['StackSummaries'])} stacks in Account: {ocredentials['AccountNumber']} in "
 		             f"Region: {fRegion} with status of {fStatus}")
 		return (stacks['StackSummaries'])
 	# For all active stacks where we want all stacks
@@ -2381,7 +2392,7 @@ def find_stacks2(ocredentials, fRegion, fStackFragment=None, fStatus=None):
 		# TODO: Need paging here
 		stacks = client_cfn.list_stacks(StackStatusFilter=fStatus)
 		for stack in stacks['StackSummaries']:
-			logging.info(f"2-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
+			logging.info(f"Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
 			             f"Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
 			stacksCopy.append(stack)
 	# In case we want *all* stacks, for all stack statuses
@@ -2389,10 +2400,11 @@ def find_stacks2(ocredentials, fRegion, fStackFragment=None, fStatus=None):
 		# Send back all stacks that match the fragment. Default is to only send active, so we have to specify ALL statuses, to get everything.
 		stacks = client_cfn.list_stacks(StackStatusFilter=fStatus)
 		for stack in stacks['StackSummaries']:
+
 			for fragment in fStackFragment:
 				if fragment in stack['StackName']:
 					# Check the fragment now - only send back those that match, regardless of status
-					logging.info(f"1-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
+					logging.info(f"Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']} in "
 					             f"Region: {fRegion} with Fragment: {fragment} and desired status: {desired_status}")
 					stacksCopy.append(stack)
 	# This is to capture stack statuses that aren't captured above (like specifically "deleted" or something like that)
@@ -2410,7 +2422,7 @@ def find_stacks2(ocredentials, fRegion, fStackFragment=None, fStatus=None):
 					for status in fStatus:
 						if fragment in stack['StackName'] and status == stack['StackStatus']:
 							# Check the fragment now - only send back those that match
-							logging.info(f"5-Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']}"
+							logging.info(f"Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']}"
 							             f" in Region: {fRegion} with Fragment: {fragment} and Status: {fStatus}")
 							stacksCopy.append(stack)
 	return (stacksCopy)
@@ -3603,7 +3615,7 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 		- The second field within the nested dictionary is the heading you want to display at the top of the column (which allows spaces)
 		- The third field ('Condition') is new, and allows to highlight a special value within the output. This can be used multiple times. 
 		The dictionary doesn't have to be ordered, as long as the 'SortOrder' field is correct.
-		
+
 		Enhancements:
 			- How to create a break between rows, like after every account, or Management Org, or region, or whatever...  
 	"""
@@ -3722,6 +3734,7 @@ def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_sav
 				row += '\n'
 				savefile.write(row)
 		print(f"\nData written to {my_filename}\n")
+
 
 def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProfiles: list = None, fSkipAccounts: list = None, fRootOnly: bool = False, fAccounts: list = None, fRegionList: list = None, RoleList: list = None) -> list:
 	"""

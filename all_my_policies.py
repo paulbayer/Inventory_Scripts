@@ -2,8 +2,7 @@
 
 # import boto3
 import sys
-import Inventory_Modules
-from Inventory_Modules import display_results, get_all_credentials
+from Inventory_Modules import display_results, get_all_credentials, find_account_policies2, find_policy_action2
 from ArgumentsClass import CommonArguments
 from colorama import init, Fore
 from botocore.exceptions import ClientError
@@ -14,8 +13,12 @@ from time import time
 import logging
 
 init()
-__version__ = "2023.11.06"
+__version__ = "2023.12.12"
+ERASE_LINE = '\x1b[2K'
+begin_time = time()
 
+
+##################
 def parse_args(args):
 	"""
 	Description: Parses the arguments passed into the script
@@ -40,7 +43,13 @@ def parse_args(args):
 		metavar="AWS Action",
 		default=None,
 		help="An action you're looking for within the policies")
+	parser.my_parser.add_argument(
+		"--cmp", "--customer_managed_policies",
+		dest="pcmp",
+		action="store_true",
+		help="A flag to specify you're only looking for customer managed policies")
 	return(parser.my_parser.parse_args(args))
+
 
 def check_accounts_for_policies(CredentialList, fRegionList=None, fActions=None, fFragments=None):
 	"""
@@ -60,7 +69,7 @@ def check_accounts_for_policies(CredentialList, fRegionList=None, fActions=None,
 				logging.info(f"De-queued info for account {c_account_credentials['AccountId']}")
 				try:
 					logging.info(f"Attempting to connect to {c_account_credentials['AccountId']}")
-					policy_actions = Inventory_Modules.find_policy_action(c_account_credentials, c_policy, c_action)
+					policy_actions = find_policy_action2(c_account_credentials, c_policy, c_action)
 					logging.info(f"Successfully connected to account {c_account_credentials['AccountId']} for policy {c_policy['PolicyName']}")
 					if len(policy_actions) > 0:
 						AllPolicies.extend(policy_actions)
@@ -89,9 +98,9 @@ def check_accounts_for_policies(CredentialList, fRegionList=None, fActions=None,
 
 	print()
 	for credential in CredentialList:
-		logging.info(f"Connecting to account {credential['AccountId']}")
 		try:
-			Policies = Inventory_Modules.find_account_policies2(credential, fRegionList[0], fFragments, pExact)
+			logging.info(f"Connecting to account {credential['AccountId']}")
+			Policies = find_account_policies2(credential, fRegionList[0], fFragments, pExact, pCMP)
 			AccountCount += 1
 			if fActions is None:
 				PlacesToLook = len(Policies)
@@ -128,6 +137,7 @@ def check_accounts_for_policies(CredentialList, fRegionList=None, fActions=None,
 
 if __name__ == '__main__':
 	args = parse_args(sys.argv[1:])
+
 	pProfiles = args.Profiles
 	pSkipAccounts = args.SkipAccounts
 	pSkipProfiles = args.SkipProfiles
@@ -135,17 +145,15 @@ if __name__ == '__main__':
 	pFragments = args.Fragments
 	pRootOnly = args.RootOnly
 	pActions = args.paction
+	pCMP = args.pcmp
 	pExact = args.Exact
 	pTiming = args.Time
 	pFilename = args.Filename
 	verbose = args.loglevel
 	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
-	ERASE_LINE = '\x1b[2K'
 	logging.info(f"Profiles: {pProfiles}")
 
-##################
-	begin_time = time()
 	print()
 	print(f"Checking for matching Policies... ")
 	print()
