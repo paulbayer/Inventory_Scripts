@@ -92,6 +92,11 @@ def parse_args(args: object) -> object:
 		action="store_true",
 		dest="AccountCheck")
 	parser.my_parser.add_argument(
+		'--date',
+		help="Provide this flag if you want the date of the last operation included with the detailed stack instance output",
+		action="store_true",
+		dest="OperationDate")
+	parser.my_parser.add_argument(
 		'--retain', '--disassociate',
 		help="Remove the stack instances from the stackset, but retain the resources. You must also specify '+delete' to use this parameter",
 		action="store_true",
@@ -185,12 +190,16 @@ def find_stack_set_instances(fStackSetNames: list, fRegion: str) -> list:
 						# logging.warning(f"While we didn't find any stack instances within {fStackSetNames['StackSets'][i]['StackSetName']}, we assume you want to delete it, even when it's empty")
 						logging.warning(f"While we didn't find any stack instances within {c_stacksetname}, we assume you want to delete it, even when it's empty")
 						f_combined_stack_set_instances.append({
-							'ParentAccountNumber': aws_acct.acct_number,
-							'ChildAccount'       : None,
-							'ChildRegion'        : None,
-							'PermissionModel'    : c_stackset_info['PermissionModel'] if 'PermissionModel' in c_stackset_info else None,
-							'StackStatus'        : None,
-							'StackSetName'       : c_stacksetname
+							'ParentAccountNumber' : aws_acct.acct_number,
+							'ChildAccount'        : None,
+							'ChildRegion'         : None,
+							'StackStatus'         : None,
+							'DetailedStatus'      : None,
+							'StatusReason'        : None,
+							'OrganizationalUnitId': None,
+							'PermissionModel'     : c_stackset_info['PermissionModel'] if 'PermissionModel' in c_stackset_info else None,
+							'StackSetName'        : c_stacksetname,
+							'LastOperationId'     : None
 						})
 					for StackInstance in StackInstances:
 						if 'StackId' not in StackInstance.keys():
@@ -217,7 +226,8 @@ def find_stack_set_instances(fStackSetNames: list, fRegion: str) -> list:
 									'StatusReason'        : StackInstance['StatusReason'] if 'StatusReason' in StackInstance else None,
 									'OrganizationalUnitId': StackInstance['OrganizationalUnitId'] if 'OrganizationalUnitId' in StackInstance else None,
 									'PermissionModel'     : c_stackset_info['PermissionModel'] if 'PermissionModel' in c_stackset_info else 'SELF_MANAGED',
-									'StackSetName'        : c_stacksetname
+									'StackSetName'        : c_stacksetname,
+									'LastOperationId'     : StackInstance['LastOperationId']
 								})
 						elif not (StackInstance['Account'] in pAccountModifyList):
 							# If the user only wants to remove the stack instances associated with specific accounts,
@@ -355,6 +365,7 @@ def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):
 		detailed_status = record['DetailedStatus']
 		status_reason = record['StatusReason']
 		stack_region = record['ChildRegion']
+		last_operation = record['LastOperationId']
 		ou = record['OrganizationalUnitId']
 		stack_set_permission_models.update({stack_set_name: record['PermissionModel']})
 		if stack_set_name not in summary:
@@ -365,7 +376,8 @@ def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):
 			'Account'       : record['ChildAccount'],
 			'Region'        : stack_region,
 			'DetailedStatus': detailed_status,
-			'StatusReason'  : status_reason
+			'StatusReason'  : status_reason,
+			'LastOperation' : last_operation,
 		})
 
 	# Print the summary
@@ -379,24 +391,28 @@ def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):
 				stack_instances = {}
 				for stack_instance in instances:
 					if stack_instance['Account'] not in stack_instances.keys():
-						stack_instances[stack_instance['Account']] = {'Region': [], 'DetailedStatus': stack_instance['DetailedStatus'], 'StatusReason': stack_instance['StatusReason']}
-					# stack_instances[stack_instance['Account']] = []
+						stack_instances[stack_instance['Account']] = {'Region': [], 'DetailedStatus': stack_instance['DetailedStatus'], 'StatusReason': stack_instance['StatusReason'], 'OperationId': stack_instance['LastOperation']}
 					stack_instances[stack_instance['Account']]['Region'].append(stack_instance['Region'])
-				# stack_instances[stack_instance['Account']].append(stack_instance['Region'])
 				for k, v in stack_instances.items():
 					if pCheckAccount and k in RemovedAccounts:
 						print(f"{Style.BRIGHT}{Fore.MAGENTA}\t\t{k}: {v['Region']}\t <----- Look here for orphaned accounts!{Style.RESET_ALL}")
-					# print(f"{Style.BRIGHT}{Fore.MAGENTA}\t\t{k}: {v}\t <----- Look here for orphaned accounts!{Style.RESET_ALL}")
 					else:
 						print(f"\t\t{k}: {v['Region']}")
-					# print(f"\t\t{k}: {v}")
-					if verbose <= 30:
-						if not stack_status == 'CURRENT':
-							logging.info(f"\t\t\tAccount: {k}\n"
-							             f"\t\t\tRegion: {v['Region']}\n")
-							print(f"\t\t\t{Fore.RED}Detailed Status: {v['DetailedStatus']}{Fore.RESET}\n"
-							      f"\t\t\tStatus Reason: {v['StatusReason']}")
-							pass
+					if verbose <= 30 and pOperationDate:
+						last_stackset_operation = v['OperationId']
+						cfn_client = aws_acct.session.client('cloudformation')
+						last_operation_date = cfn_client.describe_stack_set_operation(StackSetName=stack_set_name, OperationId=last_stackset_operation)['StackSetOperation']['EndTimestamp']
+						logging.info(f"\t\t\tAccount: {k}\n"
+						             f"\t\t\tRegion: {v['Region']}\n")
+						print(f"\t\t\t{Fore.RED if v['DetailedStatus'] != 'SUCCEEDED' else ''}Detailed Status: {v['DetailedStatus']}{Fore.RESET}\n"
+						      f"\t\t\tCompleted: {last_operation_date}\n"
+						      f"\t\t\tStatus Reason: {v['StatusReason']}")
+					elif verbose <= 30 and stack_status != 'CURRENT':
+						logging.info(f"\t\t\tAccount: {k}\n"
+						             f"\t\t\tRegion: {v['Region']}\n")
+						print(f"\t\t\t{Fore.RED}Detailed Status: {v['DetailedStatus']}{Fore.RESET}\n"
+						      f"\t\t\tStatus Reason: {v['StatusReason']}")
+						pass
 
 	# Print the summary of any accounts that were found in the StackSets, but not in the Org.
 	if pCheckAccount:
@@ -540,19 +556,6 @@ The next section is broken up into a few pieces. I should try to re-write this t
  - Then try to UPDATE that stackset, supplying the same information back to the stackset as the original, to ensure as little change as possible. 
 '''
 
-
-# def display_stacksets(StackSet_Dict, Account_Dict, Region_Dict):
-# 	combined_stack_set_instances = StackSet_Dict['combined_stack_set_instances']
-# 	StackSetNames = StackSet_Dict['StackSetNames']
-# 	AccountList = Account_Dict['AccountList']
-# 	RemovedAccounts = Account_Dict['RemovedAccounts']
-# 	FoundRegionList = Region_Dict['FoundRegionList']
-#
-# 	# The normal case of just displaying the stacksets we found...
-# 	print(f"Found {len(StackSetNames['StackSets'])} StackSets that matched, with {len(combined_stack_set_instances)} total instances across {len(AccountList)} accounts, across {len(FoundRegionList)} regions")
-# 	print(f"We found the following StackSets with the fragment you provided {pStackfrag}:")
-# 	display_stack_set_health(StackSet_Dict, RemovedAccounts)
-#
 
 def check_on_stackset_operations(OpsList: list, f_cfn_client):
 	"""
@@ -800,6 +803,7 @@ if __name__ == '__main__':
 	pdelete = args.DryRun
 	pAddNew = args.AddNew
 	pRetain = args.Retain
+	pOperationDate = args.OperationDate
 	pRegionModify = args.pRegionModify
 	pRefresh = args.Refresh
 	pConfirm = args.Confirm
