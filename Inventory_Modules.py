@@ -3593,7 +3593,7 @@ def get_region_azs2(ocredentials):
 ############
 
 
-def display_results(results_list, fdisplay_dict, defaultAction=None, file_to_save=None):
+def display_results(results_list: list, fdisplay_dict: dict, defaultAction = None, file_to_save: str = None):
 	from colorama import init, Fore
 	from datetime import datetime
 
