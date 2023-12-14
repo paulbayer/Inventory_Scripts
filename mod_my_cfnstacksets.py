@@ -37,6 +37,11 @@ TODO:
 init()
 
 __version__ = "2023.10.31"
+ERASE_LINE = '\x1b[2K'
+begin_time = time()
+sleep_interval = 5
+# Seems low, but this fits under the API threshold. Make it too high and it will not.
+DefaultMaxWorkerThreads = 5
 
 
 ###################
@@ -800,20 +805,12 @@ if __name__ == '__main__':
 	pConfirm = args.Confirm
 	# pForce = args.Force
 	# pSaveFilename = args.Filename
-	logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
-	if pTiming:
-		begin_time = time()
-
-	# Seems low, but this fits under the API threshold. Make it too high and it will not.
-	DefaultMaxWorkerThreads = 5
-	ERASE_LINE = '\x1b[2K'
-	sleep_interval = 5
-
-	display_dict = {'StackSetName'  : {'DisplayOrder': 1, 'Heading': 'Stack Set Name'},
-	                'ChildAccount'  : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
-	                'ChildRegion'   : {'DisplayOrder': 3, 'Heading': 'Region'},
-	                'DetailedStatus': {'DisplayOrder': 4, 'Heading': 'Instance Status', 'Condition': ['FAILED', 'INOPERABLE', 'SKIPPED_SUSPENDED_ACCOUNT', 'CANCELLED']}}
+	# display_dict = {'StackSetName'  : {'DisplayOrder': 1, 'Heading': 'Stack Set Name'},
+	#                 'ChildAccount'  : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
+	#                 'ChildRegion'   : {'DisplayOrder': 3, 'Heading': 'Region'},
+	#                 'DetailedStatus': {'DisplayOrder': 4, 'Heading': 'Instance Status', 'Condition': ['FAILED', 'INOPERABLE', 'SKIPPED_SUSPENDED_ACCOUNT', 'CANCELLED']}}
 
 	# Setup the aws_acct object
 	aws_acct, RegionList = setup_auth_and_regions(pProfile)
