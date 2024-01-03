@@ -36,7 +36,7 @@ TODO:
 
 init()
 
-__version__ = "2023.10.31"
+__version__ = "2024.01.03"
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 sleep_interval = 5
@@ -186,7 +186,8 @@ def find_stack_set_instances(fStackSetNames: list, fRegion: str) -> list:
 					# TODO: Creating the list to delete this way prohibits this script from including stacksets that are already empty. This should be fixed.
 					StackInstances = Inventory_Modules.find_stack_instances3(aws_acct, c_region, c_stacksetname)
 					logging.warning(f"Found {len(StackInstances)} Stack Instances within the StackSet {c_stacksetname}")
-					if len(StackInstances) == 0 and pdelete and pAccountModifyList is None and pRegionModify is None:
+					# if len(StackInstances) == 0 and pdelete and pAccountModifyList is None and pRegionModify is None:
+					if len(StackInstances) == 0 and pAccountModifyList is None and pRegionModify is None:
 						# logging.warning(f"While we didn't find any stack instances within {fStackSetNames['StackSets'][i]['StackSetName']}, we assume you want to delete it, even when it's empty")
 						logging.warning(f"While we didn't find any stack instances within {c_stacksetname}, we assume you want to delete it, even when it's empty")
 						f_combined_stack_set_instances.append({
@@ -197,7 +198,7 @@ def find_stack_set_instances(fStackSetNames: list, fRegion: str) -> list:
 							'DetailedStatus'      : None,
 							'StatusReason'        : None,
 							'OrganizationalUnitId': None,
-							'PermissionModel'     : c_stackset_info['PermissionModel'] if 'PermissionModel' in c_stackset_info else None,
+							'PermissionModel'     : c_stackset_info['PermissionModel'] if 'PermissionModel' in c_stackset_info else 'SELF_MANAGED',
 							'StackSetName'        : c_stacksetname,
 							'LastOperationId'     : None
 						})
@@ -386,7 +387,10 @@ def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):
 	for stack_set_name, status_counts in sorted_summary.items():
 		print(f"{stack_set_name} ({stack_set_permission_models[stack_set_name]}):")
 		for stack_status, instances in status_counts.items():
-			print(f"\t{Fore.RED if stack_status != 'CURRENT' else ''}{stack_status}: {len(instances)} instances {Fore.RESET}")
+			if stack_status is None:
+				print(f"\t{Fore.RED}--Empty stackset--{Fore.RESET}")
+			else:
+				print(f"\t{Fore.RED if stack_status not in ['CURRENT'] else ''}{stack_status}: {len(instances)} instances {Fore.RESET}")
 			if verbose < 50:
 				stack_instances = {}
 				for stack_instance in instances:
