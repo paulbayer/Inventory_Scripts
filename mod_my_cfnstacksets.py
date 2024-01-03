@@ -189,7 +189,7 @@ def find_stack_set_instances(fStackSetNames: list, fRegion: str) -> list:
 					# if len(StackInstances) == 0 and pdelete and pAccountModifyList is None and pRegionModify is None:
 					if len(StackInstances) == 0 and pAccountModifyList is None and pRegionModify is None:
 						# logging.warning(f"While we didn't find any stack instances within {fStackSetNames['StackSets'][i]['StackSetName']}, we assume you want to delete it, even when it's empty")
-						logging.warning(f"While we didn't find any stack instances within {c_stacksetname}, we assume you want to delete it, even when it's empty")
+						logging.warning(f"While we didn't find any stack instances within {c_stacksetname}, we assume you want to include it, even when it's empty")
 						f_combined_stack_set_instances.append({
 							'ParentAccountNumber' : aws_acct.acct_number,
 							'ChildAccount'        : None,
