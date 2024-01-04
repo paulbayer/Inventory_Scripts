@@ -406,8 +406,7 @@ def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):
 						last_stackset_operation = v['OperationId']
 						cfn_client = aws_acct.session.client('cloudformation')
 						last_operation_date = cfn_client.describe_stack_set_operation(StackSetName=stack_set_name, OperationId=last_stackset_operation)['StackSetOperation']['EndTimestamp']
-						logging.info(f"\t\t\tAccount: {k}\n"
-						             f"\t\t\tRegion: {v['Region']}\n")
+						logging.info(f"Account: {k} | Region: {v['Region']}\n")
 						print(f"\t\t\t{Fore.RED if v['DetailedStatus'] != 'SUCCEEDED' else ''}Detailed Status: {v['DetailedStatus']}{Fore.RESET}\n"
 						      f"\t\t\tCompleted: {last_operation_date}\n"
 						      f"\t\t\tStatus Reason: {v['StatusReason']}")
@@ -829,6 +828,9 @@ if __name__ == '__main__':
 	# Handle the checking of accounts to see if there any that don't belong in the Org.
 	if pCheckAccount:
 		Accounts = check_accounts(aws_acct, Accounts)
+	# If we changed anything, get a refreshed view before we display health of stacksets
+	if pdelete or pAddNew or pRefresh or pRegionModify or (pAccountModifyList is not None):
+		StackSets, Accounts, Regions = collect_cfnstacksets(aws_acct, pRegion)
 	# Display results
 	display_stack_set_health(StackSets, Accounts)
 
