@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+import os
 import Inventory_Modules
 from Inventory_Modules import get_credentials_for_accounts_in_org, display_results
 from ArgumentsClass import CommonArguments
@@ -14,16 +15,21 @@ from time import time
 import logging
 
 init()
-__version__ = "2023.11.06"
+__version__ = "2024.01.04"
+
 
 # TODO: Need a table at the bottom that summarizes the results, by instance-type, by running/ stopped, maybe by account and region
 ##################
+# Functions
+##################
+
 def parse_args(args):
 	"""
 	Description: Parses the arguments passed into the script
 	@param args: args represents the list of arguments passed in
 	@return: returns an object namespace that contains the individualized parameters passed in
 	"""
+	script_path, script_name = os.path.split(sys.argv[:-1][0])
 	parser = CommonArguments()
 	parser.my_parser.description = ("We're going to find all instances within any of the accounts we have access to, given the profile(s) provided.")
 	parser.multiprofile()
@@ -33,7 +39,8 @@ def parse_args(args):
 	parser.timing()
 	parser.verbosity()
 	parser.version(__version__)
-	parser.my_parser.add_argument(
+	local = parser.my_parser.add_argument_group(script_name, 'Parameters specific to this script')
+	local.add_argument(
 		"-s", "--status",
 		dest="pStatus",
 		choices=['running', 'stopped'],
@@ -75,6 +82,7 @@ def get_credentials(fProfile_list:list, fRegion_list:list)->list:
 				logging.error(f"Profile {profile} didn't work... Skipping")
 				continue
 	return(AllCredentials)
+
 
 # The parameters passed to this function should be the dictionary of attributes that will be examined within the thread.
 def find_all_instances(fAllCredentials:list, fStatus:str=None) -> list:
@@ -181,6 +189,9 @@ def find_all_instances(fAllCredentials:list, fStatus:str=None) -> list:
 	checkqueue.join()
 	return (AllInstances)
 
+
+##################
+# Main
 ##################
 
 if __name__ == '__main__':

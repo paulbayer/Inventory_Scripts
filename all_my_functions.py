@@ -10,17 +10,23 @@ from queue import Queue
 from threading import Thread
 from time import time
 import sys
+import os
 
 import logging
 
 init()
-__version__ = "2023.09.07"
+__version__ = "2024.01.04"
 
 ERASE_LINE = '\x1b[2K'
+begin_time = time()
 
 # TODO: Need a table at the bottom that creates a summary of the runtimes used, so that action can be taken if older runtimes are in use.
+##################
+# Functions
+##################
 
 def parse_args(args):
+	script_path, script_name = os.path.split(sys.argv[:-1][0])
 	parser = CommonArguments()
 	parser.multiprofile()  # Allows for a single profile to be specified
 	parser.multiregion()  # Allows for multiple regions to be specified at the command line
@@ -34,7 +40,7 @@ def parse_args(args):
 	parser.deletion()
 	parser.verbosity()  # Allows for the verbosity to be handled.
 	parser.version(__version__)
-	local = parser.my_parser.add_argument_group('all_my_functions', 'Parameters specific to this script')
+	local = parser.my_parser.add_argument_group(script_name, 'Parameters specific to this script')
 	local.add_argument(
 		"--runtime", "--run", "--rt",
 		dest="Runtime",
@@ -218,7 +224,6 @@ def check_accounts_for_functions(CredentialList, fFragments=None):
 	return (AllFuncs)
 
 
-##########################
 def collect_all_my_functions(AllCredentials, fFragments, fverbose=50):
 	# Generate parameter descriptions
 	"""
@@ -262,6 +267,10 @@ def fix_my_functions(fAllFunctions, fRuntime, fNewRuntime, fForceDelete, fTiming
 	return (return_response)
 
 
+##################
+# Main
+##################
+
 if __name__ == '__main__':
 	args = parse_args(sys.argv[1:])
 
@@ -288,9 +297,6 @@ if __name__ == '__main__':
 	                'FunctionName': {'DisplayOrder': 4, 'Heading': 'Function Name'},
 	                'Runtime'     : {'DisplayOrder': 5, 'Heading': 'Runtime'},
 	                'Role'        : {'DisplayOrder': 6, 'Heading': 'Role'}}
-
-	if pTiming:
-		begin_time = time()
 
 	print(f"Collecting credentials... ")
 
