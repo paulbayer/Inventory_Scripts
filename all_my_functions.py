@@ -21,10 +21,11 @@ ERASE_LINE = '\x1b[2K'
 begin_time = time()
 
 # TODO: Need a table at the bottom that creates a summary of the runtimes used, so that action can be taken if older runtimes are in use.
+
+
 ##################
 # Functions
 ##################
-
 def parse_args(args):
 	script_path, script_name = os.path.split(sys.argv[:-1][0])
 	parser = CommonArguments()

@@ -4,6 +4,7 @@
 # import Inventory_Modules
 import logging
 import sys
+import os
 from os import remove
 from os.path import exists
 from time import sleep, time
@@ -15,47 +16,56 @@ from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 
 init()
-__version__ = "2024.01.03"
+__version__ = "2024.01.05"
 
-parser = CommonArguments()
-parser.singleregion()
-parser.singleprofile()
-parser.verbosity()
-parser.timing()
-parser.version(__version__)
-parser.my_parser.add_argument(
-	"--old",
-	dest="pOldStackSet",
-	metavar="The name of the old stackset",
-	help="This is the name of the old stackset, which manages the existing stack instances in the legacy accounts.")
-parser.my_parser.add_argument(
-	"--new",
-	dest="pNewStackSet",
-	metavar="The name of the new stackset",
-	help="This is the name of the new stackset, which will manage the existing stack instances going forward.")
-parser.my_parser.add_argument(
-	"-A", "--Account",
-	dest="pAccountToMove",
-	default=None,
-	metavar="Account Number",
-	help="The single account to be moved from one stackset to another")
-parser.my_parser.add_argument(
-	"--Empty", "--empty",
-	dest="pEmpty",
-	action="store_true",
-	help="Whether to simply create an empty (but copied) new stackset from the 'old' stackset")
-parser.my_parser.add_argument(
-	"--recovery",
-	dest="pRecoveryFlag",
-	action="store_true",
-	help="Whether we should use the recovery file.")
-parser.my_parser.add_argument(
-	"--drift-check",
-	dest="pDriftCheckFlag",
-	action="store_true",
-	help="Whether we should check for drift before moving instances")
-args = parser.my_parser.parse_args()
 
+##################
+# Functions
+##################
+def parse_args(args):
+	script_path, script_name = os.path.split(sys.argv[:-1][0])
+	parser = CommonArguments()
+	parser.singleregion()
+	parser.singleprofile()
+	parser.verbosity()
+	parser.timing()
+	parser.version(__version__)
+	local = parser.my_parser.add_argument_group(script_name, 'Parameters specific to this script')
+	local.add_argument(
+		"--old",
+		dest="pOldStackSet",
+		metavar="The name of the old stackset",
+		help="This is the name of the old stackset, which manages the existing stack instances in the legacy accounts.")
+	local.add_argument(
+		"--new",
+		dest="pNewStackSet",
+		metavar="The name of the new stackset",
+		help="This is the name of the new stackset, which will manage the existing stack instances going forward.")
+	local.add_argument(
+		"-A", "--Account",
+		dest="pAccountToMove",
+		default=None,
+		metavar="Account Number",
+		help="The single account to be moved from one stackset to another")
+	local.add_argument(
+		"--Empty", "--empty",
+		dest="pEmpty",
+		action="store_true",
+		help="Whether to simply create an empty (but copied) new stackset from the 'old' stackset")
+	local.add_argument(
+		"--recovery",
+		dest="pRecoveryFlag",
+		action="store_true",
+		help="Whether we should use the recovery file.")
+	local.add_argument(
+		"--drift-check",
+		dest="pDriftCheckFlag",
+		action="store_true",
+		help="Whether we should check for drift before moving instances")
+	return (parser.my_parser.parse_args(args))
+
+
+args = parse_args(sys.argv[1:])
 pProfile = args.Profile
 pRegion = args.Region
 pTiming = args.Time
@@ -775,7 +785,9 @@ def populate_new_stack_with_existing_stack_instances(faws_acct, fStack_instance_
 	return (return_response)
 
 
-########################
+##################
+# Main
+##################
 
 aws_acct = aws_acct_access(pProfile)
 InfoFilename = (f"{pOldStackSet}-{pNewStackSet}-{aws_acct.acct_number}-{pRegion}")
@@ -814,7 +826,7 @@ elif exists(InfoFilename):
 	print(f"There exists a recovery file for the parameters you've supplied, named {InfoFilename}\n")
 	Use_recovery_file = (input(f"Do you want to use this file? (y/n): ") in ['y', 'Y'])
 	if not Use_recovery_file:
-		print(f"If you don't want to use that file, please change the filename, and re-run this script.",
+		print(f"If you don't want to use that file, please change the filename, and re-run this script, to avoid over-writing it.",
 		      file=sys.stderr)
 		sys.exit(6)
 
@@ -890,12 +902,15 @@ if OldStackSetExists and pEmpty:
 	print(f"You specified accounts to move, but we're not doing that, since you asked for this stackset to be created empty.") if pAccountToMove is not None else ""
 	""" Create new stackset from old stackset """
 	Stack_Set_Info = get_template_body_and_parameters(aws_acct, pOldStackSet)
+	# Creates the new stack
 	NewStackSetId = create_stack_set_with_body_and_parameters(aws_acct, pNewStackSet,
 	                                                          Stack_Set_Info['stack_set_info'])
 	logging.warning(f"Waiting for new stackset {pNewStackSet} to be created")
 	sleep(sleep_interval)
+	# Checks on the new stack creation
 	NewStackSetStatus = check_stack_set_status(aws_acct, pNewStackSet)
 	intervals_waited = 1
+	# If the creation effort (async) and the creation checking both succeeded...
 	if NewStackSetStatus['Success'] and NewStackSetId['Success']:
 		while NewStackSetStatus['Success'] and not NewStackSetStatus['StackSetStatus'] in ['ACTIVE']:
 			print(f"Waiting for StackSet {pNewStackSet} to be ready", f"." * intervals_waited, end='\r')
@@ -905,10 +920,12 @@ if OldStackSetExists and pEmpty:
 		print(f"{ERASE_LINE}Stackset {pNewStackSet} has been successfully created")
 		# TODO: Use the NewStackSetId Operation Id, to check if the empty new stackset has successfully been created
 		pass
+	# If only the creation effort (async) succeeded, but checking on that operation showed a failure...
 	elif NewStackSetStatus['Success']:
 		print(f"{Fore.RED}{pNewStackSet} appears to already exist. New stack set failed to be created. Exiting...{Fore.RESET}")
 		Failure_GoToEnd = True
 		sys.exit(98)
+	# Any other failure scenario
 	else:
 		print(f"{pNewStackSet} failed to be created. Exiting...")
 		Failure_GoToEnd = True

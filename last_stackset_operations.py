@@ -2,6 +2,7 @@
 
 import logging
 import sys
+import os
 from queue import Queue
 from threading import Thread
 from time import time
@@ -16,19 +17,22 @@ from account_class import aws_acct_access
 
 init()
 
-__version__ = '2023.12.13'
+__version__ = '2024.01.05'
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 DefaultMaxWorkerThreads = 5
 
 
-###################
+##################
+# Functions
+##################
 def parse_args(args: object):
 	"""
 	Description: Parses the arguments passed into the script
 	@param args: args represents the list of arguments passed in
 	@return: returns an object namespace that contains the individualized parameters passed in
 	"""
+	script_path, script_name = os.path.split(sys.argv[:-1][0])
 	parser = CommonArguments()
 	parser.singleprofile()  # Allows for a single profile to be specified
 	parser.singleregion()  # Allows for single region to be specified at the command line
@@ -39,20 +43,14 @@ def parse_args(args: object):
 	parser.timing()
 	parser.verbosity()  # Allows for the verbosity to be handled.
 	parser.version(__version__)
-	# parser.my_parser.add_argument(
-	# 	"-f", "--fragment",
-	# 	dest="pstackfrag",
-	# 	nargs='*',
-	# 	metavar="CloudFormation stack fragment",
-	# 	default=["all"],
-	# 	help="List of fragments of the cloudformation stackset(s) you want to check for.")
-	parser.my_parser.add_argument(
+	local = parser.my_parser.add_argument_group(script_name, 'Parameters specific to this script')
+	local.add_argument(
 		"-i", "--instances",
 		dest="pinstancecount",
 		action="store_true",
 		default=False,
 		help="Flag to determine whether you want to see the instance totals for each stackset")
-	parser.my_parser.add_argument(
+	local.add_argument(
 		"-s", "--status",
 		dest="pstatus",
 		metavar="CloudFormation status",
@@ -279,7 +277,9 @@ def find_last_operations(faws_acct: aws_acct_access, fStackSetNames: list):
 	return (AllStackSetOps)
 
 
-##########################
+##################
+# Main
+##################
 if __name__ == '__main__':
 	args = parse_args(sys.argv[1:])
 
