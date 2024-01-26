@@ -1636,7 +1636,7 @@ def find_account_volumes2(ocredentials):
 	return (AllVolumes)
 
 
-def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments:list=None, fExact:bool=False, fCMP:bool=False) -> list:
+def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments: list = None, fExact: bool = False, fCMP: bool = False) -> list:
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -1674,10 +1674,10 @@ def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments:list=No
 			else:
 				if fCMP:
 					Policies = policy_info.list_policies(Marker=marker, Scope='Local')
-					# Policies = policy_info.list_policies(Marker=Policies['Marker'])
+				# Policies = policy_info.list_policies(Marker=Policies['Marker'])
 				else:
 					Policies = policy_info.list_policies(Marker=marker)
-					# Policies = policy_info.list_policies(Marker=Policies['Marker'], Scope='Local')
+				# Policies = policy_info.list_policies(Marker=Policies['Marker'], Scope='Local')
 			marker = Policies['Marker'] if Policies['IsTruncated'] else None
 			# marker = "skfjhskfjhsdfkjh"
 			for policy in Policies['Policies']:
@@ -1846,8 +1846,9 @@ def find_users2(ocredentials):
 	import logging
 
 	logging.info(f"Key ID #: {str(ocredentials['AccessKeyId'])}")
-	session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
-		'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'])
+	session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'])
 	user_info = session_iam.client('iam')
 	users = user_info.list_users()['Users']
 	# TODO: Consider pagination here
@@ -3593,7 +3594,7 @@ def get_region_azs2(ocredentials):
 ############
 
 
-def display_results(results_list: list, fdisplay_dict: dict, defaultAction = None, file_to_save: str = None):
+def display_results(results_list: list, fdisplay_dict: dict, defaultAction=None, file_to_save: str = None):
 	from colorama import init, Fore
 	from datetime import datetime
 
@@ -3892,7 +3893,21 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		accountlist = []
 	if fregions is None:
 		fregions = ['us-east-1']
-	ChildAccounts = faws_acct.ChildAccounts
+	if faws_acct.AccountType == 'Root':
+		# Begin with all accounts within the org - we'll filter them out below.
+		# This allows us to ensure that if they provided multiple profiles, with an account list,
+		#   spanning both orgs, we're only considering accounts within the Org they specified.
+		ChildAccounts = faws_acct.ChildAccounts
+	elif faws_acct.AccountType == 'Child':
+		# Here we're assuming if they specified a child account in the profile, they're using delegated access to push out stacksets,
+		# hence they need to specify the account list at the command prompt.
+		ChildAccounts = [{'AccountId': x, 'MgmtAccount': faws_acct.MgmtAccount} for x in accountlist]
+	else:
+		# TODO: Eventually we'll need to raise an issue here, to point out that the account list needs to come from somewhere, if the profile isn't the Root,
+		#  or the accounts being specified at the command line.
+		# For now - we'll assume that if they provided a single account profile, with no listing, we should just use that single account.
+		ChildAccounts = [{'AccountId': faws_acct.acct_number, 'MgmtAccount': faws_acct.MgmtAccount, 'AccountStatus': faws_acct.AccountStatus}]
+		pass
 
 	account_credentials = {'Role': 'Nothing'}
 	AccountNum = RegionNum = 0
@@ -3912,7 +3927,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		worker.start()
 
 	logging.info(f"You asked to check {len(ChildAccounts) * len(fregions)} place{'s' if len(ChildAccounts) * len(fregions) > 1 else ''}... It's going to take a moment")
-	logging.debug(f"{Fore.GREEN}It's taken {time() - begin_time:.2f} seconds to prep WorkerThreads and such{Fore.RESET}") if fTiming else None
+	logging.info(f"{Fore.GREEN}It's taken {time() - begin_time:.2f} seconds to prep WorkerThreads and such{Fore.RESET}") if fTiming else None
 	for account in ChildAccounts:
 		if account['AccountId'] in fSkipAccounts:
 			continue

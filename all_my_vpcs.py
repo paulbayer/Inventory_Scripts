@@ -197,7 +197,9 @@ if __name__ == '__main__':
 		print(ERASE_LINE)
 		print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 	print(ERASE_LINE)
-	print(f"Found {len(All_VPCs_Found)}{' default' if pDefault else ''} Vpcs across {len(AllAccountList)} accounts across {len(AllRegionsList)} regions")
+	# Had to do this, because some of the VPCs that show up in the "sorted_AllVPCs" list are actually the same VPC, with a different CIDR range.
+	Num_of_unique_VPCs = len(set([x['VpcId'] for x in sorted_AllVPCs]))
+	print(f"Found {Num_of_unique_VPCs}{' default' if pDefault else ''} Vpcs across {len(AllAccountList)} accounts across {len(AllRegionsList)} regions")
 	print()
 	print("Thank you for using this script.")
 	print()
