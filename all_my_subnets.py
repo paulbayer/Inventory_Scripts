@@ -27,6 +27,7 @@ def parse_args(args):
 	parser.multiregion()
 	parser.extendedargs()
 	parser.rootOnly()
+	parser.rolestouse()
 	parser.save_to_file()
 	parser.timing()
 	parser.verbosity()
@@ -123,9 +124,10 @@ def present_results(fSubnetsFound: list):
 	display_dict = {'MgmtAccount'            : {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
 	                'AccountId'              : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
 	                'Region'                 : {'DisplayOrder': 3, 'Heading': 'Region'},
-	                'SubnetName'             : {'DisplayOrder': 4, 'Heading': 'Subnet Name'},
-	                'CidrBlock'              : {'DisplayOrder': 5, 'Heading': 'CIDR Block'},
-	                'AvailableIpAddressCount': {'DisplayOrder': 6, 'Heading': 'Available IPs'}}
+	                'VpcId'                 :  {'DisplayOrder': 4, 'Heading': 'VPC ID'},
+	                'SubnetName'             : {'DisplayOrder': 5, 'Heading': 'Subnet Name'},
+	                'CidrBlock'              : {'DisplayOrder': 6, 'Heading': 'CIDR Block'},
+	                'AvailableIpAddressCount': {'DisplayOrder': 7, 'Heading': 'Available IPs'}}
 	AccountNum = len(set([acct['AccountId'] for acct in AllCredentials]))
 	RegionNum = len(set([acct['Region'] for acct in AllCredentials]))
 	sorted_Subnets_Found = sorted(fSubnetsFound, key=lambda x: (x['MgmtAccount'], x['AccountId'], x['Region'], x['SubnetName']))
@@ -148,6 +150,7 @@ if __name__ == '__main__':
 	pProfiles = args.Profiles
 	pRegionList = args.Regions
 	pAccounts = args.Accounts
+	pRoleList = args.AccessRoles
 	pSkipAccounts = args.SkipAccounts
 	pSkipProfiles = args.SkipProfiles
 	pRootOnly = args.RootOnly
@@ -164,7 +167,7 @@ if __name__ == '__main__':
 	print()
 
 	# Get credentials from all relevant Children accounts
-	AllCredentials = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
+	AllCredentials = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList, pRoleList)
 	# Get relevant subnets
 	SubnetsFound = check_accounts_for_subnets(AllCredentials, fip=pIPaddressList)
 	# display_results(SubnetsFound, display_dict)
