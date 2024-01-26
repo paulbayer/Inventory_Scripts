@@ -31,6 +31,7 @@ def parse_args(args):
 	parser.multiprofile()
 	parser.multiregion()
 	parser.extendedargs()
+	parser.rolestouse()
 	parser.rootOnly()
 	parser.timing()
 	parser.save_to_file()
@@ -149,6 +150,7 @@ if __name__ == '__main__':
 	pProfiles = args.Profiles
 	pRegionList = args.Regions
 	pAccounts = args.Accounts
+	pRoles = args.AccessRoles
 	pSkipProfiles = args.SkipProfiles
 	pSkipAccounts = args.SkipAccounts
 	pRootOnly = args.RootOnly
@@ -171,7 +173,7 @@ if __name__ == '__main__':
 
 	# NumOfRootProfiles = 0
 	# Get credentials
-	AllCredentials = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
+	AllCredentials = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList, pRoles)
 	AllRegionsList = list(set([x['Region'] for x in AllCredentials]))
 	AllAccountList = list(set([x['AccountId'] for x in AllCredentials]))
 	# Find the VPCs
