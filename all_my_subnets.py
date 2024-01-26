@@ -12,7 +12,7 @@ from time import time
 import logging
 
 init()
-__version__ = "2023.10.06"
+__version__ = "2024.01.26"
 
 
 ##################
