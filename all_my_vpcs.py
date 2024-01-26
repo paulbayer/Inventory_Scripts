@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 
 
+import logging
 import sys
-import Inventory_Modules
-from Inventory_Modules import get_all_credentials, display_results
-from ArgumentsClass import CommonArguments
-from time import time
+from queue import Queue
 # from tqdm.auto import tqdm
 from threading import Thread
-from queue import Queue
-from colorama import init, Fore
-from botocore.exceptions import ClientError
+from time import time
 
-import logging
+from botocore.exceptions import ClientError
+from colorama import Fore, init
+
+import Inventory_Modules
+from ArgumentsClass import CommonArguments
+from Inventory_Modules import display_results, get_all_credentials
 
 init()
-__version__ = "2023.07.12"
+__version__ = "2024.01.26"
+
 
 ##########################
 def parse_args(args):
@@ -42,8 +44,7 @@ def parse_args(args):
 		default=False,
 		const=True,
 		help="Flag to determine whether we're looking for default VPCs only.")
-	return(parser.my_parser.parse_args(args))
-
+	return (parser.my_parser.parse_args(args))
 
 
 def find_all_vpcs(fAllCredentials, fDefaultOnly=False):
@@ -72,18 +73,20 @@ def find_all_vpcs(fAllCredentials, fDefaultOnly=False):
 							VpcName = "No name defined"
 							VpcId = Vpcs['Vpcs'][y]['VpcId']
 							IsDefault = Vpcs['Vpcs'][y]['IsDefault']
-							CIDR = Vpcs['Vpcs'][y]['CidrBlock']
+							CIDRBlockAssociationSet = Vpcs['Vpcs'][y]['CidrBlockAssociationSet']
 							if 'Tags' in Vpcs['Vpcs'][y]:
 								for z in range(len(Vpcs['Vpcs'][y]['Tags'])):
 									if Vpcs['Vpcs'][y]['Tags'][z]['Key'] == "Name":
 										VpcName = Vpcs['Vpcs'][y]['Tags'][z]['Value']
-							AllVPCs.append({'MgmtAccount': c_account_credentials['MgmtAccount'],
-							                'AccountId'  : c_account_credentials['AccountId'],
-							                'Region'     : c_account_credentials['Region'],
-							                'CIDR'       : CIDR,
-							                'VpcId'      : VpcId,
-							                'IsDefault'  : IsDefault,
-							                'VpcName'    : VpcName})
+							# This is needed to accommodate the possibility that there are multiple CIDRs associated with a given VPC.
+							for _ in range(len(CIDRBlockAssociationSet)):
+								AllVPCs.append({'MgmtAccount': c_account_credentials['MgmtAccount'],
+								                'AccountId'  : c_account_credentials['AccountId'],
+								                'Region'     : c_account_credentials['Region'],
+								                'CIDR'       : CIDRBlockAssociationSet[_]['CidrBlock'],
+								                'VpcId'      : VpcId,
+								                'IsDefault'  : IsDefault,
+								                'VpcName'    : VpcName})
 					else:
 						continue
 				except KeyError as my_Error:
@@ -162,7 +165,7 @@ if __name__ == '__main__':
 	NumVpcsFound = 0
 	NumRegions = 0
 	if pProfiles is not None:
-		print(f"Checking for VPCs in profile{'s' if len(pProfiles)>1 else ''} {pProfiles}")
+		print(f"Checking for VPCs in profile{'s' if len(pProfiles) > 1 else ''} {pProfiles}")
 	else:
 		print(f"Checking for VPCs in default profile")
 
