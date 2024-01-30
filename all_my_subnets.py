@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
+import logging
+import os
 import sys
-import Inventory_Modules
-from Inventory_Modules import get_all_credentials, display_results
-from ArgumentsClass import CommonArguments
-from colorama import init, Fore
-from botocore.exceptions import ClientError
 from queue import Queue
 from threading import Thread
 from time import time
 
-import logging
+from botocore.exceptions import ClientError
+from colorama import Fore, init
+
+import Inventory_Modules
+from ArgumentsClass import CommonArguments
+from Inventory_Modules import display_results, get_all_credentials
 
 init()
-__version__ = "2024.01.26"
+__version__ = "2024.01.28"
 
 
 ##################
@@ -22,6 +24,7 @@ def parse_args(args):
 	@param args: args represents the list of arguments passed in
 	@return: returns an object namespace that contains the individualized parameters passed in
 	"""
+	script_path, script_name = os.path.split(sys.argv[:-1][0])
 	parser = CommonArguments()
 	parser.multiprofile()
 	parser.multiregion()
@@ -32,7 +35,8 @@ def parse_args(args):
 	parser.timing()
 	parser.verbosity()
 	parser.version(__version__)
-	parser.my_parser.add_argument(
+	local = parser.my_parser.add_argument_group(script_name, 'Parameters specific to this script')
+	local.add_argument(
 		"--ipaddress", "--ip",
 		dest="pipaddresses",
 		nargs="*",
@@ -60,7 +64,6 @@ def check_accounts_for_subnets(CredentialList, fip=None):
 				logging.info(f"De-queued info for account {c_account_credentials['AccountId']}")
 				try:
 					logging.info(f"Attempting to connect to {c_account_credentials['AccountId']}")
-					# account_subnets = Inventory_Modules.find_account_subnets2(c_account_credentials, c_account_credentials['Region'], c_fip)
 					account_subnets = Inventory_Modules.find_account_subnets2(c_account_credentials, c_fip)
 					logging.info(f"Successfully connected to account {c_account_credentials['AccountId']}")
 					for y in range(len(account_subnets['Subnets'])):
@@ -124,10 +127,13 @@ def present_results(fSubnetsFound: list):
 	display_dict = {'MgmtAccount'            : {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
 	                'AccountId'              : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
 	                'Region'                 : {'DisplayOrder': 3, 'Heading': 'Region'},
-	                'VpcId'                 :  {'DisplayOrder': 4, 'Heading': 'VPC ID'},
+	                'VpcId'                  : {'DisplayOrder': 4, 'Heading': 'VPC ID'},
 	                'SubnetName'             : {'DisplayOrder': 5, 'Heading': 'Subnet Name'},
 	                'CidrBlock'              : {'DisplayOrder': 6, 'Heading': 'CIDR Block'},
-	                'AvailableIpAddressCount': {'DisplayOrder': 7, 'Heading': 'Available IPs'}}
+	                'AvailableIpAddressCount': {'DisplayOrder': 7, 'Heading': 'Available IPs'},
+	                # 'IPUtilization'          : {'DisplayOrder': 8, 'Heading': 'IP Utilization'},
+	                # 'NearExhaustion'          : {'DisplayOrder': 8, 'Heading': 'Near Exhaustion', 'Condition': [True]},
+	                }
 	AccountNum = len(set([acct['AccountId'] for acct in AllCredentials]))
 	RegionNum = len(set([acct['Region'] for acct in AllCredentials]))
 	sorted_Subnets_Found = sorted(fSubnetsFound, key=lambda x: (x['MgmtAccount'], x['AccountId'], x['Region'], x['SubnetName']))
@@ -138,6 +144,32 @@ def present_results(fSubnetsFound: list):
 	print(f"The output has also been written to a file beginning with '{pFilename}' + the date and time") if pFilename is not None else ""
 	print()
 	print(f"Found {len(SubnetsFound)} subnets across {AccountNum} accounts across {RegionNum} regions")
+
+
+def analyze_results(fSubnetsFound: list):
+	# :fSubnetsFound: a list of the subnets found and their attributes
+	account_summary = []
+	VPC_summary = []
+	subnets_near_exhaustion = []
+	for record in fSubnetsFound:
+		AvailableIps = record['AvailableIpAddressCount']
+		account_number = record['AccountId']
+		vpc_id = record['VpcId']
+		mask = int(str(record['CidrBlock']).split("/")[1])
+		TotalIPs = 2 ** (32 - mask) - 5
+		IPUtilization = 100 - (round(AvailableIps / TotalIPs, 2) * 100)
+		subnets_near_exhaustion.append(record['SubnetId']) if IPUtilization > 74 else ''
+		if account_number not in account_summary:
+			account_summary.append(account_number)
+		if vpc_id not in VPC_summary:
+			VPC_summary.append(vpc_id)
+	if verbose < 50:
+		print()
+		print(f"Number of accounts found with subnets: {len(account_summary)}")
+		print(f"Number of unique VPCs found: {len(VPC_summary)}")
+		print(f"Number of subnets in danger of IP Exhaustion (80%+ IPs utilized): {len(subnets_near_exhaustion)}")
+		print()
+		# print(f"Number of subnets using unroutable space (100.64.*.*): ")
 
 
 ##################
@@ -172,7 +204,8 @@ if __name__ == '__main__':
 	SubnetsFound = check_accounts_for_subnets(AllCredentials, fip=pIPaddressList)
 	# display_results(SubnetsFound, display_dict)
 	present_results(SubnetsFound)
-
+	# Print out an analysis of what was found at the end
+	analyze_results(SubnetsFound)
 	if pTiming:
 		print(ERASE_LINE)
 		print(f"{Fore.GREEN}This script completed in {time() - begin_time:.2f} seconds{Fore.RESET}")
