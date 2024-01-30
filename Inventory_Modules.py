@@ -3711,7 +3711,7 @@ def display_results(results_list: list, fdisplay_dict: dict, defaultAction=None,
 	#   Possibly we can have a setting where this data is written to a csv locally. We could create separate analytics once the data was saved.
 	if file_to_save is not None:
 		Heading = ''
-		my_filename = f'{file_to_save}-{datetime.now().strftime("%y-%m-%d--%H:%M:%S")}'
+		my_filename = f'{file_to_save}-{datetime.now().strftime("%y-%m-%d--%H-%M-%S")}'
 		logging.info(f"Writing your data to: {my_filename}")
 		with open(my_filename, 'w') as savefile:
 			for field, value in sorted_display_dict.items():
