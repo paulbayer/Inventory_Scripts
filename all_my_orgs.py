@@ -12,7 +12,7 @@ import sys
 import os
 
 init()
-__version__ = "2024.01.04"
+__version__ = "2024.01.25"
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 # TODO: If they provide a profile that isn't a root profile, you should find out which org it belongs to, and then show the org for that.
@@ -23,7 +23,7 @@ begin_time = time()
 # Functions
 ##################
 def parse_args(args):
-	script_path, script_name = os.path.split(sys.argv[:-1][0])
+	script_path, script_name = os.path.split(sys.argv[0])
 	parser = CommonArguments()
 	parser.multiprofile()
 	parser.extendedargs()
@@ -54,6 +54,7 @@ def all_my_orgs(fProfiles:list, fSkipProfiles:list, fAccountList:list, fTiming:b
 
 	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
 	# print("Capturing info for supplied profiles")
+	logging.info(f"These profiles were requested {fProfiles}.")
 	logging.warning(f"These profiles are being checked {ProfileList}.")
 	print(f"Please bear with us as we run through {len(ProfileList)} profiles")
 	AllProfileAccounts = get_org_accounts_from_profiles(ProfileList, progress_bar=False)

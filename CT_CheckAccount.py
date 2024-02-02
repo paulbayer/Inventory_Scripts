@@ -16,9 +16,9 @@ from account_class import aws_acct_access
 import logging
 
 init()
-__version__ = "2024.01.04"
+__version__ = "2024.02.02"
 
-script_path, script_name = os.path.split(sys.argv[:-1][0])
+script_path, script_name = os.path.split(sys.argv[0])
 parser = CommonArguments()
 parser.singleprofile()
 parser.multiregion()

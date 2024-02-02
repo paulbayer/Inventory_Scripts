@@ -14,7 +14,7 @@ from ArgumentsClass import CommonArguments
 from Inventory_Modules import display_results, get_all_credentials
 
 init()
-__version__ = "2024.01.28"
+__version__ = "2024.02.02"
 
 
 ##################
@@ -24,7 +24,7 @@ def parse_args(args):
 	@param args: args represents the list of arguments passed in
 	@return: returns an object namespace that contains the individualized parameters passed in
 	"""
-	script_path, script_name = os.path.split(sys.argv[:-1][0])
+	script_path, script_name = os.path.split(sys.argv[0])
 	parser = CommonArguments()
 	parser.multiprofile()
 	parser.multiregion()
@@ -163,13 +163,12 @@ def analyze_results(fSubnetsFound: list):
 			account_summary.append(account_number)
 		if vpc_id not in VPC_summary:
 			VPC_summary.append(vpc_id)
-	if verbose < 50:
-		print()
-		print(f"Number of accounts found with subnets: {len(account_summary)}")
-		print(f"Number of unique VPCs found: {len(VPC_summary)}")
-		print(f"Number of subnets in danger of IP Exhaustion (80%+ IPs utilized): {len(subnets_near_exhaustion)}")
-		print()
-		# print(f"Number of subnets using unroutable space (100.64.*.*): ")
+	print()
+	print(f"Number of accounts found with subnets: {len(account_summary)}")
+	print(f"Number of unique VPCs found: {len(VPC_summary)}")
+	print(f"Number of subnets in danger of IP Exhaustion (80%+ IPs utilized): {len(subnets_near_exhaustion)}")
+	# print(f"Number of subnets using unroutable space (100.64.*.*): ")
+	print()
 
 
 ##################
@@ -205,7 +204,8 @@ if __name__ == '__main__':
 	# display_results(SubnetsFound, display_dict)
 	present_results(SubnetsFound)
 	# Print out an analysis of what was found at the end
-	analyze_results(SubnetsFound)
+	if verbose < 50:
+		analyze_results(SubnetsFound)
 	if pTiming:
 		print(ERASE_LINE)
 		print(f"{Fore.GREEN}This script completed in {time() - begin_time:.2f} seconds{Fore.RESET}")

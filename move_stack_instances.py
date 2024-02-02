@@ -16,14 +16,14 @@ from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 
 init()
-__version__ = "2024.01.05"
+__version__ = "2024.02.02"
 
 
 ##################
 # Functions
 ##################
 def parse_args(args):
-	script_path, script_name = os.path.split(sys.argv[:-1][0])
+	script_path, script_name = os.path.split(sys.argv[0])
 	parser = CommonArguments()
 	parser.singleregion()
 	parser.singleprofile()
@@ -589,14 +589,17 @@ def create_stack_set_with_body_and_parameters(faws_acct: aws_acct_access, fNew_s
 	"""
 	import logging
 
-	logging.info(
-		f"Creating a new stackset name {fNew_stack_set_name} in account {faws_acct.acct_number} with a template body, parameters, capabilities and tagging from this:")
+	logging.info(f"Creating a new stackset name {fNew_stack_set_name} in account {faws_acct.acct_number} with a template body, parameters, capabilities and tagging from this:")
 	logging.info(f"{fStack_set_info}")
 	client_cfn = faws_acct.session.client('cloudformation')
 	return_response = dict()
-	# TODO: We should change the template body to a template url to accommodate really big templates
-	# if 'Description' not in fStack_set_info.keys():
-	# 	fStack_set_info['Description'] = 'This is a Description'
+	# TODO: We should consider changing the template body to a template url to accommodate really big templates,
+	#  That would mean we need to have an S3 bucket to put the template, which we don't necessarily have at this point, so it's a bigger deal than you might immediately think.
+	#  However, this script doesn't check the size of the template ahead of time, so what happens if we try to create a new stackset template when the old one is too big?
+
+	# TODO: This only creates a new stackset as a "Self-Managed" stackset.
+	#  We need to catch the scenario, when the old stackset was "Service-Managed" and decide whether we create the new one that way (which may be difficult, with automatic deployments, etc),
+	#  Or tell the user that we cannot create a new service-managed stackset, and do they want to create it as a self-managed instead?
 	try:
 		response = client_cfn.create_stack_set(StackSetName=fNew_stack_set_name,
 		                                       TemplateBody=fStack_set_info['TemplateBody'],

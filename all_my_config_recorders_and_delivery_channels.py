@@ -14,12 +14,12 @@ from time import time
 import logging
 
 init()
-__version__ = "2024.01.03"
+__version__ = "2024.02.02"
 
 
 # TODO: Enable the deletion of the config recorders / delivery channels from specific accounts (or all?) at the end.
 
-script_path, script_name = os.path.split(sys.argv[:-1][0])
+script_path, script_name = os.path.split(sys.argv[0])
 parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()

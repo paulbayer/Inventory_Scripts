@@ -17,7 +17,7 @@ from account_class import aws_acct_access
 
 init()
 
-__version__ = '2024.01.05'
+__version__ = '2024.02.02'
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 DefaultMaxWorkerThreads = 5
@@ -32,7 +32,7 @@ def parse_args(args: object):
 	@param args: args represents the list of arguments passed in
 	@return: returns an object namespace that contains the individualized parameters passed in
 	"""
-	script_path, script_name = os.path.split(sys.argv[:-1][0])
+	script_path, script_name = os.path.split(sys.argv[0])
 	parser = CommonArguments()
 	parser.singleprofile()  # Allows for a single profile to be specified
 	parser.singleregion()  # Allows for single region to be specified at the command line
