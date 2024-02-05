@@ -137,10 +137,7 @@ class aws_acct_access:
 			try:
 				logging.debug("Credentials are using a profile")
 				# Checking to see if a region was included in the profile, if it was, then use it, otherwise - pick a default.
-				if fProfile is None or fProfile == 'None':
-					prelim_session = boto3.Session()
-				else:
-					prelim_session = boto3.Session(profile_name=fProfile)
+				prelim_session = boto3.Session(profile_name=fProfile)
 				if prelim_session.region_name is None:
 					prelim_session = boto3.Session(profile_name=fProfile, region_name=fRegion)
 				elif fRegion is None:
