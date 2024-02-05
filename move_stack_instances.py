@@ -16,7 +16,33 @@ from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 
 init()
-__version__ = "2024.02.02"
+__version__ = "2024.02.05"
+
+"""
+This script attempts to move stack-instances from one stack-set to another without any impact to the ultimate resources.
+Here's what's needed:
+		0. Either Create or be provided with the new stackset... 
+	
+	If we have to CREATE the NewStackSet:
+		1. Determine the template body of the existing stackset. The body will need to be cleaned up, since the JSON is escaped all over.
+		2. Determine the parameters from the existing stackset
+			2.5 Determine whether you need to specify "--capabilities CAPABILITIES_NAMED_IAM" when creating the new stackset 
+		3. Create a new stackset with the template body of the existing stackset.
+	
+	If NewStackSet is PROVIDED:
+		1. Accept the parameters of the stackset name - assuming the template body and parameters have been applied already.  
+		
+	COMMON to both cases:
+		4. Determine the stack-ids of the existing stack-instances you want to move from the existing stackset
+	**** At this point it's important to write the recovery file, so you have the stack_ids saved, 
+	before you begin removing them from the old stackset (during the import)
+		5. Run the import to the new stackset, specifying the stack-ids of the existing stack-instances, no more than 10 at a time. 
+			Ideally, you would aggregate accounts into a single run, so you could parallelize the regional deployments
+		6. Verify that the operation returned a success for all stack-instances
+		7. Loop through the stack-ids until complete - verifying after each one
+			7.5 Remember the script will have to continuously poll the stack-set to determine when it's complete 
+		8. Report on status at the end.
+"""
 
 
 ##################
@@ -66,64 +92,6 @@ def parse_args(args):
 	return (parser.my_parser.parse_args(args))
 
 
-args = parse_args(sys.argv[1:])
-pProfile = args.Profile
-pRegion = args.Region
-pForce = args.Confirm
-pTiming = args.Time
-verbose = args.loglevel
-pRecoveryFlag = args.pRecoveryFlag
-pDriftCheck = args.pDriftCheckFlag
-# version = args.Version
-pOldStackSet = args.pOldStackSet
-pNewStackSet = args.pNewStackSet
-pAccountToMove = args.pAccountToMove
-pEmpty = args.pEmpty
-# Logging Settings
-logging.getLogger("boto3").setLevel(logging.CRITICAL)
-logging.getLogger("botocore").setLevel(logging.CRITICAL)
-logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
-logging.getLogger("urllib3").setLevel(logging.CRITICAL)
-# Set Log Level
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
-
-ERASE_LINE = '\x1b[2K'
-# The time between checks to see if the stackset instances have been created, or imported...
-sleep_interval = 5
-begin_time = time()
-Default_Description_Text = "This is a default description"
-# Currently, this is a hard-stop at 10, but I made it a variable in case they up the limit
-StackInstancesImportedAtOnce = 10
-stack_ids = dict()
-
-"""
-This script attempts to move stack-instances from one stack-set to another without any impact to the ultimate resources.
-Here's what's needed:
-	0. Either Create or be provided with the new stackset... 
-	
-	If we have to CREATE the NewStackSet:
-	1. Determine the template body of the existing stackset. The body will need to be cleaned up, since the JSON is escaped all over.
-	2. Determine the parameters from the existing stackset
-		2.5 Determine whether you need to specify "--capabilities CAPABILITIES_NAMED_IAM" when creating the new stackset 
-	3. Create a new stackset with the template body of the existing stackset.
-	
-	If NewStackSet is PROVIDED:
-	1. Accept the parameters of the stackset name - assuming the template body and parameters have been applied already.  
-		
-	COMMON to both cases:
-	4. Determine the stack-ids of the existing stack-instances you want to move from the existing stackset
-	**** At this point it's important to write the recovery file, so you have the stack_ids saved, before you begin removing them from the old stackset (during the import)
-	5. Run the import to the new stackset, specifying the stack-ids of the existing stack-instances, no more than 10 at a time. 
-		Ideally, you would aggregate accounts into a single run, so you could parallelize the regional deployments
-	6. Verify that the operation returned a success for all stack-instances
-	7. Loop through the stack-ids until complete - verifying after each one
-		7.5 Remember the script will have to continuously poll the stack-set to determine when it's complete 
-	8. Report on status at the end.
-
-"""
-
-
-########################
 def check_stack_set_drift_status(faws_acct, fStack_set_name, fOperation_id=None):
 	"""
 	response = client.detect_stack_set_drift(
@@ -794,6 +762,37 @@ def populate_new_stack_with_existing_stack_instances(faws_acct, fStack_instance_
 ##################
 # Main
 ##################
+
+args = parse_args(sys.argv[1:])
+pProfile = args.Profile
+pRegion = args.Region
+pForce = args.Confirm
+pTiming = args.Time
+verbose = args.loglevel
+pRecoveryFlag = args.pRecoveryFlag
+pDriftCheck = args.pDriftCheckFlag
+# version = args.Version
+pOldStackSet = args.pOldStackSet
+pNewStackSet = args.pNewStackSet
+pAccountToMove = args.pAccountToMove
+pEmpty = args.pEmpty
+# Logging Settings
+logging.getLogger("boto3").setLevel(logging.CRITICAL)
+logging.getLogger("botocore").setLevel(logging.CRITICAL)
+logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+logging.getLogger("urllib3").setLevel(logging.CRITICAL)
+# Set Log Level
+logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+
+ERASE_LINE = '\x1b[2K'
+# The time between checks to see if the stackset instances have been created, or imported...
+sleep_interval = 5
+begin_time = time()
+Default_Description_Text = "This is a default description"
+# Currently, this is a hard-stop at 10, but I made it a variable in case they up the limit
+StackInstancesImportedAtOnce = 10
+stack_ids = dict()
+
 
 aws_acct = aws_acct_access(pProfile)
 InfoFilename = (f"{pOldStackSet}-{pNewStackSet}-{aws_acct.acct_number}-{pRegion}")
