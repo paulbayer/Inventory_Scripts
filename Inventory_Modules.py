@@ -121,7 +121,7 @@ def get_ec2_regions3(faws_acct, fkey=None):
 		{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
 	for region in regions['Regions']:
 		RegionNames.append(region['RegionName'])
-	if "all" in fkey or "ALL" in fkey or 'All' in fkey or fkey is None:
+	if fkey is None or "all" in fkey or "ALL" in fkey or 'All' in fkey:
 		return (RegionNames)
 	RegionNames2 = []
 	for x in fkey:
