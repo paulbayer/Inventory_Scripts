@@ -27,6 +27,7 @@ def parse_args(args):
 	parser = CommonArguments()
 	parser.singleregion()
 	parser.singleprofile()
+	parser.confirm()
 	parser.verbosity()
 	parser.timing()
 	parser.version(__version__)
@@ -68,6 +69,7 @@ def parse_args(args):
 args = parse_args(sys.argv[1:])
 pProfile = args.Profile
 pRegion = args.Region
+pForce = args.Confirm
 pTiming = args.Time
 verbose = args.loglevel
 pRecoveryFlag = args.pRecoveryFlag
@@ -937,7 +939,10 @@ if OldStackSetExists and pEmpty:
 
 elif OldStackSetExists and not pEmpty:
 	print()
-	User_Confirmation = (input(f"Do you want to proceed with the migration? (y/n): ") in ['y', 'Y'])
+	if not pForce: # Checking to see if they've spcified no confirmations
+		User_Confirmation = (input(f"Do you want to proceed with the migration? (y/n): ") in ['y', 'Y'])
+	else:
+		User_Confirmation = True
 	if not User_Confirmation:
 		print(f"User cancelled script", file=sys.stderr)
 		Failure_GoToEnd = True
