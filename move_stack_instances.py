@@ -441,7 +441,8 @@ def compare_stacksets(faws_acct, fExisting_stack_set_name, fNew_stack_set_name):
 	try:
 		return_response['DescriptionComparison'] = (Stack_Set_Info_old['stack_set_info']['Description'] == Stack_Set_Info_new['stack_set_info']['Description'])
 	except KeyError as myError:
-		if Stack_Set_Info_new['stack_set_info']['Description'] == Default_Description_Text:
+		# This checks for the presence of the Description key before using it as a key for checking, to resolve an error when it's not there.
+		if 'Description' in Stack_Set_Info_new['stack_set_info'].keys() and Stack_Set_Info_new['stack_set_info']['Description'] == Default_Description_Text:
 			print(f"There was no description in the old StackSet, and creating a new one in this way requires one, so we've populated it with a default Description -- '{Default_Description_Text}'\n"
 			      f"This won't cause a problem with the migration, just something to note...")
 			return_response['DescriptionComparison'] = True
