@@ -118,7 +118,7 @@ def setup_auth_and_regions(fProfile: str) -> (aws_acct_access, list):
 		logging.error(f"Exiting due to error: {my_Error}")
 		sys.exit(8)
 
-	AllRegions = Inventory_Modules.get_ec2_regions()
+	AllRegions = Inventory_Modules.get_ec2_regions3(aws_acct)
 
 	if pRegion.lower() not in AllRegions:
 		print()
