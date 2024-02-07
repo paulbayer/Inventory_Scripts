@@ -36,7 +36,7 @@ TODO:
 
 init()
 
-__version__ = "2024.02.05"
+__version__ = "2024.02.07"
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 sleep_interval = 5
@@ -810,7 +810,7 @@ if __name__ == '__main__':
 	pRegionModify = args.pRegionModify
 	pRefresh = args.Refresh
 	pConfirm = args.Confirm
-	# pForce = args.Force
+	ChangesRequested = pdelete or pAddNew or pRefresh or pRegionModify
 	# pSaveFilename = args.Filename
 	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
@@ -824,12 +824,16 @@ if __name__ == '__main__':
 	# Collect the stacksets, AccountList and RegionList involved
 	StackSets, Accounts, Regions = collect_cfnstacksets(aws_acct, pRegion)
 	# Once we have all the stacksets found, determine what to do with them...
-	modify_stacksets(StackSets, Accounts, Regions)
+	if ChangesRequested:
+		modify_stacksets(StackSets, Accounts, Regions)
 	# Handle the checking of accounts to see if there any that don't belong in the Org.
 	if pCheckAccount:
 		Accounts = check_accounts(aws_acct, Accounts)
 	# If we changed anything, get a refreshed view before we display health of stacksets
-	if pdelete or pAddNew or pRefresh or pRegionModify or (pAccountModifyList is not None):
+	if ChangesRequested:
+		print()
+		print(f"{Fore.RED}Since changes were requested, we're getting the updated view of the environment (post-changes){Fore.RESET}")
+		print()
 		StackSets, Accounts, Regions = collect_cfnstacksets(aws_acct, pRegion)
 	# Display results
 	display_stack_set_health(StackSets, Accounts)
