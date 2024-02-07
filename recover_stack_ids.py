@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 
 import logging
+import sys
 from pprint import pprint
-from queue import Queue
-from threading import Thread
-from time import sleep, time
-
+from time import time
+from os.path import split
 
 import simplejson as json
-from botocore.exceptions import ClientError
 from colorama import Fore, init
 
 import Inventory_Modules
@@ -24,6 +22,8 @@ Originally, that script didn't have built-in recovery, so we needed this script 
 init()
 __version__ = "2023.05.04"
 
+
+script_path, script_name = split(sys.argv[0])
 parser = CommonArguments()
 parser.singleprofile()  # Allows for a single profile to be specified
 parser.multiregion()  # Allows for multiple regions to be specified at the command line
@@ -32,29 +32,30 @@ parser.timing()
 parser.rolestouse()
 parser.verbosity()  # Allows for the verbosity to be handled.
 parser.version(__version__)
-parser.my_parser.add_argument(
+local = parser.my_parser.add_argument_group(script_name, 'Parameters specific to this script')
+local.add_argument(
 	"-f", "--fragment",
 	dest="stackfrag",
 	metavar="CloudFormation stack fragment",
 	default="all",
 	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
-parser.my_parser.add_argument(
+local.add_argument(
 	"-s", "--status",
 	dest="status",
 	metavar="CloudFormation status",
 	default="active",
 	help="String that determines whether we only see 'CREATE_COMPLETE' or 'DELETE_COMPLETE' too")
-parser.my_parser.add_argument(
+local.add_argument(
 	"--home",
 	dest="homeRegion",
 	metavar="Single Region name",
 	help="Region where the StackSets are homed")
-parser.my_parser.add_argument(
+local.add_argument(
 	"--new",
 	dest="newStackSetName",
 	metavar="New Stackset name",
 	help="The NEW Stack Set name")
-parser.my_parser.add_argument(
+local.add_argument(
 	"--old",
 	dest="oldStackSetName",
 	metavar="Old Stackset name",
@@ -76,38 +77,6 @@ pstatus = args.status
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
 
 ##########################
-def find_orphaned_stacks_within_child_accounts(faccounts:list=None):
-	item_counter = 0
-	# AccountCredentials =
-	for region in RegionLiwwwst:
-		item_counter += 1
-		Stacks = []
-		try:
-			Stacks = Inventory_Modules.find_stacks2(account_credentials, region, pstackfrag, pstatus)
-			logging.warning(f"Account: {account_number} | Region: {region} | Found {len(Stacks)} Stacks")
-			print(f"{ERASE_LINE}{Fore.RED}Account: {account_number} Region: {region} Found {len(Stacks)} Stacks{Fore.RESET} ({item_counter} of {len(AccountList) * len(RegionList)})", end='\r')
-		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
-				print(f"{account_number}: Authorization Failure")
-		# TODO: Currently we're using this "Stacks" list as a boolean if it's populated. We should change this.
-		if Stacks and len(Stacks) > 0:
-			for y in range(len(Stacks)):
-				StackName = Stacks[y]['StackName']
-				StackStatus = Stacks[y]['StackStatus']
-				StackID = Stacks[y]['StackId']
-				if pStackIdFlag:
-					print(fmt % (account_number, region, StackStatus, StackName, StackID))
-				else:
-					print(fmt % (account_number, region, StackStatus, StackName))
-				StacksFound.append({
-					'Account'    : account_number,
-					'Region'     : region,
-					'StackName'  : StackName,
-					'StackStatus': StackStatus,
-					'StackArn'   : StackID})
-	return(StacksFound)
-
-
 
 ERASE_LINE = '\x1b[2K'
 aws_acct = aws_acct_access(pProfile)
@@ -128,10 +97,10 @@ AccountList = [account['AccountId'] for account in ChildAccounts]
 pStackIdFlag = True
 precoveryFlag = True
 
-print(f"You asked to find stacks with this fragment {Fore.RED}'{pstackfrag}'{Fore.RESET}")
-print(f"in these accounts:\n{Fore.RED}{AccountList}{Fore.RESET}")
-print(f"in these regions:\n{Fore.RED}{RegionList}{Fore.RESET}")
-print(f"While skipping these accounts:\n{Fore.RED}{pSkipAccounts}{Fore.RESET}") if pSkipAccounts is not None else ''
+print(f"You asked to find stacks with this fragment: {Fore.RED}'{pstackfrag}'{Fore.RESET}")
+print(f"\t\tin these accounts: {Fore.RED}{AccountList}{Fore.RESET}")
+print(f"\t\tin these regions: {Fore.RED}{RegionList}{Fore.RESET}")
+print(f"\t\tWhile skipping these accounts: {Fore.RED}{pSkipAccounts}{Fore.RESET}") if pSkipAccounts is not None else ''
 
 print()
 fmt = '%-20s %-15s %-15s %-50s %-50s'
@@ -142,11 +111,10 @@ StacksFound = []
 sts_client = aws_acct.session.client('sts')
 item_counter = 0
 
-AllCredentials = []
-pRootOnly = False # It doesn't make any sense to think that this script would be used for only the root account
+pRootOnly = False  # It doesn't make any sense to think that this script would be used for only the root account
 AllCredentials = get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, pProfile, RegionList, pRoles, pTiming)
 
-AllStackInstances =
+# AllStackInstances =
 
 # for account_number in AccountList:
 # 	try:
