@@ -903,7 +903,7 @@ elif (CompareTemplates['Success'] and
 # Ignore whether or not the recovery file exists, since if it does - it's just updating the variables needed for this run.
 # We shouldn't be doing much of anything differently, based on whether the recovery file exists.
 if OldStackSetExists and pEmpty:
-	print(f"You've asked for us to create an empty stackset called {pNewStackSet} from the existing stackset {pOldStackSet}")
+	print(f"You've asked to create an empty stackset called {pNewStackSet} from the existing stackset {pOldStackSet}")
 	print(f"You specified accounts to move, but we're not doing that, since you asked for this stackset to be created empty.") if pAccountToMove is not None else ""
 	""" Create new stackset from old stackset """
 	Stack_Set_Info = get_template_body_and_parameters(aws_acct, pOldStackSet)
@@ -917,8 +917,9 @@ if OldStackSetExists and pEmpty:
 	intervals_waited = 1
 	# If the creation effort (async) and the creation checking both succeeded...
 	if NewStackSetStatus['Success'] and NewStackSetId['Success']:
+		# TODO: Fix message about length of time waiting...
 		while NewStackSetStatus['Success'] and not NewStackSetStatus['StackSetStatus'] in ['ACTIVE']:
-			print(f"Waiting for StackSet {pNewStackSet} to be ready", f"." * intervals_waited, end='\r')
+			print(f"Waiting for StackSet {pNewStackSet} to be ready." * intervals_waited, end='\r')
 			sleep(sleep_interval)
 			intervals_waited += 1
 			NewStackSetStatus = check_stack_set_status(aws_acct, pNewStackSet)
@@ -1076,6 +1077,7 @@ else:  # Old Stackset doesn't exist - so there was a typo somewhere. Tell the us
 	      f"{Fore.LIGHTBLUE_EX}Perhaps the recovery file was never deleted?{Fore.RESET}")
 
 # Delete the recovery file, if it exists
+# TODO: Insert a check to make sure the recovery file isn't deleted, if we failed something above...
 if exists(InfoFilename):
 	try:
 		FileDeleted = remove(InfoFilename)

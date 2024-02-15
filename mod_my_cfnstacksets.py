@@ -159,7 +159,7 @@ def setup_auth_and_regions(fProfile: str) -> (aws_acct_access, list):
 	return (aws_acct, RegionList)
 
 
-def _find_stack_set_instances(fStackSetNames: list, fRegion: str) -> list:
+def _find_stack_set_instances(fStackSetNames: dict, fRegion: str) -> list:
 	"""
 	Note that this function takes a list of stack set names and finds the stack instances within them
 	fStackSetNames - This is a list of stackset names to look for. The reserved word "all" will return everything
@@ -273,15 +273,15 @@ def _find_stack_set_instances(fStackSetNames: list, fRegion: str) -> list:
 		worker.daemon = True
 		worker.start()
 
-	for stacksetname in fStackSetNames:
-		logging.debug(f"Beginning to queue data - starting with {stacksetname['StackSetName']}")
+	for stackset_name, stackset_data in fStackSetNames.items():
+		logging.debug(f"Beginning to queue data - starting with {stackset_name}")
 		try:
 			# I don't know why - but double parens are necessary below. If you remove them, only the first parameter is queued.
 			PlaceCount += 1
-			checkqueue.put((stacksetname['StackSetName'], fRegion, stacksetname, PlaceCount))
+			checkqueue.put((stackset_name, fRegion, stackset_name, PlaceCount))
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
-				logging.error(f"Authorization Failure accessing stack set {stacksetname['StackSetName']} in {fRegion} region")
+				logging.error(f"Authorization Failure accessing stack set {stackset_name} in {fRegion} region")
 				logging.warning(f"It's possible that the region {fRegion} hasn't been opted-into")
 				pass
 	checkqueue.join()
@@ -314,12 +314,14 @@ def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):
 	combined_stack_set_instances = StackSet_Dict['combined_stack_set_instances']
 	RemovedAccounts = Account_Dict['RemovedAccounts'] if pCheckAccount else None
 	InaccessibleAccounts = Account_Dict['InaccessibleAccounts'] if pCheckAccount else None
-	StackSetNames = StackSet_Dict['StackSetNames']
+	StackSetNames = StackSet_Dict['StackSetNames']['StackSets']
 	summary = {}
 	stack_set_permission_models = dict()
 	for record in combined_stack_set_instances:
 		stack_set_name = record['StackSetName']
 		stack_status = record['StackStatus']
+		stackset_status = StackSetNames[stack_set_name]['Status']
+		stackset_status_reason = StackSetNames[stack_set_name]['Reason']
 		detailed_status = record['DetailedStatus']
 		status_reason = record['StatusReason']
 		stack_region = record['ChildRegion']
@@ -337,6 +339,7 @@ def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):
 			'StatusReason'  : status_reason,
 			'LastOperation' : last_operation,
 		})
+		summary[stack_set_name]['Status'] = StackSetNames[stack_set_name]['Status']
 
 	# Print the summary
 	sorted_summary = dict(sorted(summary.items()))
@@ -375,7 +378,7 @@ def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):
 						pass
 	if verbose < 40:
 		print()
-		print(f"Found {len(StackSetNames['StackSets'])} stackset names")
+		print(f"Found {len(StackSetNames)} stackset names")
 		print(f"Found a total of {len(combined_stack_set_instances)} stack instances")
 		print(f"Found {len(summary)} unique stackset names within the Stack Instances")
 		print()
@@ -386,7 +389,7 @@ def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):
 		print()
 		# TODO: Adding together these two lists - which are likely full of the same accounts gives an incorrect number
 		logging.info(f"Found {len(InaccessibleAccounts) + len(RemovedAccounts)} accounts that don't belong")
-		print(f"There were {len(RemovedAccounts)} accounts in the {len(StackSetNames['StackSets'])} Stacksets we looked through, that are not a part of the Organization")
+		print(f"There were {len(RemovedAccounts)} accounts in the {len(StackSetNames)} Stacksets we looked through, that are not a part of the Organization")
 		for item in RemovedAccounts:
 			print(f"Account {item} is not in the Organization")
 		print()
@@ -552,30 +555,29 @@ def check_on_stackset_operations(OpsList: list, f_cfn_client):
 	return (stackset_results)
 
 
-def _modify_stacksets(StackSet_Dict, Account_Dict, Region_Dict) -> dict:
+def _modify_stacksets(StackSet_Dict:dict, Account_Dict:dict, Region_Dict:dict) -> dict:
 	combined_stack_set_instances = StackSet_Dict['combined_stack_set_instances']
-	StackSetNames = StackSet_Dict['StackSetNames']
+	StackSets: dict = StackSet_Dict['StackSetNames']['StackSets']
 	ApplicableStackSetsList = StackSet_Dict['ApplicableStackSetsList']
 	AccountList = Account_Dict['AccountList']
 	# RemovedAccounts = Account_Dict['RemovedAccounts']
 	FoundRegionList = Region_Dict['FoundRegionList']
 
 	# If we *are* deleting stack instances and not refreshing any of the stacksets...
-	if pdelete and not pRefresh:
+	if pdelete and not pRefresh and len(combined_stack_set_instances) > 0:
 		print()
-		print(f"Removing {len(combined_stack_set_instances)} stack instances from the {len(StackSetNames['StackSets'])} StackSets found")
+		print(f"Removing {len(combined_stack_set_instances)} stack instances from the {len(StackSets)} StackSets found")
 		StackInstanceItem = 0
 		results = dict()
 		StackSetResult = {'Success': False}
-		for StackSet in StackSetNames['StackSets']:
-			StackSetName = StackSet['StackSetName']
+		for StackSetName, StackSetData in StackSets.items():
 			StackInstanceItem += 1
 			print(f"Now deleting stackset instances in {StackSetName}. {StackInstanceItem} of {len(ApplicableStackSetsList)} done")
 			# TODO: This needs to be wrapped in a try...except
 			# Determine what kind of stackset this is - Self-Managed, or Service-Managed.
 			# We need to check to see if the 'PermissionModel' key in in the dictionary, since it's only in the dictionary if the permission is 'service_managed',
 			# but I'm not willing to be it stats that way...
-			if 'PermissionModel' in StackSet.keys() and StackSet['PermissionModel'] == 'SERVICE_MANAGED':
+			if 'PermissionModel' in StackSetData.keys() and StackSetData['PermissionModel'] == 'SERVICE_MANAGED':
 				"""
 				If the StackSet is SERVICE-MANAGED, we need to find more information about the stackset than is returned in the "list-stack-set" call from above
 				"""
@@ -605,7 +607,7 @@ def _modify_stacksets(StackSet_Dict, Account_Dict, Region_Dict) -> dict:
 				                                                    pRetain,
 				                                                    AccountList,
 				                                                    FoundRegionList,
-				                                                    StackSet['PermissionModel'],
+				                                                    StackSetData['PermissionModel'],
 				                                                    DeploymentTargets['Results'])
 			else:
 				if FoundRegionList is None:
@@ -624,7 +626,7 @@ def _modify_stacksets(StackSet_Dict, Account_Dict, Region_Dict) -> dict:
 				RemoveStackInstanceResult = _delete_stack_instances(aws_acct, pRegion, StackSetName, pRetain, AccountList, FoundRegionList)
 			if RemoveStackInstanceResult['Success']:
 				Instances = [item for item in combined_stack_set_instances if item['StackSetName'] == StackSetName]
-				print(f"{ERASE_LINE}Successfully initiated removal of {len(Instances)} instances from StackSet {StackSetName}")
+				print(f"{ERASE_LINE}Successfully initiated removal of {len(Instances)} instance{'' if len(Instances) == 1 else 's'} from StackSet {StackSetName}")
 			elif RemoveStackInstanceResult['ErrorMessage'] == 'Failed-ForceIt' and pRetain:
 				print("We tried to force the deletion, but some other problem happened.")
 			elif RemoveStackInstanceResult['ErrorMessage'] == 'Failed-ForceIt' and not pRetain:
@@ -680,6 +682,17 @@ def _modify_stacksets(StackSet_Dict, Account_Dict, Region_Dict) -> dict:
 					print(f"{ERASE_LINE}{Fore.RED}Removal of stackset {StackSetName} {Style.BRIGHT}failed{Style.NORMAL} due to:\n\t{StackSetResult['ErrorMessage']}.{Fore.RESET}")
 			results.update({StackSetName: StackSetResult})
 		return (results)
+	elif pdelete and not pRefresh:
+		print(f"While deletion was requested within {len(StackSets)} "
+		      f"stackset{'' if len(StackSets) == 1 else 's'}, "
+		      f"th{'is' if len(StackSets) == 1 else 'ese'} "
+		      f"stackset{'' if len(StackSets) == 1 else 's'} "
+		      f"do{'es' if len(StackSets) == 1 else ''}n't contain "
+		      f"the criteria - {pStackfrag} - you were looking for")
+		operation_result = dict()
+		for stackset_name, stackset_data in StackSets.items():
+			operation_result[stackset_name] = stackset_data['Status']
+		return(operation_result)
 	elif pAddNew:
 		print()
 		print(f"Adding instances into the specified stacksets")
@@ -877,7 +890,8 @@ if __name__ == '__main__':
 	# If the stacksets were found, but the account number they provided isn't in any of the stacksets found
 	if len(StackSets['combined_stack_set_instances']) == 0 and len(StackSets['StackSetNames']['StackSets']) > 0:
 		print()
-		print(f"While we found {len(StackSets['StackSetNames']['StackSets'])} stacksets that matched your request, we found no referenced accounts in them")
+		print(f"While we found {len(StackSets['StackSetNames']['StackSets'])} stackset{'' if len(StackSets['StackSetNames']['StackSets']) == 1 else 's'} that matched your request, "
+		      f"we found no instances matching your criteria - {pStackfrag} - in them")
 	# If the stacksets were not found...
 	elif len(StackSets['StackSetNames']['StackSets']) == 0:
 		print()
@@ -893,9 +907,9 @@ if __name__ == '__main__':
 		elif pRefresh:
 			operation = 'refresh'
 		print()
-		print(f"Results of {operation} operations on {len(operation_result)} stacksets found with {pStackfrag} fragment: \n")
+		print(f"Results of {operation} operation on {len(operation_result)} stackset{'' if len(operation_result) == 1 else's'} found with {pStackfrag} fragment:")
 		for k,v in operation_result.items():
-			print(f"{Fore.RED if v =='FAILED' else ''}{k}: {v} {Fore.RESET}")
+			print(f"\t{Fore.RED if v =='FAILED' else ''}{k}: {v} {Fore.RESET}")
 		print()
 
 	if pTiming:
