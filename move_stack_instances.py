@@ -70,8 +70,9 @@ def parse_args(args):
 		help="This is the name of the new stackset, which will manage the existing stack instances going forward.")
 	local.add_argument(
 		"-A", "--Account",
-		dest="pAccountTosMove",
+		dest="pAccountsToMove",
 		default=None,
+		nargs='*',
 		metavar="Account Number",
 		help="The single account to be moved from one stackset to another")
 	local.add_argument(
