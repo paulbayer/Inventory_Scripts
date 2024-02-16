@@ -759,7 +759,7 @@ def add_instances_to_stacksets(StackSet_Dict: dict, accounts_to_add: list):
 	print()
 	for stackset in ApplicableStackSetsList:
 		if not pConfirm:
-			ReallyAdd = (input(f"{Fore.RED}Adding {len(accounts_to_add)} accounts to {stackset}...{Fore.RESET}\n"
+			ReallyAdd = (input(f"{Fore.RED}Adding {len(accounts_to_add)} instances to {stackset}...{Fore.RESET}\n"
 			                   f"Are you still sure? (y/n): ") in ['y', 'Y'])
 		if pConfirm or ReallyAdd:
 			OperationId = 'Add-Accounts--' + random_string(6)
