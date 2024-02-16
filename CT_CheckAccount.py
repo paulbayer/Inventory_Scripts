@@ -2,6 +2,7 @@
 
 from pprint import pprint
 import sys
+import os
 import Inventory_Modules
 from time import time
 from colorama import init, Fore
@@ -15,8 +16,9 @@ from account_class import aws_acct_access
 import logging
 
 init()
-__version__ = "2023.07.17"
+__version__ = "2024.02.02"
 
+script_path, script_name = os.path.split(sys.argv[0])
 parser = CommonArguments()
 parser.singleprofile()
 parser.multiregion()
@@ -27,14 +29,15 @@ parser.roletouse()
 parser.verbosity()
 parser.timing()
 parser.version(__version__)
-parser.my_parser.add_argument(
+local = parser.my_parser.add_argument_group(script_name, 'Parameters specific to this script')
+local.add_argument(
 	"--explain",
 	dest="pExplain",
 	const=True,
 	default=False,
 	action="store_const",
 	help="This flag prints out the explanation of what this script would do.")
-parser.my_parser.add_argument(
+local.add_argument(
 	"-q", "--quick",
 	dest="Quick",
 	metavar="Shortcut the checking to only a single region",
@@ -42,20 +45,13 @@ parser.my_parser.add_argument(
 	default=False,
 	action="store_const",
 	help="This flag only checks 'us-east-1', so makes the whole script run really fast.")
-parser.my_parser.add_argument(
+local.add_argument(
 	"+fix", "+delete",
 	dest="FixRun",
 	const=True,
 	default=False,
 	action="store_const",
 	help="This will fix the issues found. If default VPCs must be deleted, you'll be asked to confirm.")
-# parser.my_parser.add_argument(
-# 	"+force",
-# 	dest="pVPCConfirm",
-# 	const=True,
-# 	default=False,
-# 	action="store_const",
-# 	help="This will remediate issues found with NO confirmation. You still have to specify the +fix too")
 args = parser.my_parser.parse_args()
 
 Quick = args.Quick

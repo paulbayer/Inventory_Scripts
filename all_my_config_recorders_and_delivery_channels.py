@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+import os
 import Inventory_Modules
 from Inventory_Modules import display_results, get_all_credentials
 from ArgumentsClass import CommonArguments
@@ -13,12 +14,12 @@ from time import time
 import logging
 
 init()
-__version__ = "2023.05.10"
+__version__ = "2024.02.02"
 
-"""
-TODO:
-- Enable the deletion of the config recorders / delivery channels from specific accounts (or all?) at the end.
-"""
+
+# TODO: Enable the deletion of the config recorders / delivery channels from specific accounts (or all?) at the end.
+
+script_path, script_name = os.path.split(sys.argv[0])
 parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
@@ -30,7 +31,8 @@ parser.timing()
 parser.fragment()
 parser.verbosity()
 parser.version(__version__)
-parser.my_parser.add_argument(
+local = parser.my_parser.add_argument_group(script_name, 'Parameters specific to this script')
+local.add_argument(
 	"+delete", "+forreal",
 	dest="flagDelete",
 	action="store_true",  # If the parameter is supplied, it will be true, otherwise it's false
@@ -51,8 +53,14 @@ DeletionRun = args.flagDelete
 ForceDelete = args.Force
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
 
+ERASE_LINE = '\x1b[2K'
+begin_time = time()
 
-##########################
+
+##################
+# Functions
+##################
+
 def check_accounts_for_delivery_channels_and_config_recorders(CredentialList, fRegionList=None, fFragments=None, fFixRun=False):
 	"""
 	Note that this function takes a list of Credentials and checks for config recorder and delivery channel in every account it has creds for
@@ -169,11 +177,10 @@ def check_accounts_for_delivery_channels_and_config_recorders(CredentialList, fR
 	checkqueue.join()
 	return (account_crs_and_dcs)
 
+##################
+# Main
+##################
 
-##########################
-ERASE_LINE = '\x1b[2K'
-if pTiming:
-	begin_time = time()
 
 display_dict = {'ParentProfile': {'Format': '24s', 'DisplayOrder': 1, 'Heading': 'Parent Profile'},
 				'MgmtAccount'  : {'Format': '15s', 'DisplayOrder': 2, 'Heading': 'Mgmt Acct'},

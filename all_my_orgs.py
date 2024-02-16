@@ -9,13 +9,21 @@ from time import time
 # from botocore.exceptions import ClientError, NoCredentialsError, InvalidConfigError
 from colorama import init, Fore, Style
 import sys
+import os
 
 init()
-__version__ = "2023.08.31"
+__version__ = "2024.01.25"
 ERASE_LINE = '\x1b[2K'
+begin_time = time()
+# TODO: If they provide a profile that isn't a root profile, you should find out which org it belongs to, and then show the org for that.
+#  This will be difficult, since we don't know which profile that belongs to. Hmmm...
 
 
+##################
+# Functions
+##################
 def parse_args(args):
+	script_path, script_name = os.path.split(sys.argv[0])
 	parser = CommonArguments()
 	parser.multiprofile()
 	parser.extendedargs()
@@ -24,15 +32,16 @@ def parse_args(args):
 	parser.save_to_file()
 	parser.verbosity()
 	parser.version(__version__)
+	local = parser.my_parser.add_argument_group(script_name, 'Parameters specific to this script')
 
-	parser.my_parser.add_argument(
+	local.add_argument(
 		'-s', '-q', '--short',
 		help="Display only brief listing of the profile accounts, and not the Child Accounts under them",
 		action="store_const",
 		dest="pShortform",
 		const=True,
 		default=False)
-	parser.my_parser.add_argument(
+	local.add_argument(
 		'-A', '--acct',
 		help="Find which Org this account is a part of",
 		nargs="*",
@@ -40,21 +49,12 @@ def parse_args(args):
 		default=None)
 	return parser.my_parser.parse_args(args)
 
-"""
-TODO:
-	If they provide a profile that isn't a root profile, you should find out which org it belongs to, 
-	and then show the org for that. 
-	This will be difficult, since we don't know which profile that belongs to. Hmmm...
-"""
 
+def all_my_orgs(fProfiles:list, fSkipProfiles:list, fAccountList:list, fTiming:bool, fRootOnly:bool, fSaveFilename:str, fShortform:bool, fverbose):
 
-##################
-
-def all_my_orgs(fProfiles, fSkipProfiles, fAccountList, fTiming, fRootOnly, fSaveFilename, fShortform, fverbose):
-	if fTiming:
-		begin_time = time()
 	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
 	# print("Capturing info for supplied profiles")
+	logging.info(f"These profiles were requested {fProfiles}.")
 	logging.warning(f"These profiles are being checked {ProfileList}.")
 	print(f"Please bear with us as we run through {len(ProfileList)} profiles")
 	AllProfileAccounts = get_org_accounts_from_profiles(ProfileList, progress_bar=False)
@@ -183,13 +183,12 @@ def all_my_orgs(fProfiles, fSkipProfiles, fAccountList, fTiming, fRootOnly, fSav
 				print("Found the requested account number:")
 				print(f"Profile: {acct['Profile']} | Org: {acct['MgmtAccount']} | Account: {acct['AccountId']} | Status: {acct['AccountStatus']} | Email: {acct['AccountEmail']}")
 
-	print()
-	if fTiming:
-		print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
-	print("Thanks for using this script")
-	print()
 	return (return_response)
 
+
+##################
+# Main
+##################
 
 if __name__ == '__main__':
 	args = parse_args(sys.argv[1:])
@@ -206,3 +205,10 @@ if __name__ == '__main__':
 	logging.basicConfig(level=pverbose, format="[%(filename)s:%(lineno)s - %(processName)s %(threadName)s %(funcName)20s() ] %(message)s")
 
 	all_my_orgs(pProfiles, pSkipProfiles, pAccountList, pTiming, pRootOnly, pSaveFilename, pShortform, pverbose)
+
+	print()
+	if pTiming:
+		print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
+		print()
+	print("Thanks for using this script")
+	print()
