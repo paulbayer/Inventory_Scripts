@@ -30,13 +30,13 @@ So if we create a class object that represented the account:
 		(Could all my inventory items be an attribute of this class?)
 
 """
-import boto3
 import logging
-from botocore.exceptions import ProfileNotFound, ClientError, ConnectionError, EndpointConnectionError, CredentialRetrievalError, UnknownRegionError, NoCredentialsError
-from urllib3.exceptions import NewConnectionError
 from json.decoder import JSONDecodeError
 
-__version__ = "2023.06.15"
+import boto3
+from botocore.exceptions import ClientError, ConnectionError, CredentialRetrievalError, EndpointConnectionError, NoCredentialsError, ProfileNotFound, UnknownRegionError
+
+__version__ = "2024.02.02" # (again)
 
 
 def _validate_region(faws_prelim_session, fRegion=None):
@@ -110,6 +110,8 @@ class aws_acct_access:
 		# Otherwise, all hell will break if it's not.
 		UsingKeys = False
 		UsingSessionToken = False
+		if fRegion is None:
+			fRegion = 'us-east-1'
 		account_access_successful = False
 		account_and_region_access_successful = False
 		if ocredentials is not None and ocredentials['Success']:
@@ -432,3 +434,59 @@ class aws_acct_access:
 
 	def __repr__(self):
 		return (f"Account #{self.acct_number} is a {self.AccountType} account with {len(self.ChildAccounts) - 1} child accounts")
+
+
+class Aws_Acct_Credentials:
+	"""
+	Description: The definition of the "ocredentials" object
+	"""
+
+	def __init__(self, f_sts_client_obj, f_role_arn: str, f_role_session_name: str, f_region: str = 'us-east-1'):
+		"""
+		@Description: The object that will hold the credentials object, to make everything standardized
+		@param f_sts_client_obj: The boto3 client object
+		@param f_role_arn: The role arn you're looking to assume
+		@param f_role_session_name: The text string of the session name you're expecting to use
+		@param f_region: The region you're expecting to authenticate to. This is defaulted to be 'us-east-1'
+		@return credentials: The object containing all the information from the sts_assume_role call
+		"""
+		try:
+			credentials = f_sts_client_obj.assume_role(RoleArn=f_role_arn, RoleSessionName=f_role_session_name)['Credentials']
+			self.aws_access_key = credentials['AccessKeyId']
+			self.AccessKeyId = self.aws_access_key
+			self.aws_secret_access_key = credentials['SecretAccessKey']
+			self.SecretAccessKey = self.aws_secret_access_key
+			self.aws_session_token = credentials['SessionToken']
+			self.SessionToken = self.aws_session_token
+			self.region = f_region
+			self.Region = self.region
+			self.AccountId = f_role_arn.split(':')[4]
+			self.AccountNumber = self.AccountId
+			self.AccountNum = self.AccountId
+			self.MgmtAccount = 'Unknown'
+			self.Profile = None
+			self.Role = f_role_arn.split(':')[5].split('/')[1]
+			self.Success = True
+			self.ErrorMessage = ''
+		except (ProfileNotFound,
+		        ClientError,
+		        ConnectionError,
+		        EndpointConnectionError,
+		        CredentialRetrievalError,
+		        UnknownRegionError,
+		        NoCredentialsError) as myError:
+			self.Success = False
+			self.ErrorMessage = str(myError)
+			logging.error(f"Error: {myError}")
+
+	def __str__(self):
+		if self.Profile is None:
+			return (f"Account #{self.AccountId} was accessed directly with credentials")
+		else:
+			return (f"Account #{self.AccountId} was accessed using {self.Profile}")
+
+	def __repr__(self):
+		if self.Profile is None:
+			return (f"Account #{self.AccountId} was accessed directly with credentials")
+		else:
+			return (f"Account #{self.AccountId} was accessed using {self.Profile}")
