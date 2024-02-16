@@ -3,8 +3,8 @@
 # import pprint
 # import Inventory_Modules
 import logging
-import sys
 import os
+import sys
 from os import remove
 from os.path import exists
 from time import sleep, time
@@ -463,11 +463,11 @@ def get_stack_ids_from_existing_stack_set(faws_acct, fExisting_stack_set_name, f
 		logging.debug(f"No Account was specified, so all stack-instance-ids are being returned")
 		pass
 	else:
+		# TODO: Replace this below with a "filter(lambda)" syntax
 		return_response['Stack_instances'] = [stacksetinfo for stacksetinfo in return_response['Stack_instances'] if
 		                                      stacksetinfo['Account'] in fAccountsToMove]
-		logging.debug(
-			f"Account {fAccountsToMove} was specified, so only the {len(return_response['Stack_instances'])} "
-			f"stack-instance-ids matching th{'ose accounts' if len(fAccountsToMove) == 1 else 'at account'} are being returned")
+		logging.debug(f"Account {fAccountsToMove} was specified, so only the {len(return_response['Stack_instances'])} "
+		              f"stack-instance-ids matching th{'ose accounts' if len(fAccountsToMove) == 1 else 'at account'} are being returned")
 	return (return_response)
 
 
@@ -794,7 +794,6 @@ Default_Description_Text = "This is a default description"
 StackInstancesImportedAtOnce = 10
 stack_ids = dict()
 
-
 aws_acct = aws_acct_access(pProfile)
 InfoFilename = (f"{pOldStackSet}-{pNewStackSet}-{aws_acct.acct_number}-{pRegion}")
 Use_recovery_file = False
@@ -940,7 +939,7 @@ if OldStackSetExists and pEmpty:
 
 elif OldStackSetExists and not pEmpty:
 	print()
-	if not pForce: # Checking to see if they've spcified no confirmations
+	if not pForce:  # Checking to see if they've spcified no confirmations
 		User_Confirmation = (input(f"Do you want to proceed with the migration? (y/n): ") in ['y', 'Y'])
 	else:
 		User_Confirmation = True
