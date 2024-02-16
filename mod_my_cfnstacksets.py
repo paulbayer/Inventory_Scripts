@@ -278,7 +278,7 @@ def _find_stack_set_instances(fStackSetNames: dict, fRegion: str) -> list:
 		try:
 			# I don't know why - but double parens are necessary below. If you remove them, only the first parameter is queued.
 			PlaceCount += 1
-			checkqueue.put((stackset_name, fRegion, stackset_name, PlaceCount))
+			checkqueue.put((stackset_name, fRegion, stackset_data, PlaceCount))
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				logging.error(f"Authorization Failure accessing stack set {stackset_name} in {fRegion} region")
@@ -349,6 +349,8 @@ def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):
 		for stack_status, instances in status_counts.items():
 			if stack_status is None:
 				print(f"\t{Fore.RED}--Empty stackset--{Fore.RESET}")
+			elif stack_status == 'Status':
+				continue
 			else:
 				print(f"\t{Fore.RED if stack_status not in ['CURRENT'] else ''}{stack_status}: {len(instances)} instances {Fore.RESET}")
 			if verbose < 50:
@@ -442,12 +444,14 @@ def collect_cfnstacksets(faws_acct: aws_acct_access, fRegion: str) -> (dict, dic
 		- dict of Regions found within the stacksets
 	"""
 	# Get the StackSet names from the Management Account
+	# TODO: Wrap in try... except to capture errors here.
 	StackSetNames = Inventory_Modules.find_stacksets3(faws_acct, fRegion, pStackfrag, pExact, fGetHealth=True)
 	if not StackSetNames['Success']:
 		error_message = "Something went wrong with the AWS connection. Please check the parameters supplied and try again."
 		sys.exit(error_message)
 	logging.info(f"Found {len(StackSetNames['StackSets'])} StackSetNames that matched your fragment")
 
+	# This finds ALL stack_set_instances in *all* stack_sets that matched the NAME...
 	combined_stack_set_instances = _find_stack_set_instances(StackSetNames['StackSets'], fRegion)
 
 	print(ERASE_LINE)
@@ -457,18 +461,33 @@ def collect_cfnstacksets(faws_acct: aws_acct_access, fRegion: str) -> (dict, dic
 	ApplicableStackSetsList = []
 	FoundRegionList = []
 
+	ApplicableStackSetsList = [stackset_name for stackset_name in StackSetNames['StackSets'].keys()]
+	AccountList.append(combined_stack_set_instances[_]['ChildAccount'])
+	FoundRegionList.append(combined_stack_set_instances[_]['ChildRegion'])
+
 	for _ in range(len(combined_stack_set_instances)):
-		if pAccountModifyList is None:  # Means we want to not remove anything
-			ApplicableStackSetsList.append(combined_stack_set_instances[_]['StackSetName'])
-			AccountList.append(combined_stack_set_instances[_]['ChildAccount'])
-			FoundRegionList.append(combined_stack_set_instances[_]['ChildRegion'])
+		# If user didn't specify any accounts...
+		if pAccountModifyList is None:
+			# And user didn't specify any regions, capture all instances
+			if pRegionModifyList is None:
+				ApplicableStackSetsList.append(combined_stack_set_instances[_]['StackSetName'])
+				AccountList.append(combined_stack_set_instances[_]['ChildAccount'])
+				FoundRegionList.append(combined_stack_set_instances[_]['ChildRegion'])
+			# But user specified at least one region, so filter on region(s) supplied
+			else:
+				if combined_stack_set_instances[_]['ChildRegion'] in pRegionModifyList:
+					ApplicableStackSetsList.append(combined_stack_set_instances[_]['StackSetName'])
+					AccountList.append(combined_stack_set_instances[_]['ChildAccount'])
+					FoundRegionList.append(combined_stack_set_instances[_]['ChildRegion'])
+		# If user *did* specify some accounts...
 		elif pAccountModifyList is not None:
 			if combined_stack_set_instances[_]['ChildAccount'] in pAccountModifyList:
 				ApplicableStackSetsList.append(combined_stack_set_instances[_]['StackSetName'])
 				AccountList.append(combined_stack_set_instances[_]['ChildAccount'])
 				FoundRegionList.append(combined_stack_set_instances[_]['ChildRegion'])
 	if pAddNew:
-		ApplicableStackSetsList = [_['StackSetName'] for _ in StackSetNames['StackSets']]
+		# This exists, in case there are EMPTY stacksets, which the user is adding to, which wouldn't have shown up within the combined_stack_set_instances above
+		ApplicableStackSetsList = [stackset_name for stackset_name in StackSetNames['StackSets'].keys()]
 	# I had to add this list comprehension to filter out the "None" types that happen when there are no stack-instances within a stack-set
 	AccountList = sorted(list(set([item for item in AccountList if item is not None])))
 	# RegionList isn't specific per account, as the deletion API doesn't need it to be, and it's easier to keep a single list of all regions, instead of per StackSet
@@ -476,6 +495,15 @@ def collect_cfnstacksets(faws_acct: aws_acct_access, fRegion: str) -> (dict, dic
 	# If we update this script to allow the removal of individual regions as well as individual accounts, then we'll do that.
 	FoundRegionList = sorted(list(set([item for item in FoundRegionList if item is not None])))
 	ApplicableStackSetsList = sorted(list(set(ApplicableStackSetsList)))
+	"""
+	Within StackSet_Dict, there are four lists:
+		1. combined_stack_set_instances: which is a list of all stackset instances from all stacksets that matched the name
+		2. StackSetNames: which is a list of the stackset names that matched
+		3. ApplicableStackSetsList: which is a list of all stacksets (and their attributes) which matched the name
+		4. ApplicableStackSetInstances: which is a list of only those stackset instances which matched the name, account, region to be modified
+	AccountDict is a dictionary which includes the list of accounts found in all the stackset instances that matched
+	Region_Dict is a dictionary which includes the list of regions found in all the stackset instances that matched
+	"""
 	StackSet_Dict = {'combined_stack_set_instances': combined_stack_set_instances,
 	                 'StackSetNames'               : StackSetNames,
 	                 'ApplicableStackSetsList'     : ApplicableStackSetsList}
@@ -555,7 +583,7 @@ def check_on_stackset_operations(OpsList: list, f_cfn_client):
 	return (stackset_results)
 
 
-def _modify_stacksets(StackSet_Dict:dict, Account_Dict:dict, Region_Dict:dict) -> dict:
+def _modify_stacksets(StackSet_Dict: dict, Account_Dict: dict, Region_Dict: dict) -> dict:
 	combined_stack_set_instances = StackSet_Dict['combined_stack_set_instances']
 	StackSets: dict = StackSet_Dict['StackSetNames']['StackSets']
 	ApplicableStackSetsList = StackSet_Dict['ApplicableStackSetsList']
@@ -563,14 +591,15 @@ def _modify_stacksets(StackSet_Dict:dict, Account_Dict:dict, Region_Dict:dict) -
 	# RemovedAccounts = Account_Dict['RemovedAccounts']
 	FoundRegionList = Region_Dict['FoundRegionList']
 
-	# If we *are* deleting stack instances and not refreshing any of the stacksets...
-	if pdelete and not pRefresh and len(combined_stack_set_instances) > 0:
+	# If we *are* deleting stack instances, and there's anything to delete...
+	if pdelete and len(combined_stack_set_instances) > 0:
 		print()
+		# TODO: Need to update the text below, since it's not necessarily removing all instances in the stacksets
 		print(f"Removing {len(combined_stack_set_instances)} stack instances from the {len(StackSets)} StackSets found")
 		StackInstanceItem = 0
 		results = dict()
-		StackSetResult = {'Success': False}
 		for StackSetName, StackSetData in StackSets.items():
+			StackSetResult = {'Success': False}
 			StackInstanceItem += 1
 			print(f"Now deleting stackset instances in {StackSetName}. {StackInstanceItem} of {len(ApplicableStackSetsList)} done")
 			# TODO: This needs to be wrapped in a try...except
@@ -609,21 +638,68 @@ def _modify_stacksets(StackSet_Dict:dict, Account_Dict:dict, Region_Dict:dict) -
 				                                                    FoundRegionList,
 				                                                    StackSetData['PermissionModel'],
 				                                                    DeploymentTargets['Results'])
+			# Section that handles the deletion for the "SELF_MANAGED" type of stackset
 			else:
+				# There were no regions found in the stackset, which means there are no instances, which means there's nothing to delete
 				if FoundRegionList is None:
 					print(f"There appear to be no stack instances for this stack-set")
+					StackSetResult = {'Success': True}
 					continue
-				if pAccountModifyList is None:  # Remove all instances from the stackset
+				# If the user didn't supply any accounts to be deleted (which means *all* accounts)
+				if pAccountModifyList is None:
+					# If they supplied specific regions to be deleted
 					if pRegionModifyList is not None:
-						logging.error(f"About to update stackset {StackSetName} to remove all accounts within {str(FoundRegionList)}")
+						print(f"About to update stackset {StackSetName} to remove all instances with {str(pRegionModifyList)} "
+						      f"region{'' if len(pRegionModifyList) == 1 else 's'}")
+						RegionsToDelete = pRegionModifyList
 						RemoveStackSet = False
+					# If they *didn't* supply specific regions to be deleted - which means all regions.
+					elif pRegionModifyList is None:
+						print(f"About to update stackset {StackSetName} to remove ALL accounts from all regions")
+						RegionsToDelete = FoundRegionList
+						# Only delete the stackset, if they didn't specify "retain"
+						RemoveStackSet = True and not pRetain
+				# If the user *did* supply a list of accounts to be deleted
+				elif pAccountModifyList is not None:
+					# If the user specified the regions to be deleted
+					if pRegionModifyList is not None:
+						print(f"About to update stackset {StackSetName} to remove all instances with {str(pRegionModifyList)} "
+						      f"region{'' if len(pRegionModifyList) == 1 else 's'}")
+						RegionsToDelete = pRegionModifyList
+						RemoveStackSet = False
+					# If the user *didn't* specify a list of regions (which means *all* regions)
 					else:
-						logging.info(f"About to update stackset {StackSetName} to remove ALL accounts from all regions")
-						RemoveStackSet = True
+						print(f"About to remove ALL instances from stackset {StackSetName}")
+						RegionsToDelete = FoundRegionList
+						# Only delete the stackset, if they didn't specify "retain"
+						RemoveStackSet = True and not pRetain
+					logging.info(f"About to remove account {pAccountModifyList} from stackset {StackSetName} in regions {str(RegionsToDelete)}")
+				ReallyDelete = False
+				# If they didn't specify any accounts
+				if pAccountModifyList is None:
+					# AND they didn't specify any regions
+					if len(pRegionModifyList) == 0:
+						# Assume they meant ALL instances
+						instances_to_modify = list(filter(lambda n: (n['ChildRegion'] in pRegionModifyList and n['StackSetName'] == StackSetName), combined_stack_set_instances))
+					elif len(pRegionModifyList) > 0:  # They *did* specify some regions
+						# Assume they meant, all instances with those regions
+						instances_to_modify = list(filter(lambda n: (n['ChildRegion'] in pRegionModifyList and n['StackSetName'] == StackSetName), combined_stack_set_instances))
+				# They *did* specify some accounts,
+				elif len(pRegionModifyList) == 0:  # But they didn't specify a region
+					instances_to_modify = list(filter(lambda n: (n['ChildAccount'] in pAccountModifyList and n['StackSetName'] == StackSetName), combined_stack_set_instances))
+				elif len(pRegionModifyList) > 0:  # And they specified regions
+					instances_to_modify = list(filter(lambda n: (n['ChildAccount'] in pAccountModifyList and n['ChildRegion'] in pRegionModifyList and n['StackSetName'] == StackSetName), combined_stack_set_instances))
+				else:  # Empty list
+					instances_to_modify = []
+
+				if not pConfirm:
+					ReallyDelete = (input(f"{Fore.RED}Removing {len(instances_to_modify)} instances within {StackSetName}...{Fore.RESET}\n"
+					                      f"Are you still sure? (y/n): ") in ['y', 'Y'])
+				if pConfirm or ReallyDelete:
+					RemoveStackInstanceResult = _delete_stack_instances(aws_acct, pRegion, StackSetName, pRetain, AccountList, RegionsToDelete)
 				else:
-					logging.info(f"About to remove account {pAccountModifyList} from stackset {StackSetName} in regions {str(FoundRegionList)}")
-					RemoveStackSet = False
-				RemoveStackInstanceResult = _delete_stack_instances(aws_acct, pRegion, StackSetName, pRetain, AccountList, FoundRegionList)
+					RemoveStackInstanceResult = {'Success': False, 'ErrorMessage': 'Customer decided not to delete stack instances'}
+
 			if RemoveStackInstanceResult['Success']:
 				Instances = [item for item in combined_stack_set_instances if item['StackSetName'] == StackSetName]
 				print(f"{ERASE_LINE}Successfully initiated removal of {len(Instances)} instance{'' if len(Instances) == 1 else 's'} from StackSet {StackSetName}")
@@ -632,7 +708,7 @@ def _modify_stacksets(StackSet_Dict:dict, Account_Dict:dict, Region_Dict:dict) -
 			elif RemoveStackInstanceResult['ErrorMessage'] == 'Failed-ForceIt' and not pRetain:
 				Decision = (input("Deletion of Stack Instances failed, but might work if we force it. Shall we force it? (y/n): ") in ['y', 'Y'])
 				if Decision:
-					RemoveStackInstanceResult = _delete_stack_instances(aws_acct, pRegion, StackSetName, True, AccountList, FoundRegionList)  # Try it again, forcing it this time
+					RemoveStackInstanceResult = _delete_stack_instances(aws_acct, pRegion, StackSetName, True, AccountList, RegionsToDelete)  # Try it again, forcing it this time
 					if RemoveStackInstanceResult['Success']:
 						print(f"{ERASE_LINE}Successfully retried StackSet {StackSetName}")
 					elif pRetain is True and RemoveStackInstanceResult['ErrorMessage'] == 'Failed-ForceIt':
@@ -681,18 +757,21 @@ def _modify_stacksets(StackSet_Dict:dict, Account_Dict:dict, Region_Dict:dict) -
 				else:
 					print(f"{ERASE_LINE}{Fore.RED}Removal of stackset {StackSetName} {Style.BRIGHT}failed{Style.NORMAL} due to:\n\t{StackSetResult['ErrorMessage']}.{Fore.RESET}")
 			results.update({StackSetName: StackSetResult})
+		results['ChangesMade'] = True
 		return (results)
-	elif pdelete and not pRefresh:
-		print(f"While deletion was requested within {len(StackSets)} "
-		      f"stackset{'' if len(StackSets) == 1 else 's'}, "
-		      f"th{'is' if len(StackSets) == 1 else 'ese'} "
-		      f"stackset{'' if len(StackSets) == 1 else 's'} "
-		      f"do{'es' if len(StackSets) == 1 else ''}n't contain "
-		      f"the criteria - {pStackfrag} - you were looking for")
+	# If we were told to delete stack instances, but there's nothing to do...
+	elif pdelete and len(combined_stack_set_instances) == 0:
+		logging.warning(f"While deletion was requested within {len(StackSets)} "
+		                f"stackset{'' if len(StackSets) == 1 else 's'}, "
+		                f"th{'is' if len(StackSets) == 1 else 'ese'} "
+		                f"stackset{'' if len(StackSets) == 1 else 's'} "
+		                f"do{'es' if len(StackSets) == 1 else ''}n't contain "
+		                f"the criteria - {pStackfrag} - you were looking for")
 		operation_result = dict()
+		operation_result['ChangesMade'] = False
 		for stackset_name, stackset_data in StackSets.items():
 			operation_result[stackset_name] = stackset_data['Status']
-		return(operation_result)
+		return (operation_result)
 	elif pAddNew:
 		print()
 		print(f"Adding instances into the specified stacksets")
@@ -709,12 +788,14 @@ def _modify_stacksets(StackSet_Dict:dict, Account_Dict:dict, Region_Dict:dict) -
 		else:
 			logging.error(f"You specified to '+add', but didn't specify any new accounts or regions to add... exiting... ")
 			sys.exit(95)
+		operation_result['ChangesMade'] = True
 		return (operation_result)
 
 	# If we are just refreshing the specific stacksets (within the "ApplicableStackSetsList")
 	elif pRefresh:
 		operation_result = _refresh_stacksets(StackSet_Dict)
-		return(operation_result)
+		operation_result['ChangesMade'] = True
+		return (operation_result)
 
 
 def _delete_stack_instances(faws_acct: aws_acct_access, fRegion: str, fStackSetName: str, fRetain: bool, fAccountList: list = None, fRegionList: list = None, fPermissionModel='SELF_MANAGED', fDeploymentTargets=None) -> dict:
@@ -844,7 +925,6 @@ def _add_instances_to_stacksets(StackSet_Dict: dict, accounts_to_add: list, regi
 
 if __name__ == '__main__':
 	args = parse_args(sys.argv[1:])
-
 	pProfile = args.Profile
 	pRegion = args.Region
 	pStackfrag = args.Fragments
@@ -865,11 +945,6 @@ if __name__ == '__main__':
 	# pSaveFilename = args.Filename
 	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
-	# display_dict = {'StackSetName'  : {'DisplayOrder': 1, 'Heading': 'Stack Set Name'},
-	#                 'ChildAccount'  : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
-	#                 'ChildRegion'   : {'DisplayOrder': 3, 'Heading': 'Region'},
-	#                 'DetailedStatus': {'DisplayOrder': 4, 'Heading': 'Instance Status', 'Condition': ['FAILED', 'INOPERABLE', 'SKIPPED_SUSPENDED_ACCOUNT', 'CANCELLED']}}
-
 	# Setup the aws_acct object
 	aws_acct, RegionList = setup_auth_and_regions(pProfile)
 	# Collect the stacksets, AccountList and RegionList involved
@@ -877,11 +952,12 @@ if __name__ == '__main__':
 	# Once we have all the stacksets found, determine what to do with them...
 	if ChangesRequested:
 		operation_result = _modify_stacksets(StackSets, Accounts, Regions)
+		ChangesMade = operation_result['ChangesMade']
 	# Handle the checking of accounts to see if there any that don't belong in the Org.
 	if pCheckAccount:
 		Accounts = check_accounts(aws_acct, Accounts)
 	# If we changed anything, get a refreshed view before we display health of stacksets
-	if ChangesRequested:
+	if ChangesRequested and ChangesMade:
 		print()
 		print(f"{Fore.RED}Since changes were requested, we're getting the updated view of the environment (post-changes){Fore.RESET}")
 		print()
@@ -889,13 +965,15 @@ if __name__ == '__main__':
 	# Display results
 	# If the stacksets were found, but the account number they provided isn't in any of the stacksets found
 	if len(StackSets['combined_stack_set_instances']) == 0 and len(StackSets['StackSetNames']['StackSets']) > 0:
-		print()
-		print(f"While we found {len(StackSets['StackSetNames']['StackSets'])} stackset{'' if len(StackSets['StackSetNames']['StackSets']) == 1 else 's'} that matched your request, "
-		      f"we found no instances matching your criteria - {pStackfrag} - in them")
+		# print()
+		# print(f"While we found {len(StackSets['StackSetNames']['StackSets'])} stackset{'' if len(StackSets['StackSetNames']['StackSets']) == 1 else 's'} that matched your request, "
+		#       f"we found no instances matching your criteria - {pRegionModifyList} - in them")
+		ChangesMade = False
 	# If the stacksets were not found...
 	elif len(StackSets['StackSetNames']['StackSets']) == 0:
 		print()
 		print(f"We found no stacksets that matched your request... ")
+		ChangesMade = False
 	# If there is is nothing to display, the function below will print nothing, so it's safe to run it anyway...
 	display_stack_set_health(StackSets, Accounts)
 
@@ -906,10 +984,17 @@ if __name__ == '__main__':
 			operation = 'delete'
 		elif pRefresh:
 			operation = 'refresh'
-		print()
-		print(f"Results of {operation} operation on {len(operation_result)} stackset{'' if len(operation_result) == 1 else's'} found with {pStackfrag} fragment:")
-		for k,v in operation_result.items():
-			print(f"\t{Fore.RED if v =='FAILED' else ''}{k}: {v} {Fore.RESET}")
+		if ChangesMade:
+			print(f"Results of {operation} operation on {len(operation_result)-1} stackset{'' if len(operation_result) == 1 else 's'} found with {pStackfrag} fragment:")
+			for k, v in operation_result.items():
+				if k == 'ChangesMade':
+					continue
+				else:
+					print(f"\t{Fore.RED if v == 'FAILED' else ''}{k}: {v} {Fore.RESET}")
+		else:
+			print(f"While a {Fore.RED}{operation}{Fore.RESET} was requested, no stacksets were found matching your naming criteria {Fore.RED}{pStackfrag}{Fore.RESET}, "
+			      f"the accounts you wanted {Fore.RED}{'[all]' if pAccountModifyList is None else pAccountModifyList}{Fore.RESET} and the regions you specified "
+			      f"{Fore.RED}{'[all]' if pRegionModifyList is None else pRegionModifyList}{Fore.RESET}, so no changes were made.")
 		print()
 
 	if pTiming:
