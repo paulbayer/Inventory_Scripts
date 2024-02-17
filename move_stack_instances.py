@@ -939,7 +939,7 @@ if __name__ == '__main__':
 
 	elif OldStackSetExists and not pEmpty:
 		print()
-		if not pForce:  # Checking to see if they've spcified no confirmations
+		if not pForce:  # Checking to see if they've specified no confirmations
 			User_Confirmation = (input(f"Do you want to proceed with the migration? (y/n): ") in ['y', 'Y'])
 		else:
 			User_Confirmation = True
