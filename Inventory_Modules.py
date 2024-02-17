@@ -1677,7 +1677,7 @@ def find_account_policies2(ocredentials, fRegion='us-east-1', fFragments: list =
 				# Policies = policy_info.list_policies(Marker=Policies['Marker'])
 				else:
 					Policies = policy_info.list_policies(Marker=marker)
-				# Policies = policy_info.list_policies(Marker=Policies['Marker'], Scope='Local')
+			# Policies = policy_info.list_policies(Marker=Policies['Marker'], Scope='Local')
 			marker = Policies['Marker'] if Policies['IsTruncated'] else None
 			# marker = "skfjhskfjhsdfkjh"
 			for policy in Policies['Policies']:
@@ -2359,6 +2359,8 @@ def find_stacks2(ocredentials: dict, fRegion: str, fStackFragment: list = None, 
 		desired_status = 'unknown'
 	if fStackFragment is None:
 		fStackFragment = ['all']
+	if isinstance(fStackFragment, str):
+		fStackFragment = [fStackFragment]
 	logging.info(f"Acct ID #: {str(ocredentials['AccountNumber'])} | Region: {fRegion} | Fragment: {fStackFragment} | Status: {fStatus}")
 	session_cfn = boto3.Session(region_name=fRegion,
 	                            aws_access_key_id=ocredentials['AccessKeyId'],
@@ -2789,16 +2791,111 @@ def find_stacksets2(ocredentials, fRegion='us-east-1', fStackFragment=None, fSta
 	return (stacksetsCopy)
 
 
-def find_stacksets3(faws_acct, fRegion: str = None, fStackFragment: list = None, fExact: bool = False) -> dict:
+def find_stacksets3(faws_acct, fRegion: str = None, fStackFragment: list = None, fExact: bool = False, fGetHealth: bool = False) -> dict:
 	"""
+	Description: returns a dict object with the list of stacksets if successful.
 	faws_acct is a class containing the account information
 	fRegion is a string
 	fStackFragment is a list of strings
 
-	returns a dict object with the list of stacksets if successful.
 	"""
-	import logging
-	from botocore.exceptions import EndpointConnectionError
+	# import logging
+	from time import time
+	from botocore.exceptions import EndpointConnectionError, ClientError
+	from botocore.config import Config
+
+	begin_time = time()
+	my_config = Config(
+		signature_version='v4',
+		retries={
+			'max_attempts': 6,
+			'mode'        : 'standard'
+		}
+	)
+	def get_stackset_operations_status(fStackSetsCopy:dict):
+		"""
+		Description: To get the last operation's health status for the stackset
+		@param fStackSetList: The name of the stackset
+		@return: An updated dictionary with the health status of each stackset updated
+		"""
+		from threading import Thread
+		from queue import Queue
+		class GetStackSetStatus(Thread):
+
+			def __init__(self, queue):
+				Thread.__init__(self)
+				self.queue = queue
+
+			def run(self):
+				while True:
+					# Get the work from the queue and expand the tuple
+					c_stackset, c_region, c_PlaceCount = self.queue.get()
+					logging.info(f"De-queued info for stack set name {c_stackset}")
+					try:
+						# TODO: Creating the list to delete this way prohibits this script from including stacksets that are already empty. This should be fixed.
+						client_cfn = faws_acct.session.client('cloudformation', config=my_config)
+						all_stack_set_operations = []
+						stack_set_operations = client_cfn.list_stack_set_operations(StackSetName=c_stackset['StackSetName'])
+						all_stack_set_operations.extend(stack_set_operations['Summaries'])
+						# It's unclear if this operation returns sorted data, so we need to get ALL records,
+						# so that we can always be certain on getting the most recent operation
+						if 'NextToken' in stack_set_operations.keys():
+							while 'NextToken' in stack_set_operations.keys():
+								stack_set_operations = client_cfn.list_stack_set_operations(StackSetName=c_stackset['StackSetName'],
+								                                                            NextToken=stack_set_operations['NextToken'])
+								all_stack_set_operations.extend(stack_set_operations['Summaries'])
+						sorted_operations = sorted(all_stack_set_operations, key=lambda d: (d['EndTimestamp']), reverse=True)
+						logging.info(f"Found {len(all_stack_set_operations)} operations within the StackSet {c_stackset}")
+						if len(sorted_operations) == 0:
+							operation_action = 'Never Run'
+							operation_status = 'Never Run'
+							operation_reason = 'Never Run'
+							operation_id = 'Never Run'
+							operation_end_timestamp = float(1707926400.668982)
+						else:
+							operation_action = sorted_operations[0]['Action']
+							operation_status = sorted_operations[0]['Status']
+							operation_reason = sorted_operations[0]['StatusDetails']
+							operation_id = sorted_operations[0]['OperationId']
+							operation_end_timestamp = sorted_operations[0]['EndTimestamp']
+						c_stackset.update({'Action': operation_action, 'Status': operation_status,
+						                   'Reason': operation_reason, 'EndTimestamp':operation_end_timestamp,
+						                   'OperationId': operation_id})
+					except ClientError as my_Error:
+						logging.error(f"Error: Likely throttling errors from too much activity")
+						logging.info(f"Actual Error: {my_Error}")
+						logging.debug(f"Operations name: {my_Error.operation_name} | Response: {my_Error.response} | MSG TEMPLATE: {my_Error.MSG_TEMPLATE}")
+						continue
+					finally:
+						self.queue.task_done()
+
+		###########
+
+		checkqueue = Queue()
+
+		PlaceCount = 0
+		WorkerThreads = min(len(fStackSetsCopy), 5)
+
+		for x in range(WorkerThreads):
+			worker = GetStackSetStatus(checkqueue)
+			# Setting daemon to True will let the main thread exit even though the workers are blocking
+			worker.daemon = True
+			worker.start()
+
+		for stackset in fStackSetsCopy:
+			logging.debug(f"Beginning to queue data - starting with {stackset['StackSetName']}")
+			try:
+				# I don't know why - but double parens are necessary below. If you remove them, only the first parameter is queued.
+				PlaceCount += 1
+				checkqueue.put((stackset, fRegion, PlaceCount))
+			except ClientError as my_Error:
+				if str(my_Error).find("AuthFailure") > 0:
+					logging.error(f"Authorization Failure accessing stack set {stackset['StackSetName']} in {fRegion} region")
+					logging.warning(f"It's possible that the region {fRegion} hasn't been opted-into")
+					pass
+		checkqueue.join()
+		logging.info(f"Getting the stackset operation data took {time() - begin_time:.2f} seconds")
+		return (fStackSetsCopy)
 
 	# Logging Settings
 	# LOGGER = logging.getLogger()
@@ -2811,7 +2908,8 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragment: list = None,
 		fStackFragment = ['all']
 	if fRegion is None:
 		fRegion = 'us-east-1'
-
+	if isinstance(fStackFragment, str):
+		fStackFragment = [fStackFragment]
 	result = validate_region3(faws_acct, fRegion)
 	if not result['Success']:  # Region failed to validate
 		return (result)
@@ -2837,8 +2935,7 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragment: list = None,
 	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
 		logging.info(
 			f"Found all the stacksets in account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragment}")
-		return_response = {'Success': True, 'StackSets': stacksets}
-		return (return_response)
+		stacksetsCopy = stacksets
 	else:
 		for stack in stacksets:
 			for fragment in fStackFragment:
@@ -2851,7 +2948,14 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragment: list = None,
 					stacksetsCopy.append(stack)
 					logging.info(
 						f"Found stackset {stack['StackSetName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fragment}")
-		return_response = {'Success': True, 'StackSets': stacksetsCopy}
+	stacksets_dict = {}
+	if fGetHealth:
+		updated_stacksets = get_stackset_operations_status(stacksetsCopy)
+	else:
+		updated_stacksets = stacksetsCopy
+	for stackset_name in updated_stacksets:
+		stacksets_dict[stackset_name['StackSetName']] = stackset_name
+	return_response = {'Success': True, 'StackSets': stacksets_dict}
 	return (return_response)
 
 
@@ -2962,19 +3066,44 @@ def find_stack_instances3(faws_acct, fRegion, fStackSetName, fStatus='CURRENT'):
 	TODO: Decide whether to use fStatus, or not
 	"""
 	import logging
+	from botocore.config import Config
+	from botocore.exceptions import ClientError
 
+	config = Config(
+		retries={
+			'max_attempts': 6,
+			'mode'        : 'standard'
+		}
+	)
 	logging.info(f"Account: {faws_acct.acct_number} | Region: {fRegion} | StackSetName: {fStackSetName}")
 	session_cfn = faws_acct.session
 	result = validate_region3(faws_acct, fRegion)
 	if not result['Success']:
 		return (result['Message'])
-	client_cfn = session_cfn.client('cloudformation', region_name=fRegion)
-	stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName)
-	stack_instances_list = stack_instances['Summaries']
+	client_cfn = session_cfn.client('cloudformation', region_name=fRegion, config=config)
+	stack_instances = dict()
+	stack_instances_list = dict()
+	try:
+		stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName)
+		stack_instances_list = stack_instances['Summaries']
+		logging.debug(f"Found {len(stack_instances_list)} instances in {fStackSetName}")
+	except ClientError as myError:
+		logging.debug(f"Debug Error: {myError}")
+		if myError.response['Error']['Code'] == 'LimitExceededException':
+			logging.warning('API call limit exceeded; backing off and retrying...')
+		else:
+			raise myError
 	while 'NextToken' in stack_instances.keys():  # Get all instance names
-		stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName,
-		                                                  NextToken=stack_instances['NextToken'])
-		stack_instances_list.extend(stack_instances['Summaries'])
+		try:
+			stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName,
+			                                                  NextToken=stack_instances['NextToken'])
+			stack_instances_list.extend(stack_instances['Summaries'])
+		except ClientError as myError:
+			logging.debug(f"Debug Error: {myError}")
+			if myError.response['Error']['Code'] == 'LimitExceededException':
+				logging.warning('API call limit exceeded; backing off and retrying...')
+			else:
+				raise myError
 	return (stack_instances_list)
 
 

@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 
-import Inventory_Modules
+import logging
 from pprint import pprint
+from queue import Queue
+from threading import Thread
+from time import sleep, time
+
+
+import simplejson as json
+from botocore.exceptions import ClientError
+from colorama import Fore, init
+
+import Inventory_Modules
+from Inventory_Modules import get_credentials_for_accounts_in_org
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
-from colorama import init, Fore
-from botocore.exceptions import ClientError
-import simplejson as json
-import logging
 
 """
 This script was created to help solve a testing problem for the "move_stack_instances.py" script.e
@@ -18,10 +25,12 @@ init()
 __version__ = "2023.05.04"
 
 parser = CommonArguments()
-parser.singleprofile()      # Allows for a single profile to be specified
-parser.multiregion()        # Allows for multiple regions to be specified at the command line
-parser.extendedargs()       # Allows for extended arguments like which accounts to skip, and whether Force is enabled.
-parser.verbosity()          # Allows for the verbosity to be handled.
+parser.singleprofile()  # Allows for a single profile to be specified
+parser.multiregion()  # Allows for multiple regions to be specified at the command line
+parser.extendedargs()  # Allows for extended arguments like which accounts to skip, and whether Force is enabled.
+parser.timing()
+parser.rolestouse()
+parser.verbosity()  # Allows for the verbosity to be handled.
 parser.version(__version__)
 parser.my_parser.add_argument(
 	"-f", "--fragment",
@@ -55,8 +64,11 @@ args = parser.my_parser.parse_args()
 pProfile = args.Profile
 pRegionList = args.Regions
 pRegion = args.homeRegion
-AccountsToSkip = args.SkipAccounts
+pAccounts = args.Accounts
+pSkipAccounts = args.SkipAccounts
+pRoles = args.AccessRoles
 verbose = args.loglevel
+pTiming = args.Time
 pOldStackSetName = args.oldStackSetName
 pNewStackSetName = args.newStackSetName
 pstackfrag = args.stackfrag
@@ -64,44 +76,12 @@ pstatus = args.status
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
 
 ##########################
-ERASE_LINE = '\x1b[2K'
-aws_acct = aws_acct_access(pProfile)
-ChildAccounts = aws_acct.ChildAccounts
-RegionList = Inventory_Modules.get_service_regions('cloudformation', pRegionList)
-ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, AccountsToSkip)
-AccountList = [account['AccountId'] for account in ChildAccounts]
-pStackIdFlag = True
-precoveryFlag = True
-
-print(f"You asked to find stacks with this fragment {Fore.RED}'{pstackfrag}'{Fore.RESET}")
-print(f"in these accounts:\n{Fore.RED}{AccountList}{Fore.RESET}")
-print(f"in these regions:\n{Fore.RED}{RegionList}{Fore.RESET}")
-if len(AccountsToSkip) > 0:
-	print(f"While skipping these accounts:\n{Fore.RED}{AccountsToSkip}{Fore.RESET}")
-
-print()
-fmt = '%-20s %-15s %-15s %-50s %-50s'
-print(fmt % ("Account", "Region", "Stack Status", "Stack Name", "Stack ID"))
-print(fmt % ("-------", "------", "------------", "----------", "--------"))
-
-StacksFound = []
-sts_client = aws_acct.session.client('sts')
-item_counter = 0
-for account_number in AccountList:
-	try:
-		account_credentials = Inventory_Modules.get_child_access3(aws_acct, account_number)
-	except ClientError as my_Error:
-		if str(my_Error).find("AuthFailure") > 0:
-			print(f"{pProfile}: Authorization Failure for account {account_number}")
-		elif str(my_Error).find("AccessDenied") > 0:
-			print(f"{pProfile}: Access Denied Failure for account {account_number}")
-		else:
-			print(f"{pProfile}: Other kind of failure for account {account_number}")
-			print(my_Error)
-		continue
-	for region in RegionList:
+def find_orphaned_stacks_within_child_accounts(faccounts:list=None):
+	item_counter = 0
+	# AccountCredentials =
+	for region in RegionLiwwwst:
 		item_counter += 1
-		Stacks = False
+		Stacks = []
 		try:
 			Stacks = Inventory_Modules.find_stacks2(account_credentials, region, pstackfrag, pstatus)
 			logging.warning(f"Account: {account_number} | Region: {region} | Found {len(Stacks)} Stacks")
@@ -120,11 +100,67 @@ for account_number in AccountList:
 				else:
 					print(fmt % (account_number, region, StackStatus, StackName))
 				StacksFound.append({
-					'Account': account_number,
-					'Region': region,
-					'StackName': StackName,
+					'Account'    : account_number,
+					'Region'     : region,
+					'StackName'  : StackName,
 					'StackStatus': StackStatus,
-					'StackArn': StackID})
+					'StackArn'   : StackID})
+	return(StacksFound)
+
+
+
+ERASE_LINE = '\x1b[2K'
+aws_acct = aws_acct_access(pProfile)
+begin_time = time()
+ChildAccounts = []
+if pAccounts is None:
+	ChildAccounts = aws_acct.ChildAccounts
+else:
+	for account in aws_acct.ChildAccounts:
+		if account['AccountId'] in pAccounts:
+			ChildAccounts.append({'AccountId'    : account['AccountId'],
+			                      'AccountEmail' : account['AccountEmail'],
+			                      'AccountStatus': account['AccountStatus'],
+			                      'MgmtAccount'  : account['MgmtAccount']})
+RegionList = Inventory_Modules.get_service_regions('cloudformation', pRegionList)
+# ChildAccounts = Inventory_Modules.RemoveCoreAccounts(ChildAccounts, AccountsToSkip)
+AccountList = [account['AccountId'] for account in ChildAccounts]
+pStackIdFlag = True
+precoveryFlag = True
+
+print(f"You asked to find stacks with this fragment {Fore.RED}'{pstackfrag}'{Fore.RESET}")
+print(f"in these accounts:\n{Fore.RED}{AccountList}{Fore.RESET}")
+print(f"in these regions:\n{Fore.RED}{RegionList}{Fore.RESET}")
+print(f"While skipping these accounts:\n{Fore.RED}{pSkipAccounts}{Fore.RESET}") if pSkipAccounts is not None else ''
+
+print()
+fmt = '%-20s %-15s %-15s %-50s %-50s'
+print(fmt % ("Account", "Region", "Stack Status", "Stack Name", "Stack ID"))
+print(fmt % ("-------", "------", "------------", "----------", "--------"))
+
+StacksFound = []
+sts_client = aws_acct.session.client('sts')
+item_counter = 0
+
+AllCredentials = []
+pRootOnly = False # It doesn't make any sense to think that this script would be used for only the root account
+AllCredentials = get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, pProfile, RegionList, pRoles, pTiming)
+
+AllStackInstances =
+
+# for account_number in AccountList:
+# 	try:
+# 		account_credentials = Inventory_Modules.get_child_access3(aws_acct, account_number)
+# 	except ClientError as my_Error:
+# 		if str(my_Error).find("AuthFailure") > 0:
+# 			print(f"{pProfile}: Authorization Failure for account {account_number}")
+# 		elif str(my_Error).find("AccessDenied") > 0:
+# 			print(f"{pProfile}: Access Denied Failure for account {account_number}")
+# 		else:
+# 			print(f"{pProfile}: Other kind of failure for account {account_number}")
+# 			print(my_Error)
+# 		continue
+
 lAccounts = []
 lRegions = []
 lAccountsAndRegions = []
@@ -143,22 +179,26 @@ if precoveryFlag:
 	Stack_Instances = []
 	for item in StacksFound:
 		Stack_Instances.append({'Account': item['Account'],
-		                        'Region': item['Region'],
-		                        'Status': item['StackStatus'],
+		                        'Region' : item['Region'],
+		                        'Status' : item['StackStatus'],
 		                        'StackId': item['StackArn']})
 	stack_ids = {'Stack_instances': Stack_Instances, 'Success': True}
-	BigString = {'AccountNumber': aws_acct.acct_number,
-	             'AccountToMove': None,
+	BigString = {'AccountNumber'    : aws_acct.acct_number,
+	             'AccountToMove'    : None,
 	             'ManagementAccount': aws_acct.MgmtAccount,
-	             'NewStackSetName': pNewStackSetName,
-	             'OldStackSetName': pOldStackSetName,
-	             'ProfileUsed': pProfile,
-	             'Region': pRegion,
-	             'stack_ids': stack_ids}
+	             'NewStackSetName'  : pNewStackSetName,
+	             'OldStackSetName'  : pOldStackSetName,
+	             'ProfileUsed'      : pProfile,
+	             'Region'           : pRegion,
+	             'stack_ids'        : stack_ids}
 	file_data = json.dumps(BigString, sort_keys=True, indent=4 * ' ')
 	OutputFilename = (f"{pOldStackSetName}-{pNewStackSetName}-{aws_acct.acct_number}-{pRegion}")
 	with open(OutputFilename, 'w') as out:
 		print(file_data, file=out)
+
+	if pTiming:
+		print(ERASE_LINE)
+		print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 
 print()
 print("Thanks for using this script...")
