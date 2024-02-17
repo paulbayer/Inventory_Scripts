@@ -4,9 +4,8 @@
 # import Inventory_Modules
 import logging
 import sys
-import os
 from os import remove
-from os.path import exists
+from os.path import exists, split
 from time import sleep, time
 
 from botocore.exceptions import ClientError, WaiterError
@@ -16,7 +15,7 @@ from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 
 init()
-__version__ = "2024.02.05"
+__version__ = "2024.02.16"
 
 """
 This script attempts to move stack-instances from one stack-set to another without any impact to the ultimate resources.
@@ -49,7 +48,7 @@ Here's what's needed:
 # Functions
 ##################
 def parse_args(args):
-	script_path, script_name = os.path.split(sys.argv[0])
+	script_path, script_name = split(sys.argv[0])
 	parser = CommonArguments()
 	parser.singleregion()
 	parser.singleprofile()
@@ -939,7 +938,7 @@ if OldStackSetExists and pEmpty:
 
 elif OldStackSetExists and not pEmpty:
 	print()
-	if not pForce: # Checking to see if they've spcified no confirmations
+	if not pForce: # Checking to see if they've specified no confirmations
 		User_Confirmation = (input(f"Do you want to proceed with the migration? (y/n): ") in ['y', 'Y'])
 	else:
 		User_Confirmation = True

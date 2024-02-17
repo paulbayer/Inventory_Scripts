@@ -110,12 +110,23 @@ def get_ec2_regions3(faws_acct, fkey=None):
 	Please note that there is no paging functionality for the "describe_regions" method within EC2, hence no paging below.
 	"""
 	import logging
+	from botocore.exceptions import EndpointConnectionError
 
 	RegionNames = []
 	try:
 		region_info = faws_acct.session.client('ec2')
 	except AttributeError as my_Error:
 		logging.error(my_Error)
+		return (RegionNames)
+	except EndpointConnectionError as my_Error:
+		error_message = (f"Connection to AWS seems to not be working.\n"
+		                 f"Actual error: {my_Error}")
+		logging.error(error_message)
+		return (RegionNames)
+	except Exception as my_Error:
+		error_message = (f"Something stopped working.\n"
+		                 f"Actual error: {my_Error}")
+		logging.error(error_message)
 		return (RegionNames)
 	regions = region_info.describe_regions(Filters=[
 		{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
@@ -2791,7 +2802,7 @@ def find_stacksets2(ocredentials, fRegion='us-east-1', fStackFragment=None, fSta
 	return (stacksetsCopy)
 
 
-def find_stacksets3(faws_acct, fRegion: str = None, fStackFragment: list = None, fExact: bool = False, fGetHealth: bool = False) -> dict:
+def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = None, fExact: bool = False, fGetHealth: bool = False) -> dict:
 	"""
 	Description: returns a dict object with the list of stacksets if successful.
 	faws_acct is a class containing the account information
@@ -2812,7 +2823,8 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragment: list = None,
 			'mode'        : 'standard'
 		}
 	)
-	def get_stackset_operations_status(fStackSetsCopy:dict):
+
+	def get_stackset_operations_status(fStackSetsCopy: dict):
 		"""
 		Description: To get the last operation's health status for the stackset
 		@param fStackSetList: The name of the stackset
@@ -2844,13 +2856,14 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragment: list = None,
 								stack_set_operations = client_cfn.list_stack_set_operations(StackSetName=c_stackset['StackSetName'],
 								                                                            NextToken=stack_set_operations['NextToken'])
 								all_stack_set_operations.extend(stack_set_operations['Summaries'])
-						sorted_operations = sorted(all_stack_set_operations, key=lambda d: (d['EndTimestamp']), reverse=True)
+						sorted_operations = sorted(all_stack_set_operations, key=lambda d: (d['Status'], d['EndTimestamp'] ), reverse=True)
 						logging.info(f"Found {len(all_stack_set_operations)} operations within the StackSet {c_stackset}")
 						if len(sorted_operations) == 0:
 							operation_action = 'Never Run'
 							operation_status = 'Never Run'
 							operation_reason = 'Never Run'
 							operation_id = 'Never Run'
+							# TODO: Replace this random date/time with something more interesting.
 							operation_end_timestamp = float(1707926400.668982)
 						else:
 							operation_action = sorted_operations[0]['Action']
@@ -2858,8 +2871,8 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragment: list = None,
 							operation_reason = sorted_operations[0]['StatusDetails']
 							operation_id = sorted_operations[0]['OperationId']
 							operation_end_timestamp = sorted_operations[0]['EndTimestamp']
-						c_stackset.update({'Action': operation_action, 'Status': operation_status,
-						                   'Reason': operation_reason, 'EndTimestamp':operation_end_timestamp,
+						c_stackset.update({'Action'     : operation_action, 'Status': operation_status,
+						                   'Reason'     : operation_reason, 'EndTimestamp': operation_end_timestamp,
 						                   'OperationId': operation_id})
 					except ClientError as my_Error:
 						logging.error(f"Error: Likely throttling errors from too much activity")
@@ -2904,23 +2917,23 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragment: list = None,
 	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 	# Set Log Level
 
-	if fStackFragment is None:
-		fStackFragment = ['all']
+	if fStackFragmentList is None:
+		fStackFragmentList = ['all']
 	if fRegion is None:
 		fRegion = 'us-east-1'
-	if isinstance(fStackFragment, str):
-		fStackFragment = [fStackFragment]
+	if isinstance(fStackFragmentList, str):
+		fStackFragmentList = [fStackFragmentList]
 	result = validate_region3(faws_acct, fRegion)
 	if not result['Success']:  # Region failed to validate
 		return (result)
 	else:  # Region was validated
 		logging.info(result['Message'])
-	logging.info(f"Account: {faws_acct.acct_number} | Region: {fRegion} | Fragment: {fStackFragment}")
-	client_cfn = faws_acct.session.client('cloudformation', region_name=fRegion)
+	logging.info(f"Account: {faws_acct.acct_number} | Region: {fRegion} | Fragment: {fStackFragmentList}")
+	client_cfn = faws_acct.session.client('cloudformation', region_name=fRegion, config=my_config)
 
 	try:
 		stacksets_prelim = client_cfn.list_stack_sets(Status='ACTIVE')
-	# TODO: Need more error-handling here to handle if this fails...
+	# TODO: Need more error-handling here to handle different types of failures
 	except EndpointConnectionError as myError:
 		logging.info(f"Likely that the region passed in wasn't correct. Please check and try again: {myError}")
 		return_response = {'Success': False, 'ErrorMessage': "Region Endpoint Failure"}
@@ -2932,13 +2945,13 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragment: list = None,
 
 	stacksetsCopy = []
 	# Because fStackFragment is a list, I need to write it this way
-	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
+	if 'all' in fStackFragmentList or 'ALL' in fStackFragmentList or 'All' in fStackFragmentList:
 		logging.info(
-			f"Found all the stacksets in account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragment}")
+			f"Found all the stacksets in account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragmentList}")
 		stacksetsCopy = stacksets
 	else:
 		for stack in stacksets:
-			for fragment in fStackFragment:
+			for fragment in fStackFragmentList:
 				if fExact:
 					if fragment == stack['StackSetName']:
 						stacksetsCopy.append(stack)
