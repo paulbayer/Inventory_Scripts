@@ -383,11 +383,11 @@ def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):
 						print(f"\t\t\t{Fore.RED}Detailed Status: {v['DetailedStatus']}{Fore.RESET}\n"
 						      f"\t\t\tStatus Reason: {v['StatusReason']}")
 						pass
-	if verbose < 40:
+	if verbose < 50:
 		print()
 		print(f"Found {len(StackSetNames)} stackset names")
 		print(f"Found a total of {len(combined_stack_set_instances)} stack instances")
-		print(f"Found {len(summary)} unique stackset names within the Stack Instances")
+		# print(f"Found {len(summary)} unique stackset names within the Stack Instances")
 		print()
 
 	# Print the summary of any accounts that were found in the StackSets, but not in the Org.

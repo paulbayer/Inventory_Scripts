@@ -1023,8 +1023,7 @@ if __name__ == '__main__':
 			if not StackInstancesAreGone['Success']:
 				Failure_GoToEnd = True
 				sys.exit(f"There was a problem with removing the stack instances from stackset {pOldStackSet}. Exiting...")
-			logging.debug(
-				f"The operation id {DisconnectStackInstances['OperationId']} is {StackInstancesAreGone['StackSetStatus']}")
+			logging.debug(f"The operation id {DisconnectStackInstances['OperationId']} is {StackInstancesAreGone['StackSetStatus']}")
 			intervals_waited = 1
 			while StackInstancesAreGone['StackSetStatus'] in ['RUNNING']:
 				print(f"Waiting for stack instances to be disconnected from stackset {pOldStackSet} -",
