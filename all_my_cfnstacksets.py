@@ -1,31 +1,34 @@
 #!/usr/bin/env python3
 
 import logging
+from time import time
+
+from botocore.exceptions import ClientError
+from colorama import Fore, init
+
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
-from colorama import init, Fore
-from time import time
-from botocore.exceptions import ClientError
 
 init()
 
-__version__ = '2023.05.04'
+__version__ = '2024.02.27'
 
 parser = CommonArguments()
 parser.singleprofile()  # Allows for a single profile to be specified
 parser.multiregion()  # Allows for multiple regions to be specified at the command line
+parser.fragment()
 parser.rootOnly()
 parser.timing()
 parser.verbosity()  # Allows for the verbosity to be handled.
 parser.version(__version__)
-parser.my_parser.add_argument(
-	"-f", "--fragment",
-	dest="pstackfrag",
-	nargs='*',
-	metavar="CloudFormation stack fragment",
-	default=["all"],
-	help="List of fragments of the cloudformation stackset(s) you want to check for.")
+# parser.my_parser.add_argument(
+# 	"-f", "--fragment",
+# 	dest="pstackfrag",
+# 	nargs='*',
+# 	metavar="CloudFormation stack fragment",
+# 	default=["all"],
+# 	help="List of fragments of the cloudformation stackset(s) you want to check for.")
 parser.my_parser.add_argument(
 	"-i", "--instances",
 	dest="pinstancecount",
@@ -47,17 +50,15 @@ pInstanceCount = args.pinstancecount
 pRootOnly = args.RootOnly
 verbose = args.loglevel
 pTiming = args.Time
-pstackfrag = args.pstackfrag
+pstackfrag = args.Fragments
 pstatus = args.pstatus
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
-if pTiming:
-	begin_time = time()
+begin_time = time()
 
 aws_acct = aws_acct_access(pProfile)
 if pRootOnly:
-	ChildAccounts = [childaccount for childaccount in aws_acct.ChildAccounts if
-	                 childaccount['AccountId'] == aws_acct.acct_number]
+	ChildAccounts = [childaccount for childaccount in aws_acct.ChildAccounts if childaccount['AccountId'] == aws_acct.acct_number]
 else:
 	ChildAccounts = aws_acct.ChildAccounts
 
@@ -96,21 +97,17 @@ for account in ChildAccounts:
 	# logging.info(f"Account Creds: {account_credentials}")
 	for region in RegionList:
 		try:
-			print(
-				f"{ERASE_LINE}{Fore.RED}Checking Account: {account['AccountId']} Region: {region} for stacksets matching {pstackfrag} with status: {pstatus}{Fore.RESET}",
-				end="\r")
-			StackSets = Inventory_Modules.find_stacksets2(account_credentials, region, pstackfrag, pstatus)
+			print(f"{ERASE_LINE}{Fore.RED}Checking Account: {account['AccountId']} Region: {region} for stacksets matching {pstackfrag} with status: {pstatus}{Fore.RESET}", end="\r")
+			StackSets = Inventory_Modules.find_stacksets2(account_credentials, pstackfrag, pstatus)
 			logging.warning(f"Account: {account['AccountId']} | Region: {region} | Found {len(StackSets)} Stacksets")
 			if not StackSets:
 				logging.info(
 					f"We connected to account {account['AccountId']} in region {region}, but found no stacksets")
 			else:
-				print(
-					f"{ERASE_LINE}{Fore.RED}Account: {account['AccountId']} Region: {region} Found {len(StackSets)} Stacksets{Fore.RESET}",
-					end="\r")
-			for y in range(len(StackSets)):
-				StackName = StackSets[y]['StackSetName']
-				StackStatus = StackSets[y]['Status']
+				print(f"{ERASE_LINE}{Fore.RED}Account: {account['AccountId']} Region: {region} Found {len(StackSets)} Stacksets{Fore.RESET}", end="\r")
+			for stack in StackSets:
+				StackName = stack['StackSetName']
+				StackStatus = stack['Status']
 				if pInstanceCount:
 					ListOfStackInstances = Inventory_Modules.find_stack_instances2(account_credentials, region, StackName)
 					print(fmt % (account['AccountId'], region, StackStatus, StackName, len(ListOfStackInstances)))
@@ -129,4 +126,3 @@ if pTiming:
 	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 print("Thanks for using this script...")
 print()
-
