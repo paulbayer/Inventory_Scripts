@@ -7,6 +7,7 @@ import sys
 from os import remove
 from os.path import exists, split
 from time import sleep, time
+from datetime import datetime
 
 from botocore.exceptions import ClientError, WaiterError
 from colorama import Fore, Style, init
@@ -95,19 +96,19 @@ def parse_args(args):
 def check_stack_set_drift_status(faws_acct: aws_acct_access, fStack_set_name: str, fOperation_id=None) -> dict:
 	"""
 	response = client.detect_stack_set_drift(
-    StackSetName='string',
-    OperationPreferences={
-        'RegionConcurrencyType': 'SEQUENTIAL'|'PARALLEL',
-        'RegionOrder': [
-            'string',
-        ],
-        'FailureToleranceCount': 123,
-        'FailureTolerancePercentage': 123,
-        'MaxConcurrentCount': 123,
-        'MaxConcurrentPercentage': 123
-    },
-    OperationId='string',
-    CallAs='SELF'|'DELEGATED_ADMIN'
+	StackSetName='string',
+	OperationPreferences={
+		'RegionConcurrencyType': 'SEQUENTIAL'|'PARALLEL',
+		'RegionOrder': [
+			'string',
+		],
+		'FailureToleranceCount': 123,
+		'FailureTolerancePercentage': 123,
+		'MaxConcurrentCount': 123,
+		'MaxConcurrentPercentage': 123
+	},
+	OperationId='string',
+	CallAs='SELF'|'DELEGATED_ADMIN'
 	)
 	"""
 
@@ -125,7 +126,7 @@ def check_stack_set_drift_status(faws_acct: aws_acct_access, fStack_set_name: st
 				                                             'RegionConcurrencyType'     : 'PARALLEL',
 				                                             'FailureTolerancePercentage': 10,
 				                                             'MaxConcurrentPercentage'   : 100
-			                                             },
+				                                             },
 			                                             )
 			fOperation_id = response['OperationId']
 			return_response = {'OperationId': fOperation_id, 'Success': True}
@@ -179,28 +180,37 @@ def check_stack_set_drift_status(faws_acct: aws_acct_access, fStack_set_name: st
 				response = client_cfn.describe_stack_set_operation(
 					StackSetName=fStack_set_name,
 					OperationId=fOperation_id,
-				)
+					)
 				Start_Time = response['StackSetOperation']['CreationTimestamp']
 				Operation_Status = response['StackSetOperation']['Status']
 				if 'StackSetDriftDetectionDetails' in response['StackSetOperation'].keys():
-					Drift_Detection_Status = response['StackSetOperation']['StackSetDriftDetectionDetails']['DriftDetectionStatus']
-					if 'LastDriftCheckTimestamp' in response['StackSetOperation']['StackSetDriftDetectionDetails'].keys():
+					Drift_Detection_Status = response['StackSetOperation']['StackSetDriftDetectionDetails'][
+						'DriftDetectionStatus']
+					if 'LastDriftCheckTimestamp' in response['StackSetOperation'][
+						'StackSetDriftDetectionDetails'].keys():
 						Sync_Has_Started = True
 					else:
 						Sync_Has_Started = False
 				if Operation_Status == 'RUNNING' and Sync_Has_Started:
 					# TODO: Give a decent status, Wait a little longer, and try again
-					Last_Instances_Finished = response['StackSetOperation']['StackSetDriftDetectionDetails']['LastDriftCheckTimestamp']
-					Check_Failed = response['StackSetOperation']['StackSetDriftDetectionDetails']['FailedStackInstancesCount']
-					Total_Stack_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['TotalStackInstancesCount']
-					Drifted_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['DriftedStackInstancesCount']
-					In_Sync_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['InSyncStackInstancesCount']
-					Currently_Checking = response['StackSetOperation']['StackSetDriftDetectionDetails']['InProgressStackInstancesCount']
+					Last_Instances_Finished = response['StackSetOperation']['StackSetDriftDetectionDetails'][
+						'LastDriftCheckTimestamp']
+					Check_Failed = response['StackSetOperation']['StackSetDriftDetectionDetails'][
+						'FailedStackInstancesCount']
+					Total_Stack_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails'][
+						'TotalStackInstancesCount']
+					Drifted_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails'][
+						'DriftedStackInstancesCount']
+					In_Sync_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails'][
+						'InSyncStackInstancesCount']
+					Currently_Checking = response['StackSetOperation']['StackSetDriftDetectionDetails'][
+						'InProgressStackInstancesCount']
 					Time_Taken = Last_Instances_Finished - Start_Time
 					Checked_Instances = In_Sync_Instances + Drifted_Instances + Check_Failed
 					Time_Left = (Time_Taken / Checked_Instances) * Currently_Checking
 					print(f"{ERASE_LINE} It's taken {Time_Taken} to detect on {Checked_Instances} "
-					      f"instances, which means we probably have {Time_Left} left to go for {Currently_Checking} more stack instances", end='\r')
+					      f"instances, which means we probably have {Time_Left} left to go for {Currently_Checking} more stack instances",
+					      end='\r')
 					logging.info(f"{response}")
 					return_response = {'OperationStatus'      : Operation_Status,
 					                   'StartTime'            : Start_Time,
@@ -214,11 +224,14 @@ def check_stack_set_drift_status(faws_acct: aws_acct_access, fStack_set_name: st
 				elif Operation_Status == 'RUNNING' and not Sync_Has_Started:
 					# TODO: Give a decent status, Wait a little longer, and try again
 					time_waited += sleep_interval
-					print(f"{ERASE_LINE} We're still waiting for the Sync to start... Sleeping for {time_waited} seconds", end='\r')
+					print(
+						f"{ERASE_LINE} We're still waiting for the Sync to start... Sleeping for {time_waited} seconds",
+						end='\r')
 					Finished = False
 				elif Operation_Status == 'SUCCEEDED':
 					End_Time = response['StackSetOperation']['EndTimestamp']
-					Total_Stack_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['TotalStackInstancesCount']
+					Total_Stack_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails'][
+						'TotalStackInstancesCount']
 					return_response.update({'OperationStatus'      : Operation_Status,
 					                        'StartTime'            : Start_Time,
 					                        'EndTime'              : End_Time,
@@ -339,7 +352,7 @@ def get_template_body_and_parameters(faws_acct: aws_acct_access, fExisting_stack
 														- !Sub 'arn:aws:iam::${AdministratorAccountId}:role/Owner'
 														- !Sub 'arn:aws:iam::${AdministratorAccountId}:user/Paul'
 											  Action:
-											    - "sts:AssumeRole"
+												- "sts:AssumeRole"
 										ManagedPolicyArns:
 											- arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 			"Parameters": [
@@ -404,29 +417,44 @@ def compare_stacksets(faws_acct: aws_acct_access, fExisting_stack_set_name: str,
 	Stack_Set_Info_old = get_template_body_and_parameters(faws_acct, fExisting_stack_set_name)
 	Stack_Set_Info_new = get_template_body_and_parameters(faws_acct, fNew_stack_set_name)
 	# Time to compare - only the Template Body, Parameters, and Capabilities are critical to making sure the stackset works.
-	return_response['TemplateComparison'] = (Stack_Set_Info_old['stack_set_info']['TemplateBody'] == Stack_Set_Info_new['stack_set_info']['TemplateBody'])
-	return_response['CapabilitiesComparison'] = (Stack_Set_Info_old['stack_set_info']['Capabilities'] == Stack_Set_Info_new['stack_set_info']['Capabilities'])
-	return_response['ParametersComparison'] = (Stack_Set_Info_old['stack_set_info']['Parameters'] == Stack_Set_Info_new['stack_set_info']['Parameters'])
-	return_response['TagsComparison'] = (Stack_Set_Info_old['stack_set_info']['Tags'] == Stack_Set_Info_new['stack_set_info']['Tags'])
+	return_response['TemplateComparison'] = (
+			Stack_Set_Info_old['stack_set_info']['TemplateBody'] == Stack_Set_Info_new['stack_set_info'][
+		'TemplateBody'])
+	return_response['CapabilitiesComparison'] = (
+			Stack_Set_Info_old['stack_set_info']['Capabilities'] == Stack_Set_Info_new['stack_set_info'][
+		'Capabilities'])
+	return_response['ParametersComparison'] = (
+			Stack_Set_Info_old['stack_set_info']['Parameters'] == Stack_Set_Info_new['stack_set_info'][
+		'Parameters'])
+	return_response['TagsComparison'] = (
+			Stack_Set_Info_old['stack_set_info']['Tags'] == Stack_Set_Info_new['stack_set_info']['Tags'])
 	try:
-		return_response['DescriptionComparison'] = (Stack_Set_Info_old['stack_set_info']['Description'] == Stack_Set_Info_new['stack_set_info']['Description'])
+		return_response['DescriptionComparison'] = (
+				Stack_Set_Info_old['stack_set_info']['Description'] == Stack_Set_Info_new['stack_set_info'][
+			'Description'])
 	except KeyError as myError:
 		# This checks for the presence of the Description key before using it as a key for checking, to resolve an error when it's not there.
-		if 'Description' in Stack_Set_Info_new['stack_set_info'].keys() and Stack_Set_Info_new['stack_set_info']['Description'] == Default_Description_Text:
-			print(f"There was no description in the old StackSet, and creating a new one in this way requires one, so we've populated it with a default Description -- '{Default_Description_Text}'\n"
-			      f"This won't cause a problem with the migration, just something to note...")
+		if 'Description' in Stack_Set_Info_new['stack_set_info'].keys() and Stack_Set_Info_new['stack_set_info'][
+			'Description'] == Default_Description_Text:
+			print(
+				f"There was no description in the old StackSet, and creating a new one in this way requires one, so we've populated it with a default Description -- '{Default_Description_Text}'\n"
+				f"This won't cause a problem with the migration, just something to note...")
 			return_response['DescriptionComparison'] = True
 		else:
 			logging.error(f"Description key isn't available... continuing anyway...")
 			return_response['DescriptionComparison'] = True
-	return_response['ExecutionRoleComparison'] = (Stack_Set_Info_old['stack_set_info']['ExecutionRoleName'] == Stack_Set_Info_new['stack_set_info']['ExecutionRoleName'])
+	return_response['ExecutionRoleComparison'] = (
+			Stack_Set_Info_old['stack_set_info']['ExecutionRoleName'] == Stack_Set_Info_new['stack_set_info'][
+		'ExecutionRoleName'])
 
-	if (return_response['TemplateComparison'] and return_response['CapabilitiesComparison'] and return_response['ParametersComparison']):
+	if (return_response['TemplateComparison'] and return_response['CapabilitiesComparison'] and return_response[
+		'ParametersComparison']):
 		return_response['Success'] = True
 	return (return_response)
 
 
-def get_stack_ids_from_existing_stack_set(faws_acct: aws_acct_access, fExisting_stack_set_name: str, fAccountsToMove: list = None) -> dict:
+def get_stack_ids_from_existing_stack_set(faws_acct: aws_acct_access, fExisting_stack_set_name: str,
+                                          fAccountsToMove: list = None) -> dict:
 	"""
 	response = client.list_stack_instances(
 		StackSetName='string',
@@ -488,7 +516,7 @@ def write_info_to_file(faws_acct: aws_acct_access, fstack_ids) -> dict:
 			'OldStackSetName'  : pOldStackSet,
 			'NewStackSetName'  : pNewStackSet,
 			'stack_ids'        : fstack_ids
-		}
+			}
 		logging.info(f"Writing data to the file {InfoFilename}")
 		logging.debug(f"Here's the data we're writing: {StackSetsInfo}")
 		file_data = json.dumps(StackSetsInfo, sort_keys=True, indent=4 * ' ', default=str)
@@ -522,7 +550,8 @@ def read_stack_info_from_file() -> dict:
 		return (return_response)
 
 
-def create_stack_set_with_body_and_parameters(faws_acct: aws_acct_access, fNew_stack_set_name: str, fStack_set_info: dict) -> dict:
+def create_stack_set_with_body_and_parameters(faws_acct: aws_acct_access, fNew_stack_set_name: str,
+                                              fStack_set_info: dict) -> dict:
 	"""
 	response = client.create_stack_set(
 		StackSetName='string',
@@ -560,7 +589,8 @@ def create_stack_set_with_body_and_parameters(faws_acct: aws_acct_access, fNew_s
 	"""
 	import logging
 
-	logging.info(f"Creating a new stackset name {fNew_stack_set_name} in account {faws_acct.acct_number} with a template body, parameters, capabilities and tagging from this:")
+	logging.info(
+		f"Creating a new stackset name {fNew_stack_set_name} in account {faws_acct.acct_number} with a template body, parameters, capabilities and tagging from this:")
 	logging.info(f"{fStack_set_info}")
 	client_cfn = faws_acct.session.client('cloudformation')
 	return_response = dict()
@@ -574,7 +604,8 @@ def create_stack_set_with_body_and_parameters(faws_acct: aws_acct_access, fNew_s
 	try:
 		response = client_cfn.create_stack_set(StackSetName=fNew_stack_set_name,
 		                                       TemplateBody=fStack_set_info['TemplateBody'],
-		                                       Description=fStack_set_info['Description'] if 'Description' in fStack_set_info.keys() else Default_Description_Text,
+		                                       Description=fStack_set_info[
+			                                       'Description'] if 'Description' in fStack_set_info.keys() else Default_Description_Text,
 		                                       Parameters=fStack_set_info['Parameters'],
 		                                       Capabilities=fStack_set_info['Capabilities'],
 		                                       Tags=fStack_set_info['Tags'])
@@ -686,7 +717,8 @@ def create_change_set_for_new_stack():
 	"""
 
 
-def populate_new_stack_with_existing_stack_instances(faws_acct: aws_acct_access, fStack_instance_info: list, fNew_stack_name: str) -> dict:
+def populate_new_stack_with_existing_stack_instances(faws_acct: aws_acct_access, fStack_instance_info: list,
+                                                     fNew_stack_name: str) -> dict:
 	"""
 	response = client.import_stacks_to_stack_set(
 		StackSetName='string',
@@ -763,7 +795,6 @@ def populate_new_stack_with_existing_stack_instances(faws_acct: aws_acct_access,
 # Main
 ##################
 if __name__ == '__main__':
-
 	args = parse_args(sys.argv[1:])
 	pProfile = args.Profile
 	pRegion = args.Region
@@ -795,7 +826,8 @@ if __name__ == '__main__':
 	stack_ids = dict()
 
 	aws_acct = aws_acct_access(pProfile)
-	InfoFilename = (f"{pOldStackSet}-{pNewStackSet}-{aws_acct.acct_number}-{pRegion}")
+	datetime_extension = datetime.now().strftime("%Y%m%d-%H%M")
+	InfoFilename = (f"{pOldStackSet}-{pNewStackSet}-{aws_acct.acct_number}-{pRegion}.{datetime_extension}")
 	Use_recovery_file = False
 
 	if pDriftCheck:
@@ -804,9 +836,11 @@ if __name__ == '__main__':
 		print(f"Kicked off Drift Sync... now we'll wait {sleep_interval} seconds before checking on the process...")
 		sleep(sleep_interval)
 		if drift_check_response['Success']:
-			drift_check_response2 = check_stack_set_drift_status(aws_acct, pOldStackSet, drift_check_response['OperationId'])
+			drift_check_response2 = check_stack_set_drift_status(aws_acct, pOldStackSet,
+			                                                     drift_check_response['OperationId'])
 			Total_Stacksets = drift_check_response2['StackInstancesChecked']
-			Drifted_Stacksets = drift_check_response2['DriftedInstances'] if 'DriftedInstances' in drift_check_response2.keys() else None
+			Drifted_Stacksets = drift_check_response2[
+				'DriftedInstances'] if 'DriftedInstances' in drift_check_response2.keys() else None
 			Failed_Stacksets = drift_check_response2['FailedInstances']
 			Duration = drift_check_response2['EndTime'] - drift_check_response2['StartTime']
 			print()
@@ -820,19 +854,22 @@ if __name__ == '__main__':
 		sys.exit("Exiting...")
 
 	if exists(InfoFilename) and pRecoveryFlag:
-		print(f"You requested to use the recovery file {InfoFilename}, so we'll use that to pick up from where we left off")
+		print(
+			f"You requested to use the recovery file {InfoFilename}, so we'll use that to pick up from where we left off")
 		Use_recovery_file = True
 	elif pRecoveryFlag:
-		print(f"You requested to use the Recovery file, but we couldn't find one named {InfoFilename}, so we're exiting\n"
-		      f"Please supply the proper StackSet, Region and Profile parameters so we can find the recovery file.",
-		      file=sys.stderr)
+		print(
+			f"You requested to use the Recovery file, but we couldn't find one named {InfoFilename}, so we're exiting\n"
+			f"Please supply the proper StackSet, Region and Profile parameters so we can find the recovery file.",
+			file=sys.stderr)
 		sys.exit(5)
 	elif exists(InfoFilename):
 		print(f"There exists a recovery file for the parameters you've supplied, named {InfoFilename}\n")
 		Use_recovery_file = (input(f"Do you want to use this file? (y/n): ") in ['y', 'Y'])
 		if not Use_recovery_file:
-			print(f"If you don't want to use that file, please change the filename, and re-run this script, to avoid over-writing it.",
-			      file=sys.stderr)
+			print(
+				f"If you don't want to use that file, please change the filename, and re-run this script, to avoid over-writing it.",
+				file=sys.stderr)
 			sys.exit(6)
 
 	if Use_recovery_file:
@@ -859,17 +896,21 @@ if __name__ == '__main__':
 		             f" from {pOldStackSet} to {pNewStackSet}")
 	# Check to see if the new StackSet already exists, or we need to create it.
 	if find_if_stack_set_exists(aws_acct, pNewStackSet)['Success']:
-		print(f"{Fore.GREEN}The 'New' Stackset {pNewStackSet} exists within the account {aws_acct.acct_number}{Fore.RESET}")
+		print(
+			f"{Fore.GREEN}The 'New' Stackset {pNewStackSet} exists within the account {aws_acct.acct_number}{Fore.RESET}")
 		NewStackSetExists = True
 	else:
-		print(f"{Fore.RED}The 'New' Stackset {pNewStackSet} does not exist within the account {aws_acct.acct_number}{Fore.RESET}")
+		print(
+			f"{Fore.RED}The 'New' Stackset {pNewStackSet} does not exist within the account {aws_acct.acct_number}{Fore.RESET}")
 		NewStackSetExists = False
 	# Check to see if the old StackSet exists, as they may have typed something wrong - or the recovery file was never deleted.
 	if find_if_stack_set_exists(aws_acct, pOldStackSet)['Success']:
-		print(f"{Fore.GREEN}The 'Old' Stackset {pOldStackSet} exists within the account {aws_acct.acct_number}{Fore.RESET}")
+		print(
+			f"{Fore.GREEN}The 'Old' Stackset {pOldStackSet} exists within the account {aws_acct.acct_number}{Fore.RESET}")
 		OldStackSetExists = True
 	else:
-		print(f"{Fore.RED}The 'Old' Stackset {pOldStackSet} does not exist within the account {aws_acct.acct_number}{Fore.RESET}")
+		print(
+			f"{Fore.RED}The 'Old' Stackset {pOldStackSet} does not exist within the account {aws_acct.acct_number}{Fore.RESET}")
 		OldStackSetExists = False
 
 	CompareTemplates = {'Success': False}
@@ -903,8 +944,10 @@ if __name__ == '__main__':
 	# Ignore whether or not the recovery file exists, since if it does - it's just updating the variables needed for this run.
 	# We shouldn't be doing much of anything differently, based on whether the recovery file exists.
 	if OldStackSetExists and pEmpty:
-		print(f"You've asked to create an empty stackset called {pNewStackSet} from the existing stackset {pOldStackSet}")
-		print(f"You specified accounts to move, but we're not doing that, since you asked for this stackset to be created empty.") if pAccountsToMove is not None else ""
+		print(
+			f"You've asked to create an empty stackset called {pNewStackSet} from the existing stackset {pOldStackSet}")
+		print(
+			f"You specified accounts to move, but we're not doing that, since you asked for this stackset to be created empty.") if pAccountsToMove is not None else ""
 		""" Create new stackset from old stackset """
 		Stack_Set_Info = get_template_body_and_parameters(aws_acct, pOldStackSet)
 		# Creates the new stack
@@ -928,7 +971,8 @@ if __name__ == '__main__':
 			pass
 		# If only the creation effort (async) succeeded, but checking on that operation showed a failure...
 		elif NewStackSetStatus['Success']:
-			print(f"{Fore.RED}{pNewStackSet} appears to already exist. New stack set failed to be created. Exiting...{Fore.RESET}")
+			print(
+				f"{Fore.RED}{pNewStackSet} appears to already exist. New stack set failed to be created. Exiting...{Fore.RESET}")
 			Failure_GoToEnd = True
 			sys.exit(98)
 		# Any other failure scenario
@@ -1019,11 +1063,14 @@ if __name__ == '__main__':
 				sys.exit(7)
 		logging.debug(f"Removed stack instances from {pOldStackSet}")
 		if DisconnectStackInstances['OperationId'] is not None:
-			StackInstancesAreGone = check_stack_set_status(aws_acct, pOldStackSet, DisconnectStackInstances['OperationId'])
+			StackInstancesAreGone = check_stack_set_status(aws_acct, pOldStackSet,
+			                                               DisconnectStackInstances['OperationId'])
 			if not StackInstancesAreGone['Success']:
 				Failure_GoToEnd = True
-				sys.exit(f"There was a problem with removing the stack instances from stackset {pOldStackSet}. Exiting...")
-			logging.debug(f"The operation id {DisconnectStackInstances['OperationId']} is {StackInstancesAreGone['StackSetStatus']}")
+				sys.exit(
+					f"There was a problem with removing the stack instances from stackset {pOldStackSet}. Exiting...")
+			logging.debug(
+				f"The operation id {DisconnectStackInstances['OperationId']} is {StackInstancesAreGone['StackSetStatus']}")
 			intervals_waited = 1
 			while StackInstancesAreGone['StackSetStatus'] in ['RUNNING']:
 				print(f"Waiting for stack instances to be disconnected from stackset {pOldStackSet} -",
@@ -1046,12 +1093,16 @@ if __name__ == '__main__':
 			stack_ids_subset = [stack_ids['Stack_instances'][x + i] for i in range(limit) if
 			                    x + i < len(stack_ids['Stack_instances'])]
 			x += limit
-			print(f"{ERASE_LINE}Importing {len(stack_ids_subset)} of {len(stack_ids['Stack_instances'])} stacks into the new stackset now...", end='\r')
-			ReconnectStackInstances = populate_new_stack_with_existing_stack_instances(aws_acct, stack_ids_subset, pNewStackSet)
+			print(
+				f"{ERASE_LINE}Importing {len(stack_ids_subset)} of {len(stack_ids['Stack_instances'])} stacks into the new stackset now...",
+				end='\r')
+			ReconnectStackInstances = populate_new_stack_with_existing_stack_instances(aws_acct, stack_ids_subset,
+			                                                                           pNewStackSet)
 			if not ReconnectStackInstances['Success']:
 				print(f"Re-attaching the stack-instance to the new stackset seems to have failed."
 				      f"The error received was: {ReconnectStackInstances['ErrorMessage']}")
-				print(f"You'll have to resolve the issue that caused this problem, and then re-run this script using the recovery file.")
+				print(
+					f"You'll have to resolve the issue that caused this problem, and then re-run this script using the recovery file.")
 				Failure_GoToEnd = True
 				sys.exit(9)
 			StackReadyToImport = check_stack_set_status(aws_acct, pNewStackSet, ReconnectStackInstances['OperationId'])
@@ -1060,14 +1111,17 @@ if __name__ == '__main__':
 				sys.exit(f"There was a problem with importing the stack"
 				         f" instances into stackset {pNewStackSet}. Exiting...")
 			while StackReadyToImport['StackSetStatus'] in ['RUNNING', 'QUEUED']:
-				print(f"{ERASE_LINE}Waiting for {len(stack_ids_subset)} more instances of StackSet {pNewStackSet} to finish importing -",
-				      f"{sleep_interval * intervals_waited} seconds waited so far", end='\r')
+				print(
+					f"{ERASE_LINE}Waiting for {len(stack_ids_subset)} more instances of StackSet {pNewStackSet} to finish importing -",
+					f"{sleep_interval * intervals_waited} seconds waited so far", end='\r')
 				sleep(sleep_interval)
 				intervals_waited += 1
-				StackReadyToImport = check_stack_set_status(aws_acct, pNewStackSet, ReconnectStackInstances['OperationId'])
+				StackReadyToImport = check_stack_set_status(aws_acct, pNewStackSet,
+				                                            ReconnectStackInstances['OperationId'])
 				if not StackReadyToImport['Success']:
 					Failure_GoToEnd = True
-					sys.exit(f"There was a problem with importing the stack instances into stackset {pNewStackSet}. Exiting...")
+					sys.exit(
+						f"There was a problem with importing the stack instances into stackset {pNewStackSet}. Exiting...")
 			logging.info(f"{ERASE_LINE}That import took {intervals_waited * sleep_interval} seconds to complete")
 
 	else:  # Old Stackset doesn't exist - so there was a typo somewhere. Tell the user and exit
