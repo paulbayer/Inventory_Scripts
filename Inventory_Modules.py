@@ -1,6 +1,6 @@
 import logging
 
-__version__ = "2023.12.12"
+__version__ = "2024.02.27"
 
 """
 ** Why are some functions "function" vs. "function2" vs. "function3"?**
@@ -535,7 +535,7 @@ def get_child_access(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleList
 	return (account_credentials, return_string)
 
 
-def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=None):
+def get_child_access3(faws_acct, fChildAccount: str, fRegion: str = None, fRoleList: list = None):
 	"""
 	- faws_acct is a custom class (account_class.aws_acct_access)
 	- fChildAccount expects an AWS account number (ostensibly of a Child Account)
@@ -567,10 +567,12 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 		fChildAccount = str(fChildAccount)
 	org_type = faws_acct.AccountType
 	ParentAccountId = faws_acct.acct_number
-	sts_client = faws_acct.session.client('sts', region_name=fRegion)
+	if fRegion is None:
+		fRegion = 'us-east-1'
 	if fRoleList is None or fRoleList == []:
 		fRoleList = ['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution',
 		             'OrganizationAccountAccessRole', 'AdministratorAccess', 'Owner']
+	sts_client = faws_acct.session.client('sts', region_name=fRegion)
 	if fChildAccount == ParentAccountId:
 		explain_string = (f"We're trying to get access to either the Root Account (which we already have access "
 		                  f"to via the profile) or we're trying to gain access to a Standalone account. "
@@ -658,7 +660,7 @@ def get_child_access3(faws_acct, fChildAccount, fRegion='us-east-1', fRoleList=N
 	return (account_credentials)
 
 
-def enable_drift_on_stacks2(ocredentials, fRegion, fStackName):
+def enable_drift_on_stacks2(ocredentials:dict, fRegion:str, fStackName:str):
 	import boto3
 	import logging
 
@@ -668,6 +670,61 @@ def enable_drift_on_stacks2(ocredentials, fRegion, fStackName):
 	logging.info(f"Enabling drift detection on Stack {fStackName} in "
 	             f"Account {ocredentials['AccountNumber']} in region {fRegion}")
 	response = client_cfn.detect_stack_drift(StackName=fStackName)
+	return (response)  # Since this is an async process, there is no response to send back
+
+
+def enable_drift_on_stackset2(ocredentials: dict, fStackSetName: str):
+	"""
+	@param: ocredentials - dict object containing account information
+	@param: fStackSetName - string containing the stackset name we're going to look up
+	"""
+	import boto3
+	import logging
+	session_cfn = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
+	client_cfn = session_cfn.client('cloudformation')
+	logging.info(f"Enabling drift detection on Stack {fStackSetName} in "
+	             f"Account {ocredentials['AccountNumber']} in region {ocredentials['Region']}")
+	response = client_cfn.detect_stack_set_drift(StackSetName=fStackSetName,
+	                                             OperationPreferences={'RegionConcurrencyType'     : 'PARALLEL',
+	                                                                   'FailureTolerancePercentage': 10,
+	                                                                   'MaxConcurrentPercentage'   : 100},
+	                                             CallAs='SELF')
+	return (response)  # Since this is an async process, there is no response to send back
+
+
+def enable_drift_on_stackset3(faws_acct, fStackSetName: str):
+	"""
+	@param: ocredentials - dict object containing account information
+	@param: fStackSetName - string containing the stackset name we're going to look up
+	"""
+	import logging
+	from botocore.exceptions import ClientError
+
+	client_cfn = faws_acct.session.client('cloudformation')
+	logging.info(f"Enabling drift detection on Stack {fStackSetName} in "
+	             f"Account {faws_acct.acct_number} in region {faws_acct.Region}")
+	response = {'Success': False, 'ErrorMessage': ''}
+	try:
+		response = client_cfn.detect_stack_set_drift(StackSetName=fStackSetName,
+		                                             OperationPreferences={'RegionConcurrencyType'     : 'PARALLEL',
+		                                                                   'FailureTolerancePercentage': 10,
+		                                                                   'MaxConcurrentPercentage'   : 100},
+		                                             CallAs='SELF')
+		response.update({'Success': True, 'ErrorMessage': ''})
+	except ClientError as my_Error:
+		# Only worry about a specific service error code
+		if my_Error.response['Error']['Code'] == 'OperationInProgressException':
+			error_message = (f"Error: {my_Error}")
+			logging.error(error_message)
+			# raise
+			response.update({'ErrorMessage': error_message})
+	except Exception as my_Error:
+		error_message = (f"Error: {my_Error}")
+		logging.error(error_message)
+		response.update({'ErrorMessage': error_message})
 	return (response)  # Since this is an async process, there is no response to send back
 
 
@@ -2740,7 +2797,7 @@ def find_saml_components_in_acct2(ocredentials):
 	return (saml_providers)
 
 
-def find_stacksets2(ocredentials, fRegion='us-east-1', fStackFragment=None, fStatus=None):
+def find_stacksets2(ocredentials: dict, fRegion: str = 'us-east-1', fStackFragments: list = None, fStatus: str = None):
 	"""
 	credentials is a dictionary containing the credentials for a given account
 	fRegion is a string
@@ -2763,41 +2820,40 @@ def find_stacksets2(ocredentials, fRegion='us-east-1', fStackFragment=None, fSta
 	import boto3
 	import logging
 
-	logging.info(
-		f"Account ID: {ocredentials['AccountId']} | Region: {fRegion} | Fragment: {fStackFragment} | Status: {fStatus}")
-	session_aws = boto3.Session(region_name=fRegion,
+	logging.info(f"Account ID: {ocredentials['AccountId']} | Region: {ocredentials['Region']} | Fragment: {fStackFragments} | Status: {fStatus}")
+	session_aws = boto3.Session(region_name=ocredentials['Region'],
 	                            aws_access_key_id=ocredentials['AccessKeyId'],
 	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
 	                            aws_session_token=ocredentials['SessionToken'])
 	client_cfn = session_aws.client('cloudformation')
 	logging.info(f'Creds: {ocredentials}')
-	stacksets2 = []
-	# TODO: Need to enable paging here
 	if fStatus is None:
 		fStatus = 'Active'
-	if fStackFragment is None:
-		fStackFragment = ['all']
-	if fStatus.upper() == 'ACTIVE' or fStatus.upper() == 'DELETED':
-		logging.info(f"Looking for stack sets in account {ocredentials['AccountId']} matching fragment {fStackFragment} with status {fStatus}")
+	if fStackFragments is None:
+		fStackFragments = ['all']
+	stacksets2 = []
+	try:
+		logging.info(f"Looking for stack sets in account {ocredentials['AccountId']} matching fragment {fStackFragments} with status {fStatus}")
 		stacksets = client_cfn.list_stack_sets(Status=fStatus.upper())
 		stacksets2.extend(stacksets['Summaries'])
 		while 'NextToken' in stacksets.keys():
 			stacksets = client_cfn.list_stack_sets(Status=fStatus.upper())
 			stacksets2.extend(stacksets['Summaries'])
-	else:
+	except Exception as my_Error:
 		logging.error(f"fstatus is {fStatus}")
 		logging.error(f"A list of stacksets wasn't captured")
 		print("We shouldn't get to this point")
-	if 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment:
-		logging.info(f"Found all the stacksets in Account: {ocredentials['AccountNumber']} in Region: {fRegion}")
+		error_message = my_Error
+		logging.error(f"Error: {error_message}")
+	if ('all' in fStackFragments or 'ALL' in fStackFragments or 'All' in fStackFragments) and len(stacksets2) > 0 :
+		logging.info(f"Found all the stacksets in Account: {ocredentials['AccountNumber']} in Region: {ocredentials['Region']}")
 		return (stacksets2)
 	else:
 		stacksetsCopy = []
 		for stack in stacksets2:
-			for stackfrag in fStackFragment:
+			for stackfrag in fStackFragments:
 				if stackfrag in stack['StackSetName']:
-					logging.info(
-						f"Found stackset {stack['StackSetName']} in account: {ocredentials['AccountId']} in Region: {fRegion} with Fragment: {stackfrag}")
+					logging.info(f"Found stackset {stack['StackSetName']} in account: {ocredentials['AccountId']} in Region: {ocredentials['Region']} with Fragment: {stackfrag}")
 					stacksetsCopy.append(stack)
 	return (stacksetsCopy)
 
@@ -2856,7 +2912,7 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 								stack_set_operations = client_cfn.list_stack_set_operations(StackSetName=c_stackset['StackSetName'],
 								                                                            NextToken=stack_set_operations['NextToken'])
 								all_stack_set_operations.extend(stack_set_operations['Summaries'])
-						sorted_operations = sorted(all_stack_set_operations, key=lambda d: (d['Status'], d['EndTimestamp'] ), reverse=True)
+						sorted_operations = sorted(all_stack_set_operations, key=lambda d: (d['Status'], d['EndTimestamp']), reverse=True)
 						logging.info(f"Found {len(all_stack_set_operations)} operations within the StackSet {c_stackset}")
 						if len(sorted_operations) == 0:
 							operation_action = 'Never Run'

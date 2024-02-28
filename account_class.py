@@ -36,7 +36,7 @@ from json.decoder import JSONDecodeError
 import boto3
 from botocore.exceptions import ClientError, ConnectionError, CredentialRetrievalError, EndpointConnectionError, NoCredentialsError, ProfileNotFound, UnknownRegionError
 
-__version__ = "2024.02.02" # (again)
+__version__ = "2024.02.02"  # (again)
 
 
 def _validate_region(faws_prelim_session, fRegion=None):
@@ -213,6 +213,7 @@ class aws_acct_access:
 			                         'SecretAccessKey': self.creds[1],
 			                         'SessionToken'   : self.creds[2],
 			                         'AccountNumber'  : self.acct_number,
+			                         'AccountId'      : self.acct_number,
 			                         'MgmtAccount'    : self.MgmtAccount,
 			                         'Region'         : fRegion,
 			                         'Profile'        : fProfile if fProfile is not None else None})
