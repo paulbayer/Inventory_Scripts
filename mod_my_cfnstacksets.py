@@ -36,7 +36,7 @@ TODO:
 
 init()
 
-__version__ = "2024.02.14"
+__version__ = "2024.02.19"
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 sleep_interval = 5
