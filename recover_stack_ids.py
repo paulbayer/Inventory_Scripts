@@ -79,7 +79,7 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(fu
 def find_orphaned_stacks_within_child_accounts(faccounts:list=None):
 	item_counter = 0
 	# AccountCredentials =
-	for region in RegionList:
+	for region in RegionLiwwwst:
 		item_counter += 1
 		Stacks = []
 		try:
