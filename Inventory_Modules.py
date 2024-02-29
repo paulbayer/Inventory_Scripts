@@ -2864,6 +2864,8 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 	faws_acct is a class containing the account information
 	fRegion is a string
 	fStackFragment is a list of strings
+	fExact is a boolean to determine whether the fragment should represent the full name or just a fragment
+	fGetHealth is a flag to determine whether we get additional health information for the stackset
 
 	"""
 	# import logging
@@ -2880,7 +2882,7 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 		}
 	)
 
-	def get_stackset_operations_status(fStackSetsCopy: dict):
+	def get_stackset_attributes(fStackSetsCopy: dict):
 		"""
 		Description: To get the last operation's health status for the stackset
 		@param fStackSetList: The name of the stackset
@@ -2888,6 +2890,7 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 		"""
 		from threading import Thread
 		from queue import Queue
+		from datetime import datetime
 		class GetStackSetStatus(Thread):
 
 			def __init__(self, queue):
@@ -2900,7 +2903,6 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 					c_stackset, c_region, c_PlaceCount = self.queue.get()
 					logging.info(f"De-queued info for stack set name {c_stackset}")
 					try:
-						# TODO: Creating the list to delete this way prohibits this script from including stacksets that are already empty. This should be fixed.
 						client_cfn = faws_acct.session.client('cloudformation', config=my_config)
 						all_stack_set_operations = []
 						stack_set_operations = client_cfn.list_stack_set_operations(StackSetName=c_stackset['StackSetName'])
@@ -2912,7 +2914,16 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 								stack_set_operations = client_cfn.list_stack_set_operations(StackSetName=c_stackset['StackSetName'],
 								                                                            NextToken=stack_set_operations['NextToken'])
 								all_stack_set_operations.extend(stack_set_operations['Summaries'])
-						sorted_operations = sorted(all_stack_set_operations, key=lambda d: (d['Status'], d['EndTimestamp']), reverse=True)
+						all_stack_instances = []
+						number_of_stack_instances_dict = client_cfn.list_stack_instances(StackSetName=c_stackset['StackSetName'])
+						all_stack_instances.extend(number_of_stack_instances_dict['Summaries'])
+						if 'NextToken' in number_of_stack_instances_dict.keys():
+							while 'NextToken' in number_of_stack_instances_dict.keys():
+								number_of_stack_instances_dict = client_cfn.list_stack_set_operations(StackSetName=c_stackset['StackSetName'],
+								                                                                      NextToken=number_of_stack_instances_dict['NextToken'])
+								all_stack_instances.extend(number_of_stack_instances_dict['Summaries'])
+
+						sorted_operations = sorted(all_stack_set_operations, key=lambda d: (d['Status'], d.get('EndTimestamp', datetime.now())), reverse=True)
 						logging.info(f"Found {len(all_stack_set_operations)} operations within the StackSet {c_stackset}")
 						if len(sorted_operations) == 0:
 							operation_action = 'Never Run'
@@ -2921,15 +2932,17 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 							operation_id = 'Never Run'
 							# TODO: Replace this random date/time with something more interesting.
 							operation_end_timestamp = float(1707926400.668982)
+							number_of_stack_instances = len(all_stack_instances)
 						else:
 							operation_action = sorted_operations[0]['Action']
 							operation_status = sorted_operations[0]['Status']
 							operation_reason = sorted_operations[0]['StatusDetails']
 							operation_id = sorted_operations[0]['OperationId']
 							operation_end_timestamp = sorted_operations[0]['EndTimestamp']
+							number_of_stack_instances = len(all_stack_instances)
 						c_stackset.update({'Action'     : operation_action, 'Status': operation_status,
 						                   'Reason'     : operation_reason, 'EndTimestamp': operation_end_timestamp,
-						                   'OperationId': operation_id})
+						                   'OperationId': operation_id, 'Stack_Instances_number': number_of_stack_instances})
 					except ClientError as my_Error:
 						logging.error(f"Error: Likely throttling errors from too much activity")
 						logging.info(f"Actual Error: {my_Error}")
@@ -2943,7 +2956,8 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 		checkqueue = Queue()
 
 		PlaceCount = 0
-		WorkerThreads = min(len(fStackSetsCopy), 5)
+		WorkerThreads = min(len(fStackSetsCopy), 10)
+		logging.info(f"Using {WorkerThreads} threads")
 
 		for x in range(WorkerThreads):
 			worker = GetStackSetStatus(checkqueue)
@@ -2956,6 +2970,7 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 			try:
 				# I don't know why - but double parens are necessary below. If you remove them, only the first parameter is queued.
 				PlaceCount += 1
+				# print(".", end='')
 				checkqueue.put((stackset, fRegion, PlaceCount))
 			except ClientError as my_Error:
 				if str(my_Error).find("AuthFailure") > 0:
@@ -3002,8 +3017,7 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 	stacksetsCopy = []
 	# Because fStackFragment is a list, I need to write it this way
 	if 'all' in fStackFragmentList or 'ALL' in fStackFragmentList or 'All' in fStackFragmentList:
-		logging.info(
-			f"Found all the stacksets in account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragmentList}")
+		logging.info(f"Found all the stacksets in account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragmentList}")
 		stacksetsCopy = stacksets
 	else:
 		for stack in stacksets:
@@ -3019,7 +3033,7 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 						f"Found stackset {stack['StackSetName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fragment}")
 	stacksets_dict = {}
 	if fGetHealth:
-		updated_stacksets = get_stackset_operations_status(stacksetsCopy)
+		updated_stacksets = get_stackset_attributes(stacksetsCopy)
 	else:
 		updated_stacksets = stacksetsCopy
 	for stackset_name in updated_stacksets:
@@ -3860,7 +3874,7 @@ def display_results(results_list: list, fdisplay_dict: dict, defaultAction=None,
 				elif isinstance(result[field], datetime):
 					# Recognizes the field as a date, and finds the necessary amount of string space to show that date, and assigns the length to "needed_space"
 					# needed_space[field] = max(len(result[field]), len(datetime.now().strftime('%x %X')))
-					needed_space[field] = len(datetime.now().strftime('%x %X'))
+					needed_space[field] = max(len(datetime.now().strftime('%x %X')), len(value['Heading']))
 	except KeyError as my_Error:
 		logging.error(f"Error: {my_Error}")
 
