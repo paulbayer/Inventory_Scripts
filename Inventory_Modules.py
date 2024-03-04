@@ -2901,7 +2901,7 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 				while True:
 					# Get the work from the queue and expand the tuple
 					c_stackset, c_region, c_PlaceCount = self.queue.get()
-					logging.info(f"De-queued info for stack set name {c_stackset}")
+					logging.info(f"De-queued info for stack set name {c_stackset['StackSetName']}")
 					try:
 						client_cfn = faws_acct.session.client('cloudformation', config=my_config)
 						all_stack_set_operations = []
@@ -2924,7 +2924,7 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 								all_stack_instances.extend(number_of_stack_instances_dict['Summaries'])
 
 						sorted_operations = sorted(all_stack_set_operations, key=lambda d: (d['Status'], d.get('EndTimestamp', datetime.now())), reverse=True)
-						logging.info(f"Found {len(all_stack_set_operations)} operations within the StackSet {c_stackset}")
+						logging.info(f"Found {len(all_stack_set_operations)} operations within the StackSet {c_stackset['StackSetName']}")
 						if len(sorted_operations) == 0:
 							operation_action = 'Never Run'
 							operation_status = 'Never Run'

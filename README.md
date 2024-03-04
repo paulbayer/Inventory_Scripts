@@ -56,6 +56,10 @@ Purpose Built Scripts
   - I added visualizing the policies (both managed or unmanaged) as a parameter too. Use "--policy" to see the policies (default is to not show) and "--managed" to see even the Managed Policies (which really make the diagram tougher to read).
   - This script will require multi-threading to make the most sense, because for every account and OU, we need to do 4 additional calls to find the policies associated with that account. These could definitely be mult-threaded.
 
+- **enable_drift_detection_stacksets.py**
+  - This script's job is to go through all the stacksets you've asked it to (it takes stackset name fragments as parameters), and determine when the last time the stackset was drift-detected.
+  - If you don't specify, it can run the drift-detection for you. 
+
 - **find_my_LZ_versions.py**
   - I wrote this script because I've noticed that many customers find it difficult to find their own ALZ versions, and some customers have multiple Landing Zones (like me), so it makes it even harder to keep track. This script will take either a single profile, or the keyword "all" and determine whether your profile is the Management Account of a Landing Zone - or in the case of "all", go through all of your profiles and find those accounts which are Landing Zones roots, and tell you the version of the ALZ in that account.  
 

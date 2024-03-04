@@ -42,7 +42,7 @@ args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
 pRegionList = args.Regions
-pstackfrag = args.pstackfrag
+pstackfrag = args.pFragments
 pstatus = args.pstatus
 AccountsToSkip = args.pSkipAccounts
 verbose = args.loglevel
