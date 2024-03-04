@@ -309,7 +309,7 @@ if __name__ == '__main__':
 	else:
 		StackSetNamesThatNeededDriftDetection = [item['StackSetName'] for item in DriftDetectionNeededStacksets]
 		if verbose == logging.INFO:
-			print(f"The following stacksets haven't been updated in at least {pDaysSince}days, and therefore need to be updated:")
+			print(f"The following stacksets haven't been updated in at least {pDaysSince} days, and therefore need to be updated:")
 			for stackname in StackSetNamesThatNeededDriftDetection:
 				print(f"\t{stackname}")
 		ReallyDetectDrift = input(f"Do you want to enable drift detection on th{'is' if len(DriftDetectionNeededStacksets) == 1 else 'ese'} {len(DriftDetectionNeededStacksets)} stackset{' that is not' if len(DriftDetectionNeededStacksets) == 1 else 's that are not'} current? (y/n)") in ['Y', 'y']
