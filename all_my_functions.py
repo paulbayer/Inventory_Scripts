@@ -10,12 +10,12 @@ from queue import Queue
 from threading import Thread
 from time import time
 import sys
-import os
+from os.path import split
 
 import logging
 
 init()
-__version__ = "2024.02.02"
+__version__ = "2024.03.05"
 
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
@@ -27,7 +27,7 @@ begin_time = time()
 # Functions
 ##################
 def parse_args(args):
-	script_path, script_name = os.path.split(sys.argv[0])
+	script_path, script_name = split(sys.argv[0])
 	parser = CommonArguments()
 	parser.multiprofile()  # Allows for a single profile to be specified
 	parser.multiregion()  # Allows for multiple regions to be specified at the command line
