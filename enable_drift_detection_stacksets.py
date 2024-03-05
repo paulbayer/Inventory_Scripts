@@ -4,7 +4,7 @@
 import logging
 import sys
 from os.path import split
-from datetime import datetime, timedelta
+from datetime import datetime
 from botocore.exceptions import ClientError
 from time import time
 from colorama import Fore, init
@@ -18,6 +18,7 @@ init()
 __version__ = "2024.03.04"
 begin_time = time()
 sleep_interval = 5
+
 
 def parse_args(args):
 	script_path, script_name = split(sys.argv[0])
@@ -88,7 +89,7 @@ def setup_auth(fProfile: str) -> aws_acct_access:
 	return (aws_acct)
 
 
-def find_stack_sets(faws_acct: aws_acct_access, fStackSetFragmentlist: list = None, fExact: bool = False):
+def find_stack_sets(faws_acct: aws_acct_access, fStackSetFragmentlist: list = None, fExact: bool = False) -> dict:
 	if fStackSetFragmentlist is None:
 		fStackSetFragmentlist = ['all']
 	StackSets = {'Success': False, 'ErrorMessage': '', 'StackSets': {}}
@@ -269,11 +270,6 @@ if __name__ == '__main__':
 	# Setup the aws_acct object, and the list of Regions
 	aws_acct = setup_auth(pProfile)
 
-	# MgmtAccount = {'MgmtAccount'  : aws_acct.acct_number,
-	#                'AccountId'    : aws_acct.acct_number,
-	#                'AccountEmail' : aws_acct.MgmtEmail,
-	#                'AccountStatus': aws_acct.AccountStatus}
-
 	display_dict_stacksets = {'AccountNumber'            : {'DisplayOrder': 1, 'Heading': 'Acct Number'},
 	                          'Region'                   : {'DisplayOrder': 2, 'Heading': 'Region'},
 	                          'StackSetName'             : {'DisplayOrder': 3, 'Heading': 'Stack Set Name'},
@@ -287,7 +283,6 @@ if __name__ == '__main__':
 
 	# Find StackSets to operate on and get the last detection status
 	StackSets = find_stack_sets(aws_acct, pFragments, pExact)
-	# Determine whether we want to update this status or not -
 	StackSetsList = [item for key, item in StackSets['StackSets'].items()]
 	for item in StackSetsList:
 		item['AccountNumber'] = aws_acct.acct_number
