@@ -660,7 +660,7 @@ def get_child_access3(faws_acct, fChildAccount: str, fRegion: str = None, fRoleL
 	return (account_credentials)
 
 
-def enable_drift_on_stacks2(ocredentials:dict, fRegion:str, fStackName:str):
+def enable_drift_on_stacks2(ocredentials: dict, fRegion: str, fStackName: str):
 	import boto3
 	import logging
 
@@ -2427,9 +2427,9 @@ def find_stacks2(ocredentials: dict, fRegion: str, fStackFragment: list = None, 
 		desired_status = 'unknown'
 	if fStackFragment is None:
 		fStackFragment = ['all']
-	if isinstance(fStackFragment, str):
+	elif isinstance(fStackFragment, str):
 		fStackFragment = [fStackFragment]
-	logging.info(f"Acct ID #: {str(ocredentials['AccountNumber'])} | Region: {fRegion} | Fragment: {fStackFragment} | Status: {fStatus}")
+	logging.info(f"Acct ID #: {str(ocredentials['AccountNumber'])} | Region:  {fRegion} | Fragment: {fStackFragment} | Status: {fStatus}")
 	session_cfn = boto3.Session(region_name=fRegion,
 	                            aws_access_key_id=ocredentials['AccessKeyId'],
 	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
@@ -2437,11 +2437,16 @@ def find_stacks2(ocredentials: dict, fRegion: str, fStackFragment: list = None, 
 	client_cfn = session_cfn.client('cloudformation')
 	stacks = dict()
 	stacksCopy = []
+	allstacks = []
 	# For Active Stacks, where we *did* specify a fragment to find
 	if desired_status == 'active' and not ('all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment):
 		# Send back stacks that are active, check the fragment further down.
 		stacks = client_cfn.list_stacks(StackStatusFilter=fStatus)
-		for stack in stacks['StackSummaries']:
+		allstacks.extend(stacks['StackSummaries'])
+		while 'NextToken' in stacks.keys():
+			stacks = client_cfn.list_stacks(StackStatusFilter=fStatus, NextToken=stacks['NextToken'])
+			allstacks.extend(stacks['StackSummaries'])
+		for stack in allstacks:
 			for fragment in fStackFragment:
 				if fragment in stack['StackName']:
 					# Check the fragment now - only send back those that match
@@ -2455,7 +2460,8 @@ def find_stacks2(ocredentials: dict, fRegion: str, fStackFragment: list = None, 
 		stacks = client_cfn.list_stacks(StackStatusFilter=fStatus)
 		logging.info(f"Found {len(stacks['StackSummaries'])} stacks in Account: {ocredentials['AccountNumber']} in "
 		             f"Region: {fRegion} with status of {fStatus}")
-		return (stacks['StackSummaries'])
+		stacksCopy = stacks['StackSummaries']
+	# return (stacks['StackSummaries'])
 	# For all active stacks where we want all stacks
 	# TODO: This case will never be triggered, since "all" stacks will be covered by the case above.
 	elif ('all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment) and desired_status == 'active':
@@ -2496,6 +2502,10 @@ def find_stacks2(ocredentials: dict, fRegion: str, fStackFragment: list = None, 
 							logging.info(f"Found stack {stack['StackName']} in Account: {ocredentials['AccountNumber']}"
 							             f" in Region: {fRegion} with Fragment: {fragment} and Status: {fStatus}")
 							stacksCopy.append(stack)
+	for _ in stacksCopy:
+		_['Region'] = fRegion
+		_['AccountNumber'] = ocredentials['AccountNumber']
+		_['MgmtAccount'] = ocredentials['MgmtAccount']
 	return (stacksCopy)
 
 
@@ -2845,7 +2855,7 @@ def find_stacksets2(ocredentials: dict, fRegion: str = 'us-east-1', fStackFragme
 		print("We shouldn't get to this point")
 		error_message = my_Error
 		logging.error(f"Error: {error_message}")
-	if ('all' in fStackFragments or 'ALL' in fStackFragments or 'All' in fStackFragments) and len(stacksets2) > 0 :
+	if ('all' in fStackFragments or 'ALL' in fStackFragments or 'All' in fStackFragments) and len(stacksets2) > 0:
 		logging.info(f"Found all the stacksets in Account: {ocredentials['AccountNumber']} in Region: {ocredentials['Region']}")
 		return (stacksets2)
 	else:
@@ -2879,8 +2889,8 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 		retries={
 			'max_attempts': 6,
 			'mode'        : 'standard'
-		}
-	)
+			}
+		)
 
 	def get_stackset_attributes(fStackSetsCopy: dict):
 		"""
@@ -3140,12 +3150,13 @@ def find_stack_instances2(ocredentials, fRegion, fStackSetName, fStatus='CURRENT
 	return (stack_instances_list)
 
 
-def find_stack_instances3(faws_acct, fRegion, fStackSetName, fStatus='CURRENT'):
+def find_stack_instances3(faws_acct, fRegion:str, fStackSetName:str, fStatus:str='CURRENT', faccountlist:list=None, fregionlist:list=None):
 	"""
 	faws_acct is a custom class containing the credentials
 	fRegion is a string
 	fStackSetName is a string
 	fStatus is a string, but isn't currently used.
+	faccountlist is a list of accounts that we may filter on
 	TODO: Decide whether to use fStatus, or not
 	"""
 	import logging
@@ -3156,19 +3167,28 @@ def find_stack_instances3(faws_acct, fRegion, fStackSetName, fStatus='CURRENT'):
 		retries={
 			'max_attempts': 6,
 			'mode'        : 'standard'
-		}
-	)
-	logging.info(f"Account: {faws_acct.acct_number} | Region: {fRegion} | StackSetName: {fStackSetName}")
-	session_cfn = faws_acct.session
-	result = validate_region3(faws_acct, fRegion)
-	if not result['Success']:
-		return (result['Message'])
-	client_cfn = session_cfn.client('cloudformation', region_name=fRegion, config=config)
+			}
+		)
+	logging.info(f"Account: {faws_acct.acct_number} | Region: {fRegion} | StackSetName: {fStackSetName} | account list: {faccountlist}")
+	client_cfn = faws_acct.session.client('cloudformation', region_name=fRegion, config=config)
 	stack_instances = dict()
-	stack_instances_list = dict()
+	stack_instances_list = list()
 	try:
 		stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName)
-		stack_instances_list = stack_instances['Summaries']
+		if faccountlist is None and fregionlist is None:
+			stack_instances_list.extend(stack_instances['Summaries'])
+		elif fregionlist is None:
+			for stack_instance in stack_instances['Summaries']:
+					if stack_instance['Account'] in faccountlist:
+						stack_instances_list.append(stack_instance)
+		elif faccountlist is None:
+			for stack_instance in stack_instances['Summaries']:
+					if stack_instance['Region'] in fregionlist:
+						stack_instances_list.append(stack_instance)
+		else:
+			for stack_instance in stack_instances['Summaries']:
+					if stack_instance['Region'] in fregionlist and stack_instance['Account'] in faccountlist:
+						stack_instances_list.append(stack_instance)
 		logging.debug(f"Found {len(stack_instances_list)} instances in {fStackSetName}")
 	except ClientError as myError:
 		logging.debug(f"Debug Error: {myError}")
@@ -3180,7 +3200,20 @@ def find_stack_instances3(faws_acct, fRegion, fStackSetName, fStatus='CURRENT'):
 		try:
 			stack_instances = client_cfn.list_stack_instances(StackSetName=fStackSetName,
 			                                                  NextToken=stack_instances['NextToken'])
-			stack_instances_list.extend(stack_instances['Summaries'])
+			if faccountlist is None and fregionlist is None:
+				stack_instances_list.extend(stack_instances['Summaries'])
+			elif fregionlist is None:
+				for stack_instance in stack_instances['Summaries']:
+					if stack_instance['Account'] in faccountlist:
+						stack_instances_list.append(stack_instance)
+			elif faccountlist is None:
+				for stack_instance in stack_instances['Summaries']:
+					if stack_instance['Region'] in fregionlist:
+						stack_instances_list.append(stack_instance)
+			else:
+				for stack_instance in stack_instances['Summaries']:
+					if stack_instance['Region'] in fregionlist and stack_instance['Account'] in faccountlist:
+						stack_instances_list.append(stack_instance)
 		except ClientError as myError:
 			logging.debug(f"Debug Error: {myError}")
 			if myError.response['Error']['Code'] == 'LimitExceededException':
@@ -3253,7 +3286,7 @@ def delete_stack_instances3(faws_acct, fRegion, lRegions, fStackSetName, fRetain
 				                                                  'RegionConcurrencyType'     : 'PARALLEL',
 				                                                  'FailureTolerancePercentage': 0,
 				                                                  'MaxConcurrentPercentage'   : 100
-			                                                  },
+				                                                  },
 			                                                  OperationId=fOperationName))
 
 			return_response = {'Success': True, 'OperationId': response['OperationId']}
@@ -3266,7 +3299,7 @@ def delete_stack_instances3(faws_acct, fRegion, lRegions, fStackSetName, fRetain
 				                                                  'RegionConcurrencyType'     : 'PARALLEL',
 				                                                  'FailureTolerancePercentage': 0,
 				                                                  'MaxConcurrentPercentage'   : 100
-			                                                  },
+				                                                  },
 			                                                  OperationId=fOperationName))
 			return_response = {'Success': True, 'OperationId': response['OperationId']}
 	except client_cfn.exceptions.StackSetNotFoundException as myError:
