@@ -15,7 +15,7 @@ from Inventory_Modules import display_results
 from account_class import aws_acct_access
 
 init()
-__version__ = "2024.03.04"
+__version__ = "2024.03.06"
 begin_time = time()
 sleep_interval = 5
 
