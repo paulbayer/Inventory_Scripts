@@ -46,7 +46,6 @@ Purpose Built Scripts
 - **check_all_cloudtrail.py**
   - This script is used to find whether CloudTrail is enabled on every account and region and whether it's enabled at the Org level, or within the Account itself. It also will show a listing of those accounts and regions which DO NOT have CloudTrail enabled - this is important!!
 
-
 - **CT_CheckAccount.py**
   - This script takes an Organization Master Account profile, and checks additional accounts to see if they meet the pre-reqs to be "adopted" by Control Tower.
   - If there are blockers to the adoption (like the Config Recorder already being enabled), it can rectify those blockers it finds. However - to avoid mistakes - it only does this if you specifically select that in the submitted parameters. This script is still being worked on.
@@ -58,18 +57,24 @@ Purpose Built Scripts
 
 - **enable_drift_detection_stacksets.py**
   - This script's job is to go through all the stacksets you've asked it to (it takes stackset name fragments as parameters), and determine when the last time the stackset was drift-detected.
-  - If you don't specify, it can run the drift-detection for you. 
+  - If you don't want to be bothered to respond to a prompt, it can run the drift-detection for you. 
 
 - **find_my_LZ_versions.py**
   - I wrote this script because I've noticed that many customers find it difficult to find their own ALZ versions, and some customers have multiple Landing Zones (like me), so it makes it even harder to keep track. This script will take either a single profile, or the keyword "all" and determine whether your profile is the Management Account of a Landing Zone - or in the case of "all", go through all of your profiles and find those accounts which are Landing Zones roots, and tell you the version of the ALZ in that account.  
+
+- **find_orphaned_stacks.py**
+  - This script was created as a "belt and suspenders" to double-check if the "move_stack_instances" script fails in the middle. 
+  - The scenario would be that the "move" script had already disassociated stack-instances from the old stack-set, but hadn't yet begun to create the new stack-set. Therefore, the stack-instances were only available within the child accounts, and not visible from the Management Account. This "helper" script can be used to find any instances where the child stack is present in the child account, but NOT present in the management's stackset.
+  - As usual, this script is only non-intrusive, and doesn't make any changes.
+
+- **lock_down_stack_sets_role.py**
+  - I wrote this script to either lock or unlock the policy within child accounts after someone ran their ALZ tooling and locked things out.
 
 - **move_stack_instances.py**
   - In my work on migrating customer's from ALZ to ControlTower, I've found that many just need to move from ALZ-managed stacksets, to Control-Tower managed stacksets. I've written this script to be able to do that. Be careful tho - I've recently found that the CfCT pipeline REMOVES stack-instances that are not under Control Tower management, so this script should only be used in production with the full understanding and consent of a knowledgeable engineer who knows what they're doing.
   - To use this script, you'll want to supply the old stackset name and the new stackset name (which doesn't have to exist). This script takes the stack instances (optionally of only a specified account, so you can POC this script) and moves the underlying instances from one stackset to another.
   - It was brought to my attention that it's possible the child stack instances *could* have been changed since they were initially deployed, which means that the use of the same *template* within a CfCT pipeline could alter resources within a child account. My answer was to tell them to run a Drift-detection at the stackset level before running this code. They asked me to write it into this tool - so I did. Use "--drift-check" to enable that feature.
   - Since this script runs on the local machine, it's possible that something happens on the local machine that disturbs the script and causes it to fail or stop. In case that happens, there is a recovery file created during the run (without you doing anything) which can be referenced when the script is run again, and the script will pick up from where it left off when it stopped.
-  - **recover_stack_ids.py**
-    - This script was created to bail me out when the above script failed in the middle. It had already disassociated stack-instances from the old stack-set, but hadn't yet begun to create the new stack-set. Therefore, the stack-instances were only available within the child accounts, and not visible from the Management Account. This script recreated the file that held these stack-instances, so that the move_stack_instances.py could resume properly. Since that happened, I've embedded this behavior into the original script, but I've left this script around, in case it's useful in another similar situation.    
 
 - **put_s3_public_block.py**
   - I wrote this script because we all need a way to ensure that we're following Best Security practices, without **too** much actual work. Therefore - this script will take either a profile of an Organization (typical -p format), or just run it with no parameters, and it will find all your Orgs, and all the accounts within your orgs, and lock down all the S3 buckets in all your accounts for you. It runs in "Dry-Run" mode by default, but when you run it with "+n", it will actually make the changes to your S3 config, without prompting for each change, so watch out that you aren't running this in a Production Org where you NEED an S3 bucket to be open (rare).
@@ -89,11 +94,6 @@ Purpose Built Scripts
 - **UpdateRoleToMemberAccounts.py**
   - I wrote this script realizing that there's no easy way to "convert" an ALZ account over to the CT model, before you have the necessary "AWSControlTowerExecutionRole" created within the member/ child account. This script does that for you - when given the proper parameters. Perhaps I'll add a default method to the script when I can.
   - I updated this script to also allow "removal" of a rolename (assuming it's been setup with this script). This way, the script can be used and also "backed out" - since it doesn't offer much of a confirmation on changes.
-  
-- **UpdateStackSetFromAnother.py**
-  - I've had the issue very often, where I've wanted to copy a stackset's attributes (template, stack-instances, description, etc.) to another stackset. Sometimes this is for migrations, sometimes for testing. Either way - this script will do that for you.  
-
-
 
 Generic Scripts
 ------------------
@@ -106,13 +106,13 @@ Generic Scripts
 - **all_my_config_recorders_and_delivery_channels.py**
   - I wrote this script to help remove the Config Recorders and Delivery Channels for a given account, so that we could use this within the "adoption" of legacy accounts into the AWS Landing Zone.
   - Now that we have the ALZ_CheckAccount tool, I don't see a lot of use from this script, but it's complete - so why delete it?
-
-- **all_my_elbs.py**
-  - The objective of this script was to find all the various Load Balancers created in various accounts within your org.
-
+- **all_my_directories.py**
+  - There are a few tools you may try out which require you to create a directory in your account/ region. When you delete those tools (WorkSpaces), you sometimes forget to delete the directories you had to create as well. This tool will find and report on them for you.
 - **all_my_ebs_volumes.py**
   - The objective of this script was to find all the EBS volumes in various accounts within your org.
   - At the end, I tried to give a summary of any volumes that are unattached, so you can take proper action on those (which could be costing you money).
+- **all_my_elbs.py**
+  - The objective of this script was to find all the various Load Balancers created in various accounts within your org.
 
 - **all_my_enis.py**
   - This is a script to find devices across all of my Orgs when all I have is the public (or private) IP address. Having so many different accounts - regions and Orgs makes finding something a real pain in the butt.
@@ -161,7 +161,8 @@ Generic Scripts
   - The objective of this script is to allow the user to find all their subnets across their org, but ALSO to find a specific subnet that matches a provided IP address, to make it easier to find that account and region where that one IP is being used.
   - This is a READ-ONLY script, since there's likely no scenario where you want to delete subnets from your environment.
   - I have experimented with multi-threading in this script, and it seems to make a world of difference. As always - all comments are welcome!
-
+- **all_my_topics.py**
+  - Again - sometimes I create an SQS topic and I completely forget where I put it. This script will help you find it.
 - **all_my_vpcs.py**
   - The objective of this script is to find all the vpcs within your set of accounts - as determined by your Master Account's list of children.
   - You can also specify "--default" to limit your searching to only default VPCs.
@@ -258,6 +259,11 @@ all_my_saml_providers.py -v
 all_my_directories.py -v
 ```
 
+While it's normal for this script to find nothing, it's very illuminating if it *does* find something... 
+```commandline
+find_orphaned_stacks.py --filename Drift_Detection -v 
+```
+
 The following scripts will just show very useful Inventory information that will help the Discovery process flesh out its understanding of the customer's environment.
 ```commandline
 all_my_vpcs.py -v
@@ -273,4 +279,3 @@ ALZ used Service Catalog to create and manage accounts. It's important that thes
 ```commandline
 SC_Products_to_CFN_Stacks.py -v --timing
 ```
-

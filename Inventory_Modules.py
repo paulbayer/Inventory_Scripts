@@ -2924,7 +2924,7 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 		checkqueue = Queue()
 
 		PlaceCount = 0
-		WorkerThreads = min(len(fStackSetsCopy), 10)
+		WorkerThreads = min(len(fStackSetsCopy), 8)
 		logging.info(f"Using {WorkerThreads} threads")
 
 		for x in range(WorkerThreads):
@@ -3797,7 +3797,7 @@ def get_region_azs2(ocredentials):
 ############
 
 
-def display_results(results_list: list, fdisplay_dict: dict, defaultAction=None, file_to_save: str = None):
+def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_to_save: str = None):
 	from colorama import init, Fore
 	from datetime import datetime
 
@@ -3823,122 +3823,249 @@ def display_results(results_list: list, fdisplay_dict: dict, defaultAction=None,
 		Enhancements:
 			- How to create a break between rows, like after every account, or Management Org, or region, or whatever...  
 	"""
-	# If no results were passed, print nothing and just return
-	if len(results_list) == 0:
-		logging.warning("There were no results passed in to display")
-		return ()
 
-	# TODO:
-	# 	Probably have to do a pre-emptive error-check to ensure the SortOrder is unique within the Dictionary
-	# 	Also need to enclose this whole thing in a try...except to trap errors.
-	# 	Also need to find a way to order the data within this function.
+	def handle_list():
+		# If no results were passed, print nothing and just return
+		if len(results_list) == 0:
+			logging.warning("There were no results passed in to display")
+			return ()
 
-	sorted_display_dict = dict(sorted(fdisplay_dict.items(), key=lambda x: x[1]['DisplayOrder']))
+		# TODO:
+		# 	Probably have to do a pre-emptive error-check to ensure the SortOrder is unique within the Dictionary
+		# 	Also need to enclose this whole thing in a try...except to trap errors.
+		# 	Also need to find a way to order the data within this function.
 
-	# This is an effort to find the right size spaces for the dictionary to properly show the results
-	print()
-	needed_space = {}
-	for field, value in sorted_display_dict.items():
-		needed_space[field] = 0
-	try:
+		sorted_display_dict = dict(sorted(fdisplay_dict.items(), key=lambda x: x[1]['DisplayOrder']))
+
+		# This is an effort to find the right size spaces for the dictionary to properly show the results
+		print()
+		needed_space = {}
+		for field, value in sorted_display_dict.items():
+			needed_space[field] = 0
+		try:
+			for result in results_list:
+				for field, value in sorted_display_dict.items():
+					if field not in result:
+						needed_space[field] = max(len(value['Heading']), needed_space[field])
+						continue
+					elif isinstance(result[field], bool):
+						# Recognizes the field as a Boolean, and finds the necessary amount of space to show that data, and assigns the length to "needed_space"
+						# I use "5" as the minimum space, to show that displaying "False" would take up 5 spaces...
+						needed_space[field] = max(5, len(value['Heading']), needed_space[field])
+					elif isinstance(result[field], int):
+						# This section is to compensate for the fact that the len of numbers in string format doesn't include the commas.
+						# I know - I've been very US-centric here, since I haven't figured out how to achieve this in a locale-agnostic way
+						num_width = len(str(result[field]))
+						if len(str(result[field])) % 3 == 0:
+							num_width += (len(str(result[field])) // 3) - 1
+						else:
+							num_width += len(str(result[field])) // 3
+						needed_space[field] = max(num_width, len(value['Heading']), needed_space[field])
+					elif isinstance(result[field], str):
+						# Recognizes the field as a string, and finds the necessary amount of space to show that data, and assigns the length to "needed_space"
+						needed_space[field] = max(len(result[field]), len(value['Heading']), needed_space[field])
+					elif isinstance(result[field], datetime):
+						# Recognizes the field as a date, and finds the necessary amount of string space to show that date, and assigns the length to "needed_space"
+						# needed_space[field] = max(len(result[field]), len(datetime.now().strftime('%x %X')))
+						needed_space[field] = max(len(datetime.now().strftime('%x %X')), len(value['Heading']))
+		except KeyError as my_Error:
+			logging.error(f"Error: {my_Error}")
+
+		# This writes out the headings
+		for field, value in sorted_display_dict.items():
+			header_format = needed_space[field]
+			print(f"{value['Heading']:{header_format}s} ", end='')
+		print()
+		# This writes out the dashes (separators)
+		for field, value in sorted_display_dict.items():
+			repeatvalue = needed_space[field]
+			print(f"{'-' * repeatvalue} ", end='')
+		print()
+
+		# This writes out the data
 		for result in results_list:
 			for field, value in sorted_display_dict.items():
-				if field not in result:
-					needed_space[field] = max(len(value['Heading']), needed_space[field])
-					continue
-				elif isinstance(result[field], bool):
-					# Recognizes the field as a Boolean, and finds the necessary amount of space to show that data, and assigns the length to "needed_space"
-					# I use "5" as the minimum space, to show that displaying "False" would take up 5 spaces...
-					needed_space[field] = max(5, len(value['Heading']), needed_space[field])
-				elif isinstance(result[field], int):
-					# This section is to compensate for the fact that the len of numbers in string format doesn't include the commas.
-					# I know - I've been very US-centric here, since I haven't figured out how to achieve this in a locale-agnostic way
-					num_width = len(str(result[field]))
-					if len(str(result[field])) % 3 == 0:
-						num_width += (len(str(result[field])) // 3) - 1
-					else:
-						num_width += len(str(result[field])) // 3
-					needed_space[field] = max(num_width, len(value['Heading']), needed_space[field])
+				# This assigns the proper space for the output
+				data_format = needed_space[field]
+				if field not in result.keys():
+					result[field] = defaultAction
+				# This allows for a condition to highlight a specific value
+				highlight = False
+				if 'Condition' in value and result[field] in value['Condition']:
+					highlight = True
+				if result[field] is None:
+					print(f"{'':{data_format}} ", end='')
 				elif isinstance(result[field], str):
-					# Recognizes the field as a string, and finds the necessary amount of space to show that data, and assigns the length to "needed_space"
-					needed_space[field] = max(len(result[field]), len(value['Heading']), needed_space[field])
+					print(f"{Fore.RED if highlight else ''}{result[field]:{data_format}s}{Fore.RESET if highlight else ''} ", end='')
+				elif isinstance(result[field], bool):
+					# This is needed, otherwise it prints "0" for False and "1" for True... Essentially treating the bool like an integer.
+					if result[field]:
+						display_text = 'True'
+					else:
+						display_text = 'False'
+					print(f"{Fore.RED if highlight else ''}{display_text:{data_format}s}{Fore.RESET if highlight else ''} ", end='')
+				elif isinstance(result[field], int):
+					print(f"{Fore.RED if highlight else ''}{result[field]:<{data_format},}{Fore.RESET if highlight else ''} ", end='')
+				elif isinstance(result[field], float):
+					print(f"{Fore.RED if highlight else ''}{result[field]:{data_format}f}{Fore.RESET if highlight else ''} ", end='')
 				elif isinstance(result[field], datetime):
-					# Recognizes the field as a date, and finds the necessary amount of string space to show that date, and assigns the length to "needed_space"
-					# needed_space[field] = max(len(result[field]), len(datetime.now().strftime('%x %X')))
-					needed_space[field] = max(len(datetime.now().strftime('%x %X')), len(value['Heading']))
-	except KeyError as my_Error:
-		logging.error(f"Error: {my_Error}")
-
-	# This writes out the headings
-	for field, value in sorted_display_dict.items():
-		header_format = needed_space[field]
-		print(f"{value['Heading']:{header_format}s} ", end='')
-	print()
-	# This writes out the dashes (separators)
-	for field, value in sorted_display_dict.items():
-		repeatvalue = needed_space[field]
-		print(f"{'-' * repeatvalue} ", end='')
-	print()
-
-	# This writes out the data
-	for result in results_list:
-		for field, value in sorted_display_dict.items():
-			# This assigns the proper space for the output
-			data_format = needed_space[field]
-			if field not in result.keys():
-				result[field] = defaultAction
-			# This allows for a condition to highlight a specific value
-			highlight = False
-			if 'Condition' in value and result[field] in value['Condition']:
-				highlight = True
-			if result[field] is None:
-				print(f"{'':{data_format}} ", end='')
-			elif isinstance(result[field], str):
-				print(f"{Fore.RED if highlight else ''}{result[field]:{data_format}s}{Fore.RESET if highlight else ''} ", end='')
-			elif isinstance(result[field], bool):
-				# This is needed, otherwise it prints "0" for False and "1" for True... Essentially treating the bool like an integer.
-				if result[field]:
-					display_text = 'True'
-				else:
-					display_text = 'False'
-				print(f"{Fore.RED if highlight else ''}{display_text:{data_format}s}{Fore.RESET if highlight else ''} ", end='')
-			elif isinstance(result[field], int):
-				print(f"{Fore.RED if highlight else ''}{result[field]:<{data_format},}{Fore.RESET if highlight else ''} ", end='')
-			elif isinstance(result[field], float):
-				print(f"{Fore.RED if highlight else ''}{result[field]:{data_format}f}{Fore.RESET if highlight else ''} ", end='')
-			elif isinstance(result[field], datetime):
-				print(f"{Fore.RED if highlight else ''}{result[field].strftime('%x %X')}{Fore.RESET if highlight else ''} ", end='')
-		print()  # This is the end of line character needed at the end of every line
-	print()  # This is the new line needed at the end of the script.
-	# TODO: We need to add some analytics here... Trying to come up with what would make sense across all displays.
-	#   Possibly we can have a setting where this data is written to a csv locally. We could create separate analytics once the data was saved.
-	if file_to_save is not None:
-		Heading = ''
-		my_filename = f'{file_to_save}-{datetime.now().strftime("%y-%m-%d--%H-%M-%S")}'
-		logging.info(f"Writing your data to: {my_filename}")
-		with open(my_filename, 'w') as savefile:
-			for field, value in sorted_display_dict.items():
-				Heading += f"{value['Heading']}|"
-			Heading += '\n'
-			savefile.write(Heading)
-			for result in results_list:
-				row = ''
+					print(f"{Fore.RED if highlight else ''}{result[field].strftime('%x %X')}{Fore.RESET if highlight else ''} ", end='')
+			print()  # This is the end of line character needed at the end of every line
+		print()  # This is the new line needed at the end of the script.
+		# TODO: We need to add some analytics here... Trying to come up with what would make sense across all displays.
+		#   Possibly we can have a setting where this data is written to a csv locally. We could create separate analytics once the data was saved.
+		if file_to_save is not None:
+			Heading = ''
+			my_filename = f'{file_to_save}-{datetime.now().strftime("%y-%m-%d--%H-%M-%S")}'
+			logging.info(f"Writing your data to: {my_filename}")
+			with open(my_filename, 'w') as savefile:
 				for field, value in sorted_display_dict.items():
-					data_format = 0
-					if field not in result.keys():
-						result[field] = defaultAction
-					if result[field] is None:
-						row += "|"
-					elif isinstance(result[field], str):
-						row += f"{result[field]:{data_format}s}|"
-					elif isinstance(result[field], int):
-						row += f"{result[field]:<{data_format},}|"
-					elif isinstance(result[field], float):
-						row += f"{result[field]:{data_format}f}|"
-				row += '\n'
-				savefile.write(row)
-		print(f"\nData written to {my_filename}\n")
+					Heading += f"{value['Heading']}|"
+				Heading += '\n'
+				savefile.write(Heading)
+				for result in results_list:
+					row = ''
+					for field, value in sorted_display_dict.items():
+						data_format = 0
+						if field not in result.keys():
+							result[field] = defaultAction
+						if result[field] is None:
+							row += "|"
+						elif isinstance(result[field], str):
+							row += f"{result[field]:{data_format}s}|"
+						elif isinstance(result[field], int):
+							row += f"{result[field]:<{data_format},}|"
+						elif isinstance(result[field], float):
+							row += f"{result[field]:{data_format}f}|"
+					row += '\n'
+					savefile.write(row)
+			print(f"\nData written to {my_filename}\n")
 
+	def handle_dict():
+		# If no results were passed, print nothing and just return
+		if len(results_list) == 0:
+			logging.warning("There were no results passed in to display")
+			return ()
+
+		# TODO:
+		# 	Probably have to do a pre-emptive error-check to ensure the SortOrder is unique within the Dictionary
+		# 	Also need to enclose this whole thing in a try...except to trap errors.
+		# 	Also need to find a way to order the data within this function.
+
+		sorted_display_dict = dict(sorted(fdisplay_dict.items(), key=lambda x: x[1]['DisplayOrder']))
+
+		# This is an effort to find the right size spaces for the dictionary to properly show the results
+		print()
+		needed_space = {}
+		for field, value in sorted_display_dict.items():
+			needed_space[field] = 0
+		try:
+			for row,row_data in results_list.items():
+				for field, value in sorted_display_dict.items():
+					if field == row:
+						needed_space[field] = max(len(value['Heading']), needed_space[field])
+						continue
+					elif field not in row_data.keys():
+						needed_space[field] = max(len(value['Heading']), needed_space[field])
+						continue
+					elif isinstance(row_data[field], bool):
+						# Recognizes the field as a Boolean, and finds the necessary amount of space to show that data, and assigns the length to "needed_space"
+						# I use "5" as the minimum space, to show that displaying "False" would take up 5 spaces...
+						needed_space[field] = max(5, len(value['Heading']), needed_space[field])
+					elif isinstance(row_data[field], int):
+						# This section is to compensate for the fact that the len of numbers in string format doesn't include the commas.
+						# I know - I've been very US-centric here, since I haven't figured out how to achieve this in a locale-agnostic way
+						num_width = len(str(row_data[field]))
+						if len(str(row_data[field])) % 3 == 0:
+							num_width += (len(str(row_data[field])) // 3) - 1
+						else:
+							num_width += len(str(row_data[field])) // 3
+						needed_space[field] = max(num_width, len(value['Heading']), needed_space[field])
+					elif isinstance(row_data[field], str):
+						# Recognizes the field as a string, and finds the necessary amount of space to show that data, and assigns the length to "needed_space"
+						needed_space[field] = max(len(row_data[field]), len(value['Heading']), needed_space[field])
+					elif isinstance(row_data[field], datetime):
+						# Recognizes the field as a date, and finds the necessary amount of string space to show that date, and assigns the length to "needed_space"
+						# needed_space[field] = max(len(result[field]), len(datetime.now().strftime('%x %X')))
+						needed_space[field] = max(len(datetime.now().strftime('%x %X')), len(value['Heading']))
+		except KeyError as my_Error:
+			logging.error(f"Error: {my_Error}")
+
+		# This writes out the headings
+		for field, value in sorted_display_dict.items():
+			header_format = needed_space[field]
+			print(f"{value['Heading']:{header_format}s} ", end='')
+		print()
+		# This writes out the dashes (separators)
+		for field, value in sorted_display_dict.items():
+			repeatvalue = needed_space[field]
+			print(f"{'-' * repeatvalue} ", end='')
+		print()
+
+		# This writes out the data
+		for row,row_data in results_list.items():
+			for field, value in sorted_display_dict.items():
+				# This assigns the proper space for the output
+				data_format = needed_space[field]
+				if field not in row_data.keys():
+					row_data[field] = defaultAction
+				# This allows for a condition to highlight a specific value
+				highlight = False
+				if 'Condition' in value and row_data[field] in value['Condition']:
+					highlight = True
+				if row_data[field] is None:
+					print(f"{'':{data_format}} ", end='')
+				elif isinstance(row_data[field], str):
+					print(f"{Fore.RED if highlight else ''}{row_data[field]:{data_format}s}{Fore.RESET if highlight else ''} ", end='')
+				elif isinstance(row_data[field], bool):
+					# This is needed, otherwise it prints "0" for False and "1" for True... Essentially treating the bool like an integer.
+					if row_data[field]:
+						display_text = 'True'
+					else:
+						display_text = 'False'
+					print(f"{Fore.RED if highlight else ''}{display_text:{data_format}s}{Fore.RESET if highlight else ''} ", end='')
+				elif isinstance(row_data[field], int):
+					print(f"{Fore.RED if highlight else ''}{row_data[field]:<{data_format},}{Fore.RESET if highlight else ''} ", end='')
+				elif isinstance(row_data[field], float):
+					print(f"{Fore.RED if highlight else ''}{row_data[field]:{data_format}f}{Fore.RESET if highlight else ''} ", end='')
+				elif isinstance(row_data[field], datetime):
+					print(f"{Fore.RED if highlight else ''}{row_data[field].strftime('%x %X')}{Fore.RESET if highlight else ''} ", end='')
+			print()  # This is the end of line character needed at the end of every line
+		print()  # This is the new line needed at the end of the script.
+		# TODO: We need to add some analytics here... Trying to come up with what would make sense across all displays.
+		#   Possibly we can have a setting where this data is written to a csv locally. We could create separate analytics once the data was saved.
+		if file_to_save is not None:
+			Heading = ''
+			my_filename = f'{file_to_save}-{datetime.now().strftime("%y-%m-%d--%H-%M-%S")}'
+			logging.info(f"Writing your data to: {my_filename}")
+			with open(my_filename, 'w') as savefile:
+				for field, value in sorted_display_dict.items():
+					Heading += f"{value['Heading']}|"
+				Heading += '\n'
+				savefile.write(Heading)
+				for row, row_data in results_list.items():
+					row = ''
+					for field, value in sorted_display_dict.items():
+						data_format = 0
+						if field not in row_data.keys():
+							row_data[field] = defaultAction
+						if row_data[field] is None:
+							row += "|"
+						elif isinstance(row_data[field], str):
+							row += f"{row_data[field]:{data_format}s}|"
+						elif isinstance(row_data[field], int):
+							row += f"{row_data[field]:<{data_format},}|"
+						elif isinstance(row_data[field], float):
+							row += f"{row_data[field]:{data_format}f}|"
+					row += '\n'
+					savefile.write(row)
+			print(f"\nData written to {my_filename}\n")
+
+
+	if isinstance(results_list, list):
+		handle_list()
+	elif isinstance(results_list, dict):
+		handle_dict()
 
 def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProfiles: list = None, fSkipAccounts: list = None, fRootOnly: bool = False, fAccounts: list = None, fRegionList: list = None, RoleList: list = None) -> list:
 	"""

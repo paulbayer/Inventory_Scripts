@@ -289,7 +289,7 @@ if __name__ == '__main__':
 		item['Region'] = aws_acct.Region
 	sorted_all_stacksets = sorted(StackSetsList, key=lambda x: (x['StackSetName']))
 	for item in sorted_all_stacksets:
-		if ('LastDriftCheckTimestamp' not in item.keys() or not days_between_dates(item['LastDriftCheckTimestamp'], pDaysSince)['Current']) and item['Stack_Instances_number'] > 0:
+		if ('LastDriftCheckTimestamp' not in item.keys() or not days_between_dates(item['LastDriftCheckTimestamp'], pDaysSince)['Current']) and item.get('Stack_Instances_number',0) > 0:
 			item['NeedsDriftDetectionUpdate'] = True
 		else:
 			item['NeedsDriftDetectionUpdate'] = False
