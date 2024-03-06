@@ -58,7 +58,7 @@ def parse_args(args):
 		metavar="region-name",
 		dest="pRegionList")
 
-	return (parser.my_parser.parse_args(args))
+	return parser.my_parser.parse_args(args)
 
 
 def print_timings(fTiming: bool = False, fverbose: int = 50, fmessage: str = None):
