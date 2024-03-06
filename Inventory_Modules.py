@@ -2400,6 +2400,15 @@ def find_stacks2(ocredentials: dict, fRegion: str, fStackFragment: list = None, 
 
 	import boto3
 	import logging
+	from botocore.config import Config
+
+	my_config = Config(
+		signature_version='v4',
+		retries={
+			'max_attempts': 6,
+			'mode'        : 'standard'
+			}
+		)
 
 	if fStatus is None:
 		fStatus = ['active']
@@ -2434,7 +2443,7 @@ def find_stacks2(ocredentials: dict, fRegion: str, fStackFragment: list = None, 
 	                            aws_access_key_id=ocredentials['AccessKeyId'],
 	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
 	                            aws_session_token=ocredentials['SessionToken'])
-	client_cfn = session_cfn.client('cloudformation')
+	client_cfn = session_cfn.client('cloudformation', config=my_config)
 	stacks = dict()
 	stacksCopy = []
 	allstacks = []
@@ -2509,19 +2518,11 @@ def find_stacks2(ocredentials: dict, fRegion: str, fStackFragment: list = None, 
 	return (stacksCopy)
 
 
-def find_stacks3(faws_acct, fRegion, fStackFragment="all", fStatus="active"):
+def find_stacks3(faws_acct, fRegion:str, fStackFragment:list=None):
 	"""
 	fProfile refers to the name of the profile you're connecting to:
-	fRegion refers to  the region you're connecting to
+	fRegion refers to the region you're connecting to
 	fStackFragment is a string fragment to match to filter stacks by name
-	fStatus is a string describing the status of the stacks you want to find
-
-	There should be (4) use-cases here:
-	1. All active stacks, but only the ones that match the fragment sent via parameter.
-	2. All active stacks, regardless of name or status. For that - you could supply only the first two parameters
-	3. All stacks, regardless of name or status. Only the stacks that match the status you've provided.
-		For that - you would provide 'all' as the 3rd parameter and 4th parameter.
-	4. Only those stacks that match the string fragment you've sent, and that match the status you've sent.
 
 	Returns a dict that looks like this:
 		'StackId':
@@ -2548,88 +2549,45 @@ def find_stacks3(faws_acct, fRegion, fStackFragment="all", fStatus="active"):
 
 	"""
 	import logging
+	from botocore.config import Config
 
-	logging.info(
-		f"Account Number: {faws_acct.acct_number} | Region: {fRegion} | Fragment: {fStackFragment} | Status: {fStatus}")
-	client_cfn = faws_acct.session.client('cloudformation')
+	my_config = Config(
+		signature_version='v4',
+		retries={
+			'max_attempts': 6,
+			'mode'        : 'standard'
+			}
+		)
+
+	logging.info(f"Account Number: {faws_acct.acct_number} | Region: {fRegion} | Fragment: {fStackFragment}")
+	client_cfn = faws_acct.session.client('cloudformation', config=my_config, region_name=fRegion)
+	if fStackFragment is None:
+		fStackFragment = ['all']
+	elif isinstance(fStackFragment, str):
+		fStackFragment = [fStackFragment]
 	response = client_cfn.describe_stacks()
 	AllStacks = response['Stacks']
-	logging.info("Found %s stacks this time around", len(response['Stacks']))
+	logging.info(f"Found {len(response['Stacks'])} stacks this time around")
 	while 'NextToken' in response.keys():
 		response = client_cfn.describe_stacks(NextToken=response['NextToken'])
 		AllStacks.extend(response['Stacks'])
-		logging.info(f"Found {len(response['Stacks'])} stacks this time around")
+		logging.info(f"Found {len(response['Stacks'])} more stacks this time around")
 	logging.info(f"Done with loops and found a total of {len(AllStacks)} stacks")
-	stacksCopy = []
-	stacks = dict()
-	if fStatus.lower() == 'active' and not fStackFragment.lower() == 'all':
-		# Send back stacks that are active, check the fragment further down.
-		# stacks = client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE", "DELETE_FAILED", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE", "DELETE_IN_PROGRESS"])
-		logging.info("1 - Found %s stacks. Looking for fragment %s", len(AllStacks), fStackFragment)
+	AllStacks2 = []
+	TheyWantEverything = 'all' in fStackFragment or 'ALL' in fStackFragment or 'All' in fStackFragment
+
+	if TheyWantEverything:
+		logging.info(f"All stacks requested - so all stacks being returned...")
+		return(AllStacks)
+	else:
+		logging.info(f"Found {len(AllStacks)} stacks. Looking for fragment {fStackFragment}")
 		for stack in AllStacks:
-			if fStackFragment in stack['StackName']:
-				# Check the fragment now - only send back those that match
-				logging.info(
-					f"Found stack {stack['StackName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragment} and Status: {fStatus}")
-				stacksCopy.append(stack)
-	elif fStatus.lower() == 'active' and fStackFragment.lower() == 'all':
-		# Send back all stacks regardless of fragment, check the status further down.
-		# TODO: This section needs paging
-		stacks = client_cfn.list_stacks(StackStatusFilter=["CREATE_COMPLETE", "DELETE_FAILED", "UPDATE_COMPLETE",
-		                                                   "UPDATE_ROLLBACK_COMPLETE"])
-		logging.info("2 - Found ALL %s stacks in 'active' status.", len(stacks['StackSummaries']))
-		for stack in stacks['StackSummaries']:
-			# if fStatus in stack['StackStatus']:
-			# Check the status now - only send back those that match a single status
-			# I don't see this happening unless someone wants Stacks in a "Deleted" or "Rollback" type status
-			logging.info(f"Found stack {stack['StackName']} in Account: {faws_acct.acct_number} in Region: {fRegion} regardless of fragment and Status: {fStatus}")
-			stacksCopy.append(stack)
-	elif fStatus.lower() == 'all' and fStackFragment.lower() == 'all':
-		# Send back all stacks.
-		# TODO: Need paging here
-		stacks = client_cfn.list_stacks()
-		logging.info(f"3 - Found ALL {len(stacks['StackSummaries'])} stacks in ALL statuses")
-		return (stacks['StackSummaries'])
-	elif not fStatus.lower() == 'active':
-		try:
-			# TODO: Need paging here
-			stacks = client_cfn.list_stacks()
-			# TODO: The logic in this script to actually filter on the status is missing.
-			# stacks = client_cfn.list_stacks(stackstatusfilter = [''])
-			# The valid parameters to use here:
-			# StackStatusFilter = [
-			#   'CREATE_IN_PROGRESS'
-			# | 'CREATE_FAILED'
-			# | 'CREATE_COMPLETE'
-			# | 'ROLLBACK_IN_PROGRESS'
-			# | 'ROLLBACK_FAILED'
-			# | 'ROLLBACK_COMPLETE'
-			# | 'DELETE_IN_PROGRESS'
-			# | 'DELETE_FAILED'
-			# | 'DELETE_COMPLETE'
-			# | 'UPDATE_IN_PROGRESS'
-			# | 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS'
-			# | 'UPDATE_COMPLETE'
-			# | 'UPDATE_ROLLBACK_IN_PROGRESS'
-			# | 'UPDATE_ROLLBACK_FAILED'
-			# | 'UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS'
-			# | 'UPDATE_ROLLBACK_COMPLETE'
-			# | 'REVIEW_IN_PROGRESS'
-			# | 'IMPORT_IN_PROGRESS'
-			# | 'IMPORT_COMPLETE'
-			# | 'IMPORT_ROLLBACK_IN_PROGRESS'
-			# | 'IMPORT_ROLLBACK_FAILED'
-			# | 'IMPORT_ROLLBACK_COMPLETE', ]
-			logging.info("4 - Found %s stacks ", len(stacks['StackSummaries']))
-		except Exception as e:
-			print(e)
-		if 'StackSummaries' in stacks.keys():
-			for stack in stacks['StackSummaries']:
-				if fStackFragment in stack['StackName']:
-					# Check the fragment now - only send back those that match
-					logging.info(f"Found stack {stack['StackName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with fragment {fStackFragment} and Status: {stack['StackStatus']}")
-					stacksCopy.append(stack)
-	return (stacksCopy)
+			# Check the fragment now - only send back those that match
+			for fragment in fStackFragment:
+				if stack['StackName'].find(fragment) > -1:
+					logging.info(f"Found stack {stack['StackName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fragment}")
+					AllStacks2.append(stack)
+		return (AllStacks2)
 
 
 def delete_stack(fprofile, fRegion, fStackName, **kwargs):
