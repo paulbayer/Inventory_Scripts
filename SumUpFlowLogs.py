@@ -279,12 +279,17 @@ def query_cloudwatch_logs(f_queries: list, f_start: datetime, f_end: datetime) -
 			f_end = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
 		logging.debug(f"About to start the query for {query['LogGroupName']} with retention of {log_group_retention['logGroups'][0]['retentionInDays']} days, with start of {f_start} and end of {f_end}.")
 		logging.debug(f"Query: {query['Query']}")
-		query_id = client_logs.start_query(logGroupName=query['LogGroupName'],
+		try:
+			query_id = client_logs.start_query(logGroupName=query['LogGroupName'],
 		                                   startTime=int(f_start.strftime('%s')),
 		                                   endTime=int(f_end.strftime('%s')),
 		                                   queryString=query['Query'])
-		new_record.update({'QueryId': query_id['queryId'], 'StartDate': f_start, 'EndDate': f_end, 'Days': (f_end - f_start).days})
-		all_query_ids.append(query.copy())
+			logging.debug("Was able to ")
+			new_record.update({'QueryId': query_id['queryId'], 'StartDate': f_start, 'EndDate': f_end, 'Days': (f_end - f_start).days})
+			all_query_ids.append(query.copy())
+		except Exception as my_Error:
+			logging.error(f"Unable to run query for {query['LogGroupName']} in account {query['Credentials']['AccountId']} in region {query['Credentials']['Region']} - {my_Error}")
+			continue
 	return all_query_ids
 
 
