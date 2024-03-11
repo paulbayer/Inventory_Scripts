@@ -277,7 +277,8 @@ def query_cloudwatch_logs(f_queries: list, f_start: datetime, f_end: datetime) -
 			logging.warning(f"Log group {query['LogGroupName']} has a {log_group_retention['logGroups'][0]['retentionInDays']} day retention policy, so data will be constrained to that period.")
 			f_start = (yesterday - timedelta(days=log_group_retention['logGroups'][0]['retentionInDays'])).replace(hour=0, minute=0, second=0, microsecond=0)
 			f_end = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
-		logging.debug(f"About to start the query for {query['LogGroupName']}, with start of {f_start} and end of {f_end} for {query['Query']}")
+		logging.debug(f"About to start the query for {query['LogGroupName']} with retention of {log_group_retention['logGroups'][0]['retentionInDays']} days, with start of {f_start} and end of {f_end}.")
+		logging.debug(f"Query: {query['Query']}")
 		query_id = client_logs.start_query(logGroupName=query['LogGroupName'],
 		                                   startTime=int(f_start.strftime('%s')),
 		                                   endTime=int(f_end.strftime('%s')),
