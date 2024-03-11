@@ -3861,6 +3861,15 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 						else:
 							num_width += len(str(result[field])) // 3
 						needed_space[field] = max(num_width, len(value['Heading']), needed_space[field])
+					elif isinstance(result[field], float):
+						# This section is to compensate for the fact that the len of numbers in string format doesn't include the commas.
+						# I know - I've been very US-centric here, since I haven't figured out how to achieve this in a locale-agnostic way
+						num_width = len(str(result[field]))
+						if len(str(result[field])) % 3 == 0:
+							num_width += (len(str(result[field])) // 3) - 1
+						else:
+							num_width += len(str(result[field])) // 3
+						needed_space[field] = max(num_width, len(value['Heading']), needed_space[field])
 					elif isinstance(result[field], str):
 						# Recognizes the field as a string, and finds the necessary amount of space to show that data, and assigns the length to "needed_space"
 						needed_space[field] = max(len(result[field]), len(value['Heading']), needed_space[field])
