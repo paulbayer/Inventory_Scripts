@@ -4248,6 +4248,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		ChildAccounts = [{'AccountId': faws_acct.acct_number, 'MgmtAccount': faws_acct.MgmtAccount, 'AccountStatus': faws_acct.AccountStatus}]
 		pass
 
+	logging.debug(f"Account Passed in: {faws_acct.acct_number} | Child Accounts: {ChildAccounts} | Account Type: {faws_acct.AccountType} | Account Status: {faws_acct.AccountStatus}")
 	account_credentials = {'Role': 'Nothing'}
 	AccountNum = RegionNum = 0
 	AllCreds = []

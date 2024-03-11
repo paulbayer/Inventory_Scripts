@@ -417,6 +417,7 @@ if __name__ == '__main__':
 				# Run the queries against the CloudWatch in each account / region
 				logging.debug("Running the queries with the start/end dates")
 				query_ids = query_cloudwatch_logs(queries, start_date_time, end_date_time)
+				logging.debug("Successfully ran queries - now adding all efforts to the final dictionary")
 				all_query_requests.extend(query_ids)
 			except Exception as my_Error:
 				logging.debug(f"Credential: {credential}")
