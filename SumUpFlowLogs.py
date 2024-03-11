@@ -257,8 +257,9 @@ def prep_cloudwatch_log_query(f_flow_logs: list) -> list[dict]:
 def query_cloudwatch_logs(f_queries: list, f_start: datetime, f_end: datetime) -> list[dict]:
 	"""
 	Description: Prepares and runs the query to run within CloudWatch
-	@param ocredentials: credentials for all relevant accounts
-	@param all_query_ids: The listing of flow logs and queries to run for each VPC found
+	@param f_queries: The listing of flow logs and queries to run for each VPC found
+	@param f_start: The start date for the flow log queries
+	@param f_end: The end date for the flow log queries
 	@return:
 	"""
 	all_query_ids = list()
@@ -270,10 +271,12 @@ def query_cloudwatch_logs(f_queries: list, f_start: datetime, f_end: datetime) -
 		                             region_name=query['Credentials']['Region'])
 		client_logs = session_logs.client('logs', config=my_config)
 		log_group_retention = client_logs.describe_log_groups(logGroupNamePrefix=query['LogGroupName'])
+		logging.debug(f"Just tried to connect to describe the log groups within account {query['Credentials']['AccountId']}")
 		if log_group_retention['logGroups'][0]['retentionInDays'] < (yesterday - start_date_time).days:
 			logging.warning(f"Log group {query['LogGroupName']} has a {log_group_retention['logGroups'][0]['retentionInDays']} day retention policy, so data will be constrained to that period.")
 			f_start = (yesterday - timedelta(days=log_group_retention['logGroups'][0]['retentionInDays'])).replace(hour=0, minute=0, second=0, microsecond=0)
 			f_end = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
+		logging.debug(f"About to start the query for {query['LogGroupName']}, with start of {f_start} and end of {f_end} for {query['Query']}")
 		query_id = client_logs.start_query(logGroupName=query['LogGroupName'],
 		                                   startTime=int(f_start.strftime('%s')),
 		                                   endTime=int(f_end.strftime('%s')),
