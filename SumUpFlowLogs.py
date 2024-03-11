@@ -148,7 +148,11 @@ def get_flow_log_cloudwatch_groups(ocredentials) -> list[dict]:
 	client_ec2 = session_ec2.client('ec2', config=my_config)
 	# client_logs = session_ec2.client('logs', config=my_config)
 	response = client_ec2.describe_flow_logs()
-	CW_LogGroups = [{'Credentials': ocredentials, 'AccountId': ocredentials['AccountId'], 'Region': ocredentials['Region'], 'VPCId': x['ResourceId'], 'LogGroupName': x['LogGroupName']} for x in response['FlowLogs'] if 'LogGroupName' in x.keys() and x['ResourceId'].find('vpc-') == 0]
+	CW_LogGroups = [{'Credentials' : ocredentials,
+	                 'AccountId'   : ocredentials['AccountId'],
+	                 'Region'      : ocredentials['Region'],
+	                 'VPCId'       : x['ResourceId'],
+	                 'LogGroupName': x['LogGroupName']} for x in response['FlowLogs'] if 'LogGroupName' in x.keys() and x['ResourceId'].find('vpc-') == 0]
 	# for log_group in CW_LogGroups:
 	# 	try:
 	# 		response = client_logs.describe_log_groups(logGroupNamePrefix=log_group['LogGroupName'])
@@ -340,6 +344,11 @@ if __name__ == '__main__':
 	pEndDate = args.pEndDate
 	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
+	logging.getLogger("boto3").setLevel(logging.CRITICAL)
+	logging.getLogger("botocore").setLevel(logging.CRITICAL)
+	logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
+
 	my_config = Config(
 		signature_version='v4',
 		retries={
@@ -400,13 +409,17 @@ if __name__ == '__main__':
 			"""
 			try:
 				# Get flow log names from each account and region
+				logging.debug("Getting flow_log cloudwatch groups")
 				acct_flow_logs = get_flow_log_cloudwatch_groups(credential)
 				# Create the queries necessary for CloudWatch to get the necessary data
+				logging.debug("Preparing the queries - getting VPC info")
 				queries = prep_cloudwatch_log_query(acct_flow_logs)
 				# Run the queries against the CloudWatch in each account / region
+				logging.debug("Running the queries with the start/end dates")
 				query_ids = query_cloudwatch_logs(queries, start_date_time, end_date_time)
 				all_query_requests.extend(query_ids)
 			except Exception as my_Error:
+				logging.debug(f"Credential: {credential}")
 				print(f"Error: {my_Error}")
 		else:
 			print(f"Access Role {pAccessRole} failed to connect to {credential['AccountId']} from {aws_acct.acct_number} with error: {credential['ErrorMessage']}")
