@@ -927,6 +927,10 @@ if __name__ == '__main__':
 	ChangesRequested = pdelete or pAddNew or pRefresh
 	# pSaveFilename = args.Filename
 	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+	logging.getLogger("boto3").setLevel(logging.CRITICAL)
+	logging.getLogger("botocore").setLevel(logging.CRITICAL)
+	logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 	# Setup the aws_acct object
 	aws_acct, RegionList = setup_auth_and_regions(pProfile)
