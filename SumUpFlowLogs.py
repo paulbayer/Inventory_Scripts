@@ -270,6 +270,7 @@ def query_cloudwatch_logs(f_queries: list, f_start: datetime, f_end: datetime) -
 		                             aws_session_token=query['Credentials']['SessionToken'],
 		                             region_name=query['Credentials']['Region'])
 		client_logs = session_logs.client('logs', config=my_config)
+		logging.debug(f"About to try to connect to describe the log groups within account {query['Credentials']['AccountId']}")
 		log_group_retention = client_logs.describe_log_groups(logGroupNamePrefix=query['LogGroupName'])
 		logging.debug(f"Just tried to connect to describe the log groups within account {query['Credentials']['AccountId']}")
 		if log_group_retention['logGroups'][0]['retentionInDays'] < (yesterday - start_date_time).days:
