@@ -175,7 +175,7 @@ def prep_cloudwatch_log_query(f_flow_logs: list) -> list[dict]:
 		VPCs = client_ec2.describe_vpcs()['Vpcs']
 		for vpc in VPCs:
 			if vpc['VpcId'] == flow_log['VPCId']:
-				tag_dict = {x['Key']: x['Value'] for x in vpc['Tags']}
+				tag_dict = {x['Key']: x['Value'] for x in vpc['Tags']} if 'Tags' in vpc.keys() else {}
 				if 'Name' in tag_dict.keys():
 					vpc_name = tag_dict['Name']
 				else:
@@ -326,7 +326,7 @@ def get_cw_query_results(fquery_requests: list) -> list[dict]:
 			new_record.update({'Results': response['results'][0][0]['value'], 'Status': response['status'], 'Stats': response['statistics']})
 			all_query_results.append(query.copy())
 		else:
-			logging.info(f"The CloudWatch query returned no results:")
+			logging.info(f"The CloudWatch query for vpc {query['VPCId']} in account {query['AccountId']} in region {query['Region']} returned no results:")
 			new_record.update({'Results': 0, 'Status': response['status'], 'Stats': response['statistics']})
 			all_query_results.append(query.copy())
 	return (all_query_results)
@@ -378,7 +378,8 @@ if __name__ == '__main__':
 	                'VPCName'     : {'DisplayOrder': 3, 'Heading': 'VPC Name'},
 	                'cidr_block'  : {'DisplayOrder': 4, 'Heading': 'CIDR Block'},
 	                'Days'        : {'DisplayOrder': 5, 'Heading': '# of Days'},
-	                'OutboundData': {'DisplayOrder': 6, 'Heading': 'GBytes'}}
+	                'Results'     : {'DisplayOrder': 6, 'Heading': 'Raw Bytes'},
+	                'OutboundData': {'DisplayOrder': 7, 'Heading': 'GBytes'}}
 
 	# Validate the parameters passed in
 	try:
