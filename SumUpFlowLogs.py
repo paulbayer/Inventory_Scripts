@@ -40,6 +40,7 @@ def parse_args(args):
 	parser.multiregion()
 	parser.roletouse()
 	parser.rootOnly()
+	parser.save_to_file()
 	parser.extendedargs()
 	parser.timing()
 	parser.verbosity()  # Allows for the verbosity to be handled.
@@ -59,12 +60,6 @@ def parse_args(args):
 		type=str,
 		default=None,
 		help="End date for the search. Format: YYYY-MM-DD. Note you need to pad the month and date if single digit.\n Default is YESTERDAY at 23:59:59, in order to give full days.")
-	local.add_argument(
-		"-f", "--file",
-		dest="pAccountFile",
-		metavar="Account File",
-		default=None,
-		help="List of account numbers, one per line.")
 	return (parser.my_parser.parse_args(args))
 
 
@@ -353,6 +348,7 @@ if __name__ == '__main__':
 	pAccountList = args.Accounts
 	pTiming = args.Time
 	verbose = args.loglevel
+	pFilename = args.Filename
 	pStartDate = args.pStartDate
 	pEndDate = args.pEndDate
 	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
@@ -453,7 +449,7 @@ if __name__ == '__main__':
 	sorted_all_query_results = sorted(all_query_results, key=lambda k: (k['AccountId'], k['Region'], k['VPCName']))
 	for query_result in all_query_results:
 		query_result['OutboundData'] = int(query_result['Results']) / 1000000
-	display_results(sorted_all_query_results, display_dict)
+	display_results(sorted_all_query_results, display_dict, None, pFilename)
 
 	print()
 	print("Thanks for using this script...")
