@@ -2,6 +2,7 @@
 
 import logging
 import sys
+import platform
 from os.path import split
 from time import time, sleep
 from datetime import datetime, timedelta
@@ -149,23 +150,15 @@ def get_flow_log_cloudwatch_groups(ocredentials) -> list[dict]:
 	                            region_name=ocredentials['Region'])
 	client_ec2 = session_ec2.client('ec2', config=my_config)
 	# client_logs = session_ec2.client('logs', config=my_config)
-	response = client_ec2.describe_flow_logs()
-	CW_LogGroups = [{'Credentials' : ocredentials,
-	                 'AccountId'   : ocredentials['AccountId'],
-	                 'Region'      : ocredentials['Region'],
-	                 'VPCId'       : x['ResourceId'],
-	                 'LogGroupName': x['LogGroupName']} for x in response['FlowLogs'] if 'LogGroupName' in x.keys() and x['ResourceId'].find('vpc-') == 0]
-	# for log_group in CW_LogGroups:
-	# 	try:
-	# 		response = client_logs.describe_log_groups(logGroupNamePrefix=log_group['LogGroupName'])
-	# 		log_group['Retention'] = response['logGroups'][0]['retentionInDays']
-	# 	except ClientError as my_Error:
-	# 		if str(my_Error).find("AccessDenied") > 0:
-	# 			logging.error(f"Access Denied to {log_group['LogGroupName']}")
-	# 			log_group['LogGroupNames'] = [log_group['LogGroupName']]
-	# 		else:
-	# 			logging.error(f"Client Error: {my_Error}")
-	# 			log_group['LogGroupNames'] = [log_group['LogGroupName']]
+	try:
+		response = client_ec2.describe_flow_logs()
+		CW_LogGroups = [{'Credentials' : ocredentials,
+		                 'AccountId'   : ocredentials['AccountId'],
+		                 'Region'      : ocredentials['Region'],
+		                 'VPCId'       : x['ResourceId'],
+		                 'LogGroupName': x['LogGroupName']} for x in response['FlowLogs'] if 'LogGroupName' in x.keys() and x['ResourceId'].find('vpc-') == 0]
+	except Exception as my_Error:
+		raise my_Error
 	return CW_LogGroups
 
 
@@ -287,8 +280,8 @@ def query_cloudwatch_logs(f_queries: list, f_start: datetime, f_end: datetime) -
 		logging.debug(f"Query: {query['Query']}")
 		try:
 			query_id = client_logs.start_query(logGroupName=query['LogGroupName'],
-			                                   startTime=int(f_start.strftime('%s')),
-			                                   endTime=int(f_end.strftime('%s')),
+			                                   startTime=int(f_start.strftime('%s')) if platform in ['Linux', 'Mac'] else int(f_start.strftime('%S')),
+			                                   endTime=int(f_end.strftime('%s'))if platform in ['Linux', 'Mac'] else int(f_end.strftime('%S')),
 			                                   queryString=query['Query'])
 			logging.debug("Was able to run query...")
 			new_record.update({'QueryId': query_id['queryId'], 'StartDate': f_start, 'EndDate': f_end, 'Days': (f_end - f_start).days})
@@ -377,6 +370,13 @@ if __name__ == '__main__':
 			}
 		)
 
+	if platform.system() == 'Linux':
+		platform = 'Linux'
+	elif platform.system() == 'Windows':
+		platform = 'Windows'
+	else:
+		platform = 'Mac'
+
 	display_dict = {'AccountId'   : {'DisplayOrder': 1, 'Heading': 'Acct Number'},
 	                'Region'      : {'DisplayOrder': 2, 'Heading': 'Region'},
 	                'VPCName'     : {'DisplayOrder': 3, 'Heading': 'VPC Name'},
@@ -394,7 +394,7 @@ if __name__ == '__main__':
 			start_date_time.replace(hour=0, minute=0, second=0, microsecond=0)
 	except Exception as my_Error:
 		logging.error(f"Start Date must be entered as 'YYYY-MM-DD'")
-		print(f"Error: {my_Error}")
+		print(f"Start Date input Error: {my_Error}")
 		sys.exit(1)
 	try:
 		if pEndDate is None:
@@ -403,14 +403,18 @@ if __name__ == '__main__':
 			end_date_time = datetime.strptime(pEndDate, '%Y-%m-%d')
 	except Exception as my_Error:
 		logging.error(f"End Date must be entered as 'YYYY-MM-DD'")
-		print(f"Error: {my_Error}")
+		print(f"End Date input Error: {my_Error}")
 		sys.exit(1)
 
 	SpannedDaysChecked = (end_date_time - start_date_time).days
 	# Setup the aws_acct object
 	aws_acct, AccountList, RegionList = setup_auth_accounts_and_regions(pProfile)
 	# Get credentials for all Child Accounts
-	CredentialList = get_all_credentials(pProfile, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, AccountList, RegionList, [pAccessRole])
+	if pAccessRole is None:
+		pAccessRoles = pAccessRole
+	else:
+		pAccessRoles = [pAccessRole]
+	CredentialList = get_all_credentials(pProfile, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, AccountList, RegionList, pAccessRoles)
 
 	# with open(pAccountFile, 'r') as infile:
 	# 	for line in infile:
@@ -441,9 +445,9 @@ if __name__ == '__main__':
 				all_query_requests.extend(query_ids)
 			except Exception as my_Error:
 				logging.debug(f"Credential: {credential}")
-				print(f"Error: {my_Error}")
+				print(f"Exception Error: {my_Error}")
 		else:
-			print(f"Access Role {pAccessRole} failed to connect to {credential['AccountId']} from {aws_acct.acct_number} with error: {credential['ErrorMessage']}")
+			print(f"Failed to connect to {credential['AccountId']} from {aws_acct.acct_number} {'with Access Role ' + pAccessRole if pAccessRole is not None else ''} with error: {credential['ErrorMessage']}")
 
 	# Using the list of queries created above, go back into each account and region and get the query results
 	all_query_results = get_cw_query_results(all_query_requests)
