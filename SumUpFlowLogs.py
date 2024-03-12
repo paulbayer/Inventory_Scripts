@@ -373,13 +373,13 @@ if __name__ == '__main__':
 	else:
 		platform = 'Mac'
 
-	display_dict = {'AccountId'   : {'DisplayOrder': 1, 'Heading': 'Acct Number'},
-	                'Region'      : {'DisplayOrder': 2, 'Heading': 'Region'},
-	                'VPCName'     : {'DisplayOrder': 3, 'Heading': 'VPC Name'},
-	                'cidr_block'  : {'DisplayOrder': 4, 'Heading': 'CIDR Block'},
-	                'Days'        : {'DisplayOrder': 5, 'Heading': '# of Days'},
-	                'Results'     : {'DisplayOrder': 6, 'Heading': 'Raw Bytes'},
-	                'OutboundData': {'DisplayOrder': 7, 'Heading': 'GBytes'}}
+	display_dict = {'AccountId'     : {'DisplayOrder': 1, 'Heading': 'Acct Number'},
+	                'Region'        : {'DisplayOrder': 2, 'Heading': 'Region'},
+	                'VPCName'       : {'DisplayOrder': 3, 'Heading': 'VPC Name'},
+	                'cidr_block'    : {'DisplayOrder': 4, 'Heading': 'CIDR Block'},
+	                'Days'          : {'DisplayOrder': 5, 'Heading': '# of Days'},
+	                'Results'       : {'DisplayOrder': 6, 'Heading': 'Raw Bytes'},
+	                'OutboundGBData': {'DisplayOrder': 7, 'Heading': 'GBytes'}}
 
 	# Validate the parameters passed in
 	try:
@@ -449,7 +449,7 @@ if __name__ == '__main__':
 	# Display the information we've found this far
 	sorted_all_query_results = sorted(all_query_results, key=lambda k: (k['AccountId'], k['Region'], k['VPCName']))
 	for query_result in all_query_results:
-		query_result['OutboundData'] = int(query_result['Results']) / 1000000
+		query_result['OutboundGBData'] = int(query_result['Results']) / 1000000000
 	display_results(sorted_all_query_results, display_dict, None, pFilename)
 
 	print()
