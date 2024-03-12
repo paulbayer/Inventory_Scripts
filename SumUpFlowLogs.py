@@ -266,6 +266,8 @@ def query_cloudwatch_logs(f_queries: list, f_start: datetime, f_end: datetime) -
 	@param f_end: The end date for the flow log queries
 	@return:
 	"""
+	from botocore.exceptions import ClientError
+
 	all_query_ids = list()
 	for query in f_queries:
 		new_record = query
@@ -291,6 +293,10 @@ def query_cloudwatch_logs(f_queries: list, f_start: datetime, f_end: datetime) -
 			logging.debug("Was able to run query...")
 			new_record.update({'QueryId': query_id['queryId'], 'StartDate': f_start, 'EndDate': f_end, 'Days': (f_end - f_start).days})
 			all_query_ids.append(query.copy())
+		except ClientError as my_Error:
+			logging.error(f"Received ClientError ({my_Error.operation_name} - {my_Error.response['Error']['Code']} - {my_Error.response['Error']['Message']} - {my_Error.response['Error']['Type']}) - {my_Error.response}")
+			logging.error(f"Unable to run query for {query['LogGroupName']} in account {query['Credentials']['AccountId']} in region {query['Credentials']['Region']}")
+			continue
 		except Exception as my_Error:
 			logging.error(f"Unable to run query for {query['LogGroupName']} in account {query['Credentials']['AccountId']} in region {query['Credentials']['Region']} - {my_Error}")
 			continue
