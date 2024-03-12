@@ -280,8 +280,8 @@ def query_cloudwatch_logs(f_queries: list, f_start: datetime, f_end: datetime) -
 		logging.debug(f"Query: {query['Query']}")
 		try:
 			query_id = client_logs.start_query(logGroupName=query['LogGroupName'],
-			                                   startTime=int(f_start.strftime('%s')) if platform in ['Linux', 'Mac'] else int(f_start.strftime('%S')),
-			                                   endTime=int(f_end.strftime('%s'))if platform in ['Linux', 'Mac'] else int(f_end.strftime('%S')),
+			                                   startTime=int((f_start - epoch_time).total_seconds()),
+			                                   endTime=int((f_end - epoch_time).total_seconds()),
 			                                   queryString=query['Query'])
 			logging.debug("Was able to run query...")
 			new_record.update({'QueryId': query_id['queryId'], 'StartDate': f_start, 'EndDate': f_end, 'Days': (f_end - f_start).days})
@@ -406,6 +406,8 @@ if __name__ == '__main__':
 		print(f"End Date input Error: {my_Error}")
 		sys.exit(1)
 
+	epoch_time = datetime(1970, 1, 1)
+
 	SpannedDaysChecked = (end_date_time - start_date_time).days
 	# Setup the aws_acct object
 	aws_acct, AccountList, RegionList = setup_auth_accounts_and_regions(pProfile)
@@ -416,11 +418,6 @@ if __name__ == '__main__':
 		pAccessRoles = [pAccessRole]
 	CredentialList = get_all_credentials(pProfile, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, AccountList, RegionList, pAccessRoles)
 
-	# with open(pAccountFile, 'r') as infile:
-	# 	for line in infile:
-	# 		Accounts.append(line.rstrip('\r\n,'))
-	# infile.close()
-	#
 	all_query_requests = list()
 	for credential in CredentialList:
 		logging.info(f"Accessing account #{credential['AccountId']} as {pAccessRole} using account {aws_acct.acct_number}'s credentials")
