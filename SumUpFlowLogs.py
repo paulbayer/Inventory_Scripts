@@ -67,7 +67,7 @@ def parse_args(args):
 	return (parser.my_parser.parse_args(args))
 
 
-def setup_auth_accounts_and_regions(fProfile: str) -> (aws_acct_access, list):
+def setup_auth_accounts_and_regions(fProfile: str) -> (aws_acct_access, list, list):
 	"""
 	Description: This function takes in a profile, and returns the account object and the regions valid for this account / org.
 	@param fProfile: A string representing the profile provided by the user. If nothing, then use the default profile or credentials
@@ -404,7 +404,7 @@ if __name__ == '__main__':
 	# Setup the aws_acct object
 	aws_acct, AccountList, RegionList = setup_auth_accounts_and_regions(pProfile)
 	# Get credentials for all Child Accounts
-	CredentialList = get_all_credentials(pProfile, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, AccountList, RegionList)
+	CredentialList = get_all_credentials(pProfile, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, AccountList, RegionList, [pAccessRole])
 
 	# with open(pAccountFile, 'r') as infile:
 	# 	for line in infile:

@@ -4194,7 +4194,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 				c_account_info, c_profile, c_region = self.queue.get()
 				logging.info(f"De-queued info for account {c_account_info['AccountId']}")
 				try:
-					logging.info(f"Attempting to connect to {c_account_info['AccountId']}")
+					logging.info(f"Attempting to connect to {c_account_info['AccountId']} using one of {fRoleNames}")
 					faccount_credentials = get_child_access3(faws_acct, c_account_info['AccountId'], c_region, fRoleNames)
 					if faccount_credentials['Success']:
 						logging.info(f"Successfully connected to account {c_account_info['AccountId']}")
@@ -4257,7 +4257,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		ChildAccounts = [{'AccountId': faws_acct.acct_number, 'MgmtAccount': faws_acct.MgmtAccount, 'AccountStatus': faws_acct.AccountStatus}]
 		pass
 
-	logging.debug(f"Account Passed in: {faws_acct.acct_number} | Child Accounts: {ChildAccounts} | Account Type: {faws_acct.AccountType} | Account Status: {faws_acct.AccountStatus}")
+	logging.debug(f"Account Passed in: {faws_acct.acct_number} | Child Accounts: {ChildAccounts} | Account Type: {faws_acct.AccountType} | Account Status: {faws_acct.AccountStatus} | RoleNames to try: {fRoleNames}")
 	account_credentials = {'Role': 'Nothing'}
 	AccountNum = RegionNum = 0
 	AllCreds = []
