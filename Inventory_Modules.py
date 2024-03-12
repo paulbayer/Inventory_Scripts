@@ -4124,14 +4124,14 @@ def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProf
 		print("Getting Accounts to check: ", end='')
 		aws_acct = aws_acct_access()
 		# This doesn't mean the profile "default", this is just what the label for the Org Name will be, since there's no other text
-		profile = 'default'
+		profile = '-default-'
 		RegionList = get_regions3(aws_acct, fRegionList)
-		logging.info(f"Queueing default profile for credentials")
+		logging.info(f"No profile string passed in. Using string '-default-'")
 		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, RoleList, fTiming))
 	else:
+		# This function gets the profiles that *match* fragments in the list
 		ProfileList = get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
-		# print(f"{ERASE_LINE}{Fore.GREEN}Finding {len(ProfileList)} profiles has taken {time() - begin_time:.2f} seconds{Fore.RESET}") if fTiming else None
 
 		logging.warning(f"These profiles are being checked {ProfileList}.")
 		print("Getting Accounts to check: ", end='')
@@ -4143,8 +4143,15 @@ def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProf
 				else:
 					continue
 				RegionList = get_regions3(aws_acct, fRegionList)
-				logging.warning(f"Looking at {profile} account now across these regions {RegionList}... ")
-				logging.info(f"Queueing {profile} for credentials")
+				logging.warning(f"Looking at {profile} profile now across these regions {RegionList}... ")
+				logging.debug(f"AWS account object: {aws_acct}\n"
+				              f"Skip Accounts: {fSkipAccounts}\n"
+				              f"Root Only flag: {fRootOnly}\n"
+				              f"Account List passed in: {fAccounts}\n"
+				              f"Profile: {profile}\n"
+				              f"RegionList: {RegionList}\n"
+				              f"RoleList: {RoleList}\n"
+				              f"Timing Enabled: {fTiming}")
 				# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 				AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, RoleList, fTiming))
 				if fTiming:
@@ -4240,7 +4247,9 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 	elif faws_acct.AccountType == 'Child':
 		# Here we're assuming if they specified a child account in the profile, they're using delegated access to push out stacksets,
 		# hence they need to specify the account list at the command prompt.
+		logging.info(f"Account Type recognized as {faws_acct.AccountType}")
 		ChildAccounts = [{'AccountId': x, 'MgmtAccount': faws_acct.MgmtAccount} for x in accountlist]
+		logging.info(f"There are {len(ChildAccounts)} accounts to gain credentials for...")
 	else:
 		# TODO: Eventually we'll need to raise an issue here, to point out that the account list needs to come from somewhere, if the profile isn't the Root,
 		#  or the accounts being specified at the command line.

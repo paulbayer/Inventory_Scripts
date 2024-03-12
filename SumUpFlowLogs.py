@@ -87,6 +87,8 @@ def setup_auth_accounts_and_regions(fProfile: str) -> (aws_acct_access, list):
 	ChildAccounts = RemoveCoreAccounts(ChildAccounts, pSkipAccounts)
 	if pAccountList is None:
 		AccountList = [account['AccountId'] for account in ChildAccounts]
+	elif pAccessRole is not None:
+		AccountList = pAccountList
 	else:
 		AccountList = [account['AccountId'] for account in ChildAccounts if account['AccountId'] in pAccountList]
 
@@ -192,6 +194,8 @@ def prep_cloudwatch_log_query(f_flow_logs: list) -> list[dict]:
 					vpc_name = None
 				for cidr_block in vpc['CidrBlockAssociationSet']:
 					new_record = flow_log
+					# Debugging statement below
+					# cidr_block.update({'CidrBlock': '172.16.64.0/22'})
 					cidr_net_name = ipaddress.ip_network(cidr_block['CidrBlock'])
 					first_dot = cidr_block['CidrBlock'].find('.')
 					first_octet = cidr_block['CidrBlock'][:first_dot]
@@ -281,10 +285,10 @@ def query_cloudwatch_logs(f_queries: list, f_start: datetime, f_end: datetime) -
 		logging.debug(f"Query: {query['Query']}")
 		try:
 			query_id = client_logs.start_query(logGroupName=query['LogGroupName'],
-		                                   startTime=int(f_start.strftime('%s')),
-		                                   endTime=int(f_end.strftime('%s')),
-		                                   queryString=query['Query'])
-			logging.debug("Was able to ")
+			                                   startTime=int(f_start.strftime('%s')),
+			                                   endTime=int(f_end.strftime('%s')),
+			                                   queryString=query['Query'])
+			logging.debug("Was able to run query...")
 			new_record.update({'QueryId': query_id['queryId'], 'StartDate': f_start, 'EndDate': f_end, 'Days': (f_end - f_start).days})
 			all_query_ids.append(query.copy())
 		except Exception as my_Error:
