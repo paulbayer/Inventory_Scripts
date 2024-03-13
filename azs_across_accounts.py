@@ -2,19 +2,20 @@
 
 import logging
 from ArgumentsClass import CommonArguments
-# from account_class import aws_acct_access
-import Inventory_Modules
-from Inventory_Modules import get_org_accounts_from_profiles, display_results, get_all_credentials, get_region_azs2
+from Inventory_Modules import display_results, get_all_credentials, get_region_azs2
 from time import time
-# from botocore.exceptions import ClientError, NoCredentialsError, InvalidConfigError
-from colorama import init, Fore, Style
+from colorama import init, Fore
 import sys
 
 init()
-__version__ = "2023.09.01"
+__version__ = "2024.03.06"
 ERASE_LINE = '\x1b[2K'
+begin_time = time()
 
 
+###########################
+# Functions
+###########################
 def parse_args(args):
 	parser = CommonArguments()
 	parser.multiprofile()
@@ -29,17 +30,7 @@ def parse_args(args):
 	return parser.my_parser.parse_args(args)
 
 
-"""
-TODO:
-	If they provide a profile that isn't a root profile, you should find out which org it belongs to, 
-	and then show the org for that. 
-	This will be difficult, since we don't know which profile that belongs to. Hmmm...
-"""
-
-
-##################
-
-def azs_across_accounts(fProfiles, fRegionList, fSkipProfiles, fSkipAccounts, fAccountList, fTiming, fRootOnly, fverbose, fRoleList):
+def azs_across_accounts(fProfiles, fRegionList, fSkipProfiles, fSkipAccounts, fAccountList, fTiming, fRootOnly, fverbose, fRoleList) -> dict:
 	if fTiming:
 		begin_time = time()
 	logging.warning(f"These profiles are being checked {fProfiles}.")
@@ -49,23 +40,23 @@ def azs_across_accounts(fProfiles, fRegionList, fSkipProfiles, fSkipAccounts, fA
 
 	print(ERASE_LINE)
 
-	AllOrgAZs = []
+	AllOrgAZs = dict()
 	SuccessfulCredentials = [x for x in AllCredentials if x['Success']]
 	passnumber = 0
 	for item in SuccessfulCredentials:
-		passnumber +=1
+		if item['AccountNumber'] not in AllOrgAZs.keys():
+			AllOrgAZs[item['AccountNumber']] = dict()
+		passnumber += 1
 		if item['Success']:
 			region_azs = get_region_azs2(item)
 			print(f"{ERASE_LINE}Looking at account {item['AccountNumber']} in region {item['Region']} -- {passnumber}/{len(SuccessfulCredentials)}", end='\r')
-		AllOrgAZs.append(region_azs)
-
-	print()
-	if fTiming:
-		print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
-	print("Thanks for using this script")
-	print()
+		AllOrgAZs[item['AccountNumber']][item['Region']] = region_azs
 	return (AllOrgAZs)
 
+
+###########################
+# Main
+###########################
 
 if __name__ == '__main__':
 	args = parse_args(sys.argv[1:])
@@ -85,26 +76,40 @@ if __name__ == '__main__':
 	print(f"Collecting credentials for all accounts in your org, across multiple regions")
 	AllOrgAZs = azs_across_accounts(pProfiles, pRegions, pSkipProfiles, pSkipAccounts, pAccountList, pTiming, pRootOnly, pverbose, pRoleList)
 	histogram = list()
-	for account in AllOrgAZs:
-		for az in account:
-			if az['ZoneType'] == 'availability-zone':
-				print(az)
-				histogram.append({'Region': az['Region'], 'Name': az['ZoneName'], 'Id': az['ZoneId']})
+	for account, account_info in AllOrgAZs.items():
+		for region, az_info in account_info.items():
+			for az in az_info:
+				if az['ZoneType'] == 'availability-zone':
+					# print(az)
+					histogram.append({'AccountNumber': account,
+					                  'Region'       : az['Region'],
+					                  'Name'         : az['ZoneName'],
+					                  'Id'           : az['ZoneId']})
 
-	histogram_sorted = sorted(histogram, key=lambda k: (k['Region'], k['Name'], k['Id']))
 	summary = dict()
-	for item in histogram_sorted:
-		if item['Region'] not in summary.keys():
-			summary[item['Region']] = dict()
-		if item['Name'] not in summary[item['Region']].keys():
-			summary[item['Region']][item['Name']] = list()
-		summary[item['Region']][item['Name']].append(item['Id'])
+	for item in histogram:
+		if item['AccountNumber'] not in summary.keys():  # item['AccountNumber'] not in t:
+			summary[item['AccountNumber']] = dict()
+			summary[item['AccountNumber']][item['Region']] = list()
+			summary[item['AccountNumber']][item['Region']].append((item['Name'], item['Id']))
+		elif item['AccountNumber'] in summary.keys() and item['Region'] not in summary[item['AccountNumber']].keys():
+			summary[item['AccountNumber']][item['Region']] = list()
+			summary[item['AccountNumber']][item['Region']].append((item['Name'], item['Id']))
+		elif item['AccountNumber'] in summary.keys():
+			summary[item['AccountNumber']][item['Region']].append((item['Name'], item['Id']))
 
-	# display_dict = {'MgmtAccount': {'DisplayOrder': 1, 'Heading': 'Parent Acct'},
-	#                 'AccountId'  : {'DisplayOrder': 2, 'Heading': 'Account Number'},
-	#                 'Region'     : {'DisplayOrder': 3, 'Heading': 'Region Name'},
-	#                 'ZoneName'   : {'DisplayOrder': 4, 'Heading': 'Zone Name'},
-	#                 'ZoneId'     : {'DisplayOrder': 5, 'Heading': 'Zone Id'},
-	#                 'ZoneType'   : {'DisplayOrder': 6, 'Heading': 'Zone Type'}}
+	display_dict = {'AccountNumber': {'DisplayOrder': 1, 'Heading': 'Account Number'},
+	                'Region'       : {'DisplayOrder': 2, 'Heading': 'Region Name'},
+	                'ZoneName'     : {'DisplayOrder': 3, 'Heading': 'Zone Name'},
+	                'ZoneId'       : {'DisplayOrder': 4, 'Heading': 'Zone Id'},
+	                'ZoneType'     : {'DisplayOrder': 5, 'Heading': 'Zone Type'}}
+	# How to sort a dictionary by the key:
+	sorted_summary = dict(sorted(summary.items()))
 	# sorted_Results = sorted(summary, key=lambda d: (d['MgmtAccount'], d['AccountId'], d['Region']))
-	# display_results(sorted_Results, display_dict, "None", pSaveFilename)
+	display_results(summary, display_dict, "None", pSaveFilename)
+
+	print()
+	if pTiming:
+		print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
+	print("Thanks for using this script")
+	print()
