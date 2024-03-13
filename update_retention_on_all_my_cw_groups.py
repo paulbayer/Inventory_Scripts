@@ -18,6 +18,7 @@ parser = CommonArguments()
 parser.multiprofile()
 parser.multiregion()
 parser.rootOnly()
+parser.rolestouse()
 parser.verbosity()
 parser.timing()
 parser.version(__version__)
@@ -42,6 +43,7 @@ args = parser.my_parser.parse_args()
 
 pProfiles = args.Profiles
 pRegionList = args.Regions
+pAccessRoles = args.AccessRoles
 pRetentionDays = args.pRetentionDays
 pOldRetentionDays = args.pOldRetentionDays
 pRootOnly = args.RootOnly
@@ -61,7 +63,7 @@ if pTiming:
 ##################
 
 
-def check_cw_groups_retention(faws_acct, fRegionList=None):
+def check_cw_groups_retention(faws_acct, fRegionList=None, faccess_roles:list=None):
 	ChildAccounts = faws_acct.ChildAccounts
 	AllCWLogGroups = []
 	account_credentials = {'Role': 'unset'}
@@ -72,8 +74,12 @@ def check_cw_groups_retention(faws_acct, fRegionList=None):
 			continue
 		logging.info(f"Connecting to account {account['AccountId']}")
 		try:
-			account_credentials = Inventory_Modules.get_child_access3(faws_acct, account['AccountId'])
-			logging.info(f"Connected to account {account['AccountId']} using role {account_credentials['Role']}")
+			account_credentials = Inventory_Modules.get_child_access3(faws_acct, account['AccountId'], faws_acct.Region, faccess_roles)
+			if account_credentials['Success']:
+				logging.info(f"Connected to account {account['AccountId']} using role {account_credentials['Role']}")
+			else:
+				logging.info(f"Access to account {account['AccountId']} in region {faws_acct.Region} failed, after trying role {'' if len(account_credentials['RolesTried']) == 1 else 's'}{account_credentials['RolesTried']}")
+				continue
 		except ClientError as my_Error:
 			if str(my_Error).find("AuthFailure") > 0:
 				logging.error(
@@ -181,10 +187,6 @@ display_dict = {'ParentProfile': {'DisplayOrder': 1, 'Heading': 'Parent Profile'
 # print(f"{str(faws_acct.acct_number):{account_number_format}} {str(account['AccountId']):{account_number_format}} {region:15s} "
 #       f"{str(Retention):10s} {'' if Retention == 'Never' else 'days'} {Size: >15,} {Name:50s}")
 
-fmt = f'%-12s %-{account_number_format} %-15s %-10s %-15s %-50s'
-print(fmt % ("Root Acct #", "Account #", "Region", "Retention", "Size", "Name"))
-print(fmt % ("-----------", "---------", "------", "---------", "----", "----"))
-
 CWGroups = []
 AllChildAccounts = []
 RegionList = []
@@ -194,7 +196,7 @@ if pProfiles is None:  # Default use case from the classes
 	aws_acct = aws_acct_access()
 	RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
 	logging.warning(f"Default profile will be used")
-	CWGroups.extend(check_cw_groups_retention(aws_acct, RegionList))
+	CWGroups.extend(check_cw_groups_retention(aws_acct, RegionList, pAccessRoles))
 # AllChildAccounts.extend(aws_acct.ChildAccounts)
 else:
 	logging.warning(f"These profiles are being checked {pProfiles}.")
@@ -204,7 +206,7 @@ else:
 		aws_acct = aws_acct_access(profile)
 		logging.warning(f"Looking at {profile} account now... ")
 		RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
-		CWGroups.extend(check_cw_groups_retention(aws_acct, RegionList))
+		CWGroups.extend(check_cw_groups_retention(aws_acct, RegionList, pAccessRoles))
 	# AllChildAccounts.extend(aws_acct.ChildAccounts)
 
 AllChildAccounts = list(set([(x['MgmtAccount'], x['AccountId']) for x in CWGroups]))
