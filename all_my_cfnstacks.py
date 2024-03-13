@@ -225,8 +225,7 @@ if __name__ == '__main__':
 	DeletionRun = args.DeletionRun
 	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
 
-	if pTiming:
-		begin_time = time()
+	begin_time = time()
 
 	##########################
 	ERASE_LINE = '\x1b[2K'
