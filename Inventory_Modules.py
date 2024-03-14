@@ -2853,7 +2853,7 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 	def get_stackset_attributes(fStackSetsCopy: dict):
 		"""
 		Description: To get the last operation's health status for the stackset
-		@param fStackSetList: The name of the stackset
+		@param fStackSetsCopy: The name of the stackset
 		@return: An updated dictionary with the health status of each stackset updated
 		"""
 		from threading import Thread
@@ -3946,6 +3946,14 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 							row += f"{result[field]:<{data_format},}|"
 						elif isinstance(result[field], float):
 							row += f"{result[field]:{data_format}f}|"
+						# TODO: Need to add in formatting for dates and booleans
+						elif isinstance(result[field], bool):
+							if result[field]:
+								row += f"{'True':{data_format}s}|"
+							else:
+								row += f"{'False':{data_format}s}|"
+						elif isinstance(result[field], datetime):
+							row += f"{result[field].strftime('%c')}|"
 					row += '\n'
 					savefile.write(row)
 			print(f"\nData written to {my_filename}\n")
