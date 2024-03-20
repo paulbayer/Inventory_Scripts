@@ -455,6 +455,23 @@ def RemoveCoreAccounts(MainList, AccountsToRemove=None):
 	return (NewCA)
 
 
+def print_timings(fTiming: bool = False, fverbose: int = 50, fbegin_time=None, fmessage: str = None):
+	"""
+	Description: Prints how long it's taken in the script to get to this point...
+	@param fTiming: Boolean as to whether we print anything
+	@param fverbose: Verbosity to determine whether we print when user didn't specify any verbosity. This allows us to only print when they want more info.
+	@param fmessage: The message to print out, when we print the timings.
+	@return: None
+	"""
+	from colorama import Fore, init
+	from time import time
+	init()
+
+	if fTiming and fverbose < 50 and fbegin_time is not None:
+		print(f"{Fore.GREEN}{fmessage}\n"
+		      f"This script has taken {time() - fbegin_time:.6f} seconds so far{Fore.RESET}")
+
+
 def make_creds(faws_acct):
 	return ({'AccessKeyId'    : faws_acct.creds.access_key,
 	         'SecretAccessKey': faws_acct.creds.secret_key,
