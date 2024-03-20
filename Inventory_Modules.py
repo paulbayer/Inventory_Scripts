@@ -3942,16 +3942,16 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 							row += "|"
 						elif isinstance(result[field], str):
 							row += f"{result[field]:{data_format}s}|"
+						elif isinstance(result[field], bool):
+							if result[field]:
+								row += f"True|"
+							else:
+								row += f"False|"
 						elif isinstance(result[field], int):
 							row += f"{result[field]:<{data_format},}|"
 						elif isinstance(result[field], float):
 							row += f"{result[field]:{data_format}f}|"
 						# TODO: Need to add in formatting for dates and booleans
-						elif isinstance(result[field], bool):
-							if result[field]:
-								row += f"{'True':{data_format}s}|"
-							else:
-								row += f"{'False':{data_format}s}|"
 						elif isinstance(result[field], datetime):
 							row += f"{result[field].strftime('%c')}|"
 					row += '\n'
