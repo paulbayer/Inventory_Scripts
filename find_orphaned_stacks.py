@@ -4,12 +4,12 @@ import logging
 
 from time import time
 
-import simplejson as json
+# import simplejson as json
 from botocore.exceptions import ClientError
 from colorama import Fore, init
 
 import Inventory_Modules
-from Inventory_Modules import get_credentials_for_accounts_in_org, find_stacks2, find_stacksets3, find_stack_instances3, display_results
+from Inventory_Modules import get_credentials_for_accounts_in_org, find_stacks2, find_stacksets3, find_stack_instances3, display_results, print_timings
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 
@@ -22,7 +22,7 @@ Originally, that script didn't have built-in recovery, so we needed this script 
 """
 
 init()
-__version__ = "2024.03.05"
+__version__ = "2024.03.20"
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 DefaultMaxWorkerThreads = 25
@@ -40,8 +40,8 @@ def parse_args(args):
 	"""
 	script_path, script_name = split(sys.argv[0])
 	parser = CommonArguments()
-	parser.singleregion()
 	parser.singleprofile()
+	parser.singleregion()
 	parser.fragment()
 	parser.extendedargs()
 	parser.rolestouse()
@@ -61,27 +61,23 @@ def parse_args(args):
 	return parser.my_parser.parse_args(args)
 
 
-def print_timings(fTiming: bool = False, fverbose: int = 50, fmessage: str = None):
-	"""
-	Description: Prints how long it's taken in the script to get to this point...
-	@param fTiming: Boolean as to whether we print anything
-	@param fverbose: Verbosity to determine whether we print when user didn't specify any verbosity. This allows us to only print when they want more info.
-	@param fmessage: The message to print out, when we print the timings.
-	@return: None
-	"""
-	if fTiming and fverbose < 50:
-		print(f"{Fore.GREEN}{fmessage}\n"
-		      f"This script has taken {time() - begin_time:.6f} seconds so far{Fore.RESET}")
-
-
-def setup_auth_and_regions(fProfile: str) -> (aws_acct_access, list):
+def setup_auth_and_regions(fProfile: str, f_AccountList: list, f_Region: str) -> (aws_acct_access, list, list):
 	"""
 	Description: This function takes in a profile, and returns the account object and the regions valid for this account / org.
 	@param fProfile: A string representing the profile provided by the user. If nothing, then use the default profile or credentials
+	@param f_AccountList: A string representing the profile provided by the user. If nothing, then use the default profile or credentials
+	@param f_Region: A string representing the profile provided by the user. If nothing, then use the default profile or credentials
 	@return:
 		- an object of the type "aws_acct_access"
 		- a list of regions valid for this particular profile/ account.
 	"""
+	# Validate inputs
+	if isinstance(fProfile, str) or fProfile is None:
+		pass
+	else:
+		print(f"{Fore.RED}You specified an invalid profile name. This script only allows for one profile at a time. Please try again.{Fore.RESET}")
+		sys.exit(7)
+
 	try:
 		aws_acct = aws_acct_access(fProfile)
 	except ConnectionError as my_Error:
@@ -92,25 +88,26 @@ def setup_auth_and_regions(fProfile: str) -> (aws_acct_access, list):
 	RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
 
 	if pRegion.lower() not in AllRegions:
-		print()
 		print(f"{Fore.RED}You specified '{pRegion}' as the region, but this script only works with a single region.\n"
 		      f"Please run the command again and specify only a single, valid region{Fore.RESET}")
-		print()
 		sys.exit(9)
 
 	print()
-	# if pdelete:
-	# 	action = "and delete"
-	# elif pAddNew:
-	# 	action = "and add to"
-	# elif pRefresh:
-	# 	action = "and refresh"
-	# else:
-	# 	action = "but not modify"
+	ChildAccounts = []  # This is a list of dictionaries, each with the following keys: AccountId, AccountEmail, AccountStatus, MgmtAccount.
+	if f_AccountList is None:
+		ChildAccounts = aws_acct.ChildAccounts
+	else:
+		for account in aws_acct.ChildAccounts:
+			if account['AccountId'] in f_AccountList:
+				ChildAccounts.append({'AccountId'    : account['AccountId'],
+				                      'AccountEmail' : account['AccountEmail'],
+				                      'AccountStatus': account['AccountStatus'],
+				                      'MgmtAccount'  : account['MgmtAccount']})
+	AccountList = [account['AccountId'] for account in ChildAccounts]
 	print(f"You asked me to find orphaned stacksets that match the following:")
 	print(f"\t\tIn the {aws_acct.AccountType} account {aws_acct.acct_number}")
 	print(f"\t\tIn this home Region: {pRegion}")
-	print(f"\t\tAcross regions that match this fragment: {pRegionList}") if pRegionList is not None else ''
+	print(f"\t\tFor stackset instances whose region matches this region fragment: {pRegionList}") if pRegionList is not None else ''
 	print(f"While skipping these accounts:\n{Fore.RED}{pSkipAccounts}{Fore.RESET}") if pSkipAccounts is not None else ''
 
 	if pExact:
@@ -124,10 +121,10 @@ def setup_auth_and_regions(fProfile: str) -> (aws_acct_access, list):
 		print(f"\t\tSpecifically to find th{'ese' if len(pAccounts) > 1 else 'is'} account number{'s' if len(pAccounts) > 1 else ''}: {pAccounts}")
 	# print(f"\t\tSpecifically to find th{'ese' if len(pRegionModifyList) > 1 else 'is'} region{'s' if len(pRegionModifyList) > 1 else ''}: {pRegionModifyList}") if pRegionModifyList is not None else ""
 	print()
-	return (aws_acct, RegionList)
+	return (aws_acct, AccountList, RegionList)
 
 
-def find_stacks_within_child_accounts(fall_credentials, fFragmentlist:list=None):
+def find_stacks_within_child_accounts(fall_credentials, fFragmentlist: list = None):
 	from queue import Queue
 	from threading import Thread
 
@@ -185,7 +182,7 @@ def find_stacks_within_child_accounts(fall_credentials, fFragmentlist:list=None)
 	return (AllFoundStacks)
 
 
-def reconcile_between_parent_stacksets_and_children_stacks(f_parent_stack_instances:list, f_child_stacks:list):
+def reconcile_between_parent_stacksets_and_children_stacks(f_parent_stack_instances: list, f_child_stacks: list):
 	child_comparisons = 0
 	parent_comparisons = 0
 	i = 0
@@ -202,7 +199,7 @@ def reconcile_between_parent_stacksets_and_children_stacks(f_parent_stack_instan
 				ParentInstance['Matches'] = Childinstance['StackId']
 			else:
 				continue
-	print_timings(pTiming, verbose, f"We compared {len(AllChildStackInstances)} child stacks against {len(AllParentStackInstancesInStackSets)} parent stack instances")
+	print_timings(pTiming, verbose, begin_time, f"We compared {len(AllChildStackInstances)} child stacks against {len(AllParentStackInstancesInStackSets)} parent stack instances")
 	# Filter out any instances that have a 'Match' in the Children
 	Parent_Instances_Not_In_Children_Stacks = [x for x in AllParentStackInstancesInStackSets if 'Matches' not in x.keys()]
 	# Filter out any instances that have a 'Match' in the Parent, as well as any that are regular account stacks
@@ -242,7 +239,7 @@ if __name__ == '__main__':
 	pSkipAccounts = args.SkipAccounts
 	pSkipProfiles = args.SkipProfiles
 	pFilename = args.Filename
-	pRootOnly = False
+	pRootOnly = False  # It doesn't make any sense to think that this script would be used for only the root account
 	pExact = args.Exact
 	pRoles = args.AccessRoles
 	verbose = args.loglevel
@@ -253,35 +250,23 @@ if __name__ == '__main__':
 	ERASE_LINE = '\x1b[2K'
 	# aws_acct = aws_acct_access(pProfile)
 	begin_time = time()
-	ChildAccounts = []
 
 	# Setup credentials and regions (filtered by what they wanted to check)
-	aws_acct, RegionList = setup_auth_and_regions(pProfile)
+	aws_acct, AccountList, RegionList = setup_auth_and_regions(pProfile, pAccounts, pRegion)
 	# Determine the accounts we're checking
-	print_timings(pTiming, verbose, "Just setup account and region list")
-	if pAccounts is None:
-		ChildAccounts = aws_acct.ChildAccounts
-	else:
-		for account in aws_acct.ChildAccounts:
-			if account['AccountId'] in pAccounts:
-				ChildAccounts.append({'AccountId'    : account['AccountId'],
-				                      'AccountEmail' : account['AccountEmail'],
-				                      'AccountStatus': account['AccountStatus'],
-				                      'MgmtAccount'  : account['MgmtAccount']})
-	AccountList = [account['AccountId'] for account in ChildAccounts]
+	print_timings(pTiming, verbose, begin_time,"Just setup account and region list")
 	AllCredentials = get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, AccountList, pProfile, RegionList, pRoles, pTiming)
-	print_timings(pTiming, verbose, f"Finished getting {len(AllCredentials)} credentials for all accounts and regions in spec...")
-	pRootOnly = False  # It doesn't make any sense to think that this script would be used for only the root account
+	print_timings(pTiming, verbose, begin_time,f"Finished getting {len(AllCredentials)} credentials for all accounts and regions in spec...")
 
 	# Connect to every account, and in every region specified, to find all stacks
 	print(f"Now finding all stacks across {'all' if pAccounts is None else (len(pAccounts) * len(RegionList))} accounts and regions under the {aws_acct.AccountType} account {aws_acct.acct_number}")
 	AllChildStackInstances = find_stacks_within_child_accounts(AllCredentials, pFragments)
-	print_timings(pTiming, verbose, f"Just finished getting {len(AllChildStackInstances)} children stack instances")
+	print_timings(pTiming, verbose, begin_time, f"Just finished getting {len(AllChildStackInstances)} children stack instances")
 	# and then compare them with the stackset instances managed within the Root account, and find anything that doesn't match
 
 	# This is the list of stacksets in the root account
 	AllParentStackSets = find_stacksets3(aws_acct, pRegion, pFragments, pExact)
-	print_timings(pTiming, verbose, f"Just finished getting {len(AllParentStackSets['StackSets'])} parent stack sets")
+	print_timings(pTiming, verbose, begin_time, f"Just finished getting {len(AllParentStackSets['StackSets'])} parent stack sets")
 	print(f"Now getting all the stack instances for all {len(AllParentStackSets)} stacksets")
 	# This will be the listing of the stack_instances in each of the stacksets in the root account
 	AllParentStackInstancesInStackSets = []
@@ -289,7 +274,7 @@ if __name__ == '__main__':
 		StackInstancesInStackSets = find_stack_instances3(aws_acct, pRegion, stackset_name, faccountlist=AccountList, fregionlist=RegionList)
 		# TODO: Filter out skipped / closed accounts within the stacksets
 		AllParentStackInstancesInStackSets.extend(StackInstancesInStackSets)
-	print_timings(pTiming, verbose, f"Just finished getting {len(AllParentStackInstancesInStackSets)} parent stack instances")
+	print_timings(pTiming, verbose, begin_time, f"Just finished getting {len(AllParentStackInstancesInStackSets)} parent stack instances")
 	# Then compare the stack_instances in the root account with the stack_instances in the child accounts to see if anything is missing
 	print(f"We found {len(AllChildStackInstances)} stack instances in the {len(AccountList)} child accounts")
 	print(f"We found {len(AllParentStackInstancesInStackSets)} stack instances in the {len(AllParentStackSets['StackSets'])} stacksets in the root account")
