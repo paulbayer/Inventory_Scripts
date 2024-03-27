@@ -5,7 +5,6 @@ from time import time
 import sys
 from os.path import split
 
-from botocore.config import Config
 from colorama import Fore, init
 
 from Inventory_Modules import display_results, get_regions3, RemoveCoreAccounts, find_stacksets2, find_stack_instances2, get_credentials_for_accounts_in_org
@@ -14,7 +13,7 @@ from account_class import aws_acct_access
 
 init()
 
-__version__ = '2024.03.20'
+__version__ = '2024.03.22'
 begin_time = time()
 ERASE_LINE = '\x1b[2K'
 
@@ -51,6 +50,7 @@ def parse_args(args):
 		choices=['active', 'ACTIVE', 'Active', 'deleted', 'DELETED', 'Deleted'],
 		help="String that determines whether we only see 'CREATE_COMPLETE' or 'DELETE_COMPLETE' too. Valid values are 'ACTIVE' or 'DELETED'")
 	return parser.my_parser.parse_args(args)
+
 
 def setup_auth_accounts_and_regions(fProfile: str) -> (aws_acct_access, list, list):
 	"""
