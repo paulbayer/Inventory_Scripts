@@ -67,15 +67,11 @@ def setup_auth(fProfile: str) -> aws_acct_access:
 		logging.error(f"Exiting due to error: {my_Error}")
 		sys.exit(8)
 
+	if not aws_acct.Success:
+		print(f"{Fore.RED}Profile {pProfile} failed to access an account. Check credentials and try again{Fore.RESET}")
+		sys.exit(99)
+
 	print()
-	if pEnableDriftDetection:
-		action = "and enable Drift Detection"
-	# elif pAddNew:
-	# 	action = "and add to"
-	# elif pRefresh:
-	# 	action = "and refresh"
-	# else:
-	# 	action = "but not modify"
 	print(f"You asked me to display drift detection status on stacksets that match the following:")
 	print(f"\t\tIn the {aws_acct.AccountType} account {aws_acct.acct_number}")
 	print(f"\t\tIn this Region: {pRegion}")
@@ -84,6 +80,7 @@ def setup_auth(fProfile: str) -> aws_acct_access:
 		print(f"\t\tFor stacksets that {Fore.RED}exactly match{Fore.RESET}: {pFragments}")
 	else:
 		print(f"\t\tFor stacksets that contain th{'is fragment' if len(pFragments) == 1 else 'ese fragments'}: {pFragments}")
+	print(f"\t\tand enable drift detection on those stacksets, if they're not current") if pEnableDriftDetection else ''
 
 	print()
 	return (aws_acct)
@@ -130,7 +127,7 @@ def enable_stack_set_drift_detection(faws_acct: aws_acct_access, fStackSets: dic
 					logging.info(f"Enabling Drift Detection for {c_stackset_name['StackSetName']}")
 					DD_Operation = Inventory_Modules.enable_drift_on_stackset3(c_aws_acct, c_stackset_name['StackSetName'])
 					intervals_waited = 1
-					sleep(3)
+					sleep(sleep_interval)
 					Status = client.describe_stack_set_operation(StackSetName=c_stackset_name['StackSetName'], OperationId=DD_Operation['OperationId'])
 					while Status['StackSetOperation']['Status'] in ['RUNNING']:
 						Status = client.describe_stack_set_operation(StackSetName=c_stackset_name['StackSetName'], OperationId=DD_Operation['OperationId'])
