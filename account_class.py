@@ -1,4 +1,4 @@
-""""
+"""
 1. Accept either a single profile or multiple profiles
 2. Determine if a profile (or multiple profiles) was provided
 3. If a single profile was provided - determine whether it's been provided as an org account, or as a single profile
@@ -36,7 +36,7 @@ from json.decoder import JSONDecodeError
 import boto3
 from botocore.exceptions import ClientError, ConnectionError, CredentialRetrievalError, EndpointConnectionError, NoCredentialsError, ProfileNotFound, UnknownRegionError
 
-__version__ = "2024.02.02"  # (again)
+__version__ = "2024.03.22"  # (again)
 
 
 def _validate_region(faws_prelim_session, fRegion=None):
