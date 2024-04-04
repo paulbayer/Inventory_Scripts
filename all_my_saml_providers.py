@@ -2,6 +2,7 @@
 import logging
 import sys
 from time import time
+from os.path import split
 
 import boto3
 from botocore.exceptions import ClientError
@@ -11,19 +12,26 @@ from Inventory_Modules import display_results, find_saml_components_in_acct2, ge
 from account_class import aws_acct_access
 
 init()
-__version__ = "2023.11.08"
+__version__ = "2024.03.27"
+
+begin_time = time()
+ERASE_LINE = '\x1b[2K'
 
 
 ##################
 
 def parse_args(args):
+	script_path, script_name = split(sys.argv[0])
 	parser = CommonArguments()
 	parser.singleprofile()
 	parser.singleregion()
+	parser.roletouse()
 	parser.verbosity()
+	parser.save_to_file()
 	parser.timing()
 	parser.version(__version__)
-	parser.my_parser.add_argument(
+	local = parser.my_parser.add_argument_group(script_name, 'Parameters specific to this script')
+	local.add_argument(
 		"+delete", "+forreal",
 		dest="DeletionRun",
 		const=True,
@@ -33,7 +41,7 @@ def parse_args(args):
 	return (parser.my_parser.parse_args(args))
 
 
-def all_my_saml_providers(fChildAccounts) -> list:
+def all_my_saml_providers(faws_acct: aws_acct_access, fChildAccounts:list, f_access_role=None) -> list:
 	"""
 	TODO Needs multi-threading
 	Description: Finds all saml providers within the Children Accounts
@@ -43,56 +51,59 @@ def all_my_saml_providers(fChildAccounts) -> list:
 	IdpsFound = []
 
 	for account in fChildAccounts:
-		if account['AccountStatus'] == 'ACTIVE':
-			print(f"{ERASE_LINE}Getting credentials for account {account['AccountId']}", end="\r")
-			try:
-				account_credentials = get_child_access3(aws_acct, account['AccountId'], pRegion)
-			except ClientError as my_Error:
-				if "AuthFailure" in str(my_Error):
-					print(f"{pProfile}: Authorization Failure for account {account['AccountId']}")
-				else:
-					print(f"{pProfile}: Other kind of failure for account {account['AccountId']}")
-					print(my_Error)
-				break
+		try:
+			if account['AccountStatus'] == 'ACTIVE':
+				print(f"{ERASE_LINE}Getting credentials for account {account['AccountId']}", end="\r")
+				try:
+					account_credentials = get_child_access3(faws_acct, account['AccountId'], pRegion, f_access_role)
+				except ClientError as my_Error:
+					if "AuthFailure" in str(my_Error):
+						print(f"{pProfile}: Authorization Failure for account {account['AccountId']}")
+					else:
+						print(f"{pProfile}: Other kind of failure for account {account['AccountId']}")
+						print(my_Error)
+					continue
 
-			try:
-				Idps = find_saml_components_in_acct2(account_credentials)
-				idpNum = len(Idps)
-				logging.info(f"Account: {account['AccountId']} | Region: {pRegion} | Found {idpNum} Idps")
-				logging.info(f"{ERASE_LINE}{Fore.RED}Account: {account['AccountId']} pRegion: {pRegion} Found {idpNum} Idps.{Fore.RESET}")
-			except ClientError as my_Error:
-				if "AuthFailure" in str(my_Error):
-					print(f"{account['AccountId']}: Authorization Failure")
 				idpNum = 0
+				try:
+					Idps = find_saml_components_in_acct2(account_credentials)
+					idpNum = len(Idps)
+					logging.info(f"Account: {account['AccountId']} | Region: {pRegion} | Found {idpNum} Idps")
+					logging.info(f"{ERASE_LINE}{Fore.RED}Account: {account['AccountId']} pRegion: {pRegion} Found {idpNum} Idps.{Fore.RESET}")
 
-			if idpNum > 0:
-				for y in range(len(Idps)):
-					logging.info(f"Arn: {Idps[y]['Arn']}")
-					NameStart = Idps[y]['Arn'].find('/') + 1
-					logging.debug(f"Name starts at character: {NameStart}")
-					IdpName = Idps[y]['Arn'][NameStart:]
-					# print(fmt % (account['AccountId'], pRegion, IdpName))
-					IdpsFound.append({
-						'MgmtAccount'  : account_credentials['MgmtAccount'],
-						'AccountNumber': account_credentials['AccountId'],
-						'Region'       : account_credentials['Region'],
-						'IdpName'      : IdpName,
-						'Arn'          : Idps[y]['Arn']})
-		else:
-			print(ERASE_LINE, f"Skipping account {account['AccountId']} since it's SUSPENDED or CLOSED", end="\r")
+					if idpNum > 0:
+						for idp in Idps:
+							logging.info(f"Arn: {idp['Arn']}")
+							NameStart = idp['Arn'].find('/') + 1
+							logging.debug(f"Name starts at character: {NameStart}")
+							IdpName = idp['Arn'][NameStart:]
+							IdpsFound.append({
+								'MgmtAccount'  : account_credentials['MgmtAccount'],
+								'AccountNumber': account_credentials['AccountId'],
+								'Region'       : account_credentials['Region'],
+								'IdpName'      : IdpName,
+								'Arn'          : idp['Arn']})
+				except ClientError as my_Error:
+					if "AuthFailure" in str(my_Error):
+						print(f"{account['AccountId']}: Authorization Failure")
+			else:
+				print(ERASE_LINE, f"Skipping account {account['AccountId']} since it's SUSPENDED or CLOSED", end="\r")
+		except KeyError as my_Error:
+			logging.error(f"Key Error: {my_Error}")
+			continue
 	return (IdpsFound)
 
 
-def delete_idps(aws_acct: aws_acct_access, idps_found: list):
-	for y in range(len(idps_found)):
-		account_credentials = get_child_access3(aws_acct, idps_found[y]['AccountNumber'])
-		session_aws = boto3.Session(region_name=idps_found[y]['pRegion'],
+def delete_idps(faws_acct: aws_acct_access, idps_found: list):
+	for idp in idps_found:
+		account_credentials = get_child_access3(faws_acct, idp['AccountNumber'])
+		session_aws = boto3.Session(region_name=idp['pRegion'],
 		                            aws_access_key_id=account_credentials['AccessKeyId'],
 		                            aws_secret_access_key=account_credentials['SecretAccessKey'],
 		                            aws_session_token=account_credentials['SessionToken'])
 		iam_client = session_aws.client('iam')
-		print(f"Deleting Idp {idps_found[y]['IdpName']} from account {idps_found[y]['AccountId']} in pRegion {idps_found[y]['pRegion']}")
-		response = iam_client.delete_saml_provider(SAMLProviderArn=idps_found[y]['Arn'])
+		print(f"Deleting Idp {idp['IdpName']} from account {idp['AccountId']} in pRegion {idp['pRegion']}")
+		response = iam_client.delete_saml_provider(SAMLProviderArn=idp['Arn'])
 
 
 ##################
@@ -103,11 +114,11 @@ if __name__ == "__main__":
 	pRegion = args.Region
 	verbose = args.loglevel
 	pTiming = args.Time
+	pAccessRole = args.AccessRole
+	pFilename = args.Filename
 	DeletionRun = args.DeletionRun
 
 	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
-	begin_time = time()
-	ERASE_LINE = '\x1b[2K'
 
 	print()
 
@@ -116,7 +127,7 @@ if __name__ == "__main__":
 	ChildAccounts = aws_acct.ChildAccounts
 
 	# Find the SAML providers
-	IdpsFound = all_my_saml_providers(ChildAccounts)
+	IdpsFound = all_my_saml_providers(aws_acct,ChildAccounts, pAccessRole)
 	print(f"{ERASE_LINE}")
 	# Display results
 	display_dict = {'MgmtAccount'  : {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
@@ -125,7 +136,7 @@ if __name__ == "__main__":
 	                'IdpName'      : {'DisplayOrder': 4, 'Heading': 'IdP Name'},
 	                'Arn'          : {'DisplayOrder': 5, 'Heading': 'Arn'}}
 	sorted_results = sorted(IdpsFound, key=lambda x: (x['AccountNumber'], x['Region'], x['IdpName']))
-	display_results(sorted_results, display_dict, None)
+	display_results(sorted_results, display_dict, None, pFilename)
 	AccountsFound = list(set([x['AccountNumber'] for x in IdpsFound]))
 	RegionsFound = list(set([x['Region'] for x in IdpsFound]))
 	print()
