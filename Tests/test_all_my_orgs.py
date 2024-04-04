@@ -4,7 +4,7 @@ from datetime import datetime
 
 from all_my_orgs import all_my_orgs
 from common_test_data import cli_provided_parameters1, cli_provided_parameters2, get_all_my_orgs_test_result_dict
-from common_test_functions import _amend_make_api_call, _amend_make_api_call_orig
+from common_test_functions import _amend_make_api_call, _amend_make_api_call_orig, AWSAccount_from_AWSKeyID
 
 
 @pytest.mark.parametrize(
