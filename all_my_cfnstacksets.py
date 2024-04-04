@@ -103,7 +103,6 @@ def find_all_cfnstacksets(f_All_Credentials:list, f_Fragments:list, f_Status)->l
 			continue
 		# logging.info(f"Account Creds: {account_credentials}")
 		print(f"{ERASE_LINE}{Fore.RED}Checking Account: {credential['AccountId']} Region: {credential['Region']} for stacksets matching {f_Fragments} with status: {f_Status}{Fore.RESET}", end="\r")
-		# TODO: Need paging here
 		StackSets = find_stacksets2(credential, pFragments, pstatus)
 		logging.warning(f"Account: {credential['AccountId']} | Region: {credential['Region']} | Found {len(StackSets)} Stacksets")
 		if not StackSets:
