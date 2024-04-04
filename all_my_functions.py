@@ -55,7 +55,7 @@ def parse_args(args):
 		metavar="language and version",
 		default=None,
 		help="Language runtime(s) you will replace what you've found with... ")
-	return (parser.my_parser.parse_args(args))
+	return parser.my_parser.parse_args(args)
 
 
 def left(s, amount):
@@ -72,6 +72,7 @@ def mid(s, offset, amount):
 
 def fix_runtime(CredentialList, new_runtime):
 	from time import sleep
+
 	class UpdateRuntime(Thread):
 		def __init__(self, queue):
 			Thread.__init__(self)
@@ -312,7 +313,6 @@ if __name__ == '__main__':
 	AccountNum = len(set([x['AccountId'] for x in AllFunctions]))
 	RegionNum = len(set([x['Region'] for x in AllFunctions]))
 	display_results(AllFunctions, display_dict, None, pSaveFilename)
-
 
 	if pFix:
 		if pRuntime is None or pNewRuntime is None:
