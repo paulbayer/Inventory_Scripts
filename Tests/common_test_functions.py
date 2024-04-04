@@ -5,6 +5,35 @@ import pytest
 ERASE_LINE = '\x1b[2K'
 
 
+def AWSAccount_from_AWSKeyID(AWSKeyID):
+	import base64
+	import binascii
+
+	trimmed_AWSKeyID = AWSKeyID[4:]  # remove KeyID prefix
+	x = base64.b32decode(trimmed_AWSKeyID)  # base32 decode
+	y = x[0:6]
+
+	z = int.from_bytes(y, byteorder='big', signed=False)
+	mask = int.from_bytes(binascii.unhexlify(b'7fffffffff80'), byteorder='big', signed=False)
+
+	e = (z & mask) >> 7
+	return e
+
+
+def AWSKeyID_from_AWSAccount(AWSAccountNumber):
+	import base64
+	import binascii
+
+	x = base64.b32encode(AWSAccountNumber)  # base32 decode
+	y = x[0:6]
+
+	z = int.from_bytes(y, byteorder='big', signed=False)
+	mask = int.from_bytes(binascii.unhexlify(b'7fffffffff80'), byteorder='big', signed=False)
+
+	e = (z & mask) >> 7
+	return e
+
+
 def _amend_create_boto3_session(test_data, mocker):
 	orig = session.Session.create_client
 
@@ -20,13 +49,13 @@ def _amend_create_boto3_session(test_data, mocker):
 			aws_secret_access_key=None,
 			aws_session_token=None,
 			config=None,
-	):
+			):
 		# Intercept boto3 Session, in hopes of sending back a client that includes the Account Number
 		# if aws_access_key_id == '*****AccessKeyHere*****':
 		print(test_data['FunctionName'])
 		if aws_access_key_id == 'MeantToFail':
 			print(f"Failed Access Key: {aws_access_key_id}")
-			return()
+			return ()
 		else:
 			print(f"Not Failed Access Key: {aws_access_key_id}")
 			return_response = orig(self,
