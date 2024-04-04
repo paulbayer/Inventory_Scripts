@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
-import os
+from os.path import split
 import Inventory_Modules
 from Inventory_Modules import get_credentials_for_accounts_in_org, display_results
 from ArgumentsClass import CommonArguments
@@ -29,12 +29,13 @@ def parse_args(args):
 	@param args: args represents the list of arguments passed in
 	@return: returns an object namespace that contains the individualized parameters passed in
 	"""
-	script_path, script_name = os.path.split(sys.argv[:-1][0])
+	script_path, script_name = split(sys.argv[0])
 	parser = CommonArguments()
 	parser.my_parser.description = ("We're going to find all instances within any of the accounts we have access to, given the profile(s) provided.")
 	parser.multiprofile()
 	parser.multiregion()
 	parser.extendedargs()
+	parser.rolestouse()
 	parser.rootOnly()
 	parser.timing()
 	parser.verbosity()
@@ -49,7 +50,7 @@ def parse_args(args):
 		help="Whether you want to limit the instances returned to either 'running', 'stopped'. Default is both")
 	return(parser.my_parser.parse_args(args))
 
-def get_credentials(fProfile_list:list, fRegion_list:list)->list:
+def get_credentials(fProfile_list:list, fRegion_list:list, fSkipProfiles:list=None, fSkipAccounts:list=None, fRootOnly:bool=False, fAccounts:list=None, fAccessRoles:list=None, fTiming=False)->list:
 	"""
 	Description: Finds all the credentials for the member accounts within the profile you've specified
 	@param fProfile_list: Profile of an Org account
@@ -64,9 +65,9 @@ def get_credentials(fProfile_list:list, fRegion_list:list)->list:
 		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 		logging.info(f"Queueing default profile for credentials")
 		profile = 'default'
-		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList, fTiming=pTiming))
+		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, fAccessRoles, fTiming))
 	else:
-		ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=pSkipProfiles, fprofiles=fProfile_list)
+		ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfile_list)
 		print(f"Capturing info for {len(ProfileList)} requested profiles {ProfileList}")
 		for profile in ProfileList:
 			# Eventually - getting credentials for a single account may require passing in the region in which it's valid, but not yet.
@@ -76,7 +77,7 @@ def get_credentials(fProfile_list:list, fRegion_list:list)->list:
 				RegionList = Inventory_Modules.get_regions3(aws_acct, fRegion_list)
 				logging.info(f"Queueing {profile} for credentials")
 				# This should populate the list "AllCredentials" with the credentials for the relevant accounts.
-				AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, pAccounts, profile, RegionList, fTiming=pTiming))
+				AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, fAccessRoles, fTiming))
 				print()
 			except AttributeError as my_Error:
 				logging.error(f"Profile {profile} didn't work... Skipping")
@@ -201,6 +202,7 @@ if __name__ == '__main__':
 	pAccounts = args.Accounts
 	pSkipAccounts = args.SkipAccounts
 	pSkipProfiles = args.SkipProfiles
+	pAccessRoles = args.AccessRoles
 	pStatus = args.pStatus
 	pRootOnly = args.RootOnly
 	pTiming = args.Time
@@ -216,7 +218,7 @@ if __name__ == '__main__':
 	print()
 
 	# Find credentials for all Child Accounts
-	CredentialList = get_credentials(pProfiles, pRegionList)
+	CredentialList = get_credentials(pProfiles, pRegionList, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pAccessRoles, pTiming)
 	# OrgNum = len(set([x['MgmtAccount'] for x in AllCredentials if x['OrgType'] == 'Root']))
 	AccountNum = len(set([acct['AccountId'] for acct in CredentialList]))
 	RegionNum = len(set([acct['Region'] for acct in CredentialList]))
