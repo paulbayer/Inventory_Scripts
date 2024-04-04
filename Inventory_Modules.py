@@ -226,12 +226,15 @@ def get_profiles(fSkipProfiles=None, fprofiles=None):
 		error_message = f"Error: The profile passed in '{fprofiles}' doesn't exist."
 		logging.error(error_message)
 		return error_message
-	for profile in my_profiles:
-		logging.info(f"Found profile {profile}")
-		if ("skipplus" in fSkipProfiles and profile.find("+") >= 0) or profile in fSkipProfiles:
-			logging.info(f"Removing profile: {profile} since it's in the fSkipProfiles parameter {fSkipProfiles}")
-			profiles_to_remove.append(profile)
-	my_profiles = list(set(my_profiles) - set(profiles_to_remove))
+	if len(fSkipProfiles) == 0:
+		pass
+	else:
+		for profile in my_profiles:
+			logging.info(f"Found profile {profile}")
+			if ("skipplus" in fSkipProfiles and profile.find("+") >= 0) or profile in fSkipProfiles:
+				logging.info(f"Removing profile: {profile} since it's in the fSkipProfiles parameter {fSkipProfiles}")
+				profiles_to_remove.append(profile)
+		my_profiles = list(set(my_profiles) - set(profiles_to_remove))
 	if "all" in fprofiles or "ALL" in fprofiles or "All" in fprofiles:
 		return my_profiles
 
@@ -590,6 +593,8 @@ def get_child_access3(faws_acct, fChildAccount: str, fRegion: str = None, fRoleL
 	if fRoleList is None or fRoleList == []:
 		fRoleList = ['AWSCloudFormationStackSetExecutionRole', 'AWSControlTowerExecution',
 		             'OrganizationAccountAccessRole', 'AdministratorAccess', 'Owner']
+	elif isinstance(fRoleList, str):
+		fRoleList = [fRoleList]
 	sts_client = faws_acct.session.client('sts', region_name=fRegion)
 	if fChildAccount == ParentAccountId:
 		explain_string = (f"We're trying to get access to either the Root Account (which we already have access "
