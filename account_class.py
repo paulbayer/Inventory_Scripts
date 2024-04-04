@@ -232,6 +232,11 @@ class aws_acct_access:
 			self.OrgID = 'Unknown'
 			self.MgmtEmail = 'Unknown'
 			self.Region = fRegion
+			self.ChildAccounts = {'AccountEmail': 'ProfileFailed@doesnt.work',
+			                      'AccountId': '012345678912',
+			                      'AccountStatus': None,
+			                      'MgmtAccount': '012345678912'}
+			self.Profile = fProfile if fProfile is not None else None
 			self.creds = 'Unknown'
 			self.credentials = 'Unknown'
 			self.ErrorType = 'Invalid profile'
