@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import boto3
+from time import time
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
@@ -10,12 +11,13 @@ from botocore.exceptions import ClientError, ProfileNotFound
 import logging
 
 init()
-__version__ = "2023.05.04"
+__version__ = "2024.04.24"
 
 parser = CommonArguments()
 parser.singleregion()
 parser.singleprofile()
 parser.verbosity()
+parser.timing()
 parser.version(__version__)
 parser.my_parser.add_argument(
 		"-f", "--file",
@@ -43,6 +45,7 @@ verbose = args.loglevel
 pFile = args.pFile
 pDryRun = args.pDryRun
 pRoleList = args.pRoleList
+pTiming = args.Time
 logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
 
 '''
@@ -65,7 +68,7 @@ Code Flow:
 
 aws_acct = aws_acct_access(pProfile)
 AllChildAccountList = []
-
+begin_time = time()
 
 ##########################
 def read_file(filename):
@@ -260,6 +263,9 @@ for account in NotEnabledList:
 print()
 for account in BlockEnabledList:
 	print(f"{Fore.GREEN}Account {account} has had the S3 public block enabled{Fore.RESET}")
+if pTiming:
+	print(ERASE_LINE)
+	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 print()
 print("Thank you for using this script.")
 print()
