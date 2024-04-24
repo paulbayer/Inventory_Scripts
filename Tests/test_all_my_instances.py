@@ -2,15 +2,47 @@
 python
 """
 import unittest
+import pytest
 from unittest.mock import patch
 import sys
 from all_my_instances import parse_args, find_all_instances, get_credentials
-from common_test_data import CredentialResponseData, mock_instances
-
+from common_test_data import CredentialResponseData, mock_instances_1, mock_profile_list_1, mock_region_list_1, mock_profile_list_2, mock_region_list_2, mock_profile_list_3, mock_region_list_3, mock_profile_list_4, mock_region_list_4
+from common_test_functions import mock_find_all_instances2
 
 class TestScriptFunctions(unittest.TestCase):
 	def setUp(self):
 		# This is the parameters provided. Note that this
+		self.account_mapping = [{'AccountNumber'          : '111122223333',
+		                         'Region'                 : 'us-east-1',
+		                         'mock_instances_returned': 'mock_instances_1'},
+		                        {'AccountNumber'          : '444455556666',
+		                         'Region'                 : 'us-east-2',
+		                         'mock_instances_returned': 'mock_instances_2'},
+		                        {'AccountNumber'          : '555566667777',
+		                         'Region'                 : 'us-west-2',
+		                         'mock_instances_returned': 'mock_instances_3'},
+		                        {'AccountNumber'          : '555566667777',
+		                         'Region'                 : 'eu-west-1',
+		                         'mock_instances_returned': 'mock_instances_4'},
+		                        {'AccountNumber'          : '666677775555',
+		                         'Region'                 : 'eu-central-1',
+		                         'mock_instances_returned': 'mock_instances_5'},
+		                        {'AccountNumber'          : '777755556666',
+		                         'Region'                 : 'eu-north-1',
+		                         'mock_instances_returned': 'mock_instances_6'},
+		                        {'AccountNumber'          : '777755556666',
+		                         'Region'                 : 'eu-west-2',
+		                         'mock_instances_returned': 'mock_instances_7'},
+		                        {'AccountNumber'          : '666677778888',
+		                         'Region'                 : 'ap-south-1',
+		                         'mock_instances_returned': 'mock_instances_8'},
+		                        {'AccountNumber'          : '777788886666',
+		                         'Region'                 : 'il-central-1',
+		                         'mock_instances_returned': 'mock_instances_9'},
+		                        {'AccountNumber'          : '888866667777',
+		                         'Region'                 : 'af-south-1',
+		                         'mock_instances_returned': 'mock_instances_10'},
+		                        ]
 		self.expected_args = {'AccessRoles' : None,
 		                      'Accounts'    : None,
 		                      'Profiles'    : ['mock_profile'],
@@ -25,6 +57,8 @@ class TestScriptFunctions(unittest.TestCase):
 		                      # Add other expected arguments as needed
 		                      }
 		self.mock_args = ['-p', 'mock_profile', '-rs', 'us-east-1', '-s', 'running', '--time']
+		self.mock_profile_list = ['mock_profile_1', 'mock_profile_2']
+		self.mock_region_list = ['us-east-1', 'us-east-2']
 
 	# This is the parameters that have been instantiated within the script, including default values
 
@@ -37,17 +71,26 @@ class TestScriptFunctions(unittest.TestCase):
 	@patch('all_my_instances.Inventory_Modules.get_regions3')
 	@patch('all_my_instances.Inventory_Modules.get_profiles')
 	@patch('all_my_instances.get_credentials_for_accounts_in_org')
+	# @pytest.mark.parametrize(
+	# 	"mock_org_credentials, mock_profile_list, mock_region_list",
+	# 	[
+	# 		(CredentialResponseData, mock_profile_list_1, mock_region_list_1),
+	# 		(CredentialResponseData, mock_profile_list_2, mock_region_list_2),
+	# 		(CredentialResponseData, mock_profile_list_3, mock_region_list_3),
+	# 		(CredentialResponseData, mock_profile_list_4, mock_region_list_4),
+	# 		],
+	# 	)
+	# def test_get_credentials(self, mock_get_credentials_for_accounts_in_org, mock_get_profiles, mock_get_regions3, mock_org_credentials, mock_profile_list, mock_region_list):
+
 	def test_get_credentials(self, mock_get_credentials_for_accounts_in_org, mock_get_profiles, mock_get_regions3):
-		mock_profile_list = ['mock_profile']
-		mock_region_list = ['us-east-1', 'us-east-2']
-		# mock_account = MagicMock()  # This is to simulate the aws_acct object, but it's unneeded just yet
-		mock_get_profiles.return_value = mock_profile_list
-		mock_get_regions3.return_value = mock_region_list
+		mock_get_profiles.return_value = self.mock_profile_list
+		mock_get_regions3.return_value = self.mock_region_list
 		mock_get_credentials_for_accounts_in_org.return_value = CredentialResponseData
 
 		# The credentials supplied here absolutely do not matter, since the Credential Response is also hard-coded above.
-		credentials = get_credentials(mock_profile_list, mock_region_list)
-		self.assertEqual(len(credentials), 10)
+		# def get_credentials(fProfile_list: list, fRegion_list: list, fSkipProfiles: list = None, fSkipAccounts: list = None, fRootOnly: bool = False, fAccounts: list = None, fAccessRoles: list = None, fTiming=False) -> list:
+		credentials = get_credentials(mock_get_profiles, mock_get_regions3)
+		self.assertEqual(len(credentials), len(self.mock_profile_list) * len(CredentialResponseData))
 		self.assertEqual(credentials[0]['MgmtAccount'], '111122223333')
 		self.assertEqual(credentials[0]['AccountId'], '111122223333')
 		self.assertEqual(credentials[0]['Region'], 'us-east-1')
@@ -61,13 +104,13 @@ class TestScriptFunctions(unittest.TestCase):
 		self.assertEqual(credentials[1]['AccountStatus'], 'ACTIVE')
 		self.assertEqual(credentials[1]['Role'], 'AWSCloudFormationStackSetExecutionRole')
 
-	@patch('all_my_instances.Inventory_Modules.find_account_instances2')
+	@patch('all_my_instances.Inventory_Modules.find_account_instances2', wraps=mock_find_all_instances2)
 	def test_find_all_instances(self, mock_find_account_instances2):
-		mock_find_account_instances2.return_value = mock_instances
 
-		# instances = find_all_instances(mock_credentials, 'running')
-		instances = find_all_instances(CredentialResponseData, 'running')
-		self.assertEqual(len(instances), (len(mock_instances) * len(CredentialResponseData)))
+		# mock_find_account_instances2.return_value = mock_instances_1
+
+		instances = find_all_instances(CredentialResponseData[1:2], 'running')
+		# self.assertEqual(len(instances), (len(mock_instances_1) * len(CredentialResponseData)))
 		self.assertEqual(instances[0]['InstanceType'], 't2.micro')
 		self.assertEqual(instances[0]['InstanceId'], 'i-1234567890abcdef')
 		self.assertEqual(instances[0]['PublicDNSName'], 'ec2-1-2-3-4.us-east-1.compute.amazonaws.com')

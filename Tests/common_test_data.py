@@ -18,7 +18,7 @@ ListAccountsResponseData = {
 			                            57,
 			                            676000,
 			                            tzinfo=tzlocal())
-		},
+			},
 		{
 			'Id'             : '777777777777',
 			'Arn'            : 'arn:aws:organizations::111122223333:account/o-ykEXAMPLEmn/777777777777',
@@ -34,7 +34,7 @@ ListAccountsResponseData = {
 			                            39,
 			                            398000,
 			                            tzinfo=tzlocal())
-		},
+			},
 		{
 			'Id'             : '333333333333',
 			'Arn'            : 'arn:aws:organizations::111122223333:account/o-ykfx0legmn/333333333333',
@@ -50,7 +50,7 @@ ListAccountsResponseData = {
 			                            1,
 			                            416000,
 			                            tzinfo=tzlocal())
-		},
+			},
 		{
 			'Id'             : '555555555555',
 			'Arn'            : 'arn:aws:organizations::111122223333:account/o-ykfx0legmn/555555555555',
@@ -66,7 +66,7 @@ ListAccountsResponseData = {
 			                            14,
 			                            78000,
 			                            tzinfo=tzlocal())
-		},
+			},
 		{
 			'Id'             : '888888888888',
 			'Arn'            : 'arn:aws:organizations::111122223333:account/o-ykfx0legmn/888888888888',
@@ -82,7 +82,7 @@ ListAccountsResponseData = {
 			                            24,
 			                            597000,
 			                            tzinfo=tzlocal())
-		},
+			},
 		{
 			'Id'             : '222222222222',
 			'Arn'            : 'arn:aws:organizations::111122223333:account/o-ykfx0legmn/222222222222',
@@ -98,7 +98,7 @@ ListAccountsResponseData = {
 			                            46,
 			                            390000,
 			                            tzinfo=tzlocal())
-		},
+			},
 		{
 			'Id'             : '999999999999',
 			'Arn'            : 'arn:aws:organizations::111122223333:account/o-ykfx0legmn/999999999999',
@@ -114,7 +114,7 @@ ListAccountsResponseData = {
 			                            52,
 			                            900000,
 			                            tzinfo=tzlocal())
-		},
+			},
 		{
 			'Id'             : '444444444444',
 			'Arn'            : 'arn:aws:organizations::111122223333:account/o-ykfx0legmn/444444444444',
@@ -130,7 +130,7 @@ ListAccountsResponseData = {
 			                            51,
 			                            248000,
 			                            tzinfo=tzlocal())
-		},
+			},
 		{
 			'Id'             : '666666666666',
 			'Arn'            : 'arn:aws:organizations::111122223333:account/o-ykfx0legmn/666666666666',
@@ -146,7 +146,7 @@ ListAccountsResponseData = {
 			                            11,
 			                            350000,
 			                            tzinfo=tzlocal())
-		},
+			},
 		{
 			'Id'             : '111111111111',
 			'Arn'            : 'arn:aws:organizations::111122223333:account/o-ykfx0legmn/111111111111',
@@ -162,123 +162,123 @@ ListAccountsResponseData = {
 			                            6,
 			                            149000,
 			                            tzinfo=tzlocal())
-		}
-	]
-}
+			}
+		]
+	}
 DescribeRegionsResponseData = {
 	'Regions': [
 		{
 			'Endpoint'   : 'ec2.af-south-1.amazonaws.com',
 			'RegionName' : 'af-south-1',
 			'OptInStatus': 'opted-in'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.ap-south-1.amazonaws.com',
 			'RegionName' : 'ap-south-1',
 			'OptInStatus': 'opt-in-not-required'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.eu-north-1.amazonaws.com',
 			'RegionName' : 'eu-north-1',
 			'OptInStatus': 'opt-in-not-required'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.eu-west-3.amazonaws.com',
 			'RegionName' : 'eu-west-3',
 			'OptInStatus': 'opt-in-not-required'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.eu-south-1.amazonaws.com',
 			'RegionName' : 'eu-south-1',
 			'OptInStatus': 'opted-in'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.eu-west-2.amazonaws.com',
 			'RegionName' : 'eu-west-2',
 			'OptInStatus': 'opt-in-not-required'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.eu-west-1.amazonaws.com',
 			'RegionName' : 'eu-west-1',
 			'OptInStatus': 'opt-in-not-required'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.ap-northeast-3.amazonaws.com',
 			'RegionName' : 'ap-northeast-3',
 			'OptInStatus': 'opt-in-not-required'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.ap-northeast-2.amazonaws.com',
 			'RegionName' : 'ap-northeast-2',
 			'OptInStatus': 'opt-in-not-required'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.me-south-1.amazonaws.com',
 			'RegionName' : 'me-south-1',
 			'OptInStatus': 'opted-in'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.ap-northeast-1.amazonaws.com',
 			'RegionName' : 'ap-northeast-1',
 			'OptInStatus': 'opt-in-not-required'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.il-central-1.amazonaws.com',
 			'RegionName' : 'il-central-1',
 			'OptInStatus': 'opted-in'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.ca-central-1.amazonaws.com',
 			'RegionName' : 'ca-central-1',
 			'OptInStatus': 'opt-in-not-required'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.sa-east-1.amazonaws.com',
 			'RegionName' : 'sa-east-1',
 			'OptInStatus': 'opt-in-not-required'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.ap-southeast-1.amazonaws.com',
 			'RegionName' : 'ap-southeast-1',
 			'OptInStatus': 'opt-in-not-required'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.ap-southeast-2.amazonaws.com',
 			'RegionName' : 'ap-southeast-2',
 			'OptInStatus': 'opt-in-not-required'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.eu-central-1.amazonaws.com',
 			'RegionName' : 'eu-central-1',
 			'OptInStatus': 'opt-in-not-required'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.eu-central-2.amazonaws.com',
 			'RegionName' : 'eu-central-2',
 			'OptInStatus': 'opted-in'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.us-east-1.amazonaws.com',
 			'RegionName' : 'us-east-1',
 			'OptInStatus': 'opt-in-not-required'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.us-east-2.amazonaws.com',
 			'RegionName' : 'us-east-2',
 			'OptInStatus': 'opt-in-not-required'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.us-west-1.amazonaws.com',
 			'RegionName' : 'us-west-1',
 			'OptInStatus': 'opt-in-not-required'
-		},
+			},
 		{
 			'Endpoint'   : 'ec2.us-west-2.amazonaws.com',
 			'RegionName' : 'us-west-2',
 			'OptInStatus': 'opt-in-not-required'
-		}
-	]
-}
+			}
+		]
+	}
 DescribeOrganizationsResponseData = {
 	'Organization': {
 		'Id'                  : 'o-ykEXAMPLEmn',
@@ -291,15 +291,15 @@ DescribeOrganizationsResponseData = {
 			{
 				'Type'  : 'SERVICE_CONTROL_POLICY',
 				'Status': 'ENABLED'
-			}
-		]
+				}
+			]
+		}
 	}
-}
 GetCallerIdentity = {
-	'UserId' : 'AIDAJEXAMPLEOVUHYO6',
+	'UserId' : 'xxxx111122223333xxxxx',
 	'Account': '111122223333',
 	'Arn'    : 'arn:aws:iam::111122223333:user/Paul'
-}
+	}
 cli_provided_parameters1 = {
 	'pProfiles'    : ['LZRoot14'],
 	'pRegionList'  : ['us-east-1',
@@ -329,7 +329,7 @@ CredentialResponseData = [
 	{'ParentAcctId'   : '111122223333',
 	 'MgmtAccount'    : '111122223333',
 	 'OrgType'        : 'Root',
-	 'AccessKeyId'    : '*****AccessKeyHere*****',
+	 'AccessKeyId'    : 'xxxx111122223333xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : None,
 	 'AccountNumber'  : '111122223333',
@@ -344,7 +344,7 @@ CredentialResponseData = [
 	 'ErrorMessage'   : None,
 	 'ParentProfile'  : 'mock_profile'},
 	# Child Accounts Credentials
-	{'AccessKeyId'    : '*****AccessKeyHere*****',
+	{'AccessKeyId'    : 'xxxx444455556666xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
 	 'Expiration'     : datetime(2023, 9, 8, 1, 30, tzinfo=tzutc()),
@@ -362,7 +362,7 @@ CredentialResponseData = [
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
 	 'ParentProfile'  : 'mock_profile'},
-	{'AccessKeyId'    : '*****AccessKeyHere*****',
+	{'AccessKeyId'    : 'xxxx555566667777xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
 	 'Expiration'     : datetime(2023, 9, 8, 1, 30, tzinfo=tzutc()),
@@ -380,7 +380,7 @@ CredentialResponseData = [
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
 	 'ParentProfile'  : 'mock_profile'},
-	{'AccessKeyId'    : '*****AccessKeyHere*****',
+	{'AccessKeyId'    : 'xxxx555566667777xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
 	 'Expiration'     : datetime(2023, 9, 8, 1, 30, 18, tzinfo=tzutc()),
@@ -398,7 +398,7 @@ CredentialResponseData = [
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
 	 'ParentProfile'  : 'mock_profile'},
-	{'AccessKeyId'    : '*****AccessKeyHere*****',
+	{'AccessKeyId'    : 'xxxx666677775555xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
 	 'Expiration'     : datetime(2023, 9, 8, 1, 30, tzinfo=tzutc()),
@@ -416,7 +416,7 @@ CredentialResponseData = [
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
 	 'ParentProfile'  : 'mock_profile'},
-	{'AccessKeyId'    : '*****AccessKeyHere*****',
+	{'AccessKeyId'    : 'xxxx777755556666xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
 	 'Expiration'     : datetime(2023, 9, 8, 1, 30, tzinfo=tzutc()),
@@ -434,7 +434,7 @@ CredentialResponseData = [
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
 	 'ParentProfile'  : 'mock_profile'},
-	{'AccessKeyId'    : '*****AccessKeyHere*****',
+	{'AccessKeyId'    : 'xxxx777755556666xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
 	 'Expiration'     : datetime(2023, 9, 8, 1, 30, tzinfo=tzutc()),
@@ -452,7 +452,7 @@ CredentialResponseData = [
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
 	 'ParentProfile'  : 'mock_profile'},
-	{'AccessKeyId'    : '*****AccessKeyHere*****',
+	{'AccessKeyId'    : 'xxxx666677778888xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
 	 'Expiration'     : datetime(2023, 9, 8, 1, 30, tzinfo=tzutc()),
@@ -470,7 +470,7 @@ CredentialResponseData = [
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
 	 'ParentProfile'  : 'mock_profile'},
-	{'AccessKeyId'    : '*****AccessKeyHere*****',
+	{'AccessKeyId'    : 'xxxx777788886666xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
 	 'Expiration'     : datetime(2023, 9, 8, 1, 30, tzinfo=tzutc()),
@@ -488,7 +488,7 @@ CredentialResponseData = [
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
 	 'ParentProfile'  : 'mock_profile'},
-	{'AccessKeyId'    : '*****AccessKeyHere*****',
+	{'AccessKeyId'    : 'xxxx888866667777xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
 	 'Expiration'     : datetime(2023, 9, 8, 1, 30, tzinfo=tzutc()),
@@ -508,7 +508,7 @@ CredentialResponseData = [
 	 'ParentProfile'  : 'mock_profile'}]
 
 AssumeRoleResponseData = {'Credentials': {
-	'AccessKeyId'    : '*****AccessKeyHere*****',
+	'AccessKeyId'    : 'xxxxAccountNumberxxxxx',
 	'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	'SessionToken'   : '*****SessionTokenHere*****',
 	'Expiration'     : datetime(2023,
@@ -1052,6 +1052,16 @@ t = [
 	 'SecretAccessKey': '***SecretAccessKeyHere***',
 	 'SessionToken'   : '***SessionTokenHere***'}]
 
+mock_profile_list_1 = ['default', 'mock_profile_1']
+mock_profile_list_2 = ['default', 'mock_profile_2']
+mock_profile_list_3 = ['default', 'mock_profile_3']
+mock_profile_list_4 = ['default', 'mock_profile_4']
+mock_region_list_1 = ['us-east-1']
+mock_region_list_2 = ['us-east-1', 'us-east-2']
+mock_region_list_3 = ['eu-west-1', 'eu-central-1']
+mock_region_list_4 = ['all']
+mock_region_list_5 = ['global']
+
 """
 all_my_functions Test Data
 """
@@ -1085,24 +1095,24 @@ account_and_region_specific_function_response_data = [
 							'COMPONENT_TABLE'        : 'AccountAssessmentStack-ResourceBasedPolicyTable7277C643-13R1K510AXFDB',
 							'LOG_LEVEL'              : 'INFO',
 							'SOLUTION_VERSION'       : 'v1.0.3'
-						}
-					},
+							}
+						},
 					'TracingConfig'   : {
 						'Mode': 'Active'
-					},
+						},
 					'RevisionId'      : '6e9ec792-08c6-491d-aa19-aad57aeab78d',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'AccountAssessmentStack-TrustedAccessStartScan70308-LfEGZM07HEP6',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-TrustedAccessStartScan70308-LfEGZM07HEP6',
@@ -1127,24 +1137,24 @@ account_and_region_specific_function_response_data = [
 							'COMPONENT_TABLE'         : 'AccountAssessmentStack-TrustedAccessTable495B447A-GTR0RYDUJU5Q',
 							'LOG_LEVEL'               : 'INFO',
 							'SOLUTION_VERSION'        : 'v1.0.3'
-						}
-					},
+							}
+						},
 					'TracingConfig'   : {
 						'Mode': 'Active'
-					},
+						},
 					'RevisionId'      : '943aca8c-3984-45cb-97ce-fd3e2a8f7c03',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'lock_down_stacks_sets_role',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:lock_down_stacks_sets_role',
@@ -1160,20 +1170,20 @@ account_and_region_specific_function_response_data = [
 					'Version'         : '$LATEST',
 					'TracingConfig'   : {
 						'Mode': 'PassThrough'
-					},
+						},
 					'RevisionId'      : 'ec0a7b23-c892-4dc8-935c-954bf6990bf5',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'PrintOutEvents_Function',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:PrintOutEvents_Function',
@@ -1189,20 +1199,20 @@ account_and_region_specific_function_response_data = [
 					'Version'         : '$LATEST',
 					'TracingConfig'   : {
 						'Mode': 'PassThrough'
-					},
+						},
 					'RevisionId'      : 'cfeb671f-f08d-4217-8263-b5110101baf9',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'AccountAssessmentStack-ResourceBasedPolicyFinishAs-n8TanL9sDr9r',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-ResourceBasedPolicyFinishAs-n8TanL9sDr9r',
@@ -1225,24 +1235,24 @@ account_and_region_specific_function_response_data = [
 							'TABLE_JOBS'             : 'AccountAssessmentStack-JobHistoryTableE4B293DD-1QRBBBDKUU8G9',
 							'COMPONENT_TABLE'        : 'AccountAssessmentStack-ResourceBasedPolicyTable7277C643-13R1K510AXFDB',
 							'SOLUTION_VERSION'       : 'v1.0.3'
-						}
-					},
+							}
+						},
 					'TracingConfig'   : {
 						'Mode': 'Active'
-					},
+						},
 					'RevisionId'      : 'e422e2e3-de5b-4a1d-b1f1-09b6125d230e',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'AccountAssessmentStack-DelegatedAdminsStartScanE7D-Qk14ANSD75ay',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-DelegatedAdminsStartScanE7D-Qk14ANSD75ay',
@@ -1267,24 +1277,24 @@ account_and_region_specific_function_response_data = [
 							'COMPONENT_TABLE'         : 'AccountAssessmentStack-DelegatedAdminsTable29E80916-F34FK4FZGFP5',
 							'LOG_LEVEL'               : 'INFO',
 							'SOLUTION_VERSION'        : 'v1.0.3'
-						}
-					},
+							}
+						},
 					'TracingConfig'   : {
 						'Mode': 'Active'
-					},
+						},
 					'RevisionId'      : 'd3fdc6a8-35b5-44b6-ae21-a533eea3f478',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'UpsertDNSNameLambda',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:UpsertDNSNameLambda',
@@ -1305,30 +1315,30 @@ account_and_region_specific_function_response_data = [
 							'QUEUE_NAME'    : 'myDNSUpsertQueue',
 							'TIME_TO_LIVE'  : '300',
 							'LOG_LEVEL'     : 'INFO'
-						}
-					},
+							}
+						},
 					'TracingConfig'   : {
 						'Mode': 'PassThrough'
-					},
+						},
 					'RevisionId'      : 'bbfc8a57-67de-426f-a63d-08996b688bd8',
 					'Layers'          : [
 						{
 							'Arn'     : 'arn:aws:lambda:us-east-1:111122223333:layer:DistributedBoto3Library:9',
 							'CodeSize': 12119917
-						}
-					],
+							}
+						],
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'AccountAssessmentStack-ResourceBasedPolicyScanSpok-xWlINDye4FUd',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-ResourceBasedPolicyScanSpok-xWlINDye4FUd',
@@ -1353,24 +1363,24 @@ account_and_region_specific_function_response_data = [
 							'COMPONENT_TABLE'        : 'AccountAssessmentStack-ResourceBasedPolicyTable7277C643-13R1K510AXFDB',
 							'LOG_LEVEL'              : 'INFO',
 							'SOLUTION_VERSION'       : 'v1.0.3'
-						}
-					},
+							}
+						},
 					'TracingConfig'   : {
 						'Mode': 'Active'
-					},
+						},
 					'RevisionId'      : '5d2d6891-e38f-4038-a5c6-fd0be145f34e',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'vpc-mappings-111122223333',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:vpc-mappings-111122223333',
@@ -1386,20 +1396,20 @@ account_and_region_specific_function_response_data = [
 					'Version'         : '$LATEST',
 					'TracingConfig'   : {
 						'Mode': 'PassThrough'
-					},
+						},
 					'RevisionId'      : '14153c9e-b5d0-4e0a-9d18-93868f7dd1ae',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'AccountAssessmentStack-ResourceBasedPolicyReadDC5D-4fhaK4485acJ',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-ResourceBasedPolicyReadDC5D-4fhaK4485acJ',
@@ -1421,24 +1431,24 @@ account_and_region_specific_function_response_data = [
 							'TABLE_JOBS'             : 'AccountAssessmentStack-JobHistoryTableE4B293DD-1QRBBBDKUU8G9',
 							'COMPONENT_TABLE'        : 'AccountAssessmentStack-ResourceBasedPolicyTable7277C643-13R1K510AXFDB',
 							'SOLUTION_VERSION'       : 'v1.0.3'
-						}
-					},
+							}
+						},
 					'TracingConfig'   : {
 						'Mode': 'Active'
-					},
+						},
 					'RevisionId'      : 'fe607630-2342-4d09-98d2-cee63552cb05',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'Fix_Default_SGs',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:Fix_Default_SGs',
@@ -1454,20 +1464,20 @@ account_and_region_specific_function_response_data = [
 					'Version'         : '$LATEST',
 					'TracingConfig'   : {
 						'Mode': 'PassThrough'
-					},
+						},
 					'RevisionId'      : 'c60151c0-f460-4dfe-98b5-47f6710447b8',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'AccountAssessmentStack-ResourceBasedPolicyStartSca-RU8utlGVjJyc',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-ResourceBasedPolicyStartSca-RU8utlGVjJyc',
@@ -1493,24 +1503,24 @@ account_and_region_specific_function_response_data = [
 							'COMPONENT_TABLE'                       : 'AccountAssessmentStack-ResourceBasedPolicyTable7277C643-13R1K510AXFDB',
 							'LOG_LEVEL'                             : 'INFO',
 							'SOLUTION_VERSION'                      : 'v1.0.3'
-						}
-					},
+							}
+						},
 					'TracingConfig'   : {
 						'Mode': 'Active'
-					},
+						},
 					'RevisionId'      : '4d80914c-9423-435d-b1fe-d48125ea064d',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'AccountAssessmentStack-ResourceBasedPolicyReadScan-DbzA0NZGeTb3',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-ResourceBasedPolicyReadScan-DbzA0NZGeTb3',
@@ -1532,24 +1542,24 @@ account_and_region_specific_function_response_data = [
 							'COMPONENT_TABLE'        : 'AccountAssessmentStack-ResourceBasedPolicyTable7277C643-13R1K510AXFDB',
 							'LOG_LEVEL'              : 'INFO',
 							'SOLUTION_VERSION'       : 'v1.0.3'
-						}
-					},
+							}
+						},
 					'TracingConfig'   : {
 						'Mode': 'Active'
-					},
+						},
 					'RevisionId'      : 'b0f59e30-6d16-4368-80b2-27ed25d16d1e',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'AccountAssessmentStack-WebUIDeployerDeployWebUIC2B-ZL1H4n2W05xe',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-WebUIDeployerDeployWebUIC2B-ZL1H4n2W05xe',
@@ -1571,24 +1581,24 @@ account_and_region_specific_function_response_data = [
 							'STACK_ID'               : 'arn:aws:cloudformation:us-east-1:111122223333:stack/AccountAssessmentStack/bc6befc0-dacb-11ed-921f-0a41af233cd7',
 							'LOG_LEVEL'              : 'INFO',
 							'SOLUTION_VERSION'       : 'v1.0.3'
-						}
-					},
+							}
+						},
 					'TracingConfig'   : {
 						'Mode': 'Active'
-					},
+						},
 					'RevisionId'      : 'b79766f8-4e8d-438c-a5b5-8d5e656a165e',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'orgformation-EmptyS3BucketOnDeletionLambdaFunction-W98Id8S5pK33',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:orgformation-EmptyS3BucketOnDeletionLambdaFunction-W98Id8S5pK33',
@@ -1604,20 +1614,20 @@ account_and_region_specific_function_response_data = [
 					'Version'         : '$LATEST',
 					'TracingConfig'   : {
 						'Mode': 'PassThrough'
-					},
+						},
 					'RevisionId'      : 'c5d3cf2d-8a26-41d0-a0e8-60a36bca1103',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'AccountAssessmentStack-JobHistoryJobsHandler060579-EShvGJzftPCt',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-JobHistoryJobsHandler060579-EShvGJzftPCt',
@@ -1643,24 +1653,24 @@ account_and_region_specific_function_response_data = [
 							'TABLE_JOBS'                 : 'AccountAssessmentStack-JobHistoryTableE4B293DD-1QRBBBDKUU8G9',
 							'SOLUTION_VERSION'           : 'v1.0.3',
 							'TABLE_RESOURCE_BASED_POLICY': 'AccountAssessmentStack-ResourceBasedPolicyTable7277C643-13R1K510AXFDB'
-						}
-					},
+							}
+						},
 					'TracingConfig'   : {
 						'Mode': 'Active'
-					},
+						},
 					'RevisionId'      : '4ebd1e01-2898-4dab-8fb2-a42bad2bb1df',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'CreateidpProvider',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:CreateidpProvider',
@@ -1676,20 +1686,20 @@ account_and_region_specific_function_response_data = [
 					'Version'         : '$LATEST',
 					'TracingConfig'   : {
 						'Mode': 'PassThrough'
-					},
+						},
 					'RevisionId'      : '42c3c4df-fe81-4dfd-9cd8-827a478407b7',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'P9E-a8ba4fea-1856-49ca-8aa4-2b7e9b58d7a6',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:P9E-a8ba4fea-1856-49ca-8aa4-2b7e9b58d7a6',
@@ -1705,20 +1715,20 @@ account_and_region_specific_function_response_data = [
 					'Version'         : '$LATEST',
 					'TracingConfig'   : {
 						'Mode': 'PassThrough'
-					},
+						},
 					'RevisionId'      : 'ffa243e9-dbe5-4424-970a-96ecfb5e4a3b',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'AccountAssessmentStack-TrustedAccessRead96AB6071-NKktqhxZ7fTz',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-TrustedAccessRead96AB6071-NKktqhxZ7fTz',
@@ -1740,24 +1750,24 @@ account_and_region_specific_function_response_data = [
 							'TABLE_JOBS'             : 'AccountAssessmentStack-JobHistoryTableE4B293DD-1QRBBBDKUU8G9',
 							'COMPONENT_TABLE'        : 'AccountAssessmentStack-TrustedAccessTable495B447A-GTR0RYDUJU5Q',
 							'SOLUTION_VERSION'       : 'v1.0.3'
-						}
-					},
+							}
+						},
 					'TracingConfig'   : {
 						'Mode': 'Active'
-					},
+						},
 					'RevisionId'      : '41db914e-32ea-4b7c-8a05-a78def9856b1',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'AccountAssessmentStack-DelegatedAdminsRead591DCC7E-AyGSKEOHKNm2',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-DelegatedAdminsRead591DCC7E-AyGSKEOHKNm2',
@@ -1779,26 +1789,26 @@ account_and_region_specific_function_response_data = [
 							'TABLE_JOBS'             : 'AccountAssessmentStack-JobHistoryTableE4B293DD-1QRBBBDKUU8G9',
 							'COMPONENT_TABLE'        : 'AccountAssessmentStack-DelegatedAdminsTable29E80916-F34FK4FZGFP5',
 							'SOLUTION_VERSION'       : 'v1.0.3'
-						}
-					},
+							}
+						},
 					'TracingConfig'   : {
 						'Mode': 'Active'
-					},
+						},
 					'RevisionId'      : '677f7ad5-f7d2-44d7-a3dd-c026e022b2fb',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
+						}
 					}
-				}
-			]}
-	},
+				]}
+		},
 	{
 		'Account'        : '111122223333',
 		'Region'         : 'eu-west-1',
@@ -1819,22 +1829,22 @@ account_and_region_specific_function_response_data = [
 					'Version'         : '$LATEST',
 					'TracingConfig'   : {
 						'Mode': 'PassThrough'
-					},
+						},
 					'RevisionId'      : 'c5416966-cb79-4f43-bea5-c0286ad1630c',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
+						}
 					}
-				}
-			]}
-	},
+				]}
+		},
 	{
 		'Account'        : '111122223333',
 		'Region'         : 'us-west-2',
@@ -1855,22 +1865,22 @@ account_and_region_specific_function_response_data = [
 					'Version'         : '$LATEST',
 					'TracingConfig'   : {
 						'Mode': 'PassThrough'
-					},
+						},
 					'RevisionId'      : '4a4dbdc0-3ee9-4213-aaea-a831efc6bc44',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
+						}
 					}
-				}
-			]}
-	},
+				]}
+		},
 	{
 		'Account'        : '111122223333',
 		'Region'         : 'us-east-2',
@@ -1894,30 +1904,30 @@ account_and_region_specific_function_response_data = [
 							'KMS_KEY_ID'    : '54b48e47-0df6-4730-8077-37575b2152a0',
 							'S3_BUCKET_NAME': 'adf-global-base-deployment-pipelinebucket-x5m8zmy1i1sc',
 							'ADF_LOG_LEVEL' : 'INFO'
-						}
-					},
+							}
+						},
 					'TracingConfig'   : {
 						'Mode': 'PassThrough'
-					},
+						},
 					'RevisionId'      : '242037fc-bfc8-4b87-8190-0a163f27be4a',
 					'Layers'          : [
 						{
 							'Arn'     : 'arn:aws:lambda:us-east-1:111122223333:layer:shared_layer:1',
 							'CodeSize': 85865
-						}
-					],
+							}
+						],
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'CheckPipelineStatus',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:CheckPipelineStatus',
@@ -1936,30 +1946,30 @@ account_and_region_specific_function_response_data = [
 							'KMS_KEY_ID'    : '54b48e47-0df6-4730-8077-37575b2152a0',
 							'S3_BUCKET_NAME': 'adf-global-base-deployment-pipelinebucket-x5m8zmy1i1sc',
 							'ADF_LOG_LEVEL' : 'INFO'
-						}
-					},
+							}
+						},
 					'TracingConfig'   : {
 						'Mode': 'PassThrough'
-					},
+						},
 					'RevisionId'      : 'e2ce6ebf-63e9-441d-84a6-d3c6619a157c',
 					'Layers'          : [
 						{
 							'Arn'     : 'arn:aws:lambda:us-east-1:111122223333:layer:shared_layer:1',
 							'CodeSize': 85865
-						}
-					],
+							}
+						],
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'PipelinesCreateInitialCommitFunction',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:PipelinesCreateInitialCommitFunction',
@@ -1975,20 +1985,20 @@ account_and_region_specific_function_response_data = [
 					'Version'         : '$LATEST',
 					'TracingConfig'   : {
 						'Mode': 'PassThrough'
-					},
+						},
 					'RevisionId'      : 'd8eba506-0e28-4bab-9ffb-788683448210',
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
-					}
-				},
+						}
+					},
 				{
 					'FunctionName'    : 'SendSlackNotification',
 					'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:SendSlackNotification',
@@ -2006,32 +2016,32 @@ account_and_region_specific_function_response_data = [
 						'Variables': {
 							'ADF_PIPELINE_PREFIX': 'adf-pipeline-',
 							'ADF_LOG_LEVEL'      : 'INFO'
-						}
-					},
+							}
+						},
 					'TracingConfig'   : {
 						'Mode': 'PassThrough'
-					},
+						},
 					'RevisionId'      : '52d17768-98a6-4645-acb3-4152ea94eb05',
 					'Layers'          : [
 						{
 							'Arn'     : 'arn:aws:lambda:us-east-1:111122223333:layer:shared_layer:1',
 							'CodeSize': 85865
-						}
-					],
+							}
+						],
 					'PackageType'     : 'Zip',
 					'Architectures'   : [
 						'x86_64'
-					],
+						],
 					'EphemeralStorage': {
 						'Size': 512
-					},
+						},
 					'SnapStart'       : {
 						'ApplyOn'           : 'None',
 						'OptimizationStatus': 'Off'
+						}
 					}
-				}
-			]}
-	},
+				]}
+		},
 	{
 		'Account'        : '111122223333',
 		'Region'         : 'eu-central-1',
@@ -2055,26 +2065,26 @@ account_and_region_specific_function_response_data = [
 						'DryRun'  : 'false',
 						'SNSTopic': 'arn:aws:sns:us-east-1:111122223333:OpenSG-Updated',
 						'LogLevel': 'INFO'
-					}
-				},
+						}
+					},
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : 'cfa69c09-2a79-4c94-a6e0-1b233a281a0e',
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
+					}
 				}
-			}
-		]}
-	},
+			]}
+		},
 	{
 		'Account'        : '111122223333',
 		'Region'         : 'eu-north-1',
@@ -2095,26 +2105,26 @@ account_and_region_specific_function_response_data = [
 				'Environment'     : {
 					'Variables': {
 						'sns_arn': 'arn:aws:sns:us-east-1:111122223333:AWS-Landing-Zone-Aggregate-Security-Notifications'
-					}
-				},
+						}
+					},
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : 'b8e1386c-4952-4cd9-b728-3192d326cdff',
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
+					}
 				}
-			}
-		]}
-	},
+			]}
+		},
 	{
 		'Account'        : '111122223333',
 		'Region'         : 'eu-west-2',
@@ -2134,22 +2144,22 @@ account_and_region_specific_function_response_data = [
 				'Version'         : '$LATEST',
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : '402e6eb2-daed-4bd9-889d-b59372b6d33d',
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
+					}
 				}
-			}
-		]}
-	},
+			]}
+		},
 	{
 		'Account'        : '111122223333',
 		'Region'         : 'ap-south-1',
@@ -2170,24 +2180,24 @@ account_and_region_specific_function_response_data = [
 				'Environment'     : {
 					'Variables': {
 						'VERSION': '1.0'
-					}
-				},
+						}
+					},
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : '78f6c15d-33ad-46e0-a969-06347872c087',
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
-				}
-			},
+					}
+				},
 			{
 				'FunctionName'    : 'Service-Catalog-Factory-StartInstallLambda-1G5SWLOMPKBJV',
 				'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:Service-Catalog-Factory-StartInstallLambda-1G5SWLOMPKBJV',
@@ -2203,20 +2213,20 @@ account_and_region_specific_function_response_data = [
 				'Version'         : '$LATEST',
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : '15888c75-70d6-4205-a642-8eb0d81c0399',
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
-				}
-			},
+					}
+				},
 			{
 				'FunctionName'    : 'UpsertDNSNameFromCentralQueueLambda',
 				'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:UpsertDNSNameFromCentralQueueLambda',
@@ -2234,30 +2244,30 @@ account_and_region_specific_function_response_data = [
 					'Variables': {
 						'HOSTED_ZONE_ID': 'Z06954483PM26JFJ0ET4L',
 						'LOG_LEVEL'     : 'INFO'
-					}
-				},
+						}
+					},
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : 'd82459b2-8fa8-41e8-a842-5484d144755a',
 				'Layers'          : [
 					{
 						'Arn'     : 'arn:aws:lambda:us-east-1:111122223333:layer:CentralBoto3Library:1',
 						'CodeSize': 12119917
-					}
-				],
+						}
+					],
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
-				}
-			},
+					}
+				},
 			{
 				'FunctionName'    : 'puppet-initialization-stack-StartInstallLambda-1HOFEXKEJ59NO',
 				'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:puppet-initialization-stack-StartInstallLambda-1HOFEXKEJ59NO',
@@ -2273,20 +2283,20 @@ account_and_region_specific_function_response_data = [
 				'Version'         : '$LATEST',
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : '49c3f461-70c8-4104-aa04-c9837a7bb2c4',
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
-				}
-			},
+					}
+				},
 			{
 				'FunctionName'    : 'aws-perspective-444444444444-PerspectiveCostLambda-WI000XT4UESL',
 				'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:aws-perspective-444444444444-PerspectiveCostLambda-WI000XT4UESL',
@@ -2303,24 +2313,24 @@ account_and_region_specific_function_response_data = [
 				'Environment'     : {
 					'Variables': {
 						'DynamoCostTable': 'aws-perspective-444444444444-us-east-1-CostAndUsage-102XQ0DR9RGNL-PerspectiveCostDBTable-140FMMWXZJMF8'
-					}
-				},
+						}
+					},
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : '84c22e96-d9d7-4c99-8141-36de2c9b2788',
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
-				}
-			},
+					}
+				},
 			{
 				'FunctionName'    : 'aws-perspective-LambdaSetup-XVRTM8O9Z664',
 				'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:aws-perspective-LambdaSetup-XVRTM8O9Z664',
@@ -2362,24 +2372,24 @@ account_and_region_specific_function_response_data = [
 						'DEPLOYMENT_BUCKET_KEY'          : 'aws-perspective/v1.0.1',
 						'DISCOVERY_BUCKET'               : 'aws-perspective-discoverybucket-qjlwypzo5eg1',
 						'WEBUI_BUCKET'                   : 'aws-perspective-webuibucket-1xylrsdi5wwn2'
-					}
-				},
+						}
+					},
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : '139255c9-441e-4b20-8539-14b004e1e206',
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
-				}
-			},
+					}
+				},
 			{
 				'FunctionName'    : 'HostedZone',
 				'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:HostedZone',
@@ -2397,24 +2407,24 @@ account_and_region_specific_function_response_data = [
 					'Variables': {
 						'HOSTED_ZONE_ID': 'Z2J1SZB1XTWUJO',
 						'LOG_LEVEL'     : 'INFO'
-					}
-				},
+						}
+					},
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : 'd587b479-9327-491a-9073-dec709c1b4a1',
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
-				}
-			},
+					}
+				},
 			{
 				'FunctionName'    : 'aws-perspective-444444444444-DrawIOExportFunction-18FOVGK1O4NA0',
 				'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:aws-perspective-444444444444-DrawIOExportFunction-18FOVGK1O4NA0',
@@ -2430,20 +2440,20 @@ account_and_region_specific_function_response_data = [
 				'Version'         : '$LATEST',
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : 'df5e70fb-a745-40a4-9e87-b91b3e58974e',
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
-				}
-			},
+					}
+				},
 			{
 				'FunctionName'    : 'UpsertDNSNameLambda',
 				'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:UpsertDNSNameLambda',
@@ -2464,32 +2474,32 @@ account_and_region_specific_function_response_data = [
 						'QUEUE_NAME'    : 'myDNSUpsertQueue',
 						'TIME_TO_LIVE'  : '300',
 						'LOG_LEVEL'     : 'INFO'
-					}
-				},
+						}
+					},
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : 'bb7c57a0-6d00-4e4a-809c-95f24c273f70',
 				'Layers'          : [
 					{
 						'Arn'     : 'arn:aws:lambda:us-east-1:111122223333:layer:DistributedBoto3Library:1',
 						'CodeSize': 12119917
-					}
-				],
+						}
+					],
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
+					}
 				}
-			}
-		]}
-	},
+			]}
+		},
 	{
 		'Account'        : '111122223333',
 		'Region'         : 'il-central-1',
@@ -2509,20 +2519,20 @@ account_and_region_specific_function_response_data = [
 				'Version'         : '$LATEST',
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : '2808976d-75cc-4103-aa40-a0356b9b0953',
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
-				}
-			},
+					}
+				},
 			{
 				'FunctionName'    : 'amplify-login-verify-auth-challenge-5e485fcf',
 				'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:amplify-login-verify-auth-challenge-5e485fcf',
@@ -2539,24 +2549,24 @@ account_and_region_specific_function_response_data = [
 				'Environment'     : {
 					'Variables': {
 						'ENDPOINT': 'https://amplifybackend.us-east-1.amazonaws.com'
-					}
-				},
+						}
+					},
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : '5926189a-f77b-41e8-ae85-5e45907a3eec',
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
-				}
-			},
+					}
+				},
 			{
 				'FunctionName'    : 'amplify-login-create-auth-challenge-5e485fcf',
 				'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:amplify-login-create-auth-challenge-5e485fcf',
@@ -2572,20 +2582,20 @@ account_and_region_specific_function_response_data = [
 				'Version'         : '$LATEST',
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : '6679dcef-6683-46be-968e-358e02f60aba',
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
-				}
-			},
+					}
+				},
 			{
 				'FunctionName'    : 'UpsertDNSNameLambda',
 				'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:UpsertDNSNameLambda',
@@ -2606,30 +2616,30 @@ account_and_region_specific_function_response_data = [
 						'QUEUE_NAME'    : 'myDNSUpsertQueue',
 						'TIME_TO_LIVE'  : '300',
 						'LOG_LEVEL'     : 'INFO'
-					}
-				},
+						}
+					},
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : 'ee442990-2ae2-48af-864b-b56673ae9e47',
 				'Layers'          : [
 					{
 						'Arn'     : 'arn:aws:lambda:us-east-1:111122223333:layer:DistributedBoto3Library:2',
 						'CodeSize': 12119917
-					}
-				],
+						}
+					],
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
-				}
-			},
+					}
+				},
 			{
 				'FunctionName'    : 'amplify-login-define-auth-challenge-5e485fcf',
 				'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:amplify-login-define-auth-challenge-5e485fcf',
@@ -2645,22 +2655,22 @@ account_and_region_specific_function_response_data = [
 				'Version'         : '$LATEST',
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : '3146106e-59e1-4504-b113-ee532f3e6273',
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
+					}
 				}
-			}
-		]}
-	},
+			]}
+		},
 	{
 		'Account'        : '111122223333',
 		'Region'         : 'af-south-1',
@@ -2680,23 +2690,23 @@ account_and_region_specific_function_response_data = [
 				'Version'         : '$LATEST',
 				'TracingConfig'   : {
 					'Mode': 'PassThrough'
-				},
+					},
 				'RevisionId'      : 'd62b2adb-dde6-48a8-b63c-4e760ea9dc86',
 				'PackageType'     : 'Zip',
 				'Architectures'   : [
 					'x86_64'
-				],
+					],
 				'EphemeralStorage': {
 					'Size': 512
-				},
+					},
 				'SnapStart'       : {
 					'ApplyOn'           : 'None',
 					'OptimizationStatus': 'Off'
+					}
 				}
-			}
-		]}
-	},
-]
+			]}
+		},
+	]
 function_response_data = {
 	'Functions': [
 		{
@@ -2723,24 +2733,24 @@ function_response_data = {
 					'COMPONENT_TABLE'        : 'AccountAssessmentStack-ResourceBasedPolicyTable7277C643-13R1K510AXFDB',
 					'LOG_LEVEL'              : 'INFO',
 					'SOLUTION_VERSION'       : 'v1.0.3'
-				}
-			},
+					}
+				},
 			'TracingConfig'   : {
 				'Mode': 'Active'
-			},
+				},
 			'RevisionId'      : '6e9ec792-08c6-491d-aa19-aad57aeab78d',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'AccountAssessmentStack-TrustedAccessStartScan70308-LfEGZM07HEP6',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-TrustedAccessStartScan70308-LfEGZM07HEP6',
@@ -2765,24 +2775,24 @@ function_response_data = {
 					'COMPONENT_TABLE'         : 'AccountAssessmentStack-TrustedAccessTable495B447A-GTR0RYDUJU5Q',
 					'LOG_LEVEL'               : 'INFO',
 					'SOLUTION_VERSION'        : 'v1.0.3'
-				}
-			},
+					}
+				},
 			'TracingConfig'   : {
 				'Mode': 'Active'
-			},
+				},
 			'RevisionId'      : '943aca8c-3984-45cb-97ce-fd3e2a8f7c03',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'lock_down_stacks_sets_role',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:lock_down_stacks_sets_role',
@@ -2798,20 +2808,20 @@ function_response_data = {
 			'Version'         : '$LATEST',
 			'TracingConfig'   : {
 				'Mode': 'PassThrough'
-			},
+				},
 			'RevisionId'      : 'ec0a7b23-c892-4dc8-935c-954bf6990bf5',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'PrintOutEvents_Function',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:PrintOutEvents_Function',
@@ -2827,20 +2837,20 @@ function_response_data = {
 			'Version'         : '$LATEST',
 			'TracingConfig'   : {
 				'Mode': 'PassThrough'
-			},
+				},
 			'RevisionId'      : 'cfeb671f-f08d-4217-8263-b5110101baf9',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'AccountAssessmentStack-ResourceBasedPolicyFinishAs-n8TanL9sDr9r',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-ResourceBasedPolicyFinishAs-n8TanL9sDr9r',
@@ -2863,24 +2873,24 @@ function_response_data = {
 					'TABLE_JOBS'             : 'AccountAssessmentStack-JobHistoryTableE4B293DD-1QRBBBDKUU8G9',
 					'COMPONENT_TABLE'        : 'AccountAssessmentStack-ResourceBasedPolicyTable7277C643-13R1K510AXFDB',
 					'SOLUTION_VERSION'       : 'v1.0.3'
-				}
-			},
+					}
+				},
 			'TracingConfig'   : {
 				'Mode': 'Active'
-			},
+				},
 			'RevisionId'      : 'e422e2e3-de5b-4a1d-b1f1-09b6125d230e',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'AccountAssessmentStack-DelegatedAdminsStartScanE7D-Qk14ANSD75ay',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-DelegatedAdminsStartScanE7D-Qk14ANSD75ay',
@@ -2905,24 +2915,24 @@ function_response_data = {
 					'COMPONENT_TABLE'         : 'AccountAssessmentStack-DelegatedAdminsTable29E80916-F34FK4FZGFP5',
 					'LOG_LEVEL'               : 'INFO',
 					'SOLUTION_VERSION'        : 'v1.0.3'
-				}
-			},
+					}
+				},
 			'TracingConfig'   : {
 				'Mode': 'Active'
-			},
+				},
 			'RevisionId'      : 'd3fdc6a8-35b5-44b6-ae21-a533eea3f478',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'UpsertDNSNameLambda',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:UpsertDNSNameLambda',
@@ -2943,30 +2953,30 @@ function_response_data = {
 					'QUEUE_NAME'    : 'myDNSUpsertQueue',
 					'TIME_TO_LIVE'  : '300',
 					'LOG_LEVEL'     : 'INFO'
-				}
-			},
+					}
+				},
 			'TracingConfig'   : {
 				'Mode': 'PassThrough'
-			},
+				},
 			'RevisionId'      : 'bbfc8a57-67de-426f-a63d-08996b688bd8',
 			'Layers'          : [
 				{
 					'Arn'     : 'arn:aws:lambda:us-east-1:111122223333:layer:DistributedBoto3Library:9',
 					'CodeSize': 12119917
-				}
-			],
+					}
+				],
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'AccountAssessmentStack-ResourceBasedPolicyScanSpok-xWlINDye4FUd',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-ResourceBasedPolicyScanSpok-xWlINDye4FUd',
@@ -2991,24 +3001,24 @@ function_response_data = {
 					'COMPONENT_TABLE'        : 'AccountAssessmentStack-ResourceBasedPolicyTable7277C643-13R1K510AXFDB',
 					'LOG_LEVEL'              : 'INFO',
 					'SOLUTION_VERSION'       : 'v1.0.3'
-				}
-			},
+					}
+				},
 			'TracingConfig'   : {
 				'Mode': 'Active'
-			},
+				},
 			'RevisionId'      : '5d2d6891-e38f-4038-a5c6-fd0be145f34e',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'vpc-mappings-111122223333',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:vpc-mappings-111122223333',
@@ -3024,20 +3034,20 @@ function_response_data = {
 			'Version'         : '$LATEST',
 			'TracingConfig'   : {
 				'Mode': 'PassThrough'
-			},
+				},
 			'RevisionId'      : '14153c9e-b5d0-4e0a-9d18-93868f7dd1ae',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'AccountAssessmentStack-ResourceBasedPolicyReadDC5D-4fhaK4485acJ',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-ResourceBasedPolicyReadDC5D-4fhaK4485acJ',
@@ -3059,24 +3069,24 @@ function_response_data = {
 					'TABLE_JOBS'             : 'AccountAssessmentStack-JobHistoryTableE4B293DD-1QRBBBDKUU8G9',
 					'COMPONENT_TABLE'        : 'AccountAssessmentStack-ResourceBasedPolicyTable7277C643-13R1K510AXFDB',
 					'SOLUTION_VERSION'       : 'v1.0.3'
-				}
-			},
+					}
+				},
 			'TracingConfig'   : {
 				'Mode': 'Active'
-			},
+				},
 			'RevisionId'      : 'fe607630-2342-4d09-98d2-cee63552cb05',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'Fix_Default_SGs',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:Fix_Default_SGs',
@@ -3092,20 +3102,20 @@ function_response_data = {
 			'Version'         : '$LATEST',
 			'TracingConfig'   : {
 				'Mode': 'PassThrough'
-			},
+				},
 			'RevisionId'      : 'c60151c0-f460-4dfe-98b5-47f6710447b8',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'AccountAssessmentStack-ResourceBasedPolicyStartSca-RU8utlGVjJyc',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-ResourceBasedPolicyStartSca-RU8utlGVjJyc',
@@ -3131,24 +3141,24 @@ function_response_data = {
 					'COMPONENT_TABLE'                       : 'AccountAssessmentStack-ResourceBasedPolicyTable7277C643-13R1K510AXFDB',
 					'LOG_LEVEL'                             : 'INFO',
 					'SOLUTION_VERSION'                      : 'v1.0.3'
-				}
-			},
+					}
+				},
 			'TracingConfig'   : {
 				'Mode': 'Active'
-			},
+				},
 			'RevisionId'      : '4d80914c-9423-435d-b1fe-d48125ea064d',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'AccountAssessmentStack-ResourceBasedPolicyReadScan-DbzA0NZGeTb3',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-ResourceBasedPolicyReadScan-DbzA0NZGeTb3',
@@ -3170,24 +3180,24 @@ function_response_data = {
 					'COMPONENT_TABLE'        : 'AccountAssessmentStack-ResourceBasedPolicyTable7277C643-13R1K510AXFDB',
 					'LOG_LEVEL'              : 'INFO',
 					'SOLUTION_VERSION'       : 'v1.0.3'
-				}
-			},
+					}
+				},
 			'TracingConfig'   : {
 				'Mode': 'Active'
-			},
+				},
 			'RevisionId'      : 'b0f59e30-6d16-4368-80b2-27ed25d16d1e',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'AccountAssessmentStack-WebUIDeployerDeployWebUIC2B-ZL1H4n2W05xe',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-WebUIDeployerDeployWebUIC2B-ZL1H4n2W05xe',
@@ -3209,24 +3219,24 @@ function_response_data = {
 					'STACK_ID'               : 'arn:aws:cloudformation:us-east-1:111122223333:stack/AccountAssessmentStack/bc6befc0-dacb-11ed-921f-0a41af233cd7',
 					'LOG_LEVEL'              : 'INFO',
 					'SOLUTION_VERSION'       : 'v1.0.3'
-				}
-			},
+					}
+				},
 			'TracingConfig'   : {
 				'Mode': 'Active'
-			},
+				},
 			'RevisionId'      : 'b79766f8-4e8d-438c-a5b5-8d5e656a165e',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'orgformation-EmptyS3BucketOnDeletionLambdaFunction-W98Id8S5pK33',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:orgformation-EmptyS3BucketOnDeletionLambdaFunction-W98Id8S5pK33',
@@ -3242,20 +3252,20 @@ function_response_data = {
 			'Version'         : '$LATEST',
 			'TracingConfig'   : {
 				'Mode': 'PassThrough'
-			},
+				},
 			'RevisionId'      : 'c5d3cf2d-8a26-41d0-a0e8-60a36bca1103',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'AccountAssessmentStack-JobHistoryJobsHandler060579-EShvGJzftPCt',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-JobHistoryJobsHandler060579-EShvGJzftPCt',
@@ -3281,24 +3291,24 @@ function_response_data = {
 					'TABLE_JOBS'                 : 'AccountAssessmentStack-JobHistoryTableE4B293DD-1QRBBBDKUU8G9',
 					'SOLUTION_VERSION'           : 'v1.0.3',
 					'TABLE_RESOURCE_BASED_POLICY': 'AccountAssessmentStack-ResourceBasedPolicyTable7277C643-13R1K510AXFDB'
-				}
-			},
+					}
+				},
 			'TracingConfig'   : {
 				'Mode': 'Active'
-			},
+				},
 			'RevisionId'      : '4ebd1e01-2898-4dab-8fb2-a42bad2bb1df',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'CreateidpProvider',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:CreateidpProvider',
@@ -3314,20 +3324,20 @@ function_response_data = {
 			'Version'         : '$LATEST',
 			'TracingConfig'   : {
 				'Mode': 'PassThrough'
-			},
+				},
 			'RevisionId'      : '42c3c4df-fe81-4dfd-9cd8-827a478407b7',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'P9E-a8ba4fea-1856-49ca-8aa4-2b7e9b58d7a6',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:P9E-a8ba4fea-1856-49ca-8aa4-2b7e9b58d7a6',
@@ -3343,20 +3353,20 @@ function_response_data = {
 			'Version'         : '$LATEST',
 			'TracingConfig'   : {
 				'Mode': 'PassThrough'
-			},
+				},
 			'RevisionId'      : 'ffa243e9-dbe5-4424-970a-96ecfb5e4a3b',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'AccountAssessmentStack-TrustedAccessRead96AB6071-NKktqhxZ7fTz',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-TrustedAccessRead96AB6071-NKktqhxZ7fTz',
@@ -3378,24 +3388,24 @@ function_response_data = {
 					'TABLE_JOBS'             : 'AccountAssessmentStack-JobHistoryTableE4B293DD-1QRBBBDKUU8G9',
 					'COMPONENT_TABLE'        : 'AccountAssessmentStack-TrustedAccessTable495B447A-GTR0RYDUJU5Q',
 					'SOLUTION_VERSION'       : 'v1.0.3'
-				}
-			},
+					}
+				},
 			'TracingConfig'   : {
 				'Mode': 'Active'
-			},
+				},
 			'RevisionId'      : '41db914e-32ea-4b7c-8a05-a78def9856b1',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
-			}
-		},
+				}
+			},
 		{
 			'FunctionName'    : 'AccountAssessmentStack-DelegatedAdminsRead591DCC7E-AyGSKEOHKNm2',
 			'FunctionArn'     : 'arn:aws:lambda:us-east-1:111122223333:function:AccountAssessmentStack-DelegatedAdminsRead591DCC7E-AyGSKEOHKNm2',
@@ -3417,26 +3427,26 @@ function_response_data = {
 					'TABLE_JOBS'             : 'AccountAssessmentStack-JobHistoryTableE4B293DD-1QRBBBDKUU8G9',
 					'COMPONENT_TABLE'        : 'AccountAssessmentStack-DelegatedAdminsTable29E80916-F34FK4FZGFP5',
 					'SOLUTION_VERSION'       : 'v1.0.3'
-				}
-			},
+					}
+				},
 			'TracingConfig'   : {
 				'Mode': 'Active'
-			},
+				},
 			'RevisionId'      : '677f7ad5-f7d2-44d7-a3dd-c026e022b2fb',
 			'PackageType'     : 'Zip',
 			'Architectures'   : [
 				'x86_64'
-			],
+				],
 			'EphemeralStorage': {
 				'Size': 512
-			},
+				},
 			'SnapStart'       : {
 				'ApplyOn'           : 'None',
 				'OptimizationStatus': 'Off'
+				}
 			}
-		}
-	]
-}
+		]
+	}
 
 get_all_my_functions_test_result_dict = [
 	{'operation_name': 'ListFunctions',
@@ -3458,18 +3468,389 @@ get_all_my_orgs_test_result_dict = [
 """
 all_my_instances Test Data
 """
-mock_instances = {
+mock_instances_1 = {
 	'Reservations': [
 		{
 			'Instances': [
 				{
-					'InstanceType' : 't2.micro',
-					'InstanceId'   : 'i-1234567890abcdef',
-					'PublicDnsName': 'ec2-1-2-3-4.us-east-1.compute.amazonaws.com',
-					'State'        : {'Name': 'running'},
-					'Tags'         : [{'Key': 'Name', 'Value': 'Instance1'}]
+					'InstanceType'    : 't2.micro',
+					'InstanceId'      : 'i-1234567890abcdef',
+					"Placement"       : {"AvailabilityZone": "us-east-1b"},
+					'PublicDnsName'   : 'ec2-1-2-3-4.us-east-1.compute.amazonaws.com',
+					"PrivateIpAddress": "10.205.90.201",
+					'State'           : {'Name': 'running'},
+					'Tags'            : [{'Key': 'Name', 'Value': 'Instance1'},
+					                     {'Key': 'Account', 'Value': '111122223333'}]
 					}
 				]
 			}
 		]
 	}
+mock_instances_2 = {
+	'Reservations': [
+		{
+			"Instances": [
+				{
+					"InstanceId"      : "i-5f6e7d8e9b",
+					"InstanceType"    : "m5.2xlarge",
+					"Placement"       : {"AvailabilityZone": "us-east-2a"},
+					"PublicIpAddress" : "98.76.54.32",
+					"PrivateIpAddress": "10.0.5.6",
+					"State"           : {"Name": "running"},
+					'Tags'            : [{'Key': 'Name', 'Value': 'Instance1'},
+					                     {'Key': 'Account', 'Value': '444455556666'},
+					                     {"Key": "Environment", "Value": "Staging"}
+					                     ]
+					},
+				{
+					"InstanceId"      : "i-939fhik0jf",
+					"InstanceType"    : "m5.4xlarge",
+					"Placement"       : {"AvailabilityZone": "us-east-2b"},
+					"PublicIpAddress" : "198.6.82.16",
+					"PrivateIpAddress": "11.2.71.109",
+					"State"           : {"Name": "running"},
+					'Tags'            : [{'Key': 'Name', 'Value': 'Instance2'},
+					                     {'Key': 'Account', 'Value': '444455556666'},
+					                     {"Key": "Environment", "Value": "Development"}
+					                     ]
+					}
+				]
+			}
+		]
+	}
+mock_instances_3 = {
+	'Reservations': [
+		{
+			'Instances': [
+				{
+					"InstanceId"      : "i-5f6e7d8e9d",
+					"InstanceType"    : "c5d.9xlarge",
+					"Placement"       : {"AvailabilityZone": "us-west-2b"},
+					"PublicIpAddress" : "22.23.24.25",
+					'PublicDnsName'   : 'ec2-22-23-24-25.us-west-2.compute.amazonaws.com',
+					"PrivateIpAddress": "10.0.9.1",
+					"State"           : {"Name": "running"},
+					"Tags"            : [{"Key": "Account", "Value": "555566667777"},
+					                     {"Key": "Name", "Value": "Instance_3a"},
+					                     {"Key": "Environment", "Value": "Production"},
+					                     {"Key": "Project", "Value": "HighPerformanceComputing"}]
+					}
+				]
+			}
+		]
+	}
+mock_instances_4 = {
+	'Reservations': [
+		{"Instances": [
+			{"InstanceId": "i-0f1e2d3c4c", "InstanceType": "t3.small", "Placement": {"AvailabilityZone": "eu-west-1c"}, "PublicIpAddress": "54.123.45.69", "PrivateIpAddress": "10.0.0.6", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "555566667777"},{"Key": "Name", "Value": "Instance_4a"},{"Key": "Environment", "Value": "Production"}]},
+			{"InstanceId": "i-5f6e7d8e9k", "InstanceType": "m5.2xlarge", "Placement": {"AvailabilityZone": "eu-west-1d"}, "PublicIpAddress": "34.56.78.92", "PrivateIpAddress": "10.0.1.9", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "555566667777"},{"Key": "Name", "Value": "Instance_4b"},{"Key": "Environment", "Value": "Development"}]},
+			{"InstanceId": "i-0a9b8c7d6h", "InstanceType": "t2.large", "Placement": {"AvailabilityZone": "eu-west-1c"}, "PublicIpAddress": "65.43.21.100", "PrivateIpAddress": "10.0.2.5", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "555566667777"},{"Key": "Name", "Value": "Instance_4c"},{"Key": "Project", "Value": "DataAnalytics"}]}]},
+		]
+	}
+mock_instances_5 = {
+	'Reservations': [
+		{"Instances": [
+			{"InstanceId": "i-5f6e7d8e9l", "InstanceType": "c5.4xlarge", "Placement": {"AvailabilityZone": "eu-central-1a"}, "PublicIpAddress": "87.65.43.23", "PrivateIpAddress": "10.0.3.11", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "666677775555"},{"Key": "Name", "Value": "Instance_5a"},{"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "WebApplication"}]},
+			{"InstanceId": "i-0a9b8c7d6i", "InstanceType": "r5.8xlarge", "Placement": {"AvailabilityZone": "eu-central-1b"}, "PublicIpAddress": "12.34.56.80", "PrivateIpAddress": "10.0.4.4", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "666677775555"},{"Key": "Name", "Value": "Instance_5b"}]}]},
+		]
+	}
+mock_instances_6 = {
+	'Reservations': [
+		{"Instances": [
+			{"InstanceId": "i-5f6e7d8e9m", "InstanceType": "m5.8xlarge", "Placement": {"AvailabilityZone": "eu-north-1c"}, "PublicIpAddress": "98.76.54.34", "PrivateIpAddress": "10.0.5.8", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_6a"},{"Key": "Environment", "Value": "Staging"}]},
+			{"InstanceId": "i-0a9b8c7d6j", "InstanceType": "t3.large", "Placement": {"AvailabilityZone": "eu-north-1c"}, "PublicIpAddress": "10.11.12.15", "PrivateIpAddress": "10.0.6.10", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_6b"},{"Key": "Project", "Value": "DataPipeline"}]},
+			{"InstanceId": "i-5f6e7d8e9n", "InstanceType": "g4dn.4xlarge", "Placement": {"AvailabilityZone": "eu-north-1d"}, "PublicIpAddress": "14.15.16.19", "PrivateIpAddress": "10.0.7.7", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_6c"}]}]},
+
+		]
+	}
+mock_instances_7 = {
+	'Reservations': [
+		{"Instances": [
+			{"InstanceId": "i-0a9b8c7d6k", "InstanceType": "m5a.2xlarge", "Placement": {"AvailabilityZone": "eu-west-2c"}, "PublicIpAddress": "18.19.20.23", "PrivateIpAddress": "10.0.8.5", "State": {"Name": "running"},
+			 "Tags"      : [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_7a"},{"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "MonitoringSystem"}]},
+			{"InstanceId": "i-5f6e7d8e9o", "InstanceType": "c5d.18xlarge", "Placement": {"AvailabilityZone": "eu-west-2a"}, "PublicIpAddress": "22.23.24.27", "PrivateIpAddress": "10.0.9.3", "State": {"Name": "running"},
+			 "Tags"      : [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_7b"},{"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "HighPerformanceComputing"}]}]},
+
+		]
+	}
+mock_instances_8 = {
+	'Reservations': [
+		{"Instances": [
+			{"InstanceId": "i-0f1e2d3c4d", "InstanceType": "t3.xlarge", "Placement": {"AvailabilityZone": "ap-south-1d"}, "PublicIpAddress": "54.123.45.70", "PrivateIpAddress": "10.0.0.7", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "666677778888"},{"Key": "Name", "Value": "Instance_8a"},{"Key": "Environment", "Value": "Production"}]},
+			{"InstanceId": "i-5f6e7d8e9p", "InstanceType": "m5.4xlarge", "Placement": {"AvailabilityZone": "ap-south-1d"}, "PublicIpAddress": "34.56.78.93", "PrivateIpAddress": "10.0.1.10", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "666677778888"},{"Key": "Name", "Value": "Instance_8b"},{"Key": "Environment", "Value": "Development"}]},
+			]}
+		]
+	}
+mock_instances_9 = {
+	'Reservations': [
+		{
+			"Instances": [
+				{"InstanceId": "i-0f1e2d3c4b", "InstanceType": "t3.micro", "Placement": {"AvailabilityZone": "il-central-1a"}, "PublicIpAddress": "54.123.45.68", "PrivateIpAddress": "10.0.0.5", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "777788886666"},{"Key": "Name", "Value": "Instance_9a"},{"Key": "Environment", "Value": "Production"}]},
+				{"InstanceId": "i-5f6e7d8e9e", "InstanceType": "m5.xlarge", "Placement": {"AvailabilityZone": "il-central-1a"}, "PublicIpAddress": "34.56.78.91", "PrivateIpAddress": "10.0.1.8", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "777788886666"},{"Key": "Name", "Value": "Instance_9b"},{"Key": "Environment", "Value": "Development"}]},
+				{"InstanceId": "i-0a9b8c7d6f", "InstanceType": "t2.medium", "Placement": {"AvailabilityZone": "il-central-1a"}, "PublicIpAddress": "65.43.21.99", "PrivateIpAddress": "10.0.2.4", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "777788886666"},{"Key": "Name", "Value": "Instance_9c"},{"Key": "Project", "Value": "DataAnalytics"}]}]},
+
+		]
+	}
+mock_instances_10 = {
+	'Reservations': [
+		{"Instances": [
+			{"InstanceId": "i-5f6e7d8e9f", "InstanceType": "c5.2xlarge", "Placement": {"AvailabilityZone": "af-south-1c"}, "PublicIpAddress": "87.65.43.22", "PrivateIpAddress": "10.0.3.10", "State": {"Name": "running"},
+			 "Tags"      : [{"Key": "Account", "Value": "888866667777"},{"Key": "Name", "Value": "Instance_10a"},{"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "WebApplication"}]},
+			{"InstanceId": "i-0a9b8c7d6g", "InstanceType": "r5.4xlarge", "Placement": {"AvailabilityZone": "af-south-1b"}, "PublicIpAddress": "12.34.56.79", "PrivateIpAddress": "10.0.4.3", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "888866667777"},{"Key": "Name", "Value": "Instance_10b"}]}]},
+
+		]
+	}
+mock_instances_11 = {
+	'Reservations': [
+		{"Instances": [
+			{"InstanceId": "i-0a9b8c7d6i", "InstanceType": "m5a.xlarge", "Placement": {"AvailabilityZone": "us-east-2b"}, "PublicIpAddress": "18.19.20.22", "PrivateIpAddress": "10.0.8.4", "State": {"Name": "running"},
+			 "Tags"      : [{"Key": "Account", "Value": "111122223333"},{"Key": "Name", "Value": "Instance_11a"},{"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "MonitoringSystem"}]},
+			{"InstanceId": "i-5f6e7d8e9j", "InstanceType": "c5d.12xlarge", "Placement": {"AvailabilityZone": "us-east-2c"}, "PublicIpAddress": "22.23.24.26", "PrivateIpAddress": "10.0.9.2", "State": {"Name": "running"},
+			 "Tags"      : [{"Key": "Account", "Value": "111122223333"},{"Key": "Name", "Value": "Instance_11b"},{"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "HighPerformanceComputing"}]}]},
+
+		]
+	}
+mock_instances_12 = {
+	'Reservations': [
+		{"Instances": [
+			{"InstanceId": "i-5f6e7d8e9g", "InstanceType": "m5.4xlarge", "Placement": {"AvailabilityZone": "us-west-2b"}, "PublicIpAddress": "98.76.54.33", "PrivateIpAddress": "10.0.5.7", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "444455556666"},{"Key": "Name", "Value": "Instance_12q"},{"Key": "Environment", "Value": "Staging"}]},
+			{"InstanceId": "i-0a9b8c7d6h", "InstanceType": "t3.medium", "Placement": {"AvailabilityZone": "us-west-2b"}, "PublicIpAddress": "10.11.12.14", "PrivateIpAddress": "10.0.6.9", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "444455556666"},{"Key": "Name", "Value": "Instance_12b"},{"Key": "Project", "Value": "DataPipeline"}]},
+			{"InstanceId": "i-5f6e7d8e9i", "InstanceType": "g4dn.2xlarge", "Placement": {"AvailabilityZone": "us-west-2c"}, "PublicIpAddress": "14.15.16.18", "PrivateIpAddress": "10.0.7.6", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "444455556666"},{"Key": "Name", "Value": "Instance_12c"}]}]},
+		]
+	}
+mock_instances_13 = {
+	'Reservations': [
+		{
+			"InstanceId"      : "i-0f1e2d3c4d",
+			"InstanceType"    : "t3.xlarge",
+			"Placement"       : {"AvailabilityZone": "me-south-1a"},
+			"PublicIpAddress" : "54.123.45.70",
+			"PrivateIpAddress": "10.0.0.7",
+			"State"           : {"Name": "running"},
+			"Tags"            : [{"Key": "Account", "Value": "555566667777"},{"Key": "Name", "Value": "Instance_13c"},{"Key"  : "Environment","Value": "Production"}]
+			}
+		]
+	}
+mock_instances_14 = {
+	'Reservations': [
+		{
+			'Instances': [
+				{
+					"InstanceId"      : "i-0a1b2c3d4e",
+					"InstanceType"    : "t3.micro",
+					"Placement"       : {"AvailabilityZone": "eu-central-1a"},
+					"PublicIpAddress" : "54.123.45.67",
+					"PrivateIpAddress": "10.0.0.4",
+					"State"           : {"Name": "running"},
+					"Tags"            : [{"Key": "Account", "Value": "555566667777"},{"Key": "Name", "Value": "Instance_14c"},{"Key"  : "Environment","Value": "Production"}]
+					},
+				]
+			}
+		]
+	}
+mock_instances_15 = {
+	'Reservations': [
+		{"Instances": [
+			{"InstanceId": "i-0f1e2d3c4b", "InstanceType": "t3.micro", "Placement": {"AvailabilityZone": "eu-central-1b"}, "PublicIpAddress": "54.123.45.68", "PrivateIpAddress": "10.0.0.5", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "666677775555"},{"Key": "Name", "Value": "Instance_15a"},{"Key": "Environment", "Value": "Production"}]},
+			{"InstanceId": "i-5f6e7d8e9e", "InstanceType": "m5.xlarge", "Placement": {"AvailabilityZone": "eu-central-1c"}, "PublicIpAddress": "34.56.78.91", "PrivateIpAddress": "10.0.1.8", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "666677775555"},{"Key": "Name", "Value": "Instance_15b"},{"Key": "Environment", "Value": "Development"}]},
+			{"InstanceId": "i-0a9b8c7d6f", "InstanceType": "t2.medium", "Placement": {"AvailabilityZone": "eu-central-1b"}, "PublicIpAddress": "65.43.21.99", "PrivateIpAddress": "10.0.2.4", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "666677775555"},{"Key": "Name", "Value": "Instance_15c"},{"Key": "Project", "Value": "DataAnalytics"}]}]},
+
+		]
+	}
+mock_instances_16 = {
+	'Reservations': [
+		{"Instances": [
+			{"InstanceId": "i-5f6e7d8e9g", "InstanceType": "m5.4xlarge", "Placement": {"AvailabilityZone": "af-south-1b"}, "PublicIpAddress": "98.76.54.33", "PrivateIpAddress": "10.0.5.7", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_16a"},{"Key": "Environment", "Value": "Staging"}]},
+			{"InstanceId": "i-0a9b8c7d6h", "InstanceType": "t3.medium", "Placement": {"AvailabilityZone": "af-south-1b"}, "PublicIpAddress": "10.11.12.14", "PrivateIpAddress": "10.0.6.9", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_16b"},{"Key": "Project", "Value": "DataPipeline"}]},
+			{"InstanceId": "i-5f6e7d8e9i", "InstanceType": "g4dn.2xlarge", "Placement": {"AvailabilityZone": "af-south-1c"}, "PublicIpAddress": "14.15.16.18", "PrivateIpAddress": "10.0.7.6", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_16c"}]}]},
+
+		]
+	}
+mock_instances_17 = {
+	'Reservations': [
+		{"Instances": [
+			{"InstanceId": "i-5f6e7d8e9f", "InstanceType": "c5.2xlarge", "Placement": {"AvailabilityZone": "me-south-1c"}, "PublicIpAddress": "87.65.43.22", "PrivateIpAddress": "10.0.3.10", "State": {"Name": "running"},
+			 "Tags"      : [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_17c"},{"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "WebApplication"}]},
+			{"InstanceId": "i-0a9b8c7d6g", "InstanceType": "r5.4xlarge", "Placement": {"AvailabilityZone": "me-south-1d"}, "PublicIpAddress": "12.34.56.79", "PrivateIpAddress": "10.0.4.3", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_17c"}]}]},
+
+		]
+	}
+mock_instances_18 = {
+	'Reservations': [
+		{
+			"Instances": [
+
+				{
+					"InstanceId"      : "i-5f6e7d8e9f",
+					"InstanceType"    : "m5.large",
+					"Placement"       : {"AvailabilityZone": "eu-west-1b"},
+					"PublicIpAddress" : "34.56.78.90",
+					"PrivateIpAddress": "10.0.1.7",
+					"State"           : {"Name": "stopped"},
+					"Tags"            : [{"Key": "Account", "Value": "666677778888"},{"Key": "Name", "Value": "Instance_18c"},{"Key"  : "Environment","Value": "Development"}]
+					},
+				{
+					"InstanceId"      : "i-0a9b8c7d6e",
+					"InstanceType"    : "t2.small",
+					"Placement"       : {
+						"AvailabilityZone": "ap-southeast-1a"
+						},
+					"PublicIpAddress" : "65.43.21.98",
+					"PrivateIpAddress": "10.0.2.3",
+					"State"           : {
+						"Name": "running"
+						},
+					"Tags"            : [{"Key": "Account", "Value": "666677778888"},{"Key": "Name", "Value": "Instance_18bc"},
+						{
+							"Key"  : "Project",
+							"Value": "DataAnalytics"
+							}
+						]
+					},
+				{
+					"InstanceId"      : "i-5f6e7d8e9a",
+					"InstanceType"    : "c5.xlarge",
+					"Placement"       : {
+						"AvailabilityZone": "eu-west-1b"
+						},
+					"PublicIpAddress" : "87.65.43.21",
+					"PrivateIpAddress": "10.0.3.9",
+					"State"           : {
+						"Name": "running"
+						},
+					"Tags"            : [{"Key": "Account", "Value": "666677778888"},{"Key": "Name", "Value": "Instance_18a"},
+						{
+							"Key"  : "Environment",
+							"Value": "Production"
+							},
+						{
+							"Key"  : "Project",
+							"Value": "WebApplication"
+							}
+						]
+					},
+				{
+					"InstanceId"      : "i-0a9b8c7d6f",
+					"InstanceType"    : "r5.2xlarge",
+					"Placement"       : {
+						"AvailabilityZone": "us-east-2c"
+						},
+					"PublicIpAddress" : "12.34.56.78",
+					"PrivateIpAddress": "10.0.4.2",
+					"State"           : {
+						"Name": "stopped"
+						},
+					"Tags"            : [{"Key": "Account", "Value": "666677778888"},{"Key": "Name", "Value": "Instance_18d"}]
+					}
+				]
+			},
+		]
+	}
+mock_instances_19 = {'Reservations': []}
+mock_instances_20 = {
+	'Reservations': [
+		{
+			"Instances": [
+				{
+					"InstanceId"      : "i-5f6e7d8e9q",
+					"InstanceType"    : "c5.8xlarge",
+					"Placement"       : {
+						"AvailabilityZone": "af-south-1e"
+						},
+					"PublicIpAddress" : "87.65.43.24",
+					"PrivateIpAddress": "10.0.3.12",
+					"State"           : {
+						"Name": "running"
+						},
+					"Tags"            : [{"Key": "Account", "Value": "888866667777"},{"Key": "Name", "Value": "Instance_20d"},
+						{
+							"Key"  : "Environment",
+							"Value": "Production"
+							},
+						{
+							"Key"  : "Project",
+							"Value": "WebApplication"
+							}
+						]
+					},
+				{
+					"InstanceId"      : "i-0a9b8c7d6m",
+					"InstanceType"    : "r5.12xlarge",
+					"Placement"       : {
+						"AvailabilityZone": "af-south-2a"
+						},
+					"PublicIpAddress" : "12.34.56.81",
+					"PrivateIpAddress": "10.0.4.5",
+					"State"           : {
+						"Name": "stopped"
+						},
+					"Tags"            : [{"Key": "Account", "Value": "888866667777"},{"Key": "Name", "Value": "Instance_20a"},]
+					}
+				]
+			}
+		]
+	}
+
+All_Instances_Response_Data = [
+	{'AccountNumber': '111122223333',
+	 'Region'       : 'us-east-1',
+	 'instance_data': mock_instances_1},
+	{'AccountNumber': '444455556666',
+	 'Region'       : 'us-east-2',
+	 'instance_data': mock_instances_2},
+	{'AccountNumber': '555566667777',
+	 'Region'       : 'us-west-2',
+	 'instance_data': mock_instances_3},
+	{'AccountNumber': '555566667777',
+	 'Region'       : 'eu-west-1',
+	 'instance_data': mock_instances_4},
+	{'AccountNumber': '666677775555',
+	 'Region'       : 'eu-central-1',
+	 'instance_data': mock_instances_5},
+	{'AccountNumber': '777755556666',
+	 'Region'       : 'eu-north-1',
+	 'instance_data': mock_instances_6},
+	{'AccountNumber': '777755556666',
+	 'Region'       : 'eu-west-2',
+	 'instance_data': mock_instances_7},
+	{'AccountNumber': '666677778888',
+	 'Region'       : 'ap-south-1',
+	 'instance_data': mock_instances_8},
+	{'AccountNumber': '777788886666',
+	 'Region'       : 'il-central-1',
+	 'instance_data': mock_instances_9},
+	{'AccountNumber': '888866667777',
+	 'Region'       : 'af-south-1',
+	 'instance_data': mock_instances_10},
+	{'AccountNumber': '111122223333',
+	 'Region'       : 'us-east-2',
+	 'instance_data': mock_instances_11},
+	{'AccountNumber': '444455556666',
+	 'Region'       : 'us-west-2',
+	 'instance_data': mock_instances_12},
+	{'AccountNumber': '555566667777',
+	 'Region'       : 'me-south-1',
+	 'instance_data': mock_instances_13},
+	{'AccountNumber': '555566667777',
+	 'Region'       : 'eu-central-1',
+	 'instance_data': mock_instances_14},
+	{'AccountNumber': '666677775555',
+	 'Region'       : 'eu-central-1',
+	 'instance_data': mock_instances_15},
+	{'AccountNumber': '777755556666',
+	 'Region'       : 'af-south-1',
+	 'instance_data': mock_instances_16},
+	{'AccountNumber': '777755556666',
+	 'Region'       : 'me-south-1',
+	 'instance_data': mock_instances_17},
+	{'AccountNumber': '666677778888',
+	 'Region'       : 'eu-west-1',
+	 'instance_data': mock_instances_18},
+	{'AccountNumber': '777788886666',
+	 'Region'       : 'us-east-1',
+	 # mock_instance data will be empty
+	 'instance_data': mock_instances_19},
+	{'AccountNumber': '888866667777',
+	 'Region'       : 'af-south-1',
+	 'instance_data': mock_instances_20},
+	]

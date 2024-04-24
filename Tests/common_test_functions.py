@@ -6,32 +6,26 @@ ERASE_LINE = '\x1b[2K'
 
 
 def AWSAccount_from_AWSKeyID(AWSKeyID):
-	import base64
-	import binascii
-
-	trimmed_AWSKeyID = AWSKeyID[4:]  # remove KeyID prefix
-	x = base64.b32decode(trimmed_AWSKeyID)  # base32 decode
-	y = x[0:6]
-
-	z = int.from_bytes(y, byteorder='big', signed=False)
-	mask = int.from_bytes(binascii.unhexlify(b'7fffffffff80'), byteorder='big', signed=False)
-
-	e = (z & mask) >> 7
-	return e
+	"""
+	Determines the AWS Account number from the AWS Key ID.
+	The original idea here: https://hackingthe.cloud/aws/enumeration/get-account-id-from-keys/
+	@param AWSKeyID: This is a *fake* AWS Key in the format of "xxxx" (four characters)
+	 and then should be the account number. We'll toss out the rest of the data as irrelevant
+	@return: Returns the account number as a string
+	"""
+	trimmed_AWSKeyID = AWSKeyID[4:16]  # remove KeyID prefix
+	return str(trimmed_AWSKeyID)
 
 
 def AWSKeyID_from_AWSAccount(AWSAccountNumber):
-	import base64
-	import binascii
-
-	x = base64.b32encode(AWSAccountNumber)  # base32 decode
-	y = x[0:6]
-
-	z = int.from_bytes(y, byteorder='big', signed=False)
-	mask = int.from_bytes(binascii.unhexlify(b'7fffffffff80'), byteorder='big', signed=False)
-
-	e = (z & mask) >> 7
-	return e
+	"""
+	Makes up an AWS Key ID from the AWS Account number.
+	@param AWSAccountNumber: This is the AWS Account number as a string
+	@return: Returns the AWS Key ID as a string
+	"""
+	# An AWS Key looks like this: "AIDAJ74HIVAJJXOVUHYO6" (21 characters)
+	AWSKey = f"xxxx{str(AWSAccountNumber)}xxxxx"
+	return AWSKey
 
 
 def _amend_create_boto3_session(test_data, mocker):
@@ -178,3 +172,19 @@ def _amend_make_api_call_specific(meta_key_dict, test_dict, mocker):
 
 	mocker.patch('botocore.client.BaseClient._make_api_call', new=amend_make_api_call)
 # mocker.patch('botocore.session', new=amend_make_api_call)
+
+
+
+def mock_find_all_instances2(creds:dict, region:str):
+	"""
+	This is a mock function that will return a list of all the instances in the region that we're looking for.
+	:param creds: Credentials object, where 'AccountNumber' is the account number of the account that we're looking for.
+	:param region: string for region we're checking
+	:return: The output from the EC2 API for "list_instances"
+	"""
+	from Tests.common_test_data import All_Instances_Response_Data
+
+	for mock_data_set in All_Instances_Response_Data:
+		if mock_data_set['Region'] == region and mock_data_set['AccountNumber'] == creds['AccountNumber']:
+			return mock_data_set['instance_data']
+	raise KeyError(f"No data for {creds['AccountNumber']} found for region {region}")
