@@ -2249,6 +2249,40 @@ def find_load_balancers(fProfile, fRegion, fStackFragment='all', fStatus='all'):
 	return load_balancers_Copy
 
 
+def find_load_balancers2(credential, fStackFragments=None, fStatus='all'):
+	"""
+	This library script returns the list of load balancers within an account and a region
+	"""
+	import logging
+	import boto3
+
+	if fStackFragments is None:
+		fStackFragments = ['all']
+	logging.info(f"Account: {credential['AccountId']} | Profile: {credential['Profile']} | Region: {credential['Region']} | Fragment: {fStackFragments} | Status: {fStatus}")
+	session_elb = boto3.Session(region_name=credential['Region'],
+	                            aws_access_key_id=credential['AccessKeyId'],
+	                            aws_secret_access_key=credential['SecretAccessKey'],
+	                            aws_session_token=credential['SessionToken'])
+	lb_info = session_elb.client('elbv2', region_name=credential['Region'])
+	load_balancers = lb_info.describe_load_balancers()
+	load_balancers_Copy = []
+	if ('all' in fStackFragments or 'All' in fStackFragments or 'ALL' in fStackFragments) and (fStatus.lower() == 'active' or fStatus.lower() == 'all'):
+		logging.info(f"Found all the lbs in Account: {credential['AccountId']} in Region: {credential['Region']} with Fragment: {fStackFragments} and Status: {fStatus}")
+		return load_balancers['LoadBalancers']
+	elif 'all' in fStackFragments or 'All' in fStackFragments or 'ALL' in fStackFragments:
+		for load_balancer in load_balancers['LoadBalancers']:
+			if fStatus in load_balancer['State']['Code']:
+				logging.info(f"Found lb {load_balancers['LoadBalancerName']} in Account: {credential['AccountId']} in Region: {credential['Region']} with Fragment in {fStackFragments} and Status: {fStatus}")
+				load_balancers_Copy.append(load_balancer)
+	elif fStatus.lower() == 'active':
+		for load_balancer in load_balancers['LoadBalancers']:
+			for stack_fragment in fStackFragments:
+				if stack_fragment in load_balancer['LoadBalancerName']:
+					logging.info(f"Found lb {load_balancers['LoadBalancerName']} in Account: {credential['AccountId']} in Region: {credential['Region']} with Fragment: {stack_fragment} and Status: {fStatus}")
+					load_balancers_Copy.append(load_balancer)
+	return load_balancers_Copy
+
+
 def find_load_balancers3(faws_acct, fRegion='us-east-1', fStackFragments=None, fStatus='all'):
 	"""
 	This library script returns the list of load balancers within an account and a region
@@ -2257,29 +2291,30 @@ def find_load_balancers3(faws_acct, fRegion='us-east-1', fStackFragments=None, f
 
 	if fStackFragments is None:
 		fStackFragments = ['all']
-	logging.info(
-		f"Account: {faws_acct.acct_number} | Region: {fRegion} | Fragment: {fStackFragments} | Status: {fStatus}")
-	session_cfn = faws_acct.session
-	lb_info = session_cfn.client('elbv2', region_name=fRegion)
-	load_balancers = lb_info.describe_load_balancers()
-	load_balancers_Copy = []
-	if ('all' in fStackFragments or 'All' in fStackFragments or 'ALL' in fStackFragments) and (fStatus.lower() == 'active' or fStatus.lower() == 'all'):
-		logging.info(
-			f"Found all the lbs in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragments} and Status: {fStatus}")
-		return load_balancers['LoadBalancers']
-	elif 'all' in fStackFragments or 'All' in fStackFragments or 'ALL' in fStackFragments:
-		for load_balancer in load_balancers['LoadBalancers']:
-			if fStatus in load_balancer['State']['Code']:
-				logging.info(f"Found lb {load_balancers['LoadBalancerName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment in {fStackFragments} and Status: {fStatus}")
-				load_balancers_Copy.append(load_balancer)
-	elif fStatus.lower() == 'active':
-		for load_balancer in load_balancers['LoadBalancers']:
-			for stack_fragment in fStackFragments:
-				if stack_fragment in load_balancer['LoadBalancerName']:
-					logging.info(f"Found lb {load_balancers['LoadBalancerName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {stack_fragment} and Status: {fStatus}")
+	if faws_acct.Success:
+		logging.info(f"Account: {faws_acct.acct_number} | Region: {fRegion} | Fragment: {fStackFragments} | Status: {fStatus}")
+		session_cfn = faws_acct.session
+		lb_info = session_cfn.client('elbv2', region_name=fRegion)
+		load_balancers = lb_info.describe_load_balancers()
+		load_balancers_Copy = []
+		if ('all' in fStackFragments or 'All' in fStackFragments or 'ALL' in fStackFragments) and (fStatus.lower() == 'active' or fStatus.lower() == 'all'):
+			logging.info(
+				f"Found all the lbs in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {fStackFragments} and Status: {fStatus}")
+			return load_balancers['LoadBalancers']
+		elif 'all' in fStackFragments or 'All' in fStackFragments or 'ALL' in fStackFragments:
+			for load_balancer in load_balancers['LoadBalancers']:
+				if fStatus in load_balancer['State']['Code']:
+					logging.info(f"Found lb {load_balancers['LoadBalancerName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment in {fStackFragments} and Status: {fStatus}")
 					load_balancers_Copy.append(load_balancer)
-	return load_balancers_Copy
-
+		elif fStatus.lower() == 'active':
+			for load_balancer in load_balancers['LoadBalancers']:
+				for stack_fragment in fStackFragments:
+					if stack_fragment in load_balancer['LoadBalancerName']:
+						logging.info(f"Found lb {load_balancers['LoadBalancerName']} in Account: {faws_acct.acct_number} in Region: {fRegion} with Fragment: {stack_fragment} and Status: {fStatus}")
+						load_balancers_Copy.append(load_balancer)
+		return load_balancers_Copy
+	else:
+		raise Exception(f"Profile: {faws_acct.Profile} in Region: {faws_acct.Region} didn't authenticate properly. Please check credentials")
 
 def find_stacks(fProfile, fRegion, fStackFragment="all", fStatus="active"):
 	"""
