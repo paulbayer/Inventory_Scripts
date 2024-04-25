@@ -4163,6 +4163,7 @@ def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProf
 	@param RoleList: A list of roles you want to use to gain access to child accounts
 	@return: Returns a list of Credentials to the child accounts for use in many other functions
 	"""
+	# TODO: Need to multi-thread this, and add tqdm for a progress bar
 	import logging
 	from account_class import aws_acct_access
 	from time import time
