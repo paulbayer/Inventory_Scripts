@@ -20,6 +20,7 @@ __version__ = "2024.03.05"
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 
+
 # TODO: Need a table at the bottom that creates a summary of the runtimes used, so that action can be taken if older runtimes are in use.
 
 
@@ -31,7 +32,7 @@ def parse_args(args):
 	parser = CommonArguments()
 	parser.multiprofile()  # Allows for a single profile to be specified
 	parser.multiregion()  # Allows for multiple regions to be specified at the command line
-	parser.fragment()  # Allows for soecifying a string fragment to be looked for
+	parser.fragment()  # Allows for specifying a string fragment to be looked for
 	parser.extendedargs()
 	parser.rootOnly()
 	parser.save_to_file()
@@ -233,7 +234,6 @@ def collect_all_my_functions(AllCredentials, fFragments, fverbose=50):
 	@fFragments - This is a list of fragments we want to search for
 	@fverbose - This is a level of verbosity
 	"""
-
 	AllFunctions = check_accounts_for_functions(AllCredentials, fFragments)
 	sorted_AllFunctions = sorted(AllFunctions, key=lambda k: (k['MgmtAccount'], k['AccountId'], k['Region'], k['FunctionName']))
 	if fverbose < 50:
@@ -285,6 +285,8 @@ if __name__ == '__main__':
 	pSaveFilename = args.Filename
 	pRuntime = args.Runtime
 	pNewRuntime = args.NewRuntime
+	if pFragments == ['all'] and pRuntime is not None:
+		pFragments = []
 	pSkipAccounts = args.SkipAccounts
 	pSkipProfiles = args.SkipProfiles
 	pRootOnly = args.RootOnly
@@ -297,8 +299,15 @@ if __name__ == '__main__':
 	                'AccountId'   : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
 	                'Region'      : {'DisplayOrder': 3, 'Heading': 'Region'},
 	                'FunctionName': {'DisplayOrder': 4, 'Heading': 'Function Name'},
-	                'Runtime'     : {'DisplayOrder': 5, 'Heading': 'Runtime'},
 	                'Role'        : {'DisplayOrder': 6, 'Heading': 'Role'}}
+	if pRuntime is None and pFragments is None:
+		display_dict.update({'Runtime': {'DisplayOrder': 5, 'Heading': 'Runtime'}})
+	elif pRuntime is not None and pFragments is None:
+		display_dict.update({'Runtime': {'DisplayOrder': 5, 'Heading': 'Runtime', 'Condition': pRuntime}})
+	elif pRuntime is None and pFragments is not None:
+		display_dict.update({'Runtime': {'DisplayOrder': 5, 'Heading': 'Runtime', 'Condition': pFragments}})
+	elif pRuntime is not None and pFragments is not None:
+		display_dict.update({'Runtime': {'DisplayOrder': 5, 'Heading': 'Runtime', 'Condition': pRuntime + pFragments}})
 
 	print(f"Collecting credentials... ")
 
@@ -309,7 +318,9 @@ if __name__ == '__main__':
 	print(f"Looking through {AccountNum} accounts and {RegionNum} regions ")
 	print()
 
-	AllFunctions = collect_all_my_functions(CredentialList, pFragments, pverbose)
+	# Note that 'pFragments' is by default ['all'], so even if pRuntime is provided, we still look for everything
+	full_list_to_look_for = pFragments + pRuntime if pRuntime is not None else pFragments
+	AllFunctions = collect_all_my_functions(CredentialList, full_list_to_look_for, pverbose)
 	AccountNum = len(set([x['AccountId'] for x in AllFunctions]))
 	RegionNum = len(set([x['Region'] for x in AllFunctions]))
 	display_results(AllFunctions, display_dict, None, pSaveFilename)
