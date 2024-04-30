@@ -660,7 +660,7 @@ def _modify_stacksets(StackSet_Dict: dict) -> dict:
 					# AND they didn't specify any regions
 					if pRegionModifyList is None:
 						# Assume they meant ALL instances
-						instances_to_modify = list(filter(lambda n: (n['ChildRegion'] in pRegionModifyList and n['StackSetName'] == StackSetName), applicable_stack_set_instances))
+						instances_to_modify = list(filter(lambda n: n['StackSetName'] == StackSetName, applicable_stack_set_instances))
 					elif len(pRegionModifyList) > 0:  # They *did* specify some regions
 						# Assume they meant, all instances with those regions
 						instances_to_modify = list(filter(lambda n: (n['ChildRegion'] in pRegionModifyList and n['StackSetName'] == StackSetName), applicable_stack_set_instances))
