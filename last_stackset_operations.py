@@ -12,12 +12,12 @@ from colorama import Fore, init
 
 import Inventory_Modules
 from ArgumentsClass import CommonArguments
-from Inventory_Modules import display_results, find_stacksets3, get_ec2_regions, get_regions3
+from Inventory_Modules import display_results, find_stacksets3, get_regions3
 from account_class import aws_acct_access
 
 init()
 
-__version__ = '2024.02.02'
+__version__ = '2024.05.01'
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 DefaultMaxWorkerThreads = 5
@@ -60,7 +60,7 @@ def parse_args(args: object):
 	return (parser.my_parser.parse_args(args))
 
 
-def setup_auth_and_regions(fProfile: str) -> (aws_acct_access, list):
+def setup_auth_and_regions(fProfile: str, fRegion: str = None, fStackFrag: list = None, fExact: bool = False) -> (aws_acct_access, list):
 	"""
 	Description: This function takes in a profile, and returns the account object and the regions valid for this account / org.
 	@param fProfile: A string representing the profile provided by the user. If nothing, then use the default profile or credentials
@@ -68,33 +68,36 @@ def setup_auth_and_regions(fProfile: str) -> (aws_acct_access, list):
 		- an object of the type "aws_acct_access"
 		- a list of regions valid for this particular profile/ account.
 	"""
+
+	if fStackFrag is None:
+		fStackfrag = ['all']
+	if fRegion is None:
+		fRegion = "us-east-1"
 	try:
 		aws_acct = aws_acct_access(fProfile)
 	except ConnectionError as my_Error:
 		logging.error(f"Exiting due to error: {my_Error}")
 		sys.exit(8)
 
-	AllRegions = get_ec2_regions()
+	RegionList = get_regions3(aws_acct, [fRegion])
 
-	if pRegion.lower() not in AllRegions:
+	if fRegion.lower() not in RegionList:
 		print()
-		print(f"{Fore.RED}You specified '{pRegion}' as the region, but this script only works with a single region.\n"
+		print(f"{Fore.RED}You specified '{fRegion}' as the region, but this script only works with a single region.\n"
 		      f"Please run the command again and specify only a single, valid region{Fore.RESET}")
 		print()
-		sys.exit(9)
+		raise ValueError(f"You specified '{fRegion}' as the region, but this script only works with a single region.")
 
 	print()
 	action = "but not modify"
 	print(f"You asked me to find ({action}) stacksets that match the following:")
 	print(f"\t\tIn the {aws_acct.AccountType} account {aws_acct.acct_number}")
-	print(f"\t\tIn this Region: {pRegion}")
+	print(f"\t\tIn this Region: {fRegion}")
 
-	RegionList = get_regions3(aws_acct, [pRegion])
-
-	if pExact:
-		print(f"\t\tFor stacksets that {Fore.RED}exactly match{Fore.RESET} these fragments: {pStackfrag}")
+	if fExact:
+		print(f"\t\tFor stacksets that {Fore.RED}exactly match{Fore.RESET} these fragments: {fStackfrag}")
 	else:
-		print(f"\t\tFor stacksets that contains these fragments: {pStackfrag}")
+		print(f"\t\tFor stacksets that contains these fragments: {fStackfrag}")
 
 	print()
 	return (aws_acct, RegionList)
@@ -204,7 +207,7 @@ def find_stack_set_instances(fStackSetNames: list, fRegion: str) -> list:
 									'OrganizationalUnitId': StackInstance['OrganizationalUnitId'] if 'OrganizationalUnitId' in StackInstance else None,
 									'PermissionModel'     : c_stackset_info['PermissionModel'] if 'PermissionModel' in c_stackset_info else 'SELF_MANAGED',
 									'StackSetName'        : c_stacksetname
-								})
+									})
 						elif not (StackInstance['Account'] in pAccountList):
 							# If the user only wants to remove the stack instances associated with specific accounts,
 							# then we only want to capture those stack instances where the account number shows up.
@@ -312,13 +315,13 @@ if __name__ == '__main__':
 	sorted_StackSets_and_Operations = sorted(StackSets_and_Operations, key=lambda x: x['LatestDate'], reverse=True)
 	display_results(sorted_StackSets_and_Operations, display_dict, None, pFilename)
 
-print()
-print(ERASE_LINE)
-print(
-	f"{Fore.RED}Found {len(StackSets['StackSetsList'])} Stacksets across {len(Accounts)} accounts across {len(Regions)} regions{Fore.RESET}")
-print()
-if pTiming:
+	print()
 	print(ERASE_LINE)
-	print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
-print("Thanks for using this script...")
-print()
+	print(
+		f"{Fore.RED}Found {len(StackSets['StackSetsList'])} Stacksets across {len(Accounts)} accounts across {len(Regions)} regions{Fore.RESET}")
+	print()
+	if pTiming:
+		print(ERASE_LINE)
+		print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
+	print("Thanks for using this script...")
+	print()
