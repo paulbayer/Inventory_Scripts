@@ -38,10 +38,12 @@ def get_regions3(faws_acct, fregion_list=None):
 	"""
 	import logging
 
+	# This handles the case where the user passes a single string, instead of a list or nothing.
+	if isinstance(fregion_list, str):
+		fregion_list = [fregion_list]
 	region_info = faws_acct.session.client('ec2')
 	if fregion_list is None or "all" in fregion_list or "ALL" in fregion_list or "All" in fregion_list:
-		regions = region_info.describe_regions(Filters=[
-			{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
+		regions = region_info.describe_regions(Filters=[{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
 		RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
 		return RegionNames
 	# Special case where they want everything - globally
@@ -50,8 +52,7 @@ def get_regions3(faws_acct, fregion_list=None):
 		RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
 		return RegionNames
 	else:
-		regions = region_info.describe_regions(Filters=[
-			{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
+		regions = region_info.describe_regions(Filters=[{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
 		RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
 		RegionNames2 = []
 		for x in fregion_list:
@@ -62,41 +63,43 @@ def get_regions3(faws_acct, fregion_list=None):
 					RegionNames2.append(y)
 		return RegionNames2
 
-
-def get_ec2_regions(fprofile=None, fregion_list=None):
-	"""
-	WILL BE DEPRECATED in favor of "get_regions3"
-
-	This is a library function to get the AWS region names that correspond to the
-	fragments that may have been provided via the command line.
-
-	For instance
-		- if the user provides 'us-east', this function will return ['us-east-1','us-east-2'].
-		- if the user provides 'west', this function will return ['us-west-1', 'us-west-2', 'eu-west-1', etc.]
-
-	Thr first parameter to this library must provide a valid profile, which is used to instantiate a boto3 session,
-	so that regions can be looked up.
-
-	Please note that there is no paging functionality for the "describe_regions" method within EC2, hence no paging below.
-	"""
-	import boto3
-	import logging
-
-	session_ec2 = boto3.Session(profile_name=fprofile)
-	region_info = session_ec2.client('ec2')
-	regions = region_info.describe_regions(Filters=[
-		{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
-	RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
-	if fregion_list is None or ("all" in fregion_list or "ALL" in fregion_list or 'All' in fregion_list):
-		return RegionNames
-	RegionNames2 = []
-	for x in fregion_list:
-		for y in RegionNames:
-			logging.info(f"Have {y} | Looking for {x}")
-			if y.find(x) >= 0:
-				logging.info(f"Found {y}")
-				RegionNames2.append(y)
-	return RegionNames2
+#
+# def get_ec2_regions(fprofile=None, fregion_list=None):
+# 	"""
+# 	WILL BE DEPRECATED in favor of "get_regions3"
+#
+# 	This is a library function to get the AWS region names that correspond to the
+# 	fragments that may have been provided via the command line.
+#
+# 	For instance
+# 		- if the user provides 'us-east', this function will return ['us-east-1','us-east-2'].
+# 		- if the user provides 'west', this function will return ['us-west-1', 'us-west-2', 'eu-west-1', etc.]
+#
+# 	Thr first parameter to this library must provide a valid profile, which is used to instantiate a boto3 session,
+# 	so that regions can be looked up.
+#
+# 	Please note that there is no paging functionality for the "describe_regions" method within EC2, hence no paging below.
+# 	"""
+# 	import boto3
+# 	import logging
+#
+# 	# This handles the case where the user passes a single string, instead of a list or nothing.
+# 	if isinstance(fregion_list, str):
+# 		fregion_list = [fregion_list]
+# 	session_ec2 = boto3.Session(profile_name=fprofile)
+# 	region_info = session_ec2.client('ec2')
+# 	regions = region_info.describe_regions(Filters=[{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
+# 	RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
+# 	if fregion_list is None or ("all" in fregion_list or "ALL" in fregion_list or 'All' in fregion_list):
+# 		return RegionNames
+# 	RegionNames2 = []
+# 	for x in fregion_list:
+# 		for y in RegionNames:
+# 			logging.info(f"Have {y} | Looking for {x}")
+# 			if y.find(x) >= 0:
+# 				logging.info(f"Found {y}")
+# 				RegionNames2.append(y)
+# 	return RegionNames2
 
 
 def get_ec2_regions3(faws_acct, fkey=None):
@@ -113,6 +116,8 @@ def get_ec2_regions3(faws_acct, fkey=None):
 	from botocore.exceptions import EndpointConnectionError
 
 	RegionNames = []
+	if isinstance(fkey, str):
+		fkey = [fkey]
 	try:
 		region_info = faws_acct.session.client('ec2')
 	except AttributeError as my_Error:
@@ -461,9 +466,9 @@ def RemoveCoreAccounts(MainList, AccountsToRemove=None):
 def print_timings(fTiming: bool = False, fverbose: int = 50, fbegin_time=None, fmessage: str = None):
 	"""
 	Description: Prints how long it's taken in the script to get to this point...
-	@param fTiming: Boolean as to whether we print anything
+	@param fTiming: Boolean whether we print anything
 	@param fverbose: Verbosity to determine whether we print when user didn't specify any verbosity. This allows us to only print when they want more info.
-	@param fbegin_time: The begin time to compare to
+	@param fbegin_time: The beginning time to compare to
 	@param fmessage: The message to print out, when we print the timings.
 	@return: None
 	"""
@@ -498,11 +503,11 @@ def get_child_access(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleList
 	The min response object is the rolename that worked to gain access to the target account
 
 	The format of the account credentials dict is here:
-	account_credentials = {'Profile': fRootProfile,
+	account_credentials = { 'Profile': fRootProfile,
 							'AccessKeyId': '',
 							'SecretAccessKey': None,
 							'SessionToken': None,
-							'AccountNumber': None}
+							'AccountNumber': None }
 	"""
 	import boto3
 	import logging
@@ -2234,7 +2239,7 @@ def find_load_balancers(fProfile, fRegion, fStackFragment='all', fStatus='all'):
 		logging.info("Found all the lbs in Profile: %s in Region: %s with Fragment: %s and Status: %s", fProfile,
 		             fRegion, fStackFragment, fStatus)
 		return load_balancers['LoadBalancers']
-	elif (fStackFragment.lower() == 'all'):
+	elif fStackFragment.lower() == 'all':
 		for load_balancer in load_balancers['LoadBalancers']:
 			if fStatus in load_balancer['State']['Code']:
 				logging.info("Found lb %s in Profile: %s in Region: %s with Fragment: %s and Status: %s",
@@ -2315,6 +2320,7 @@ def find_load_balancers3(faws_acct, fRegion='us-east-1', fStackFragments=None, f
 		return load_balancers_Copy
 	else:
 		raise Exception(f"Profile: {faws_acct.Profile} in Region: {faws_acct.Region} didn't authenticate properly. Please check credentials")
+
 
 def find_stacks(fProfile, fRegion, fStackFragment="all", fStatus="active"):
 	"""
@@ -2636,7 +2642,7 @@ def find_stacks3(faws_acct, fRegion: str, fStackFragment: list = None):
 
 	if TheyWantEverything:
 		logging.info(f"All stacks requested - so all stacks being returned...")
-		return (AllStacks)
+		return AllStacks
 	else:
 		logging.info(f"Found {len(AllStacks)} stacks. Looking for fragment {fStackFragment}")
 		for stack in AllStacks:
@@ -3705,7 +3711,7 @@ def find_ssm_parameters2(ocredentials):
 
 def find_ssm_parameters3(faws_acct, fregion=None):
 	"""
-	faws_acct is the a class object from account_class.py
+	faws_acct is the class object from account_class.py
 	fRegion is the region where the stackset resides
 
 	Return Value is a list that looks like this:
@@ -3810,7 +3816,7 @@ def get_region_azs2(ocredentials):
             'ParentZoneName': az['ParentZoneName'] if 'ParentZoneName' in az.keys() else az['ZoneName'],
             'ParentZoneId'  : az['ParentZoneId'] if 'ParentZoneId' in az.keys() else az['ZoneId'],
 
-		},
+		}
 	]
 	"""
 	import logging
@@ -4227,7 +4233,7 @@ def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProf
 	return AllCredentials
 
 
-def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, accountlist=None, fprofile="default", fregions=None, fRoleNames=None, fTiming=False):
+def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, accountlist=None, fprofile="default", fregions=None, fRoleNames=None, fTiming=False, threads:int=50):
 	"""
 	Note that this function returns the credentials of all the accounts underneath the Org passed to it.
 
@@ -4302,23 +4308,29 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		accountlist = []
 	if fregions is None:
 		fregions = ['us-east-1']
+
 	if faws_acct.AccountType == 'Root':
 		# Begin with all accounts within the org - we'll filter them out below.
 		# This allows us to ensure that if they provided multiple profiles, with an account list,
 		#   spanning both orgs, we're only considering accounts within the Org they specified.
 		ChildAccounts = faws_acct.ChildAccounts
 	elif faws_acct.AccountType == 'Child':
-		# Here we're assuming if they specified a child account in the profile, they're using delegated access to push out stacksets,
-		# hence they need to specify the account list at the command prompt.
 		logging.info(f"Account Type recognized as {faws_acct.AccountType}")
-		ChildAccounts = [{'AccountId': x, 'MgmtAccount': faws_acct.MgmtAccount} for x in accountlist]
+		if len(accountlist) == 0:
+			# It's possible they ran with a profile that was a child account, but didn't specify an account list.
+			ChildAccounts = faws_acct.ChildAccounts
+		else:
+			# Here we're assuming if they specified a child account in the profile, they're using delegated access to push out stacksets,
+			# hence they need to specify the account list at the command prompt.
+			# We should probably assume that all accounts are Active, but I'm not sure if that's a good idea yet, since we don't know.
+			ChildAccounts = [{'AccountId': x, 'MgmtAccount': faws_acct.MgmtAccount} for x in accountlist]
 		logging.info(f"There are {len(ChildAccounts)} accounts to gain credentials for...")
 	else:
 		# TODO: Eventually we'll need to raise an issue here, to point out that the account list needs to come from somewhere, if the profile isn't the Root,
 		#  or the accounts being specified at the command line.
 		# For now - we'll assume that if they provided a single account profile, with no listing, we should just use that single account.
-		ChildAccounts = [{'AccountId': faws_acct.acct_number, 'MgmtAccount': faws_acct.MgmtAccount, 'AccountStatus': faws_acct.AccountStatus}]
-		pass
+		# They should only get to this point, if the account type was neither "Root" nor "Child", thus could be "StandAlone"
+		ChildAccounts = faws_acct.ChildAccounts
 
 	logging.debug(f"Account Passed in: {faws_acct.acct_number} | Child Accounts: {ChildAccounts} | Account Type: {faws_acct.AccountType} | Account Status: {faws_acct.AccountStatus} | RoleNames to try: {fRoleNames}")
 	account_credentials = {'Role': 'Nothing'}
@@ -4326,10 +4338,8 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 	AllCreds = []
 	credqueue = Queue()
 
-	if len(accountlist) > 0:  # If they supplied a list of accounts to check, use 50 worker threads
-		WorkerThreads = min(len(accountlist) * len(fregions), 50)
-	else:  # If they didn't, then use 100 worker threads - I don't know why.
-		WorkerThreads = min(len(ChildAccounts) * len(fregions), 100)
+	# Defaults to 10, unless something more was passed in - which is only done for time testing.
+	WorkerThreads = min(len(ChildAccounts) * len(fregions), threads)
 
 	# Create x worker threads
 	for x in range(WorkerThreads):
@@ -4355,6 +4365,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 			logging.info(f"\t\tRegion {RegionNum} of {len(fregions)}")
 			credqueue.put((account, fprofile, region))
 			logging.info(f"Account / Region: {account} / {region} | {datetime.now()}")
+			logging.info(f"Queue Size: {credqueue.qsize()}")
 	print(f"{Fore.GREEN}Enumerating {AccountNum} account{'s' if len(ChildAccounts) * len(fregions) > 1 else ''} and {len(fregions)} regions "
 	      f"took {time() - begin_time:.3f} seconds {Fore.RESET}") if fTiming else None
 	credqueue.join()
