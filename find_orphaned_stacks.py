@@ -8,8 +8,7 @@ from time import time
 from botocore.exceptions import ClientError
 from colorama import Fore, init
 
-import Inventory_Modules
-from Inventory_Modules import get_credentials_for_accounts_in_org, find_stacks2, find_stacksets3, find_stack_instances3, display_results, print_timings
+from Inventory_Modules import get_credentials_for_accounts_in_org, find_stacks2, get_regions3, find_stacksets3, find_stack_instances3, display_results, print_timings
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 
@@ -22,20 +21,19 @@ Originally, that script didn't have built-in recovery, so we needed this script 
 """
 
 init()
-__version__ = "2024.03.20"
+__version__ = "2024.05.01"
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
-DefaultMaxWorkerThreads = 25
 
 
 ##################
 # Functions
 ##################
 
-def parse_args(args):
+def parse_args(fargs):
 	"""
 	Description: Parse the arguments sent to the script
-	@param args: namespace of the arguments passed in at the command line
+	@param fargs: namespace of the arguments passed in at the command line
 	@return: namespace with all parameters parsed out
 	"""
 	script_path, script_name = split(sys.argv[0])
@@ -56,17 +54,18 @@ def parse_args(args):
 		default=['all'],
 		nargs="*",
 		metavar="region-name",
-		dest="pRegionList")
+		dest="SearchRegionList")
 
-	return parser.my_parser.parse_args(args)
+	return parser.my_parser.parse_args(fargs)
 
 
-def setup_auth_and_regions(fProfile: str, f_AccountList: list, f_Region: str) -> (aws_acct_access, list, list):
+def setup_auth_and_regions(fProfile: str, f_AccountList: list, f_Region: str, f_args) -> (aws_acct_access, list, list):
 	"""
 	Description: This function takes in a profile, and returns the account object and the regions valid for this account / org.
 	@param fProfile: A string representing the profile provided by the user. If nothing, then use the default profile or credentials
 	@param f_AccountList: A string representing the profile provided by the user. If nothing, then use the default profile or credentials
-	@param f_Region: A string representing the profile provided by the user. If nothing, then use the default profile or credentials
+	@param f_Region: A string representing the region provided by the user. If nothing, then use the default profile or credentials
+	@param f_args: The arguments passed in at the command line
 	@return:
 		- an object of the type "aws_acct_access"
 		- a list of regions valid for this particular profile/ account.
@@ -74,7 +73,7 @@ def setup_auth_and_regions(fProfile: str, f_AccountList: list, f_Region: str) ->
 	# Validate inputs
 	if isinstance(fProfile, str) or fProfile is None:
 		pass
-	else:
+	else:       # If they tried to pass a list, or an integer, which should be caught at the argparse function...
 		print(f"{Fore.RED}You specified an invalid profile name. This script only allows for one profile at a time. Please try again.{Fore.RESET}")
 		sys.exit(7)
 
@@ -84,11 +83,11 @@ def setup_auth_and_regions(fProfile: str, f_AccountList: list, f_Region: str) ->
 		logging.error(f"Exiting due to error: {my_Error}")
 		sys.exit(8)
 
-	AllRegions = Inventory_Modules.get_ec2_regions3(aws_acct)
-	RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionList)
+	AllRegions = get_regions3(aws_acct)
+	RegionList = get_regions3(aws_acct, f_args.SearchRegionList)
 
-	if pRegion.lower() not in AllRegions:
-		print(f"{Fore.RED}You specified '{pRegion}' as the region, but this script only works with a single region.\n"
+	if f_Region.lower() not in AllRegions:
+		print(f"{Fore.RED}You specified '{f_Region}' as the region, but this script only works with a single region.\n"
 		      f"Please run the command again and specify only a single, valid region{Fore.RESET}")
 		sys.exit(9)
 
@@ -106,25 +105,24 @@ def setup_auth_and_regions(fProfile: str, f_AccountList: list, f_Region: str) ->
 	AccountList = [account['AccountId'] for account in ChildAccounts]
 	print(f"You asked me to find orphaned stacksets that match the following:")
 	print(f"\t\tIn the {aws_acct.AccountType} account {aws_acct.acct_number}")
-	print(f"\t\tIn this home Region: {pRegion}")
-	print(f"\t\tFor stackset instances whose region matches this region fragment: {pRegionList}") if pRegionList is not None else ''
-	print(f"While skipping these accounts:\n{Fore.RED}{pSkipAccounts}{Fore.RESET}") if pSkipAccounts is not None else ''
+	print(f"\t\tIn this home Region: {f_Region}")
+	print(f"\t\tFor stackset instances whose region matches this region fragment: {f_args.SearchRegionList}") if f_args.SearchRegionList is not None else ''
+	print(f"While skipping these accounts:\n{Fore.RED}{f_args.SkipAccounts}{Fore.RESET}") if f_args.SkipAccounts is not None else ''
 
-	if pExact:
-		print(f"\t\tFor stacksets that {Fore.RED}exactly match{Fore.RESET}: {pFragments}")
+	if f_args.Exact:
+		print(f"\t\tFor stacksets that {Fore.RED}exactly match{Fore.RESET}: {f_args.Fragments}")
 	else:
-		print(f"\t\tFor stacksets that contain th{'is fragment' if len(pFragments) == 1 else 'ese fragments'}: {pFragments}")
+		print(f"\t\tFor stacksets that contain th{'is fragment' if len(f_args.Fragments) == 1 else 'ese fragments'}: {f_args.Fragments}")
 
-	if pAccounts is None:
+	if f_args.Accounts is None:
 		print(f"\t\tFor stack instances across all accounts")
 	else:
-		print(f"\t\tSpecifically to find th{'ese' if len(pAccounts) > 1 else 'is'} account number{'s' if len(pAccounts) > 1 else ''}: {pAccounts}")
-	# print(f"\t\tSpecifically to find th{'ese' if len(pRegionModifyList) > 1 else 'is'} region{'s' if len(pRegionModifyList) > 1 else ''}: {pRegionModifyList}") if pRegionModifyList is not None else ""
+		print(f"\t\tSpecifically to find th{'ese' if len(f_args.Accounts) > 1 else 'is'} account number{'s' if len(f_args.Accounts) > 1 else ''}: {f_args.Accounts}")
 	print()
-	return (aws_acct, AccountList, RegionList)
+	return aws_acct, AccountList, RegionList
 
 
-def find_stacks_within_child_accounts(fall_credentials, fFragmentlist: list = None):
+def find_stacks_within_child_accounts(fall_credentials, fFragmentlist: list = None, threads:int=25):
 	from queue import Queue
 	from threading import Thread
 
@@ -159,7 +157,7 @@ def find_stacks_within_child_accounts(fall_credentials, fFragmentlist: list = No
 		fFragmentlist = ['all']
 	# This function takes the accounts and "SkipAccounts" that the user provided into account, so we don't have to filter any more than this.
 
-	WorkerThreads = min(len(fall_credentials), DefaultMaxWorkerThreads)
+	WorkerThreads = min(len(fall_credentials), threads)
 
 	AllFoundStacks = []
 	for x in range(WorkerThreads):
@@ -179,7 +177,7 @@ def find_stacks_within_child_accounts(fall_credentials, fFragmentlist: list = No
 				logging.warning(f"It's possible that the region {credential['Region']} hasn't been opted-into")
 				pass
 	checkqueue.join()
-	return (AllFoundStacks)
+	return AllFoundStacks
 
 
 def reconcile_between_parent_stacksets_and_children_stacks(f_parent_stack_instances: list, f_child_stacks: list):
@@ -234,7 +232,7 @@ if __name__ == '__main__':
 	args = parse_args(sys.argv[1:])
 	pProfile = args.Profile
 	pRegion = args.Region
-	pRegionList = args.pRegionList
+	pSearchRegionList = args.SearchRegionList
 	pAccounts = args.Accounts
 	pSkipAccounts = args.SkipAccounts
 	pSkipProfiles = args.SkipProfiles
@@ -252,11 +250,11 @@ if __name__ == '__main__':
 	begin_time = time()
 
 	# Setup credentials and regions (filtered by what they wanted to check)
-	aws_acct, AccountList, RegionList = setup_auth_and_regions(pProfile, pAccounts, pRegion)
+	aws_acct, AccountList, RegionList = setup_auth_and_regions(pProfile, pAccounts, pRegion, args)
 	# Determine the accounts we're checking
-	print_timings(pTiming, verbose, begin_time,"Just setup account and region list")
+	print_timings(pTiming, verbose, begin_time, "Just setup account and region list")
 	AllCredentials = get_credentials_for_accounts_in_org(aws_acct, pSkipAccounts, pRootOnly, AccountList, pProfile, RegionList, pRoles, pTiming)
-	print_timings(pTiming, verbose, begin_time,f"Finished getting {len(AllCredentials)} credentials for all accounts and regions in spec...")
+	print_timings(pTiming, verbose, begin_time, f"Finished getting {len(AllCredentials)} credentials for all accounts and regions in spec...")
 
 	# Connect to every account, and in every region specified, to find all stacks
 	print(f"Now finding all stacks across {'all' if pAccounts is None else (len(pAccounts) * len(RegionList))} accounts and regions under the {aws_acct.AccountType} account {aws_acct.acct_number}")
