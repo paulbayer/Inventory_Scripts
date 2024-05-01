@@ -94,7 +94,7 @@ if __name__ == '__main__':
 	args = parse_args(sys.argv[1:])
 	pProfile = args.Profile
 	pRegion = args.Region
-	pRegionList = args.pRegionList
+	pRegionList = args.pSearchRegionList
 	pAccountsToSkip = args.SkipAccounts
 	pAccounts = args.Accounts
 	pOldStackSetName = args.oldStackSetName
