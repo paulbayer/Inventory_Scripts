@@ -1,4 +1,5 @@
 import sys
+from os.path import split
 
 import boto3
 import logging
@@ -7,7 +8,8 @@ from time import time
 from colorama import init, Fore
 from ArgumentsClass import CommonArguments
 
-__version__ = '2023.11.06'
+
+__version__ = '2024.05.04'
 init()
 
 account_fillcolor = 'orange'
@@ -18,9 +20,7 @@ policy_shape = 'hexagon'
 ou_fillcolor = 'burlywood'
 ou_shape = 'box'
 
-"""
-TODO: This tool doesn't show the accounts that reside in the root. Need to figure out how to resolve that.
-"""
+# TODO: Consider coloring in accounts that are suspended as a different color
 
 #####################
 """
@@ -28,24 +28,32 @@ Function Definitions
 """
 
 
-def parse_args(args):
+def parse_args(f_args):
+	script_path, script_name = split(sys.argv[0])
 	parser = CommonArguments()
-	parser.my_parser.description = ("To draw the Organization and its policies.")
+	parser.my_parser.description = "To draw the Organization and its policies."
 	parser.singleprofile()
 	parser.verbosity()
 	parser.timing()
 	parser.version(__version__)
-	parser.my_parser.add_argument(
+	local = parser.my_parser.add_argument_group(script_name, 'Parameters specific to this script')
+	local.add_argument(
 		"--policy",
 		dest='policy',
 		action="store_true",  # Defaults to False, meaning it won't show policies by default
 		help="Include the various policies within the Organization in the diagram")
-	parser.my_parser.add_argument(
+	local.add_argument(
 		"--aws", "--managed",
 		dest='aws_managed',
 		action="store_true",  # Defaults to False, meaning it defaults to NOT showing the AWS managed policies applied
 		help="Use this parameter to SHOW the AWS Managed SCPs as well, otherwise they're hidden")
-	return (parser.my_parser.parse_args(args))
+	local.add_argument(
+		"--ou", "--start",
+		dest="starting_place",
+		metavar="OU ID",
+		default=None,
+		help="Use this parameter to specify where to start from (Defaults to the root)")
+	return parser.my_parser.parse_args(f_args)
 
 
 def round_up(number):
@@ -62,7 +70,7 @@ def get_root_OUS(root_id):
 			ChildOUs = org_client.list_children(ParentId=root_id, ChildType='ORGANIZATIONAL_UNIT', NextToken=ChildOUs['NextToken'])
 			AllChildOUs.extend(ChildOUs['Children'])
 			logging.info(f"Found {len(AllChildOUs)} children from parent {root_id}")
-		return (AllChildOUs)
+		return AllChildOUs
 	except (org_client.exceptions.AccessDeniedException,
 	        org_client.exceptions.AWSOrganizationsNotInUseException,
 	        org_client.exceptions.InvalidInputException,
@@ -78,8 +86,11 @@ def get_root_OUS(root_id):
 # Function to recursively traverse the OUs and accounts
 def traverse_ous_and_accounts(ou_id, dot):
 	# Retrieve the details of the current OU
-	ou = org_client.describe_organizational_unit(OrganizationalUnitId=ou_id)
-	ou_name = ou['OrganizationalUnit']['Name']
+	if ou_id[0] == 'r':
+		ou_name = 'Root'
+	else:
+		ou = org_client.describe_organizational_unit(OrganizationalUnitId=ou_id)
+		ou_name = ou['OrganizationalUnit']['Name']
 
 	if pPolicy:
 		# Retrieve the policies associated with this OU
@@ -186,8 +197,8 @@ def find_max_accounts_per_ou(ou_id, max_accounts=0):
 		accounts = org_client.list_accounts_for_parent(ParentId=ou_id, NextToken=accounts['NextToken'])
 		all_accounts.extend(accounts['Accounts'])
 		logging.info(f"Found {len(all_accounts)} more accounts in ou {ou_id} - totaling {len(all_accounts)} accounts so far")
-	max_accounts = max(len(all_accounts), max_accounts)
-	return (max_accounts)
+	max_accounts_return = max(len(all_accounts), max_accounts)
+	return max_accounts_return
 
 
 def find_accounts_in_org():
@@ -198,10 +209,10 @@ def find_accounts_in_org():
 		org_accounts = org_client.list_accounts(NextToken=org_accounts['NextToken'])
 		all_accounts.extend(org_accounts['Accounts'])
 		logging.info(f"Finding another {len(org_accounts['Accounts'])}. Total accounts found: {len(all_accounts)}")
-	return (all_accounts)
+	return all_accounts
 
 
-def draw_org(froot_OUs):
+def draw_org(froot):
 	max_accounts_per_ou = 1
 
 	# Create a new Digraph object for the diagram
@@ -212,13 +223,10 @@ def draw_org(froot_OUs):
 		create_policy_nodes(dot)
 	# Call the function to traverse the OUs and accounts starting from the root
 	print(f"Beginning to traverse OUs and draw the diagram... ")
-	for ou in froot_OUs:
-		traverse_ous_and_accounts(ou['Id'], dot)
-		max_accounts_per_ou = find_max_accounts_per_ou(ou['Id'], max_accounts_per_ou)
-	if pTiming and pPolicy:
-		print(f"{Fore.GREEN}\tDrawing the Org structure when policies are included took {time() - begin_time:.2f} seconds{Fore.RESET}")
-	elif pTiming:
-		print(f"{Fore.GREEN}\tDrawing the Org structure without policies took {time() - begin_time:.2f} seconds{Fore.RESET}")
+
+	# for ou in froot_OUs:
+	traverse_ous_and_accounts(froot, dot)
+	max_accounts_per_ou = find_max_accounts_per_ou(froot, max_accounts_per_ou)
 	# Render the diagram to a PNG image
 	# dot.render('aws_organization', view=True)
 	dot_unflat = dot.unflatten(stagger=round_up(max_accounts_per_ou / 5))
@@ -235,22 +243,30 @@ if __name__ == '__main__':
 	pTiming = args.Time
 	pPolicy = args.policy
 	pManaged = args.aws_managed
+	pStartingPlace = args.starting_place
 	verbose = args.loglevel
 	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(""message)s")
 
-	if pTiming:
-		begin_time = time()
+	begin_time = time()
 	print(f"Beginning to look through the Org in order to create the diagram")
 	# Create an AWS Organizations client
 	org_session = boto3.Session(profile_name=pProfile)
 	org_client = org_session.client('organizations')
 	ERASE_LINE = '\x1b[2K'
 
-	# Find the root Org ID
-	root = org_client.list_roots()['Roots'][0]['Id']
+	if pStartingPlace is None:
+		# Find the root Org ID
+		logging.info(f"User didn't include a specific OU ID, so we're starting from the root")
+		root = org_client.list_roots()['Roots'][0]['Id']
+	else:
+		logging.info(f"User asked us to start from a specific OU ID: {pStartingPlace}")
+		root = pStartingPlace
 
+	# If they specified they want to see the AWS policies, then they obviously want to see policies overall.
+	if pManaged and not pPolicy:
+		pPolicy = True
 	"""
-	Possible Org policy values as of 5/23/2023
+	Possible Org policy values as of 5/04/2024
 	AISERVICES_OPT_OUT_POLICY
 	BACKUP_POLICY
 	SERVICE_CONTROL_POLICY
@@ -260,19 +276,23 @@ if __name__ == '__main__':
 
 	# Find all the Organization Accounts
 	all_org_accounts = find_accounts_in_org()
+	if len(all_org_accounts) > 360 and pStartingPlace is not None:
+		print(f"Since there are {len(all_org_accounts)} in your Organization, this script will take a long time to run. If you're comfortable with that\n"
+		      f"re-run this script and add '--start {root} ' as a parameter to this script, and we'll run without this reminder.\n"
+		      f"Otherwise - you could run this script for only a specific OU's set of accounts by specifying '--start <OU ID>' and we'll start the drawing at that OU (and include any OUs below it)")
+		print()
+		sys.exit(1)
 	if pPolicy:
 		print(f"Due to there being {len(all_org_accounts)} accounts in this Org, this process will likely take about {5 + (len(all_org_accounts) / 2)} seconds")
 	else:
 		print(f"Due to there being {len(all_org_accounts)} accounts in this Org, this process will likely take about {5 + (len(all_org_accounts) / 10)} seconds")
-	# Specifying the root Org ID, get all the root OUs we'll have to traverse
 
-
-	root_OUs = get_root_OUS(root)
 	# Draw the Org itself and save it to the local filesystem
-	draw_org(root_OUs)
+	draw_org(root)
 
-	if pTiming:
-		print(f"{Fore.GREEN}\tThis script took {time() - begin_time:.2f} seconds{Fore.RESET}")
-		print()
+	if pTiming and pPolicy:
+		print(f"{Fore.GREEN}Drawing the Org structure when policies are included took {time() - begin_time:.2f} seconds{Fore.RESET}")
+	elif pTiming:
+		print(f"{Fore.GREEN}Drawing the Org structure without policies took {time() - begin_time:.2f} seconds{Fore.RESET}")
 	print("Thank you for using this script")
 	print()
