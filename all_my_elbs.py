@@ -16,7 +16,7 @@ from tqdm.auto import tqdm
 import logging
 
 init()
-__version__ = "2024.04.24"
+__version__ = "2024.05.04"
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 
@@ -43,12 +43,6 @@ def parse_args(arguments):
 	parser.verbosity()
 	parser.timing()
 	parser.version(__version__)
-	# parser.my_parser.add_argument(
-	# 		"-f", "--fragment",
-	# 		dest="pstackfrag",
-	# 		metavar="CloudFormation stack fragment",
-	# 		default="all",
-	# 		help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
 	local = parser.my_parser.add_argument_group(script_name, 'Parameters specific to this script')
 	local.add_argument(
 		"-s", "--status",
