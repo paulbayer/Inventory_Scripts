@@ -13,6 +13,7 @@ __version__ = '2024.05.04'
 init()
 
 account_fillcolor = 'orange'
+suspended_account_fillcolor = 'red'
 account_shape = 'ellipse'
 policy_fillcolor = 'azure'  # Pretty color - nothing to do with the Azure Cloud...
 policy_linecolor = 'red'
@@ -20,7 +21,6 @@ policy_shape = 'hexagon'
 ou_fillcolor = 'burlywood'
 ou_shape = 'box'
 
-# TODO: Consider coloring in accounts that are suspended as a different color
 
 #####################
 """
@@ -121,7 +121,10 @@ def traverse_ous_and_accounts(ou_id, dot):
 		account_id = account['Id']
 		account_name = account['Name']
 		# Add the account as a node in the diagram
-		dot.node(account_id, label=f"{account_name}\n{account_id}", shape=account_shape, style='filled', fillcolor=account_fillcolor)
+		if account['Status'] == 'SUSPENDED':
+			dot.node(account_id, label=f"{account_name}\n{account_id}\nSUSPENDED", shape=account_shape, style='filled', fillcolor=suspended_account_fillcolor)
+		else:
+			dot.node(account_id, label=f"{account_name}\n{account_id}", shape=account_shape, style='filled', fillcolor=account_fillcolor)
 		# Add an edge from the current OU to the account
 		dot.edge(ou_id, account_id)
 
