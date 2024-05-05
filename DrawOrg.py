@@ -8,7 +8,6 @@ from time import time
 from colorama import init, Fore
 from ArgumentsClass import CommonArguments
 
-
 __version__ = '2024.05.04'
 init()
 
@@ -20,7 +19,6 @@ policy_linecolor = 'red'
 policy_shape = 'hexagon'
 ou_fillcolor = 'burlywood'
 ou_shape = 'box'
-
 
 #####################
 """
@@ -83,8 +81,12 @@ def get_root_OUS(root_id):
 	return ()
 
 
-# Function to recursively traverse the OUs and accounts
-def traverse_ous_and_accounts(ou_id, dot):
+def traverse_ous_and_accounts(ou_id: str, dot):
+	"""
+	Description: Recursively traverse the OUs and accounts
+	@param ou_id: The ID of the OU to start from
+	@param dot: The diagram to draw on
+	"""
 	# Retrieve the details of the current OU
 	if ou_id[0] == 'r':
 		ou_name = 'Root'
@@ -152,11 +154,15 @@ def traverse_ous_and_accounts(ou_id, dot):
 		for association in all_account_associated_policies_uniq:
 			dot.edge(association[0], association[1])
 
-	# Retrieve the child OUs under the current OU
+	# Retrieve the child OUs under the current OU, and use pagination, since it's possible to have so many OUs that pagination is required.
+	all_child_ous = []
 	child_ous = org_client.list_organizational_units_for_parent(ParentId=ou_id)
-	for child_ou in child_ous['OrganizationalUnits']:
+	all_child_ous.extend(child_ous)
+	while 'NextToken' in child_ous.keys():
+		child_ous = org_client.list_organizational_units_for_parent(ParentId=ou_id, NextToken=child_ous['NextToken'])
+		all_child_ous.extend(child_ous)
+	for child_ou in all_child_ous['OrganizationalUnits']:
 		child_ou_id = child_ou['Id']
-
 		# Recursively traverse the child OU and add edges to the diagram
 		traverse_ous_and_accounts(child_ou_id, dot)
 		dot.edge(ou_id, child_ou_id)
