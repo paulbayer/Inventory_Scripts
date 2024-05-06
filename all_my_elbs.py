@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 
-import Inventory_Modules
 from Inventory_Modules import display_results, get_all_credentials, find_load_balancers2
 from time import time
 from os.path import split
@@ -16,7 +15,7 @@ from tqdm.auto import tqdm
 import logging
 
 init()
-__version__ = "2024.05.04"
+__version__ = "2024.05.06"
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 
