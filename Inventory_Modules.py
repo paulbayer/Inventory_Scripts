@@ -3662,6 +3662,7 @@ def find_ssm_parameters2(ocredentials):
 	response2 = []
 	TotalParameters = 0
 
+	# TODO: Need to multi-thread this
 	try:
 		response = client_ssm.describe_parameters(MaxResults=50)
 		TotalParameters = TotalParameters + len(response['Parameters'])
