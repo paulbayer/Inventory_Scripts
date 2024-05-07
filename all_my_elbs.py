@@ -157,9 +157,9 @@ if __name__ == '__main__':
 	                'MgmtAccount'  : {'DisplayOrder': 2, 'Heading': 'Mgmt Acct'},
 	                'AccountId'    : {'DisplayOrder': 3, 'Heading': 'Acct Number'},
 	                'Region'       : {'DisplayOrder': 4, 'Heading': 'Region'},
-	                'Name'         : {'DisplayOrder': 6, 'Heading': 'Name'},
-	                'Status'       : {'DisplayOrder': 7, 'Heading': 'Status'},
-	                'DNSName'      : {'DisplayOrder': 8, 'Heading': 'Public Name'},
+	                'Name'         : {'DisplayOrder': 5, 'Heading': 'Name'},
+	                'Status'       : {'DisplayOrder': 6, 'Heading': 'Status'},
+	                'DNSName'      : {'DisplayOrder': 7, 'Heading': 'Public Name'},
 	                # 'State'        : {'DisplayOrder': 9, 'Heading': 'State', 'Condition': ['running']}
 	                }
 
