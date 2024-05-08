@@ -144,7 +144,12 @@ if __name__ == "__main__":
 	pExact = args.Exact
 	pstatus = args.pstatus
 	pFilename = args.Filename
+	# Setup logging levels
 	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+	logging.getLogger("boto3").setLevel(logging.CRITICAL)
+	logging.getLogger("botocore").setLevel(logging.CRITICAL)
+	logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 	# Setup auth object, get account list and region list setup
 	aws_acct, AccountList, RegionList = setup_auth_accounts_and_regions(pProfile)

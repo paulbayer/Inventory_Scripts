@@ -15,7 +15,7 @@ import logging
 
 init()
 
-__version__ = '2023.10.06'
+__version__ = '2024.05.07'
 
 def parse_args(args):
 	"""
@@ -153,10 +153,14 @@ if __name__ == '__main__':
 	pFilename = args.Filename
 	pTiming = args.Time
 	verbose = args.loglevel
+	# Setup logging levels
 	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+	logging.getLogger("boto3").setLevel(logging.CRITICAL)
+	logging.getLogger("botocore").setLevel(logging.CRITICAL)
+	logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
-	if pTiming:
-		begin_time = time()
+	begin_time = time()
 	print()
 	print(f"Checking for Elastic Network Interfaces... ")
 	print()

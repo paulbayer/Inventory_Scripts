@@ -63,6 +63,7 @@ def get_regions3(faws_acct, fregion_list=None):
 					RegionNames2.append(y)
 		return RegionNames2
 
+
 #
 # def get_ec2_regions(fprofile=None, fregion_list=None):
 # 	"""
@@ -1931,23 +1932,107 @@ def find_policy_action2(ocredentials, fpolicy, f_action):
 	return results
 
 
-def find_users2(ocredentials):
+def find_iam_users2(ocredentials):
 	"""
 	ocredentials is an object with the following structure:
+		- ['AccountId'] holds the Account ID for the account you're looking for
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['Region'] holds the region
 	"""
 	import boto3
 	import logging
 
-	logging.info(f"Key ID #: {str(ocredentials['AccessKeyId'])}")
+	users = []
+	logging.info(f"Account ID #: {str(ocredentials['AccessKeyId'])}")
 	session_iam = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
 	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
-	                            aws_session_token=ocredentials['SessionToken'])
-	user_info = session_iam.client('iam')
-	users = user_info.list_users()['Users']
-	# TODO: Consider pagination here
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'] if 'Region' in ocredentials.keys() else 'us-east-1')
+	client_iam = session_iam.client('iam')
+	user_info = client_iam.list_users()
+	for user in user_info['Users']:
+		user['Type'] = 'IAM User'
+		user['Region'] = ocredentials['Region']
+		user['AccountId'] = ocredentials['AccountId']
+		user['MgmtAccount'] = ocredentials['MgmtAccount']
+		users.append(user)
+	while 'Marker' in user_info.keys():
+		user_info = client_iam.list_users(Marker=user_info['Marker'])
+		for user in user_info['Users']:
+			user['Type'] = 'IAM User'
+			user['Region'] = ocredentials['Region']
+			user['AccountId'] = ocredentials['AccountId']
+			user['MgmtAccount'] = ocredentials['MgmtAccount']
+			users.append(user)
+	return users
+
+
+def find_idc_directory_id2(ocredentials) -> list:
+	"""
+	Description: Finds the IDC Directory ID
+	@param ocredentials: AWS Credentials
+	@return: Returns the IDC Directory ID
+	"""
+	import boto3
+	session_idc = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'] if 'Region' in ocredentials.keys() else 'us-east-1')
+
+	client_idc = session_idc.client('sso-admin')
+	all_idc_info_list = []
+	idc_info = client_idc.list_instances()
+	all_idc_info_list.extend(idc_info['Instances'])
+	while 'NextToken' in idc_info.keys():
+		idc_info = client_idc.list_instances(NextToken=idc_info['NextToken'])
+		all_idc_info_list.extend(idc_info['Instances'])
+	idc_directory_id_list = [instance['IdentityStoreId'] for instance in all_idc_info_list if 'IdentityStoreId' in instance.keys()]
+	return idc_directory_id_list
+
+
+def find_idc_users2(ocredentials, f_IdentityStoreId: str) -> list:
+	"""
+	Description: This function will find all users in an Identity Store.
+	@param  ocredentials: The credentials for the account you're looking in.
+		- ['AccountId'] holds the Account ID for the account you're looking for
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['Region'] holds the region
+	@param f_IdentityStoreId: The Id of the Identity Store you're looking for users in.
+	@return : A list of users in the Identity Store.
+	"""
+	import boto3
+	import logging
+
+	if f_IdentityStoreId  is None:
+		logging.info("No Identity Store ID was provided.\n"
+		             "Likely this account doesn't have an Identity Center Directory configured to keep users")
+		return []
+	users = []
+	logging.info(f"Account ID #: {str(ocredentials['AccountId'])}")
+	session_idc = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'] if 'Region' in ocredentials.keys() else 'us-east-1')
+	client_idc = session_idc.client('identitystore')
+	user_info = client_idc.list_users(IdentityStoreId=f_IdentityStoreId)
+	for user in user_info['Users']:
+		user['Type'] = 'IDC User'
+		user['Region'] = ocredentials['Region']
+		user['AccountId'] = ocredentials['AccountId']
+		user['MgmtAccount'] = ocredentials['MgmtAccount']
+		users.append(user)
+	while 'NextToken' in user_info.keys():
+		user_info = client_idc.list_users(NextToken=user_info['NextToken'], IdentityStoreId=f_IdentityStoreId)
+		for user in user_info['Users']:
+			user['Type'] = 'IDC User'
+			user['Region'] = ocredentials['Region']
+			user['AccountId'] = ocredentials['AccountId']
+			user['MgmtAccount'] = ocredentials['MgmtAccount']
+			users.append(user)
 	return users
 
 
@@ -4234,7 +4319,7 @@ def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProf
 	return AllCredentials
 
 
-def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, accountlist=None, fprofile="default", fregions=None, fRoleNames=None, fTiming=False, threads:int=50):
+def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, accountlist=None, fprofile="default", fregions=None, fRoleNames=None, fTiming=False, threads: int = 50):
 	"""
 	Note that this function returns the credentials of all the accounts underneath the Org passed to it.
 
@@ -4373,15 +4458,17 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 	return AllCreds
 
 
-def get_org_accounts_from_profiles(fProfileList, progress_bar=False):
+def get_org_accounts_from_profiles(fProfileList):
 	"""
 	Note that this function returns account_class objects based on the list of profiles passed to it
 	This function is fairly slow since it needs to call the aws_acct_access function for each profile.
 	The linear function called "get_profiles" is much faster if you just want the list of profiles that match.
 	"""
 	import logging
+	from time import sleep
 	from queue import Queue
 	from threading import Thread
+	from tqdm.auto import tqdm
 	from account_class import aws_acct_access
 	from botocore.exceptions import ClientError, InvalidConfigError, NoCredentialsError
 
@@ -4468,7 +4555,8 @@ def get_org_accounts_from_profiles(fProfileList, progress_bar=False):
 
 	AllAccounts = []
 	profilequeue = Queue()
-	WorkerThreads = len(fProfileList)
+	# WorkerThreads = len(fProfileList)
+	WorkerThreads = 2
 
 	# Create x worker threads
 	for x in range(WorkerThreads):
@@ -4477,8 +4565,17 @@ def get_org_accounts_from_profiles(fProfileList, progress_bar=False):
 		worker.daemon = True
 		worker.start()
 
+	pbar = tqdm(desc=f'Getting accounts from {len(fProfileList)} profiles',
+	            total=len(fProfileList)
+	            )
+
 	for profile_item in fProfileList:
 		logging.info(f"Queuing profile {profile_item} / {len(fProfileList)} profiles")
 		profilequeue.put(profile_item)
+	while profilequeue.qsize() > 0:
+		sleep(1)
+		print(f"Profile Queue Size: {profilequeue.qsize()}")
+		# pbar.update(len(fProfileList) - profilequeue.qsize())
+		pbar.update()
 	profilequeue.join()
 	return AllAccounts

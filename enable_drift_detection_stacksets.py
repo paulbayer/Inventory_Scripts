@@ -249,12 +249,12 @@ if __name__ == '__main__':
 	pSaveFilename = args.Filename
 	verbose = args.loglevel
 
+	# Set Log Level
+	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 	logging.getLogger("boto3").setLevel(logging.CRITICAL)
 	logging.getLogger("botocore").setLevel(logging.CRITICAL)
 	logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
 	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
-	# Set Log Level
-	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 	"""
 	We should eventually create an argument here that would check on the status of the drift-detection using
 	"describe_stack_drift_detection_status", but we haven't created that function yet... 

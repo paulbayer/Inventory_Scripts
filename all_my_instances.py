@@ -207,7 +207,12 @@ if __name__ == '__main__':
 	pRootOnly = args.RootOnly
 	pTiming = args.Time
 	verbose = args.loglevel
+	# Setup logging levels
 	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+	logging.getLogger("boto3").setLevel(logging.CRITICAL)
+	logging.getLogger("botocore").setLevel(logging.CRITICAL)
+	logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 	ERASE_LINE = '\x1b[2K'
 	logging.info(f"Profiles: {pProfiles}")

@@ -146,6 +146,7 @@ if __name__ == '__main__':
 	pRootOnly = args.RootOnly
 	pTiming = args.Time
 	verbose = args.loglevel
+	# Setup logging levels
 	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 	logging.getLogger("boto3").setLevel(logging.CRITICAL)
 	logging.getLogger("botocore").setLevel(logging.CRITICAL)
@@ -175,13 +176,12 @@ if __name__ == '__main__':
 	All_Load_Balancers = find_all_elbs(CredentialList, pFragment, pStatus)
 	# Display what we've found
 	display_results(All_Load_Balancers, display_dict)
-	# fmt = '%-20s %-10s %-20s %-10s %-50s'
-	# print(fmt % ("Profile", "Region", "Load Balancer Name", "LB Status", "Load Balancer DNS Name"))
-	# print(fmt % ("-------", "------", "------------------", "---------", "----------------------"))
 
 	if pTiming:
 		print(ERASE_LINE)
 		print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 	print(ERASE_LINE)
 	print(f"{Fore.RED}Found {len(All_Load_Balancers)} Load Balancers across {AccountNum} profiles across {RegionNum} regions{Fore.RESET}")
+	print()
+	print("Thank you for using this script")
 	print()

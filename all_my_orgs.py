@@ -2,9 +2,7 @@
 
 import logging
 from ArgumentsClass import CommonArguments
-# from account_class import aws_acct_access
-import Inventory_Modules
-from Inventory_Modules import get_org_accounts_from_profiles, display_results
+from Inventory_Modules import get_profiles, get_org_accounts_from_profiles, display_results
 from time import time
 # from botocore.exceptions import ClientError, NoCredentialsError, InvalidConfigError
 from colorama import init, Fore, Style
@@ -12,7 +10,7 @@ import sys
 import os
 
 init()
-__version__ = "2024.01.25"
+__version__ = "2024.05.08"
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 # TODO: If they provide a profile that isn't a root profile, you should find out which org it belongs to, and then show the org for that.
@@ -52,12 +50,12 @@ def parse_args(args):
 
 def all_my_orgs(fProfiles:list, fSkipProfiles:list, fAccountList:list, fTiming:bool, fRootOnly:bool, fSaveFilename:str, fShortform:bool, fverbose):
 
-	ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
+	ProfileList = get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
 	# print("Capturing info for supplied profiles")
 	logging.info(f"These profiles were requested {fProfiles}.")
 	logging.warning(f"These profiles are being checked {ProfileList}.")
 	print(f"Please bear with us as we run through {len(ProfileList)} profiles")
-	AllProfileAccounts = get_org_accounts_from_profiles(ProfileList, progress_bar=False)
+	AllProfileAccounts = get_org_accounts_from_profiles(ProfileList)
 	AccountList = []
 	# Rather than even try to determine if a root account is using ALZ, I've just removed it. I'll take out the column eventually.
 	landing_zone = 'N/A'
@@ -198,13 +196,13 @@ if __name__ == '__main__':
 	pTiming = args.Time
 	pSkipAccounts = args.SkipAccounts
 	pSkipProfiles = args.SkipProfiles
-	pverbose = args.loglevel
+	verbose = args.loglevel
 	pSaveFilename = args.Filename
 	pShortform = args.pShortform
 	pAccountList = args.accountList
-	logging.basicConfig(level=pverbose, format="[%(filename)s:%(lineno)s - %(processName)s %(threadName)s %(funcName)20s() ] %(message)s")
+	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(processName)s %(threadName)s %(funcName)20s() ] %(message)s")
 
-	all_my_orgs(pProfiles, pSkipProfiles, pAccountList, pTiming, pRootOnly, pSaveFilename, pShortform, pverbose)
+	all_my_orgs(pProfiles, pSkipProfiles, pAccountList, pTiming, pRootOnly, pSaveFilename, pShortform, verbose)
 
 	print()
 	if pTiming:

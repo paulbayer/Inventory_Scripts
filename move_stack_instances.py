@@ -809,12 +809,12 @@ if __name__ == '__main__':
 	pAccountsToMove = args.pAccountsToMove
 	pEmpty = args.pEmpty
 	# Logging Settings
+	# Set Log Level
+	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 	logging.getLogger("boto3").setLevel(logging.CRITICAL)
 	logging.getLogger("botocore").setLevel(logging.CRITICAL)
 	logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
 	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
-	# Set Log Level
-	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 	ERASE_LINE = '\x1b[2K'
 	# The time between checks to see if the stackset instances have been created, or imported...

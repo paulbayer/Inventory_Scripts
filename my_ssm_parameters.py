@@ -98,7 +98,12 @@ if __name__ == '__main__':
 	DeletionRun = args.DeletionRun
 	dtDaysBack = timedelta(days=int(args.DaysBack))
 	verbose = args.loglevel
+	# Setup logging levels
 	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+	logging.getLogger("boto3").setLevel(logging.CRITICAL)
+	logging.getLogger("botocore").setLevel(logging.CRITICAL)
+	logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 	##########################
 	ALZRegex = "/\w{8,8}-\w{4,4}-\w{4,4}-\w{4,4}-\w{12,12}/\w{3,3}"
