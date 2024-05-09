@@ -1,21 +1,24 @@
-#!/usr/bin/env python3
+# !/usr/bin/env python3
 
 import sys
 from os.path import split
 import Inventory_Modules
-from Inventory_Modules import get_credentials_for_accounts_in_org, display_results
+from Inventory_Modules import get_credentials_for_accounts_in_org, get_all_credentials, display_results
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 from colorama import init, Fore
 from botocore.exceptions import ClientError
 from queue import Queue
 from threading import Thread
+from tqdm.auto import tqdm
 from time import time
 
 import logging
 
 init()
-__version__ = "2024.01.04"
+__version__ = "2024.05.09"
+ERASE_LINE = '\x1b[2K'
+begin_time = time()
 
 
 # TODO: Need a table at the bottom that summarizes the results, by instance-type, by running/ stopped, maybe by account and region
@@ -48,51 +51,53 @@ def parse_args(args):
 		type=str,
 		default=None,
 		help="Whether you want to limit the instances returned to either 'running', 'stopped'. Default is both")
-	return(parser.my_parser.parse_args(args))
+	return (parser.my_parser.parse_args(args))
 
-def get_credentials(fProfile_list:list, fRegion_list:list, fSkipProfiles:list=None, fSkipAccounts:list=None, fRootOnly:bool=False, fAccounts:list=None, fAccessRoles:list=None, fTiming=False)->list:
-	"""
-	Description: Finds all the credentials for the member accounts within the profile you've specified
-	@param fProfile_list: Profile of an Org account
-	@param fRegion_list: Regions to look within
-	@return: list of all credentials
-	"""
-	AllCredentials = []
-	if fProfile_list is None:  # Default use case from the classes
-		print("Using the default profile - gathering info")
-		aws_acct = aws_acct_access()
-		RegionList = Inventory_Modules.get_regions3(aws_acct, fRegion_list)
-		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
-		logging.info(f"Queueing default profile for credentials")
-		profile = 'default'
-		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, fAccessRoles, fTiming))
-	else:
-		ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfile_list)
-		print(f"Capturing info for {len(ProfileList)} requested profiles {ProfileList}")
-		for profile in ProfileList:
-			# Eventually - getting credentials for a single account may require passing in the region in which it's valid, but not yet.
-			try:
-				aws_acct = aws_acct_access(profile)
-				print(f"Validating {len(aws_acct.ChildAccounts)} accounts within {profile} profile now... ")
-				RegionList = Inventory_Modules.get_regions3(aws_acct, fRegion_list)
-				logging.info(f"Queueing {profile} for credentials")
-				# This should populate the list "AllCredentials" with the credentials for the relevant accounts.
-				AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, fAccessRoles, fTiming))
-				print()
-			except AttributeError as my_Error:
-				logging.error(f"Profile {profile} didn't work... Skipping")
-				continue
-	return(AllCredentials)
+
+# def get_credentials(fProfile_list: list, fRegion_list: list, fSkipProfiles: list = None, fSkipAccounts: list = None, fRootOnly: bool = False, fAccounts: list = None, fAccessRoles: list = None, fTiming=False) -> list:
+# 	"""
+# 	Description: Finds all the credentials for the member accounts within the profile you've specified
+# 	@param fProfile_list: Profile of an Org account
+# 	@param fRegion_list: Regions to look within
+# 	@return: list of all credentials
+# 	"""
+# 	AllCredentials = []
+# 	if fProfile_list is None:  # Default use case from the classes
+# 		print("Using the default profile - gathering info")
+# 		aws_acct = aws_acct_access()
+# 		RegionList = Inventory_Modules.get_regions3(aws_acct, fRegion_list)
+# 		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
+# 		logging.info(f"Queueing default profile for credentials")
+# 		profile = 'default'
+# 		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, fAccessRoles, fTiming))
+# 	else:
+# 		ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfile_list)
+# 		print(f"Capturing info for {len(ProfileList)} requested profiles {ProfileList}")
+# 		for profile in ProfileList:
+# 			# Eventually - getting credentials for a single account may require passing in the region in which it's valid, but not yet.
+# 			try:
+# 				aws_acct = aws_acct_access(profile)
+# 				print(f"Validating {len(aws_acct.ChildAccounts)} accounts within {profile} profile now... ")
+# 				RegionList = Inventory_Modules.get_regions3(aws_acct, fRegion_list)
+# 				logging.info(f"Queueing {profile} for credentials")
+# 				# This should populate the list "AllCredentials" with the credentials for the relevant accounts.
+# 				AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, fAccessRoles, fTiming))
+# 				print()
+# 			except AttributeError as my_Error:
+# 				logging.error(f"Profile {profile} didn't work... Skipping")
+# 				continue
+# 	return (AllCredentials)
 
 
 # The parameters passed to this function should be the dictionary of attributes that will be examined within the thread.
-def find_all_instances(fAllCredentials:list, fStatus:str=None) -> list:
+def find_all_instances(fAllCredentials: list, fStatus: str = None) -> list:
 	"""
 	Description: Finds all the instances from all the accounts/ regions within the Credentials supplied
 	@param fAllCredentials: list of all credentials for all member accounts supplied
 	@param fStatus: string determining whether you're looking for "running" or "stopped" instances
 	@return: Returns a list of Instances
 	"""
+
 	# This function is called
 	class FindInstances(Thread):
 
@@ -103,13 +108,12 @@ def find_all_instances(fAllCredentials:list, fStatus:str=None) -> list:
 		def run(self):
 			while True:
 				# Get the work from the queue and expand the tuple
-				c_account_credentials, c_PlaceCount = self.queue.get()
+				c_account_credentials = self.queue.get()
+				pbar.update()
 				logging.info(f"De-queued info for account number {c_account_credentials['AccountId']}")
 				try:
 					# Now go through those stacksets and determine the instances, made up of accounts and regions
 					# Most time spent in this loop
-					# for i in range(len(fStackSetNames['StackSets'])):
-					# print(f"{ERASE_LINE}Checking account {c_account_credentials['AccountId']} in region {c_account_credentials['Region']}", end='\r')
 					Instances = Inventory_Modules.find_account_instances2(c_account_credentials, c_account_credentials['Region'])
 					logging.info(f"Account: {c_account_credentials['AccountId']} Region: {c_account_credentials['Region']} | Found {len(Instances['Reservations'])} instances")
 					State = InstanceType = InstanceId = PublicDnsName = Name = ""
@@ -149,7 +153,7 @@ def find_all_instances(fAllCredentials:list, fStatus:str=None) -> list:
 					logging.warning(my_Error)
 					continue
 				except ClientError as my_Error:
-					if str(my_Error).find("AuthFailure") > 0:
+					if 'AuthFailure' in str(my_Error):
 						logging.error(f"Authorization Failure accessing account {c_account_credentials['AccountId']} in {c_account_credentials['Region']} region")
 						logging.warning(f"It's possible that the region {c_account_credentials['Region']} hasn't been opted-into")
 						continue
@@ -158,8 +162,6 @@ def find_all_instances(fAllCredentials:list, fStatus:str=None) -> list:
 						logging.warning(my_Error)
 						continue
 				finally:
-					# print(f"{ERASE_LINE}Finished finding instances in account {c_account_credentials['AccountId']} in region {c_account_credentials['Region']} - {c_PlaceCount} / {len(AllCredentials)}", end='\r')
-					print(".", end='')
 					self.queue.task_done()
 
 	###########
@@ -167,8 +169,11 @@ def find_all_instances(fAllCredentials:list, fStatus:str=None) -> list:
 	checkqueue = Queue()
 
 	AllInstances = []
-	PlaceCount = 0
 	WorkerThreads = min(len(fAllCredentials), 25)
+
+	pbar = tqdm(desc=f'Finding instances from {len(fAllCredentials)} accounts / regions',
+	            total=len(fAllCredentials), unit=' locations'
+	            )
 
 	for x in range(WorkerThreads):
 		worker = FindInstances(checkqueue)
@@ -180,15 +185,15 @@ def find_all_instances(fAllCredentials:list, fStatus:str=None) -> list:
 		logging.info(f"Beginning to queue data - starting with {credential['AccountId']}")
 		try:
 			# I don't know why - but double parens are necessary below. If you remove them, only the first parameter is queued.
-			checkqueue.put((credential, PlaceCount))
-			PlaceCount += 1
+			checkqueue.put((credential))
 		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+			if "AuthFailure" in str(my_Error):
 				logging.error(f"Authorization Failure accessing account {credential['AccountId']} in {credential['Region']} region")
 				logging.warning(f"It's possible that the region {credential['Region']} hasn't been opted-into")
 				pass
 	checkqueue.join()
-	return (AllInstances)
+	pbar.close()
+	return AllInstances
 
 
 ##################
@@ -214,17 +219,13 @@ if __name__ == '__main__':
 	logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
 	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
-	ERASE_LINE = '\x1b[2K'
-	logging.info(f"Profiles: {pProfiles}")
-	begin_time = time()
-
 	print()
 	print(f"Checking for instances... ")
 	print()
 
 	# Find credentials for all Child Accounts
-	CredentialList = get_credentials(pProfiles, pRegionList, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pAccessRoles, pTiming)
-	# OrgNum = len(set([x['MgmtAccount'] for x in AllCredentials if x['OrgType'] == 'Root']))
+	# CredentialList = get_credentials(pProfiles, pRegionList, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pAccessRoles, pTiming)
+	CredentialList = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList, pAccessRoles)
 	AccountNum = len(set([acct['AccountId'] for acct in CredentialList]))
 	RegionNum = len(set([acct['Region'] for acct in CredentialList]))
 	print()

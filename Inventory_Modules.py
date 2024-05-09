@@ -1327,7 +1327,7 @@ def find_gd_invites2(ocredentials, fRegion):
 	try:
 		response = client_gd.list_invitations()
 	except ClientError as my_Error:
-		if str(my_Error).find("AuthFailure") > 0:
+		if "AuthFailure" in str(my_Error):
 			print(ocredentials['AccountNumber'] + ": Authorization Failure for account {}".format(
 				ocredentials['AccountNumber']))
 		if str(my_Error).find("security token included in the request is invalid") > 0:
@@ -1362,7 +1362,7 @@ def delete_gd_invites2(ocredentials, fRegion, fAccountId):
 		response = client_gd.delete_invitations(AccountIds=[fAccountId])
 		return response['Invitations']
 	except ClientError as my_Error:
-		if str(my_Error).find("AuthFailure") > 0:
+		if "AuthFailure" in str(my_Error):
 			print(f"{ocredentials['AccountNumber']}: Authorization Failure for account {ocredentials['AccountNumber']}")
 		if str(my_Error).find("security token included in the request is invalid") > 0:
 			print(
@@ -3086,7 +3086,7 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 				# print(".", end='')
 				checkqueue.put((stackset, fRegion, PlaceCount))
 			except ClientError as my_Error:
-				if str(my_Error).find("AuthFailure") > 0:
+				if "AuthFailure" in str(my_Error):
 					logging.error(f"Authorization Failure accessing stack set {stackset['StackSetName']} in {fRegion} region")
 					logging.warning(f"It's possible that the region {fRegion} hasn't been opted-into")
 					pass
@@ -4255,7 +4255,6 @@ def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProf
 	@param RoleList: A list of roles you want to use to gain access to child accounts
 	@return: Returns a list of Credentials to the child accounts for use in many other functions
 	"""
-	# TODO: Need to multi-thread this, and add tqdm for a progress bar
 	import logging
 	from account_class import aws_acct_access
 	from time import time
@@ -4289,7 +4288,7 @@ def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProf
 		ProfileList = get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
 
 		logging.warning(f"These profiles are being checked {ProfileList}.")
-		print("Getting Accounts to check: ", end='')
+		print(f"Getting Accounts to check across {len(ProfileList)} profiles:")
 		for profile in ProfileList:
 			try:
 				aws_acct = aws_acct_access(profile)
@@ -4309,10 +4308,10 @@ def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProf
 				              f"Timing Enabled: {fTiming}")
 				# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 				AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, RoleList, fTiming))
-				if fTiming:
-					print()
-					print(f"{ERASE_LINE}{Fore.GREEN}Finished profile {Fore.RED}'{profile}'{Fore.GREEN}. Finding credentials for {len(AllCredentials)} accounts and regions has taken {time() - begin_time:.2f} seconds{Fore.RESET}")
-					print()
+				# if fTiming:
+				# 	print()
+				# 	print(f"{ERASE_LINE}{Fore.GREEN}Finished profile {Fore.RED}'{profile}'{Fore.GREEN}. Finding credentials for {len(AllCredentials)} accounts and regions has taken {time() - begin_time:.2f} seconds{Fore.RESET}")
+				# 	print()
 			except AttributeError as my_Error:
 				logging.error(f"Profile {profile} didn't work... Skipping")
 				continue
@@ -4368,7 +4367,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 						                             'Region'       : c_region})
 					AllCreds.append(faccount_credentials)
 				except ClientError as my_Error:
-					if str(my_Error).find("AuthFailure") > 0:
+					if "AuthFailure" in str(my_Error):
 						logging.error(f"{account['AccountId']}: Authorization failure using role: {account_credentials['Role']}\n"
 						              f"Error: {my_Error}")
 					elif str(my_Error).find("AccessDenied") > 0:
@@ -4435,8 +4434,8 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		worker.daemon = True
 		worker.start()
 
-	pbar = tqdm(desc=f'Getting credentials for {len(ChildAccounts)} accounts in {len(fregions)} regions',
-	            total=len(ChildAccounts) * len(fregions),unit='credentials'
+	pbar = tqdm(desc=f'Getting credentials for profile: {fprofile} with {len(ChildAccounts)} accounts in {len(fregions)} regions',
+	            total=len(ChildAccounts) * len(fregions),unit=' credentials'
 	            )
 
 	logging.info(f"You asked to check {len(ChildAccounts) * len(fregions)} place{'s' if len(ChildAccounts) * len(fregions) > 1 else ''}... It's going to take a moment")

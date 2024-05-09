@@ -8,6 +8,7 @@ from botocore.exceptions import ClientError
 from ArgumentsClass import CommonArguments
 from queue import Queue
 from threading import Thread
+from tqdm.auto import tqdm
 from time import time
 import sys
 from os.path import split
@@ -109,7 +110,7 @@ def fix_runtime(CredentialList, new_runtime):
 					logging.info(f"Error: {my_Error}")
 					continue
 				except ClientError as my_Error:
-					if str(my_Error).find("AuthFailure") > 0:
+					if "AuthFailure" in str(my_Error):
 						logging.error(f"Account {c_account_credentials['AccountId']}: Authorization Failure")
 					continue
 				except KeyError as my_Error:
@@ -146,7 +147,7 @@ def fix_runtime(CredentialList, new_runtime):
 			checkqueue.put((credential, credential['FunctionName'], new_runtime))
 			PlaceCount += 1
 		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+			if "AuthFailure" in str(my_Error):
 				logging.error(f"Authorization Failure accessing account {credential['AccountId']} in {credential['Region']} region")
 				logging.error(f"It's possible that the region {credential['Region']} hasn't been opted-into")
 				pass
@@ -168,7 +169,8 @@ def check_accounts_for_functions(CredentialList, fFragments=None):
 		def run(self):
 			while True:
 				# Get the work from the queue and expand the tuple
-				c_account_credentials, c_fragment_list, c_PlacesToLook, c_PlaceCount = self.queue.get()
+				c_account_credentials, c_fragment_list = self.queue.get()
+				pbar.update()
 				Functions = []
 				logging.info(f"De-queued info for account {c_account_credentials['AccountId']}")
 				try:
@@ -178,7 +180,7 @@ def check_accounts_for_functions(CredentialList, fFragments=None):
 					logging.info(f"Error: {my_Error}")
 					continue
 				except ClientError as my_Error:
-					if str(my_Error).find("AuthFailure") > 0:
+					if "AuthFailure" in str(my_Error):
 						logging.error(f"Account {c_account_credentials['AccountId']}: Authorization Failure")
 					continue
 				except KeyError as my_Error:
@@ -200,11 +202,13 @@ def check_accounts_for_functions(CredentialList, fFragments=None):
 					self.queue.task_done()
 
 	AllFuncs = []
-	PlaceCount = 0
-	PlacesToLook = len(CredentialList)
 	WorkerThreads = min(len(CredentialList), 25)
 
 	checkqueue = Queue()
+
+	pbar = tqdm(desc=f'Finding instances from {len(CredentialList)} accounts / regions',
+	            total=len(CredentialList), unit=' locations'
+	            )
 
 	for x in range(WorkerThreads):
 		worker = FindFunctions(checkqueue)
@@ -215,11 +219,10 @@ def check_accounts_for_functions(CredentialList, fFragments=None):
 	for credential in CredentialList:
 		logging.info(f"Connecting to account {credential['AccountId']}")
 		try:
-			print(f"{ERASE_LINE}Queuing account {credential['AccountId']} in region {credential['Region']}", end='\r')
-			checkqueue.put((credential, fFragments, PlacesToLook, PlaceCount))
-			PlaceCount += 1
+			logging.info(f"{ERASE_LINE}Queuing account {credential['AccountId']} in region {credential['Region']}", end='\r')
+			checkqueue.put((credential, fFragments))
 		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+			if "AuthFailure" in str(my_Error):
 				logging.error(f"Authorization Failure accessing account {credential['AccountId']} in {credential['Region']} region")
 				logging.error(f"It's possible that the region {credential['Region']} hasn't been opted-into")
 				pass
