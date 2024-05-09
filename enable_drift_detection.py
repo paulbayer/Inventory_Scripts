@@ -93,7 +93,7 @@ for account in ChildAccounts:
 			logging.error(f"Accessing account {account['AccountId']} didn't work, so we're skipping it")
 			continue
 	except ClientError as my_Error:
-		if str(my_Error).find("AuthFailure") > 0:
+		if "AuthFailure" in str(my_Error):
 			print(f"{pProfile}: Authorization Failure for account {account['AccountId']}")
 		elif str(my_Error).find("AccessDenied") > 0:
 			print(f"{pProfile}: Access Denied Failure for account {account['AccountId']}")
@@ -110,7 +110,7 @@ for account in ChildAccounts:
 			logging.info(
 				f"{ERASE_LINE}{Fore.RED}Account: {account['AccountId']} Region: {region} Found {StackNum} Stacks{Fore.RESET}")
 		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+			if "AuthFailure" in str(my_Error):
 				print(f"{account['AccountId']}: Authorization Failure")
 		# if len(Stacks) > 0:
 		for Stack in Stacks:

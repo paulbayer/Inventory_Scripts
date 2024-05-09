@@ -135,7 +135,7 @@ for credential in CredentialList:
 		logging.info(f"Error: {my_Error}")
 		continue
 	except ClientError as my_Error:
-		if str(my_Error).find("AuthFailure") > 0:
+		if "AuthFailure" in str(my_Error):
 			print(f"{ERASE_LINE} Account {credential['AccountId']} : Authorization Failure")
 	if pTiming:
 		print(f"{Fore.GREEN}\tJust ran for credential #{credential_number}/{len(CredentialList)}. It took {time() - cycle_time:-3f} seconds to find {len(directories)} directories in account {credential['AccountId']} in region {credential['Region']}{Fore.RESET} {len(AllDirectories)} so far")

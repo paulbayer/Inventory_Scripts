@@ -213,7 +213,7 @@ for childaccount in ChildAccountList:
 	try:
 		account_credentials = Inventory_Modules.get_child_access3(aws_account, childaccount)
 	except ClientError as my_Error:
-		if str(my_Error).find("AuthFailure") > 0:
+		if "AuthFailure" in str(my_Error):
 			# TODO: This whole section is waiting on an enhancement. Until then, we have to assume that ProServe or someone familiar with ALZ is running this script
 			print(f"Authorization Failure for account {childaccount}")
 			print(

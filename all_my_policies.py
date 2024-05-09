@@ -116,7 +116,7 @@ def check_accounts_for_policies(CredentialList, fRegionList=None, fActions=None,
 					for action in fActions:
 						checkqueue.put((credential, policy, action, PlacesToLook, PolicyCount))
 		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+			if "AuthFailure" in str(my_Error):
 				logging.error(f"Authorization Failure accessing account {credential['AccountId']}")
 				pass
 

@@ -77,7 +77,7 @@ for credential in AllCredentials:
     # try:
     #     account_credentials = Inventory_Modules.get_child_access3(aws_acct, account['AccountId'])
     # except ClientError as my_Error:
-    #     if str(my_Error).find("AuthFailure") > 0:
+    #     if "AuthFailure" in str(my_Error):
     #         print(f"Authorization Failure for account {account['AccountId']}")
     #     sys.exit("Credentials failure")
     # for region in gd_regions:
@@ -96,7 +96,7 @@ for credential in AllCredentials:
         response = client_aws.list_invitations()
         logging.debug(f"Finished listing invites for account: {credential['AccountId']} in region {credential['Region']}")
     except ClientError as my_Error:
-        if str(my_Error).find("AuthFailure") > 0:
+        if "AuthFailure" in str(my_Error):
             print(f"{credential['AccountId']}: Authorization Failure for account {credential['AccountId']}")
             continue
         if str(my_Error).find("security token included in the request is invalid") > 0:
@@ -159,7 +159,7 @@ for credential in AllCredentials:
                   f"{Fore.RED}No luck in account: {credential['AccountId']} in region {credential['Region']}{Fore.RESET} -- {places_to_try} of {len(AllCredentials)}",
                   end='\r')
     except ClientError as my_Error:
-        if str(my_Error).find("AuthFailure") > 0:
+        if "AuthFailure" in str(my_Error):
             print(f"Authorization Failure for account {credential['AccountId']}")
 
 display_dict = {'ParentProfile': {'DisplayOrder': 1, 'Heading': 'Parent Profile'},

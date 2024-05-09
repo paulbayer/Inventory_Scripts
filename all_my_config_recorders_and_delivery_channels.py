@@ -170,7 +170,7 @@ def check_accounts_for_delivery_channels_and_config_recorders(CredentialList, fR
 			checkqueue.put((credential, fFixRun, fFragments, len(CredentialList), PlaceCount))
 			PlaceCount += 1
 		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+			if "AuthFailure" in str(my_Error):
 				logging.error(f"Authorization Failure accessing account {credential['AccountId']} in {credential['Region']} region")
 				logging.warning(f"It's possible that the region {credential['Region']} hasn't been opted-into")
 				pass

@@ -145,7 +145,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 	try:
 		account_credentials = Inventory_Modules.get_child_access3(aws_account, fChildAccountId, fRegion, CTRoles)
 	except ClientError as my_Error:
-		if str(my_Error).find("AuthFailure") > 0:
+		if "AuthFailure" in str(my_Error):
 			# TODO: This whole section is waiting on an enhancement. Until then, we have to assume that ProServe or someone familiar with Control Tower is running this script
 			print(f"{aws_account.acct_number}: Authorization Failure for account {fChildAccountId}")
 			print("The child account MUST allow access into the proper IAM role from the Organization's Management Account for the rest of this script (and the overall migration) to run.")
@@ -677,7 +677,7 @@ def DoThreadedAccountSteps(fChildAccountList, aws_account, fFixRun, fRegionList=
 				checkqueue.put((member_account, fFixRun, region, PlaceCount))
 				PlaceCount += 1
 			except ClientError as my_Error:
-				if str(my_Error).find("AuthFailure") > 0:
+				if "AuthFailure" in str(my_Error):
 					logging.error(f"Authorization Failure accessing account {member_account} in {region} region")
 					logging.warning(f"It's possible that the region {region} hasn't been opted-into")
 					pass

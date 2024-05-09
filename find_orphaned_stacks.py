@@ -172,7 +172,7 @@ def find_stacks_within_child_accounts(fall_credentials, fFragmentlist: list = No
 			# I don't know why - but double parens are necessary below. If you remove them, only the first parameter is queued.
 			checkqueue.put((credential, fFragmentlist))
 		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+			if "AuthFailure" in str(my_Error):
 				logging.error(f"Authorization Failure accessing account {credential['AccountId']} in {credential['Region']}")
 				logging.warning(f"It's possible that the region {credential['Region']} hasn't been opted-into")
 				pass

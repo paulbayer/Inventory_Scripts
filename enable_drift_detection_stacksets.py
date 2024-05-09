@@ -93,7 +93,7 @@ def find_stack_sets(faws_acct: aws_acct_access, fStackSetFragmentlist: list = No
 	try:
 		StackSets = Inventory_Modules.find_stacksets3(faws_acct, faws_acct.Region, fStackSetFragmentlist, fExact, True)
 	except ClientError as my_Error:
-		if str(my_Error).find("AuthFailure") > 0:
+		if "AuthFailure" in str(my_Error):
 			error_message = (f"{aws_acct.acct_number}: Authorization Failure")
 			logging.error(error_message)
 		else:
@@ -145,7 +145,7 @@ def enable_stack_set_drift_detection(faws_acct: aws_acct_access, fStackSets: dic
 					logging.info(f"Error: {my_Error}")
 					continue
 				except ClientError as my_Error:
-					if str(my_Error).find("AuthFailure") > 0:
+					if "AuthFailure" in str(my_Error):
 						logging.error(f"Account {c_aws_acct.acct_number}: Authorization Failure")
 					continue
 				except KeyError as my_Error:
@@ -173,7 +173,7 @@ def enable_stack_set_drift_detection(faws_acct: aws_acct_access, fStackSets: dic
 			print(f"{ERASE_LINE}Queuing stackset {stackset['StackSetName']} in account {faws_acct.acct_number} in region {faws_acct.Region}", end='\r')
 			checkqueue.put((faws_acct, stackset))
 		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+			if "AuthFailure" in str(my_Error):
 				logging.error(f"Authorization Failure accessing account {faws_acct.acct_number} in {faws_acct.Region} region")
 				logging.error(f"It's possible that the region {faws_acct.Region} hasn't been opted-into")
 				pass
@@ -199,7 +199,7 @@ def enable_stack_set_drift_detection(faws_acct: aws_acct_access, fStackSets: dic
 # 			stackset_attributes['DriftStatus_Operation'] = DriftStatus['Success']
 # 			stackset_attributes['ErrorMessage'] = DriftStatus['ErrorMessage']
 # 	except ClientError as my_Error:
-# 		if str(my_Error).find("AuthFailure") > 0:
+# 		if "AuthFailure" in str(my_Error):
 # 			print(f"{MgmtAccount['AccountId']}: Authorization Failure")
 # 		continue
 #

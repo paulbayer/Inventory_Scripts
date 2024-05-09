@@ -126,7 +126,7 @@ def find_and_collect_roles_across_accounts(fAllCredentials:list, frole_fragments
 				num_of_roles_in_account = len(response['Roles'])
 			print(f"Found {num_of_roles_in_account} roles in account {account['AccountNumber']}", end="\r")
 		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+			if "AuthFailure" in str(my_Error):
 				print(f"\nAuthorization Failure for account {account['AccountId']}")
 			else:
 				print(f"\nError: {my_Error}")

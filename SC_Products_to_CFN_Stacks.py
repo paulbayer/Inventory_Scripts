@@ -189,7 +189,7 @@ def find_account_stacksets(faws_acct, f_SCProducts, fRegion=None, fstacksetname=
 			checkqueue.put((SCProduct, fRegion, fstacksetname, PlacesToLook, PlaceCount))
 			PlaceCount += 1
 		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+			if "AuthFailure" in str(my_Error):
 				logging.error(f"Authorization Failure accessing account {faws_acct.acct_number} in {fRegion} region")
 				logging.warning(f"It's possible that the region {fRegion} hasn't been opted-into")
 				pass
@@ -364,7 +364,7 @@ def main():
 		display_results(CFNresponse, display_dict, 'None', pFileName)
 
 	except ClientError as my_Error:
-		if str(my_Error).find("AuthFailure") > 0:
+		if "AuthFailure" in str(my_Error):
 			print(f"{pProfile}: Authorization Failure ")
 		elif str(my_Error).find("AccessDenied") > 0:
 			print(f"{pProfile}: Access Denied Failure ")

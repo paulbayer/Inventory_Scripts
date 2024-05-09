@@ -99,7 +99,7 @@ def find_all_vpcs(fAllCredentials, fDefaultOnly=False):
 					logging.warning(my_Error)
 					continue
 				except ClientError as my_Error:
-					if str(my_Error).find("AuthFailure") > 0:
+					if "AuthFailure" in str(my_Error):
 						logging.error(f"Authorization Failure accessing account {c_account_credentials['AccountId']} in {c_account_credentials['Region']} region")
 						logging.warning(f"It's possible that the region {c_account_credentials['Region']} hasn't been opted-into")
 						continue
@@ -136,7 +136,7 @@ def find_all_vpcs(fAllCredentials, fDefaultOnly=False):
 			logging.info(f"Put credential: {credential}, Default: {fDefaultOnly}")
 			PlaceCount += 1
 		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+			if "AuthFailure" in str(my_Error):
 				logging.error(f"Authorization Failure accessing account {credential['AccountId']} in {credential['Region']} region")
 				logging.warning(f"It's possible that the region {credential['Region']} hasn't been opted-into")
 				pass

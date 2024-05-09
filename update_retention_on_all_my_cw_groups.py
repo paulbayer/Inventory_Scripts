@@ -81,7 +81,7 @@ def check_cw_groups_retention(faws_acct, fRegionList=None, faccess_roles:list=No
 				logging.info(f"Access to account {account['AccountId']} in region {faws_acct.Region} failed, after trying role {'' if len(account_credentials['RolesTried']) == 1 else 's'}{account_credentials['RolesTried']}")
 				continue
 		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+			if "AuthFailure" in str(my_Error):
 				logging.error(
 					f"{account['AccountId']}: Authorization failure using role: {account_credentials['Role']}")
 				logging.warning(my_Error)
@@ -103,7 +103,7 @@ def check_cw_groups_retention(faws_acct, fRegionList=None, faccess_roles:list=No
 				logging.info(
 					f"Root Account: {faws_acct.acct_number} Account: {account['AccountId']} Region: {region} | Found {len(CW_Groups['logGroups'])} groups")
 			except ClientError as my_Error:
-				if str(my_Error).find("AuthFailure") > 0:
+				if "AuthFailure" in str(my_Error):
 					logging.error(f"Authorization Failure accessing account {account['AccountId']} in {region} region")
 					logging.warning(f"It's possible that the region {region} hasn't been opted-into")
 					pass

@@ -92,7 +92,7 @@ def find_all_hosted_zones(fAllCredentials):
 			checkqueue.put((credential, PlaceCount))
 			PlaceCount += 1
 		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+			if "AuthFailure" in str(my_Error):
 				logging.error(f"Authorization Failure accessing account {credential['AccountId']} in {credential['Region']} region")
 				logging.warning(f"It's possible that the region {credential['Region']} hasn't been opted-into")
 				pass

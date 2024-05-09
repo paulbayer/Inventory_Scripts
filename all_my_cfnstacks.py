@@ -126,7 +126,7 @@ def collect_cfnstacks(fCredentialList: list) -> list:
 					logging.warning(f"Account: {credential['AccountId']} | Region: {credential['Region']} | Found {len(Stacks)} Stacks")
 					print(f"{ERASE_LINE}{Fore.RED}Account: {credential['AccountId']} Region: {credential['Region']} Found {len(Stacks)} Stacks{Fore.RESET}", end='\r')
 				except ClientError as my_Error:
-					if str(my_Error).find("AuthFailure") > 0:
+					if "AuthFailure" in str(my_Error):
 						print(f"{credential['AccountId']}: Authorization Failure")
 			else:
 				continue

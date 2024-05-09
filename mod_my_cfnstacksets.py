@@ -284,7 +284,7 @@ def _find_stack_set_instances(fStackSetNames: dict, fRegion: str) -> list:
 			PlaceCount += 1
 			checkqueue.put((stackset_name, fRegion, stackset_data, PlaceCount))
 		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+			if "AuthFailure" in str(my_Error):
 				logging.error(f"Authorization Failure accessing stack set {stackset_name} in {fRegion} region")
 				logging.warning(f"It's possible that the region {fRegion} hasn't been opted-into")
 				pass

@@ -97,7 +97,7 @@ def find_topics(CredentialList:list, ftopic_frag:str=None, fexact:bool=False)->l
 			checkqueue.put((credential, ftopic_frag, fexact, PlacesToLook, PlaceCount))
 			PlaceCount += 1
 		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+			if "AuthFailure" in str(my_Error):
 				logging.error(f"Authorization Failure accessing account {credential['AccountId']} in {credential['Region']} region")
 				logging.warning(f"It's possible that the region {credential['Region']} hasn't been opted-into")
 				pass

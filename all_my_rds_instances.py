@@ -53,7 +53,7 @@ def check_accounts_for_instances(faws_acct: aws_acct_access, fRegionList: list =
 			logging.info(f"Connected to account {account['AccountId']} using role {account_credentials['Role']}")
 		# TODO: We shouldn't refer to "account_credentials['Role']" below, if there was an error.
 		except ClientError as my_Error:
-			if str(my_Error).find("AuthFailure") > 0:
+			if "AuthFailure" in str(my_Error):
 				logging.error(f"{account['AccountId']}: Authorization failure using role: {account_credentials['Role']}")
 				logging.warning(my_Error)
 			elif str(my_Error).find("AccessDenied") > 0:
@@ -73,7 +73,7 @@ def check_accounts_for_instances(faws_acct: aws_acct_access, fRegionList: list =
 				Instances = Inventory_Modules.find_account_rds_instances2(account_credentials, region)
 				logging.info(f"Root Account: {faws_acct.acct_number} Account: {account['AccountId']} Region: {region} | Found {len(Instances['DBInstances'])} instances")
 			except ClientError as my_Error:
-				if str(my_Error).find("AuthFailure") > 0:
+				if "AuthFailure" in str(my_Error):
 					logging.error(f"Authorization Failure accessing account {account['AccountId']} in {region} region")
 					logging.warning(f"It's possible that the region {region} hasn't been opted-into")
 					pass
