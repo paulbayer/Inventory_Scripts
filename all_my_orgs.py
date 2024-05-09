@@ -77,9 +77,10 @@ def all_my_orgs(fProfiles:list, fSkipProfiles:list, fAccountList:list, fTiming:b
 			else:
 				# display_results(item)
 				if item['Success']:
+					logging.info(f"{item['profile']} was successful.")
 					print(f"{Fore.RED if item['RootAcct'] else ''}{item['profile']:23s} {item['aws_acct'].acct_number:15s} {item['MgmtAcct']:15s} {str(item['OrgId']):12s} {item['RootAcct']}{Fore.RESET}")
 				else:
-					print(f"{item['profile']} errored. Message: {item['ErrorMessage']}")
+					logging.error(f"{item['profile']} errored. Message: {item['ErrorMessage']}")
 		except TypeError as my_Error:
 			print(f"Error - {my_Error} on {item}")
 			pass
