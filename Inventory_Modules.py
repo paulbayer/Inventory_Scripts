@@ -4327,6 +4327,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 	However, some day accounts will be pegged to specific regions, and it will be necessary then.
 	"""
 	import logging
+	from tqdm.auto import tqdm
 	from datetime import datetime
 	from queue import Queue
 	from threading import Thread
@@ -4347,6 +4348,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 			while True:
 				# Get the work from the queue and expand the tuple
 				c_account_info, c_profile, c_region = self.queue.get()
+				pbar.update()
 				logging.info(f"De-queued info for account {c_account_info['AccountId']}")
 				try:
 					logging.info(f"Attempting to connect to {c_account_info['AccountId']} using one of {fRoleNames}")
@@ -4385,7 +4387,6 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 					              f"Error: {my_Error}")
 					continue
 				finally:
-					print(".", end='')
 					self.queue.task_done()
 
 	if fSkipAccounts is None:
@@ -4434,6 +4435,10 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		worker.daemon = True
 		worker.start()
 
+	pbar = tqdm(desc=f'Getting credentials for {len(ChildAccounts)} accounts in {len(fregions)} regions',
+	            total=len(ChildAccounts) * len(fregions),unit='credentials'
+	            )
+
 	logging.info(f"You asked to check {len(ChildAccounts) * len(fregions)} place{'s' if len(ChildAccounts) * len(fregions) > 1 else ''}... It's going to take a moment")
 	logging.info(f"{Fore.GREEN}It's taken {time() - begin_time:.2f} seconds to prep WorkerThreads and such{Fore.RESET}") if fTiming else None
 	for account in ChildAccounts:
@@ -4455,6 +4460,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 	print(f"{Fore.GREEN}Enumerating {AccountNum} account{'s' if len(ChildAccounts) * len(fregions) > 1 else ''} and {len(fregions)} regions "
 	      f"took {time() - begin_time:.3f} seconds {Fore.RESET}") if fTiming else None
 	credqueue.join()
+	pbar.close()
 	return AllCreds
 
 
@@ -4480,11 +4486,18 @@ def get_org_accounts_from_profiles(fProfileList):
 
 		def run(self):
 			Account = dict()
-			Account['ErrorFlag'] = Account['Success'] = Account['RootAcct'] = False
-			Account['MgmtAcct'] = Account['profile'] = Account['Email'] = Account['ErrorMessage'] = Account['OrgId'] = None
 			while True:
 				# Get the work from the queue and expand the tuple
 				profile = self.queue.get()
+				pbar.update()
+				Account = {'ErrorFlag': False,
+				           'Success': False,
+				           'RootAcct': False,
+				           'MgmtAcct': None,
+				           'profile': None,
+				           'Email': None,
+				           'ErrorMessage': None,
+				           'OrgId': None}
 				logging.info(f"De-queued info for account {profile}")
 				try:
 					logging.info(f"Trying profile {profile}")
@@ -4572,10 +4585,5 @@ def get_org_accounts_from_profiles(fProfileList):
 	for profile_item in fProfileList:
 		logging.info(f"Queuing profile {profile_item} / {len(fProfileList)} profiles")
 		profilequeue.put(profile_item)
-	while profilequeue.qsize() > 0:
-		sleep(1)
-		print(f"Profile Queue Size: {profilequeue.qsize()}")
-		# pbar.update(len(fProfileList) - profilequeue.qsize())
-		pbar.update()
 	profilequeue.join()
 	return AllAccounts
