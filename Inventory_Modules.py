@@ -4288,7 +4288,7 @@ def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProf
 		ProfileList = get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
 
 		logging.warning(f"These profiles are being checked {ProfileList}.")
-		print(f"Getting Accounts to check across {len(ProfileList)} profiles:")
+		print(f"Getting Accounts to check across {len(ProfileList)} profile{'' if len(ProfileList) == 1 else 's'}")
 		for profile in ProfileList:
 			try:
 				aws_acct = aws_acct_access(profile)
