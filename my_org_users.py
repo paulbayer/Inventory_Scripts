@@ -12,7 +12,7 @@ from botocore.exceptions import ClientError
 import logging
 
 init()
-__version__ = "2024.05.07"
+__version__ = "2024.05.09"
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 
@@ -43,19 +43,20 @@ def parse_args(arguments):
 		"--idc",
 		dest="pIdentityCenter",
 		action="store_true",  # Defaults to False
-		help="Flag that determines whether look for Identity Center users")
+		help="Provide this flag to only look for Identity Center users - if neither IAM nor IDC flag is provided, assume both are wanted")
 	local.add_argument(
 		"--iam",
 		dest="pIAM",
 		action="store_true",  # Defaults to False
-		help="Flag that determines whether look for IAM users ")
+		help="Provide this flag to only look for IAM users - if neither IAM nor IDC flag is provided, assume both are wanted")
 	return parser.my_parser.parse_args(arguments)
 
 
 def find_all_org_users(f_credentials, f_IDC: bool, f_IAM: bool) -> list:
 	User_List = []
 	directories_seen = set()
-	for credential in tqdm(f_credentials, desc=f"Looking for users across {len(f_credentials)} Accounts"):
+	# TODO: Need to multi-thread this
+	for credential in tqdm(f_credentials, desc=f"Looking for users across {len(f_credentials)} Accounts", unit=" accounts"):
 		if not credential['Success']:
 			logging.info(f"{credential['ErrorMessage']} with roles: {credential['RolesTried']}")
 			continue
@@ -99,6 +100,10 @@ if __name__ == '__main__':
 	pFilename = args.Filename
 	pIdentityCenter = args.pIdentityCenter
 	pIAM = args.pIAM
+	# Although I want to the flags to remain
+	if not pIAM and not pIdentityCenter:
+		pIdentityCenter = True
+		pIAM = True
 	pRootOnly = args.RootOnly
 	pTiming = args.Time
 	verbose = args.loglevel
@@ -111,7 +116,6 @@ if __name__ == '__main__':
 	CredentialList = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList, pAccessRoles)
 	UserListing = find_all_org_users(CredentialList, pIdentityCenter, pIAM)
 	sorted_UserListing = sorted(UserListing, key=lambda k: (k['MgmtAccount'], k['AccountId'], k['Region'], k['UserName']))
-
 
 	display_dict = {'MgmtAccount'     : {'DisplayOrder': 1, 'Heading': 'Mgmt Acct'},
 	                'AccountId'       : {'DisplayOrder': 2, 'Heading': 'Acct Number'},
