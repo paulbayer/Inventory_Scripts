@@ -62,15 +62,6 @@ class CommonArguments():
 			metavar="roles to use for access to child accounts",
 			help="This parameter specifies the list of roles that will allow this script to have access to the children accounts.")
 
-	# def roles_to_use(self):
-	# 	self.my_parser.add_argument(
-	# 		"--roles", "--RolesToUse",
-	# 		dest="RolesToUse",
-	# 		default=None,
-	# 		nargs='*',
-	# 		metavar="Role name",
-	# 		help="Role that should be used to access child accounts")
-
 	def deletion(self):
 		# self.my_parser.add_argument(
 		# 	"+forreal",
@@ -150,11 +141,6 @@ class CommonArguments():
 			nargs="*",
 			metavar="Account",
 			help="Just the accounts you want to check")
-		# self.my_parser.add_argument(
-		# 	"--timing", "--time",
-		# 	dest="Time",
-		# 	action="store_true",
-		# 	help="Use this parameter to add a timing for the scripts")
 
 	def timing(self):
 		self.my_parser.add_argument(
