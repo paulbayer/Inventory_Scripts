@@ -114,6 +114,7 @@ if __name__ == '__main__':
 	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 	CredentialList = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList, pAccessRoles)
+	SuccessfulAccountAccesses = [x for x in CredentialList if x['Success']]
 	UserListing = find_all_org_users(CredentialList, pIdentityCenter, pIAM)
 	sorted_UserListing = sorted(UserListing, key=lambda k: (k['MgmtAccount'], k['AccountId'], k['Region'], k['UserName']))
 
@@ -129,7 +130,7 @@ if __name__ == '__main__':
 		print(ERASE_LINE)
 		print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 	print(ERASE_LINE)
-	print(f"Found {len(UserListing)} users across {len(CredentialList)} accounts")
+	print(f"Found {len(UserListing)} users across {len(SuccessfulAccountAccesses)} account{'' if len(SuccessfulAccountAccesses) == 1 else 's'}")
 	print()
 	print("Thank you for using this script")
 	print()
