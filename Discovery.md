@@ -39,7 +39,7 @@ The following script finds any and all config recorders and delivery channels in
 all_my_config_recorders_and_delivery_channels.py -v -r global --timing
 ```
 
-These scripts will find those IAM users, local directories, or SAML providers in your child accounts which can be exposures to unwanted access, without you realizing it. It's always a good idea to look for these - since these can represent a significant threat vector to protect from.
+These scripts will find those IAM/ IDC users, local directories, or SAML providers in your child accounts which can be exposures to unwanted access, without you realizing it. It's always a good idea to look for these - since these can represent a significant threat vector to protect from.
 ```commandline
 my_org_users.py -v
 all_my_saml_providers.py -v
