@@ -4021,7 +4021,6 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 						needed_space[field] = max(len(result[field]), len(value['Heading']), needed_space[field])
 					elif isinstance(result[field], datetime):
 						# Recognizes the field as a date, and finds the necessary amount of string space to show that date, and assigns the length to "needed_space"
-						# needed_space[field] = max(len(result[field]), len(datetime.now().strftime('%x %X')))
 						needed_space[field] = max(len(datetime.now().strftime('%x %X')), len(value['Heading']))
 		except KeyError as my_Error:
 			logging.error(f"Error: {my_Error}")
@@ -4492,7 +4491,7 @@ def get_org_accounts_from_profiles(fProfileList):
 				Account = {'ErrorFlag': False,
 				           'Success': False,
 				           'RootAcct': False,
-				           'MgmtAcct': None,
+				           'MgmtAccount': None,
 				           'profile': None,
 				           'Email': None,
 				           'ErrorMessage': None,
@@ -4509,13 +4508,13 @@ def get_org_accounts_from_profiles(fProfileList):
 						pass
 					elif aws_acct.AccountType.lower() == 'root':  # The Account is deemed to be a Management Account
 						logging.info(f"AccountNumber: {aws_acct.acct_number}")
-						Account['MgmtAcct'] = aws_acct.MgmtAccount
+						Account['MgmtAccount'] = aws_acct.MgmtAccount
 						Account['Email'] = aws_acct.MgmtEmail
 						Account['OrgId'] = aws_acct.OrgID
 						Account['Success'] = True
 						Account['RootAcct'] = True
 					elif aws_acct.AccountType.lower() in ['standalone', 'child']:
-						Account['MgmtAcct'] = aws_acct.MgmtAccount
+						Account['MgmtAccount'] = aws_acct.MgmtAccount
 						Account['Email'] = aws_acct.MgmtEmail
 						Account['OrgId'] = aws_acct.OrgID
 						Account['Success'] = True
