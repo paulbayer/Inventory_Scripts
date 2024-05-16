@@ -3,9 +3,8 @@
 import sys
 from os.path import split
 import Inventory_Modules
-from Inventory_Modules import get_credentials_for_accounts_in_org, get_all_credentials, display_results
+from Inventory_Modules import get_all_credentials, display_results
 from ArgumentsClass import CommonArguments
-from account_class import aws_acct_access
 from colorama import init, Fore
 from botocore.exceptions import ClientError
 from queue import Queue
@@ -20,16 +19,17 @@ __version__ = "2024.05.09"
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 
-
 # TODO: Need a table at the bottom that summarizes the results, by instance-type, by running/ stopped, maybe by account and region
+
+
 ##################
 # Functions
 ##################
 
-def parse_args(args):
+def parse_args(f_arguments):
 	"""
 	Description: Parses the arguments passed into the script
-	@param args: args represents the list of arguments passed in
+	@param f_arguments: args represents the list of arguments passed in
 	@return: returns an object namespace that contains the individualized parameters passed in
 	"""
 	script_path, script_name = split(sys.argv[0])
@@ -40,6 +40,7 @@ def parse_args(args):
 	parser.extendedargs()
 	parser.rolestouse()
 	parser.rootOnly()
+	parser.save_to_file()
 	parser.timing()
 	parser.verbosity()
 	parser.version(__version__)
@@ -51,42 +52,7 @@ def parse_args(args):
 		type=str,
 		default=None,
 		help="Whether you want to limit the instances returned to either 'running', 'stopped'. Default is both")
-	return (parser.my_parser.parse_args(args))
-
-
-# def get_credentials(fProfile_list: list, fRegion_list: list, fSkipProfiles: list = None, fSkipAccounts: list = None, fRootOnly: bool = False, fAccounts: list = None, fAccessRoles: list = None, fTiming=False) -> list:
-# 	"""
-# 	Description: Finds all the credentials for the member accounts within the profile you've specified
-# 	@param fProfile_list: Profile of an Org account
-# 	@param fRegion_list: Regions to look within
-# 	@return: list of all credentials
-# 	"""
-# 	AllCredentials = []
-# 	if fProfile_list is None:  # Default use case from the classes
-# 		print("Using the default profile - gathering info")
-# 		aws_acct = aws_acct_access()
-# 		RegionList = Inventory_Modules.get_regions3(aws_acct, fRegion_list)
-# 		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
-# 		logging.info(f"Queueing default profile for credentials")
-# 		profile = 'default'
-# 		AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, fAccessRoles, fTiming))
-# 	else:
-# 		ProfileList = Inventory_Modules.get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfile_list)
-# 		print(f"Capturing info for {len(ProfileList)} requested profiles {ProfileList}")
-# 		for profile in ProfileList:
-# 			# Eventually - getting credentials for a single account may require passing in the region in which it's valid, but not yet.
-# 			try:
-# 				aws_acct = aws_acct_access(profile)
-# 				print(f"Validating {len(aws_acct.ChildAccounts)} accounts within {profile} profile now... ")
-# 				RegionList = Inventory_Modules.get_regions3(aws_acct, fRegion_list)
-# 				logging.info(f"Queueing {profile} for credentials")
-# 				# This should populate the list "AllCredentials" with the credentials for the relevant accounts.
-# 				AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, fAccessRoles, fTiming))
-# 				print()
-# 			except AttributeError as my_Error:
-# 				logging.error(f"Profile {profile} didn't work... Skipping")
-# 				continue
-# 	return (AllCredentials)
+	return parser.my_parser.parse_args(f_arguments)
 
 
 # The parameters passed to this function should be the dictionary of attributes that will be examined within the thread.
@@ -210,6 +176,7 @@ if __name__ == '__main__':
 	pAccessRoles = args.AccessRoles
 	pStatus = args.pStatus
 	pRootOnly = args.RootOnly
+	pFilename = args.Filename
 	pTiming = args.Time
 	verbose = args.loglevel
 	# Setup logging levels
@@ -250,7 +217,7 @@ if __name__ == '__main__':
 	                'State'        : {'DisplayOrder': 9, 'Heading': 'State', 'Condition': ['running']}}
 
 	sorted_all_instances = sorted(AllInstances, key=lambda d: (d['ParentProfile'], d['MgmtAccount'], d['Region'], d['AccountId']))
-	display_results(sorted_all_instances, display_dict)
+	display_results(sorted_all_instances, display_dict, None, pFilename)
 
 	if pTiming:
 		print(ERASE_LINE)

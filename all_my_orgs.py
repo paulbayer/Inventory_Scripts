@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
+import sys
+from os.path import split
 import logging
 from ArgumentsClass import CommonArguments
 from Inventory_Modules import get_profiles, get_org_accounts_from_profiles, display_results
 from time import time
 # from botocore.exceptions import ClientError, NoCredentialsError, InvalidConfigError
 from colorama import init, Fore, Style
-import sys
-import os
 
 init()
 __version__ = "2024.05.08"
@@ -23,7 +23,7 @@ begin_time = time()
 # Functions
 ##################
 def parse_args(f_arguments):
-	script_path, script_name = os.path.split(sys.argv[0])
+	script_path, script_name = split(sys.argv[0])
 	parser = CommonArguments()
 	parser.multiprofile()
 	parser.extendedargs()
@@ -218,6 +218,10 @@ if __name__ == '__main__':
 	pShortform = args.pShortform
 	pAccountList = args.accountList
 	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(processName)s %(threadName)s %(funcName)20s() ] %(message)s")
+	logging.getLogger("boto3").setLevel(logging.CRITICAL)
+	logging.getLogger("botocore").setLevel(logging.CRITICAL)
+	logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 	all_my_orgs(pProfiles, pSkipProfiles, pAccountList, pTiming, pRootOnly, pSaveFilename, pShortform, verbose)
 
