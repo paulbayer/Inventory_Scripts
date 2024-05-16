@@ -998,6 +998,45 @@ def disable_org_service2(ocredentials, serviceName=None):
 	return returnResponse
 
 
+def find_security_groups2(ocredentials, f_fragments=None, f_exact=False, defaultOnly=False):
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+	"""
+	import boto3
+	import logging
+
+	SecurityGroups = []
+	AllSecurityGroups = []
+	session_vpc = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
+	client_vpc = session_vpc.client('ec2')
+	logging.info(f"Looking for default Security Groups in account {ocredentials['AccountNumber']} from Region {ocredentials['Region']}")
+	response = client_vpc.describe_security_groups()
+	SecurityGroups.extend(response['SecurityGroups'])
+	while 'NextToken' in response.keys():
+		response = client_vpc.describe_security_groups(NextToken=response['NextToken'])
+		SecurityGroups.extend(response['SecurityGroups'])
+	for security_group in SecurityGroups:
+		if security_group['GroupName'] == 'default':
+			security_group['Default'] = True
+			AllSecurityGroups.append(security_group)
+		else:
+			security_group['Default'] = False
+			AllSecurityGroups.append(security_group) if defaultOnly is False else None
+	# if defaultOnly:
+	# 	AllSecurityGroups = [security_group for security_group in SecurityGroups if security_group['Default'] == defaultOnly]
+	# else:
+	# 	AllSecurityGroups = [security_group for security_group in SecurityGroups]
+	logging.info(f"We found {len(AllSecurityGroups)} {'default' if defaultOnly else ''} Security Groups in account {ocredentials['AccountNumber']} in Region {ocredentials['Region']}")
+	return AllSecurityGroups
+
+
 def find_account_vpcs2(ocredentials, defaultOnly=False):
 	"""
 	ocredentials is an object with the following structure:
@@ -1305,6 +1344,42 @@ def del_cloudtrails2(ocredentials, fRegion, fCloudTrail):
 	return response
 
 
+# def check_cw_groups_retention2(ocredentials):
+# 	AllCWLogGroups = []
+# 	try:
+# 		logging.info(f"Checking account {ocredentials['AccountId']} in region {ocredentials['Region']}")
+# 		# TODO: Will eventually support a filter for string fragments, and retention periods
+# 		CW_Groups = find_cw_groups_retention2(account_credentials, ocredentials['Region'])
+# 		logging.info(f"Root Account: {faws_acct.acct_number} Account: {account['AccountId']} Region: {ocredentials['Region']} | Found {len(CW_Groups['logGroups'])} groups")
+# 	except ClientError as my_Error:
+# 		if "AuthFailure" in str(my_Error):
+# 			logging.error(f"Authorization Failure accessing account {account['AccountId']} in {ocredentials['Region']} region")
+# 			logging.warning(f"It's possible that the region {ocredentials['Region']} hasn't been opted-into")
+# 			pass
+# 	if 'logGroups' in CW_Groups.keys():
+# 		for y in range(len(CW_Groups['logGroups'])):
+# 			if 'retentionInDays' in CW_Groups['logGroups'][y].keys():
+# 				CW_Groups['logGroups'][y]['Retention'] = Retention = CW_Groups['logGroups'][y]['retentionInDays']
+# 			else:
+# 				CW_Groups['logGroups'][y]['Retention'] = Retention = "Never"
+# 				CW_Groups['logGroups'][y]['Name'] = Name = CW_Groups['logGroups'][y]['logGroupName']
+# 				CW_Groups['logGroups'][y]['Size'] = Size = CW_Groups['logGroups'][y]['storedBytes']
+# 				CW_Groups['logGroups'][y]['AccessKeyId'] = account_credentials['AccessKeyId']
+# 				CW_Groups['logGroups'][y]['SecretAccessKey'] = account_credentials['SecretAccessKey']
+# 				CW_Groups['logGroups'][y]['SessionToken'] = account_credentials['SessionToken']
+# 				CW_Groups['logGroups'][y]['ParentProfile'] = faws_acct.credentials['Profile'] if faws_acct.credentials['Profile'] is not None else 'default'
+# 				CW_Groups['logGroups'][y]['MgmtAccount'] = faws_acct.MgmtAccount
+# 				CW_Groups['logGroups'][y]['AccountId'] = account_credentials['AccountId']
+# 				CW_Groups['logGroups'][y]['Region'] = ocredentials['Region']
+# 		# fmt = f'%-12s %-{account_number_format} %-15s %-10s %15d %-50s'
+# 		# print(fmt % (faws_acct.acct_number, account['AccountId'], region, Retention, Size, Name))
+# 		# print(f"{str(faws_acct.acct_number):{account_number_format}} {str(account['AccountId']):{account_number_format}} {region:15s} "
+# 		# 	  f"{str(Retention):10s} {'' if Retention == 'Never' else 'days'} {Size: >15,} {Name:50s}")
+# 		AllCWLogGroups.extend(CW_Groups['logGroups'])
+#
+# 	return AllCWLogGroups
+
+
 def find_gd_invites2(ocredentials, fRegion):
 	"""
 	ocredentials is an object with the following structure:
@@ -1410,41 +1485,32 @@ def find_account_instances2(ocredentials, fRegion='us-east-1'):
 	return AllInstances
 
 
-def find_cw_groups_retention2(ocredentials, fRegion='us-east-1'):
+def find_cw_groups_retention2(ocredentials, fRegion: str = 'us-east-1'):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the account number
+		- ['Region'] holds the region
 		- ['Profile'] can hold the profile, instead of the session credentials
 	"""
 	import boto3
 	import logging
 
-	if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
-		ProfileAccountNumber = find_account_number(ocredentials['Profile'])
-		logging.info(
-			f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
-		if ProfileAccountNumber == ocredentials['AccountNumber']:
-			session_cw = boto3.Session(profile_name=ocredentials['Profile'], region_name=fRegion)
-		else:
-			session_cw = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
-			                           aws_secret_access_key=ocredentials['SecretAccessKey'],
-			                           aws_session_token=ocredentials['SessionToken'],
-			                           region_name=fRegion)
-	else:
-		session_cw = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'], aws_secret_access_key=ocredentials[
-			'SecretAccessKey'], aws_session_token=ocredentials['SessionToken'], region_name=fRegion)
+	session_cw = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                           aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                           aws_session_token=ocredentials['SessionToken'],
+	                           region_name=fRegion)
 	log_group_info = session_cw.client('logs')
 	logging.info(f"Looking for cw_groups in account # {ocredentials['AccountNumber']} in region {fRegion}")
 	log_groups = log_group_info.describe_log_groups()
 	# TODO: Will need to add some kind of string fragment filter here later
 	# TODO: Also want to add a "retention filter" here as well to only find log groups matching a certain retention period
-	AllLogGroups = log_groups
+	AllLogGroups = log_groups['logGroups']
 	while 'NextToken' in log_groups.keys():
 		log_groups = log_group_info.describe_instances(NextToken=log_groups['NextToken'])
-		AllLogGroups['logGroups'].extend(log_groups['logGroups'])
+		AllLogGroups.extend(log_groups['logGroups'])
 	return AllLogGroups
 
 
@@ -2007,7 +2073,7 @@ def find_idc_users2(ocredentials, f_IdentityStoreId: str) -> list:
 	import boto3
 	import logging
 
-	if f_IdentityStoreId  is None:
+	if f_IdentityStoreId is None:
 		logging.info("No Identity Store ID was provided.\n"
 		             "Likely this account doesn't have an Identity Center Directory configured to keep users")
 		return []
@@ -4434,7 +4500,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 		worker.start()
 
 	pbar = tqdm(desc=f'Getting credentials for profile: {fprofile} with {len(ChildAccounts)} accounts in {len(fregions)} regions',
-	            total=len(ChildAccounts) * len(fregions),unit=' credentials'
+	            total=len(ChildAccounts) * len(fregions), unit=' credentials'
 	            )
 
 	logging.info(f"You asked to check {len(ChildAccounts) * len(fregions)} place{'s' if len(ChildAccounts) * len(fregions) > 1 else ''}... It's going to take a moment")
