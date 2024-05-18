@@ -21,7 +21,7 @@ function exists_in_list() {
 scripts_to_not_test="Inventory_Modules.py recovery_stack_ids.py lock_down_stack_sets_role.py ArgumentsClass.py \
 account_class.py ALZ_CheckAccount.py CT_CheckAccount.py delete_bucket_objects.py enable_drift_detection.py \
 find_my_LZ_versions.py move_stack_instances.py RunOnMultiAccounts.py UpdateRoleToMemberAccounts.py vpc_modules.py \
-recover_stack_ids.py setup.py decorators.py"
+recover_stack_ids.py setup.py decorators.py read_stackset_results.py"
 
 scripts_that_require_response="enable_drift_detection_stacksets.py"
 
