@@ -64,45 +64,6 @@ def get_regions3(faws_acct, fregion_list=None):
 		return RegionNames2
 
 
-#
-# def get_ec2_regions(fprofile=None, fregion_list=None):
-# 	"""
-# 	WILL BE DEPRECATED in favor of "get_regions3"
-#
-# 	This is a library function to get the AWS region names that correspond to the
-# 	fragments that may have been provided via the command line.
-#
-# 	For instance
-# 		- if the user provides 'us-east', this function will return ['us-east-1','us-east-2'].
-# 		- if the user provides 'west', this function will return ['us-west-1', 'us-west-2', 'eu-west-1', etc.]
-#
-# 	Thr first parameter to this library must provide a valid profile, which is used to instantiate a boto3 session,
-# 	so that regions can be looked up.
-#
-# 	Please note that there is no paging functionality for the "describe_regions" method within EC2, hence no paging below.
-# 	"""
-# 	import boto3
-# 	import logging
-#
-# 	# This handles the case where the user passes a single string, instead of a list or nothing.
-# 	if isinstance(fregion_list, str):
-# 		fregion_list = [fregion_list]
-# 	session_ec2 = boto3.Session(profile_name=fprofile)
-# 	region_info = session_ec2.client('ec2')
-# 	regions = region_info.describe_regions(Filters=[{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
-# 	RegionNames = [region_name['RegionName'] for region_name in regions['Regions']]
-# 	if fregion_list is None or ("all" in fregion_list or "ALL" in fregion_list or 'All' in fregion_list):
-# 		return RegionNames
-# 	RegionNames2 = []
-# 	for x in fregion_list:
-# 		for y in RegionNames:
-# 			logging.info(f"Have {y} | Looking for {x}")
-# 			if y.find(x) >= 0:
-# 				logging.info(f"Found {y}")
-# 				RegionNames2.append(y)
-# 	return RegionNames2
-
-
 def get_ec2_regions3(faws_acct, fkey=None):
 	"""
 	This is a library function to get the AWS region names that correspond to the
@@ -495,20 +456,20 @@ def make_creds(faws_acct):
 
 def get_child_access(fRootProfile, fChildAccount, fRegion='us-east-1', fRoleList=None):
 	"""
-	- fRootProfile is a string
-	- fChildAccount expects an AWS account number (ostensibly of a Child Account)
-	- rRegion expects a string representing one of the AWS regions ('us-east-1', 'eu-west-1', etc.)
-	- fRoleList expects a list of roles to try, but defaults to a list of typical roles, in case you don't provide
+	@param: fRootProfile is a string
+	@param:  fChildAccount expects an AWS account number (ostensibly of a Child Account)
+	@param:  rRegion expects a string representing one of the AWS regions ('us-east-1', 'eu-west-1', etc.)
+	@param:  fRoleList expects a list of roles to try, but defaults to a list of typical roles, in case you don't provide
 
 	The first response object is a dict with account_credentials to pass onto other functions
 	The min response object is the rolename that worked to gain access to the target account
 
 	The format of the account credentials dict is here:
-	account_credentials = { 'Profile': fRootProfile,
-							'AccessKeyId': '',
-							'SecretAccessKey': None,
-							'SessionToken': None,
-							'AccountNumber': None }
+	account_credentials = {'Profile' : fRootProfile,
+							'AccessKeyId' : '',
+							'SecretAccessKey' : None,
+							'SessionToken' : None,
+							'AccountNumber' : None}
 	"""
 	import boto3
 	import logging
@@ -1005,6 +966,7 @@ def find_security_groups2(ocredentials, f_fragments=None, f_exact=False, default
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the account number
+		@rtype: object
 	"""
 	import boto3
 	import logging
@@ -1029,12 +991,119 @@ def find_security_groups2(ocredentials, f_fragments=None, f_exact=False, default
 		else:
 			security_group['Default'] = False
 			AllSecurityGroups.append(security_group) if defaultOnly is False else None
-	# if defaultOnly:
-	# 	AllSecurityGroups = [security_group for security_group in SecurityGroups if security_group['Default'] == defaultOnly]
-	# else:
-	# 	AllSecurityGroups = [security_group for security_group in SecurityGroups]
 	logging.info(f"We found {len(AllSecurityGroups)} {'default' if defaultOnly else ''} Security Groups in account {ocredentials['AccountNumber']} in Region {ocredentials['Region']}")
 	return AllSecurityGroups
+
+
+def find_references_to_security_groups2(ocredentials, f_security_group: dict):
+	"""
+	Description: An effort to find all resources that might be referencing this security group
+
+	@params: ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+	@params: f_security_group - a dict object of the security group we're looking for
+	In this function, we'll list all network interfaces, and query for those ENIs that mention the SG within.
+	Additionally, we'll have to look through *other* security groups, and find any that reference this SG
+	We may also need to look at peered VPCs, which could reference these SGs, which may be more effort...
+	"""
+	import boto3
+	import logging
+
+	session_vpc = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+	                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+	                            aws_session_token=ocredentials['SessionToken'],
+	                            region_name=ocredentials['Region'])
+	client_vpc = session_vpc.client('ec2')
+	SecurityGroupReferences = []
+	logging.info(f"Looking for Security Groups in account {ocredentials['AccountNumber']} from Region {ocredentials['Region']}")
+
+	# There are two places where Security Groups are referenced.
+	# In ENIs, and in Security Groups.
+	# This first lookup handles the ENI case.
+	response = client_vpc.describe_network_interfaces(
+		Filters=[
+			{
+				'Name'  : 'group-id',
+				'Values': [f_security_group['GroupId']]
+				},
+			]
+		)
+	for network_interface in response['NetworkInterfaces']:
+		network_interface['ResourceType'] = network_interface['InterfaceType']
+		network_interface['Id'] = network_interface['NetworkInterfaceId']
+		SecurityGroupReferences.append(network_interface)
+	while 'NextToken' in response.keys():
+		response = client_vpc.describe_network_interfaces(
+			Filters=[
+				{
+					'Name'  : 'group-id',
+					'Values': [f_security_group['GroupId']]
+					},
+				]
+			)
+		for network_interface in response['NetworkInterfaces']:
+			network_interface['ResourceType'] = network_interface['InterfaceType']
+			network_interface['Id'] = network_interface['NetworkInterfaceId']
+			SecurityGroupReferences.append(network_interface)
+	logging.info(f"We found {len(SecurityGroupReferences)} references to security groups in account {ocredentials['AccountNumber']} in Region {ocredentials['Region']}")
+	# This second lookup section handles the other Security Groups case.
+	response_inbound = client_vpc.describe_security_groups(
+		Filters=[
+			{
+				'Name'  : 'ip-permission.group-id',
+				'Values': [f_security_group['GroupId']]
+				},
+			]
+		)
+	for security_group in response_inbound['SecurityGroups']:
+		security_group['ResourceType'] = 'InboundRule'
+		security_group['Id'] = security_group['GroupId']
+		SecurityGroupReferences.append(security_group)
+	while 'NextToken' in response_inbound.keys():
+		response_inbound = client_vpc.describe_security_groups(
+			Filters=[
+				{
+					'Name'  : 'ip-permission.group-id',
+					'Values': [f_security_group['GroupId']]
+					},
+				], NextToken=response_inbound['NextToken']
+			)
+		for security_group in response_inbound['SecurityGroups']:
+			security_group['ResourceType'] = 'InboundRule'
+			security_group['Id'] = security_group['GroupId']
+			SecurityGroupReferences.append(security_group)
+
+	response_outbound = client_vpc.describe_security_groups(
+		Filters=[
+			{
+				'Name'  : 'egress.ip-permission.group-id',
+				'Values': [f_security_group['GroupId']]
+				},
+			]
+		)
+	for security_group in response_outbound['SecurityGroups']:
+		security_group['ResourceType'] = 'OutboundRule'
+		security_group['Id'] = security_group['GroupId']
+		SecurityGroupReferences.append(security_group)
+	while 'NextToken' in response_outbound.keys():
+		response_outbound = client_vpc.describe_security_groups(
+			Filters=[
+				{
+					'Name'  : 'egress.ip-permission.group-id',
+					'Values': [f_security_group['GroupId']]
+					},
+				], NextToken=response_outbound['NextToken']
+			)
+		for security_group in response_outbound['SecurityGroups']:
+			security_group['ResourceType'] = 'OutboundRule'
+			security_group['Id'] = security_group['GroupId']
+			SecurityGroupReferences.append(security_group)
+
+	logging.info(f"We found {len(SecurityGroupReferences)} references to security groups in account {ocredentials['AccountNumber']} in Region {ocredentials['Region']}")
+	return SecurityGroupReferences
 
 
 def find_account_vpcs2(ocredentials, defaultOnly=False):
@@ -3064,6 +3133,7 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 			'mode'        : 'standard'
 			}
 		)
+	MaxWorkerThreads = 8
 
 	def get_stackset_attributes(fStackSetsCopy: dict):
 		"""
@@ -3074,6 +3144,7 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 		from threading import Thread
 		from queue import Queue
 		from datetime import datetime
+		from tqdm.auto import tqdm
 
 		class GetStackSetStatus(Thread):
 
@@ -3128,6 +3199,7 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 						logging.debug(f"Operations name: {my_Error.operation_name} | Response: {my_Error.response} | MSG TEMPLATE: {my_Error.MSG_TEMPLATE}")
 						continue
 					finally:
+						pbar.update()
 						self.queue.task_done()
 
 		###########
@@ -3135,8 +3207,12 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 		checkqueue = Queue()
 
 		PlaceCount = 0
-		WorkerThreads = min(len(fStackSetsCopy), 8)
+		WorkerThreads = min(len(fStackSetsCopy), MaxWorkerThreads)
 		logging.info(f"Using {WorkerThreads} threads")
+
+		pbar = tqdm(desc=f'Finding all Stacksets from {len(fStackSetsCopy)} stacksets',
+		            total=len(fStackSetsCopy), unit=' stacksets'
+		            )
 
 		for x in range(WorkerThreads):
 			worker = GetStackSetStatus(checkqueue)
@@ -3158,6 +3234,7 @@ def find_stacksets3(faws_acct, fRegion: str = None, fStackFragmentList: list = N
 					pass
 		checkqueue.join()
 		logging.info(f"Getting the stackset operation data took {time() - begin_time:.2f} seconds")
+		pbar.close()
 		return fStackSetsCopy
 
 	# Logging Settings
@@ -4009,16 +4086,17 @@ def get_region_azs2(ocredentials):
 ############
 
 
-def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_to_save: str = None):
+def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_to_save: str = None, subdisplay: bool = False):
 	from colorama import init, Fore
 	from datetime import datetime
 
 	init()
 	"""
 	Note that this function simply formats the output of the data within the list provided
-	- results_list: This should be a list of dictionaries, matching to the fields in fdisplay_dict
-	- fdisplay_dict: Should look like the below. It's simply a list of fields and formats
-	- defaultAction: this is a default string or type to assign to fields that (for some reason) don't exist within the results_list.
+	@param: results_list: This should be a list of dictionaries, matching to the fields in fdisplay_dict
+	@param: fdisplay_dict: Should look like the below. It's simply a list of fields and formats
+	@param: defaultAction: this is a default string or type to assign to fields that (for some reason) don't exist within the results_list.
+	@param: file_to_save: If you want to save the output to a file, specify the filename here.
 	display_dict = {'ParentProfile': {'DisplayOrder': 1, 'Heading': 'Parent Profile'},
 	                'MgmtAccount'  : {'DisplayOrder': 2, 'Heading': 'Mgmt Acct'},
 	                'AccountId'    : {'DisplayOrder': 3, 'Heading': 'Acct Number'},
@@ -4033,7 +4111,8 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 		The dictionary doesn't have to be ordered, as long as the 'SortOrder' field is correct.
 
 		Enhancements:
-			- How to create a break between rows, like after every account, or Management Org, or region, or whatever...  
+			- How to create a break between rows, like after every account, or Management Org, or region, or whatever...
+			- How to do sub-sections, where there is more data to show per row...  
 	"""
 
 	def handle_list():
@@ -4045,7 +4124,7 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 		# TODO:
 		# 	Probably have to do a pre-emptive error-check to ensure the SortOrder is unique within the Dictionary
 		# 	Also need to enclose this whole thing in a try...except to trap errors.
-		# 	Also need to find a way to order the data within this function.
+		# 	Decided not to try to order the data passed in, as that should be done within the original function
 
 		sorted_display_dict = dict(sorted(fdisplay_dict.items(), key=lambda x: x[1]['DisplayOrder']))
 
@@ -4092,19 +4171,29 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 			logging.error(f"Error: {my_Error}")
 
 		# This writes out the headings
+		print("\t\t", end='') if subdisplay else None
 		for field, value in sorted_display_dict.items():
 			header_format = needed_space[field]
 			print(f"{value['Heading']:{header_format}s} ", end='')
+		# Newline at the end of the headings
 		print()
 		# This writes out the dashes (separators)
+		print("\t\t", end='') if subdisplay else None
 		for field, value in sorted_display_dict.items():
 			repeatvalue = needed_space[field]
 			print(f"{'-' * repeatvalue} ", end='')
+		# Newline after the dashes
 		print()
 
 		# This writes out the data
 		for result in results_list:
+			print("\t\t", end='') if subdisplay else None
 			for field, value in sorted_display_dict.items():
+				# This determines whether ths row provided is supposed to be displayed as a sub-report of the main row
+				if 'SubDisplay' in value.keys():
+					SubDisplay = True
+				else:
+					SubDisplay = False
 				# This assigns the proper space for the output
 				data_format = needed_space[field]
 				if field not in result.keys():
@@ -4130,10 +4219,14 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 					print(f"{Fore.RED if highlight else ''}{result[field]:{data_format}f}{Fore.RESET if highlight else ''} ", end='')
 				elif isinstance(result[field], datetime):
 					print(f"{Fore.RED if highlight else ''}{result[field].strftime('%x %X')}{Fore.RESET if highlight else ''} ", end='')
+				elif isinstance(result[field], list):
+					# print("\n<tab>", end='')
+					display_results(result[field], value['SubDisplay'], None, subdisplay=SubDisplay)
 			print()  # This is the end of line character needed at the end of every line
 		print()  # This is the new line needed at the end of the script.
 		# TODO: We need to add some analytics here... Trying to come up with what would make sense across all displays.
 		#   Possibly we can have a setting where this data is written to a csv locally. We could create separate analytics once the data was saved.
+		# This is where the data is written to a file
 		if file_to_save is not None:
 			Heading = ''
 			my_filename = f'{file_to_save}-{datetime.now().strftime("%y-%m-%d--%H-%M-%S")}'
@@ -4292,6 +4385,7 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 	if isinstance(results_list, list):
 		handle_list()
 	elif isinstance(results_list, dict):
+		# This doesn't work really yet, but it's a start
 		handle_dict()
 
 
@@ -4373,17 +4467,14 @@ def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProf
 				              f"Timing Enabled: {fTiming}")
 				# This should populate the list "AllCreds" with the credentials for the relevant accounts.
 				AllCredentials.extend(get_credentials_for_accounts_in_org(aws_acct, fSkipAccounts, fRootOnly, fAccounts, profile, RegionList, RoleList, fTiming))
-				# if fTiming:
-				# 	print()
-				# 	print(f"{ERASE_LINE}{Fore.GREEN}Finished profile {Fore.RED}'{profile}'{Fore.GREEN}. Finding credentials for {len(AllCredentials)} accounts and regions has taken {time() - begin_time:.2f} seconds{Fore.RESET}")
-				# 	print()
 			except AttributeError as my_Error:
-				logging.error(f"Profile {profile} didn't work... Skipping")
+				error_message = f"Error in profile {profile}: {my_Error}"
+				logging.error(error_message)
 				continue
 	return AllCredentials
 
 
-def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, accountlist=None, fprofile="default", fregions=None, fRoleNames=None, fTiming=False, threads: int = 50):
+def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly=False, accountlist=None, fprofile="default", fregions=None, fRoleNames=None, fTiming=False, MaxThreads: int = 50):
 	"""
 	Note that this function returns the credentials of all the accounts underneath the Org passed to it.
 
@@ -4412,7 +4503,6 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 			while True:
 				# Get the work from the queue and expand the tuple
 				c_account_info, c_profile, c_region = self.queue.get()
-				pbar.update()
 				logging.info(f"De-queued info for account {c_account_info['AccountId']}")
 				try:
 					logging.info(f"Attempting to connect to {c_account_info['AccountId']} using one of {fRoleNames}")
@@ -4451,6 +4541,7 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 					              f"Error: {my_Error}")
 					continue
 				finally:
+					pbar.update()
 					self.queue.task_done()
 
 	if fSkipAccounts is None:
@@ -4489,8 +4580,8 @@ def get_credentials_for_accounts_in_org(faws_acct, fSkipAccounts=None, fRootOnly
 	AllCreds = []
 	credqueue = Queue()
 
-	# Defaults to 10, unless something more was passed in - which is only done for time testing.
-	WorkerThreads = min(len(ChildAccounts) * len(fregions), threads)
+	# Defaults to 50, unless something more was passed in - which is only done for time testing.
+	WorkerThreads = min(len(ChildAccounts) * len(fregions), MaxThreads)
 
 	# Create x worker threads
 	for x in range(WorkerThreads):
@@ -4554,14 +4645,14 @@ def get_org_accounts_from_profiles(fProfileList):
 				# Get the work from the queue and expand the tuple
 				profile = self.queue.get()
 				pbar.update()
-				Account = {'ErrorFlag': False,
-				           'Success': False,
-				           'RootAcct': False,
-				           'MgmtAccount': None,
-				           'profile': None,
-				           'Email': None,
+				Account = {'ErrorFlag'   : False,
+				           'Success'     : False,
+				           'RootAcct'    : False,
+				           'MgmtAccount' : None,
+				           'profile'     : None,
+				           'Email'       : None,
 				           'ErrorMessage': None,
-				           'OrgId': None}
+				           'OrgId'       : None}
 				logging.info(f"De-queued info for account {profile}")
 				try:
 					logging.info(f"Trying profile {profile}")
