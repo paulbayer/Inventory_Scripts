@@ -5,6 +5,7 @@ import sys
 import os
 from queue import Queue
 from threading import Thread
+from tqdm.auto import tqdm
 from time import time
 
 from botocore.exceptions import ClientError
@@ -17,7 +18,7 @@ from account_class import aws_acct_access
 
 init()
 
-__version__ = '2024.05.01'
+__version__ = '2024.05.18'
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 DefaultMaxWorkerThreads = 5
@@ -177,7 +178,7 @@ def find_stack_set_instances(fStackSetNames: list, fRegion: str) -> list:
 					# Now go through those stacksets and determine the instances, made up of accounts and regions
 					# Most time spent in this loop
 					# for i in range(len(fStackSetNames['StackSets'])):
-					print(f"{ERASE_LINE}Looking through {c_PlaceCount} of {len(fStackSetNames)} stacksets found with {pStackfrag} string in them", end='\r')
+					logging.info(f"{ERASE_LINE}Looking through {c_PlaceCount} of {len(fStackSetNames)} stacksets found with {pStackfrag} string in them")
 					# TODO: Creating the list to delete this way prohibits this script from including stacksets that are already empty. This should be fixed.
 					StackInstances = Inventory_Modules.find_stack_instances3(aws_acct, c_region, c_stacksetname)
 					logging.warning(f"Found {len(StackInstances)} Stack Instances within the StackSet {c_stacksetname}")
@@ -227,7 +228,8 @@ def find_stack_set_instances(fStackSetNames: list, fRegion: str) -> list:
 					logging.info(f"Actual Error: {my_Error}")
 					continue
 				finally:
-					print(f"{ERASE_LINE}Finished finding stack instances in stackset {c_stacksetname} in region {c_region} - {c_PlaceCount} / {len(fStackSetNames)}", end='\r')
+					logging.info(f"{ERASE_LINE}Finished finding stack instances in stackset {c_stacksetname} in region {c_region} - {c_PlaceCount} / {len(fStackSetNames)}")
+					pbar.update()
 					self.queue.task_done()
 
 	###########
@@ -240,6 +242,11 @@ def find_stack_set_instances(fStackSetNames: list, fRegion: str) -> list:
 	PlaceCount = 0
 	WorkerThreads = min(len(fStackSetNames), DefaultMaxWorkerThreads)
 
+	pbar = tqdm(desc=f'Finding Stackset instances from {len(fStackSetNames)} stacksets',
+	            total=len(fStackSetNames), unit=' stacksets'
+	            )
+
+	# Create and start the worker threads
 	for x in range(WorkerThreads):
 		worker = FindStackSets(checkqueue)
 		# Setting daemon to True will let the main thread exit even though the workers are blocking
@@ -247,31 +254,29 @@ def find_stack_set_instances(fStackSetNames: list, fRegion: str) -> list:
 		worker.start()
 
 	for stacksetname in fStackSetNames:
-		logging.debug(f"Beginning to queue data - starting with {stacksetname['StackSetName']}")
+		logging.debug(f"Beginning to queue data - starting with {stacksetname}")
 		try:
 			# I don't know why - but double parens are necessary below. If you remove them, only the first parameter is queued.
 			PlaceCount += 1
-			checkqueue.put((stacksetname['StackSetName'], fRegion, stacksetname, PlaceCount))
+			checkqueue.put((stacksetname, fRegion, stacksetname, PlaceCount))
 		except ClientError as my_Error:
 			if "AuthFailure" in str(my_Error):
 				logging.error(f"Authorization Failure accessing stack set {stacksetname['StackSetName']} in {fRegion} region")
 				logging.warning(f"It's possible that the region {fRegion} hasn't been opted-into")
 				pass
 	checkqueue.join()
+	pbar.close()
 	return (f_combined_stack_set_instances)
 
 
 def find_last_operations(faws_acct: aws_acct_access, fStackSetNames: list):
 	"""
-	@fStackSetName: The name of the stackset to find the operations of
+	@param: fStackSetName: The name of the stackset to find the operations of
 	"""
 	StackSetOps_client = faws_acct.session.client('cloudformation')
 	AllStackSetOps = []
-	stacksets = len(fStackSetNames)
-	for stacksetname in fStackSetNames:
-		logging.info(f"Checking out stackset {stacksetname} - ({stacksets} to go)")
-		stacksets -= 1
-		StackSetOps = StackSetOps_client.list_stack_set_operations(StackSetName=stacksetname, MaxResults=5, CallAs='SELF')['Summaries']
+	for stacksetname in tqdm(fStackSetNames, desc="Checking stackset operations"):
+		StackSetOps = StackSetOps_client.list_stack_set_operations(StackSetName=stacksetname, MaxResults=1, CallAs='SELF')['Summaries']
 		AllStackSetOps.append({'StackSetName': stacksetname,
 		                       'Operation'   : StackSetOps[0]['Action'],
 		                       'LatestStatus': StackSetOps[0]['Status'],
@@ -297,7 +302,12 @@ if __name__ == '__main__':
 	pAccountList = args.Accounts
 	pstatus = args.pstatus
 	pFilename = args.Filename
-	logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+	# Setup logging levels
+	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+	logging.getLogger("boto3").setLevel(logging.CRITICAL)
+	logging.getLogger("botocore").setLevel(logging.CRITICAL)
+	logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 	display_dict = {'StackSetName': {'DisplayOrder': 1, 'Heading': 'Stackset Name'},
 	                'Operation'   : {'DisplayOrder': 2, 'Heading': 'Action'},
