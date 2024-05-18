@@ -20,7 +20,7 @@ Originally, that script didn't have built-in recovery, so we needed this script 
 """
 
 init()
-__version__ = "2024.03.05"
+__version__ = "2024.05.18"
 
 
 #########################
@@ -103,7 +103,12 @@ if __name__ == '__main__':
 	pFragments = args.Fragments
 	# pstatus = args.status
 	verbose = args.loglevel
-	logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
+	# Setup logging levels
+	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+	logging.getLogger("boto3").setLevel(logging.CRITICAL)
+	logging.getLogger("botocore").setLevel(logging.CRITICAL)
+	logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 	##########################
 	ERASE_LINE = '\x1b[2K'

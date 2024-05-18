@@ -8,6 +8,7 @@ from colorama import init, Fore
 from time import time
 from threading import Thread
 from queue import Queue
+from tqdm.auto import tqdm
 from botocore.exceptions import ClientError, ProfileNotFound, UnknownRegionError, UnknownCredentialError
 import logging
 import sys
@@ -49,13 +50,14 @@ pFragment = args.Fragment
 pExact = args.Exact
 verbose = args.loglevel
 DeletionRun = args.DeletionRun
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+# Setup logging levels
+logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+logging.getLogger("boto3").setLevel(logging.CRITICAL)
+logging.getLogger("botocore").setLevel(logging.CRITICAL)
+logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+logging.getLogger("urllib3").setLevel(logging.CRITICAL)
+logging.getLogger("botocore").setLevel(logging.CRITICAL)
 
-
-# if pTiming:
-# 	timing_logging_level = 45
-# 	logging.addLevelName(timing_logging_level, 'timing')
-# 	logging.basicConfig(level=timing_logging_level, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 
 ##########################
 
@@ -63,24 +65,6 @@ logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(fu
 def sort_by_email(elem):
 	return elem('AccountEmail')
 
-
-# def define_pretty_headings(fSCP2Stacks):
-# 	namelength = 3
-# 	for _ in range(len(fSCP2Stacks)):
-# 		if namelength < len(fSCP2Stacks[_]['SCProductName']):
-# 			namelength = len(fSCP2Stacks[_]['SCProductName'])
-# 		else:
-# 			pass
-# 	fDisplaySpacing = {
-# 		'AccountNumber'           : 15,
-# 		'SCProductName'           : namelength,
-# 		'ProvisioningArtifactName': 8,
-# 		'CFNStackName'            : 35,
-# 		'SCStatus'                : 10,
-# 		'CFNStackStatus'          : 18,
-# 		'AccountStatus'           : 10,
-# 		'AccountEmail'            : 20}
-# 	return (fDisplaySpacing)
 
 def find_account_stacksets(faws_acct, f_SCProducts, fRegion=None, fstacksetname=None):
 	"""
@@ -98,7 +82,7 @@ def find_account_stacksets(faws_acct, f_SCProducts, fRegion=None, fstacksetname=
 				# Get the work from the queue and expand the tuple
 				c_sc_product, c_region, c_fstacksetname, c_PlacesToLook, c_PlaceCount = self.queue.get()
 				logging.info(f"De-queued info for SC Product: {c_sc_product['SCPName']}")
-				print(f"{ERASE_LINE}{Fore.RED}Checking {PlaceCount} of {len(f_SCProducts)} products{Fore.RESET}", end='\r')
+				logging.info(f"{Fore.RED}Checking {PlaceCount} of {len(f_SCProducts)} products{Fore.RESET}")
 				CFNresponse = Inventory_Modules.find_stacks3(faws_acct, pRegion, c_sc_product['SCPId'])
 				logging.info(f"There are {len(CFNresponse)} matches for SC Provisioned Product Name {c_sc_product['SCPName']}")
 				try:
@@ -165,7 +149,8 @@ def find_account_stacksets(faws_acct, f_SCProducts, fRegion=None, fstacksetname=
 						print(f"{pProfile}: Other kind of failure ")
 						print(my_Error)
 				finally:
-					logging.info(f"{ERASE_LINE}Finished finding product {c_sc_product['SCPName']} - {c_PlaceCount} / {c_PlacesToLook}")
+					logging.info(f"Finished finding product {c_sc_product['SCPName']} - {c_PlaceCount} / {c_PlacesToLook}")
+					pbar.update()
 					self.queue.task_done()
 
 	if fRegion is None:
@@ -176,6 +161,11 @@ def find_account_stacksets(faws_acct, f_SCProducts, fRegion=None, fstacksetname=
 	PlaceCount = 0
 	PlacesToLook = WorkerThreads = min(len(f_SCProducts), 10)
 
+	pbar = tqdm(desc=f'Reconciling SC Products with CloudFormation Stacks in accounts',
+	            leave=True,
+	            total=len(f_SCProducts), unit=' products')
+
+	# Create and start the worker threads
 	for x in range(WorkerThreads):
 		worker = CheckProducts(checkqueue)
 		# Setting daemon to True will let the main thread exit even though the workers are blocking
@@ -194,6 +184,7 @@ def find_account_stacksets(faws_acct, f_SCProducts, fRegion=None, fstacksetname=
 				logging.warning(f"It's possible that the region {fRegion} hasn't been opted-into")
 				pass
 	checkqueue.join()
+	pbar.close()
 	return (SCP2Stacks)
 
 

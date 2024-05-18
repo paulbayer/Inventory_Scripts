@@ -28,11 +28,6 @@ parser.my_parser.add_argument(
     dest="flagDelete",
     action="store_true",
     help="Whether to delete the detectors it finds.")
-# parser.my_parser.add_argument(
-#     '+force',
-#     help="force deletion without asking first",
-#     action="store_true",
-#     dest="ForceDelete")
 args = parser.my_parser.parse_args()
 
 pProfile = args.Profile
@@ -47,7 +42,12 @@ DeletionRun = args.flagDelete
 # ForceDelete = args.ForceDelete
 ForceDelete = args.Force
 pTiming = args.Time
-logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s")
+# Setup logging levels
+logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+logging.getLogger("boto3").setLevel(logging.CRITICAL)
+logging.getLogger("botocore").setLevel(logging.CRITICAL)
+logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 ##########################
 ERASE_LINE = '\x1b[2K'

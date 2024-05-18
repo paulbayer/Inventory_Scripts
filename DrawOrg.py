@@ -254,7 +254,12 @@ if __name__ == '__main__':
 	pManaged = args.aws_managed
 	pStartingPlace = args.starting_place
 	verbose = args.loglevel
-	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(""message)s")
+	# Setup logging levels
+	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+	logging.getLogger("boto3").setLevel(logging.CRITICAL)
+	logging.getLogger("botocore").setLevel(logging.CRITICAL)
+	logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 	begin_time = time()
 	print(f"Beginning to look through the Org in order to create the diagram")

@@ -71,7 +71,12 @@ if __name__ == '__main__':
 	pSaveFilename = args.Filename
 	pAccountList = args.Accounts
 	pRoleList = args.AccessRoles
-	logging.basicConfig(level=pverbose, format="[%(filename)s:%(lineno)s - %(processName)s %(threadName)s %(funcName)20s() ] %(message)s")
+	# Setup logging levels
+	logging.basicConfig(level=pverbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+	logging.getLogger("boto3").setLevel(logging.CRITICAL)
+	logging.getLogger("botocore").setLevel(logging.CRITICAL)
+	logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 	print(f"Collecting credentials for all accounts in your org, across multiple regions")
 	AllOrgAZs = azs_across_accounts(pProfiles, pRegions, pSkipProfiles, pSkipAccounts, pAccountList, pTiming, pRootOnly, pverbose, pRoleList)

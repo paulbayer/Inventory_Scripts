@@ -21,7 +21,7 @@ Originally, that script didn't have built-in recovery, so we needed this script 
 """
 
 init()
-__version__ = "2024.05.01"
+__version__ = "2024.05.18"
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 
@@ -243,10 +243,14 @@ if __name__ == '__main__':
 	verbose = args.loglevel
 	pTiming = args.Time
 	pFragments = args.Fragments
-	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
+	# Setup logging levels
+	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+	logging.getLogger("boto3").setLevel(logging.CRITICAL)
+	logging.getLogger("botocore").setLevel(logging.CRITICAL)
+	logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+	logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 	ERASE_LINE = '\x1b[2K'
-	# aws_acct = aws_acct_access(pProfile)
 	begin_time = time()
 
 	# Setup credentials and regions (filtered by what they wanted to check)

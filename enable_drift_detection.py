@@ -46,8 +46,12 @@ pstackfrag = args.pFragments
 pstatus = args.pstatus
 AccountsToSkip = args.pSkipAccounts
 verbose = args.loglevel
-logging.basicConfig(level=args.loglevel,
-                    format="[%(filename)s:%(lineno)s:%(levelname)s - %(funcName)30s() ] %(message)s")
+# Setup logging levels
+logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+logging.getLogger("boto3").setLevel(logging.CRITICAL)
+logging.getLogger("botocore").setLevel(logging.CRITICAL)
+logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 """
 We should eventually create an argument here that would check on the status of the drift-detection using

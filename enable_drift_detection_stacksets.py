@@ -181,31 +181,6 @@ def enable_stack_set_drift_detection(faws_acct: aws_acct_access, fStackSets: dic
 	return (fStackSets)
 
 
-#
-#
-# if len(fStackSets) == 0:
-# 	logging.info(f"We connected to account {faws_acct.acct_number} in region {aws_acct.Region}, but found no stacksets")
-# else:
-# 	logging.info(f"Account: {faws_acct.acct_number} | Region: {aws_acct.Region} | Found {len(fStackSets)} Stacksets")
-# for stackset_name, stackset_attributes in fStackSets.items():
-# 	try:
-# 		# TODO: Eventually will need to multi-thread this...
-# 		DriftStatus = Inventory_Modules.enable_drift_on_stackset3(faws_acct, stackset_name)
-# 		stackset_attributes['AccountNumber'] = faws_acct.acct_number
-# 		stackset_attributes['Region'] = faws_acct.Region
-# 		if DriftStatus['Success']:
-# 			stackset_attributes['DriftStatus_Operation'] = DriftStatus['OperationId']
-# 		else:
-# 			stackset_attributes['DriftStatus_Operation'] = DriftStatus['Success']
-# 			stackset_attributes['ErrorMessage'] = DriftStatus['ErrorMessage']
-# 	except ClientError as my_Error:
-# 		if "AuthFailure" in str(my_Error):
-# 			print(f"{MgmtAccount['AccountId']}: Authorization Failure")
-# 		continue
-#
-# return (fStackSets)
-#
-
 def days_between_dates(fdate1: datetime, fdays_since: int):
 	from dateutil.tz import tzutc
 

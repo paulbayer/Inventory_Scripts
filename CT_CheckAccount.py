@@ -16,7 +16,7 @@ from account_class import aws_acct_access
 import logging
 
 init()
-__version__ = "2024.02.02"
+__version__ = "2024.05.18"
 
 script_path, script_name = os.path.split(sys.argv[0])
 parser = CommonArguments()
@@ -65,7 +65,12 @@ pChildAccountList = args.Accounts
 FixRun = args.FixRun
 pExplain = args.pExplain
 pVPCConfirm = args.Force
-logging.basicConfig(level=args.loglevel, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
+# Setup logging levels
+logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+logging.getLogger("boto3").setLevel(logging.CRITICAL)
+logging.getLogger("botocore").setLevel(logging.CRITICAL)
+logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 
 def intersection(lst1, lst2):

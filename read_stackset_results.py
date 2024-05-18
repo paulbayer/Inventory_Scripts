@@ -12,7 +12,7 @@ Eventually I have to add some visuals, and better output.
 """
 
 init()
-__version__ = "2023.09.11"
+__version__ = "2024.05.18"
 
 parser = CommonArguments()
 parser.verbosity()  # Allows for the verbosity to be handled.
@@ -32,7 +32,12 @@ args = parser.my_parser.parse_args()
 pStackSetsFilename = args.StackSetsFilename
 pOrgsFilename = args.OrgsFilename
 verbose = args.loglevel
-logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)30s() ] %(message)s")
+# Setup logging levels
+logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
+logging.getLogger("boto3").setLevel(logging.CRITICAL)
+logging.getLogger("botocore").setLevel(logging.CRITICAL)
+logging.getLogger("s3transfer").setLevel(logging.CRITICAL)
+logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 ##########################
 ERASE_LINE = '\x1b[2K'
