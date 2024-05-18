@@ -4,6 +4,7 @@ import logging
 import sys
 from queue import Queue
 from threading import Thread
+from tqdm.auto import tqdm
 from time import sleep, time
 
 from botocore.exceptions import ClientError
@@ -41,8 +42,7 @@ ERASE_LINE = '\x1b[2K'
 begin_time = time()
 sleep_interval = 5
 # Seems low, but this fits under the API threshold. Make it too high and it will not.
-DefaultMaxWorkerThreads = 1
-
+DefaultMaxWorkerThreads = 5
 
 ###################
 def parse_args(args: object):
@@ -190,11 +190,10 @@ def _find_stack_set_instances(fStackSetNames: dict, fRegion: str) -> list:
 					# Now go through those stacksets and determine the instances, made up of accounts and regions
 					# Most time spent in this loop
 					# for i in range(len(fStackSetNames['StackSets'])):
-					print(f"{ERASE_LINE}Looking through {c_PlaceCount} of {len(fStackSetNames)} stacksets found with '{pStackfrag}' string in them", end='\r')
+					logging.info(f"{ERASE_LINE}Looking through {c_PlaceCount} of {len(fStackSetNames)} stacksets found with '{pStackfrag}' string in them")
 					# TODO: Creating the list to delete this way prohibits this script from including stacksets that are already empty. This should be fixed.
 					StackInstances = Inventory_Modules.find_stack_instances3(aws_acct, c_region, c_stacksetname)
 					logging.warning(f"Found {len(StackInstances)} Stack Instances within the StackSet {c_stacksetname}, without filtering on the specific accounts we were looking for")
-					# if len(StackInstances) == 0 and pdelete and pAccountModifyList is None and pRegionModify is None:
 					if len(StackInstances) == 0 and pAccountModifyList is None and pRegionModifyList is None:
 						# logging.warning(f"While we didn't find any stack instances within {fStackSetNames['StackSets'][i]['StackSetName']}, we assume you want to delete it, even when it's empty")
 						logging.warning(f"While we didn't find any stack instances within {c_stacksetname}, we assume you want to include it, even when it's empty")
@@ -258,7 +257,8 @@ def _find_stack_set_instances(fStackSetNames: dict, fRegion: str) -> list:
 					logging.debug(f"Operations name: {my_Error.operation_name} | Response: {my_Error.response} | MSG TEMPLATE: {my_Error.MSG_TEMPLATE}")
 					continue
 				finally:
-					print(f"{ERASE_LINE}Finished finding stack instances in stackset {c_stacksetname} in region {c_region} - {c_PlaceCount} / {len(fStackSetNames)}", end='\r')
+					logging.info(f"{ERASE_LINE}Finished finding stack instances in stackset {c_stacksetname} in region {c_region} - {c_PlaceCount} / {len(fStackSetNames)}")
+					pbar.update()
 					self.queue.task_done()
 
 	###########
@@ -270,6 +270,10 @@ def _find_stack_set_instances(fStackSetNames: dict, fRegion: str) -> list:
 	f_combined_stack_set_instances = []
 	PlaceCount = 0
 	WorkerThreads = min(len(fStackSetNames), DefaultMaxWorkerThreads)
+
+	pbar = tqdm(desc=f'Finding instances from {len(fStackSetNames)} stacksets',
+	            total=len(fStackSetNames), unit=' stacksets'
+	            )
 
 	for x in range(WorkerThreads):
 		worker = FindStackSets(checkqueue)
@@ -289,6 +293,7 @@ def _find_stack_set_instances(fStackSetNames: dict, fRegion: str) -> list:
 				logging.warning(f"It's possible that the region {fRegion} hasn't been opted-into")
 				pass
 	checkqueue.join()
+	pbar.close()
 	return (f_combined_stack_set_instances)
 
 
