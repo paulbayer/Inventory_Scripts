@@ -4167,18 +4167,21 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 					elif isinstance(result[field], datetime):
 						# Recognizes the field as a date, and finds the necessary amount of string space to show that date, and assigns the length to "needed_space"
 						needed_space[field] = max(len(datetime.now().strftime('%x %X')), len(value['Heading']))
+					else:
+						# In case the field is a list or dict - for a subdisplay...
+						needed_space[field] = max(len(value['Heading']), needed_space[field])
 		except KeyError as my_Error:
 			logging.error(f"Error: {my_Error}")
 
 		# This writes out the headings
-		print("\t\t", end='') if subdisplay else None
+		print("\t", end='') if subdisplay else None
 		for field, value in sorted_display_dict.items():
 			header_format = needed_space[field]
 			print(f"{value['Heading']:{header_format}s} ", end='')
 		# Newline at the end of the headings
 		print()
 		# This writes out the dashes (separators)
-		print("\t\t", end='') if subdisplay else None
+		print("\t", end='') if subdisplay else None
 		for field, value in sorted_display_dict.items():
 			repeatvalue = needed_space[field]
 			print(f"{'-' * repeatvalue} ", end='')
@@ -4187,7 +4190,7 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 
 		# This writes out the data
 		for result in results_list:
-			print("\t\t", end='') if subdisplay else None
+			print("\t", end='') if subdisplay else None
 			for field, value in sorted_display_dict.items():
 				# This determines whether ths row provided is supposed to be displayed as a sub-report of the main row
 				if 'SubDisplay' in value.keys():
@@ -4255,12 +4258,12 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 							row += f"{result[field]:<{data_format},}|"
 						elif isinstance(result[field], float):
 							row += f"{result[field]:{data_format}f}|"
-						# TODO: Need to add in formatting for dates and booleans
 						elif isinstance(result[field], datetime):
 							row += f"{result[field].strftime('%c')}|"
 					row += '\n'
 					savefile.write(row)
-			print(f"\nData written to {my_filename}\n")
+			print(f"Data written to {my_filename}")
+			print("If your data had a sub-display for additional data, it cannot be written to file yet... ")
 
 	def handle_dict():
 		# If no results were passed, print nothing and just return
