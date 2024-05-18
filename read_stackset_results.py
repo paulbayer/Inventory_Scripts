@@ -21,13 +21,11 @@ parser.my_parser.add_argument(
 	"--stacksets_filename", "--ssf",
 	dest="StackSetsFilename",
 	metavar="Stacksets results from the script",
-	default="all",
 	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
 parser.my_parser.add_argument(
 	"--org_filename", "--of",
 	dest="OrgsFilename",
 	metavar="Stacksets results from the script",
-	default="all",
 	help="String fragment of the cloudformation stack or stackset(s) you want to check for.")
 args = parser.my_parser.parse_args()
 
