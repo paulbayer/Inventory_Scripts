@@ -11,6 +11,7 @@ from botocore.exceptions import ClientError
 from colorama import Fore, Style, init
 
 import Inventory_Modules
+from Inventory_Modules import random_string
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 
@@ -297,18 +298,18 @@ def _find_stack_set_instances(fStackSetNames: dict, fRegion: str) -> list:
 	return (f_combined_stack_set_instances)
 
 
-def random_string(stringLength=10):
-	"""
-	Description: Generates a random string, to add to the session object when connecting to an account - to make the session unique
-	@param stringLength: to determine the length of the random number generated
-	@return: returns a random string of characters of length "stringlength"
-	"""
-	import random
-	import string
-	# Generate a random string of fixed length
-	letters = string.ascii_lowercase
-	randomstring = (''.join(random.choice(letters) for _ in range(stringLength)))
-	return (randomstring)
+# def random_string(stringLength=10):
+# 	"""
+# 	Description: Generates a random string, to add to the session object when connecting to an account - to make the session unique
+# 	@param stringLength: to determine the length of the random number generated
+# 	@return: returns a random string of characters of length "stringlength"
+# 	"""
+# 	import random
+# 	import string
+# 	# Generate a random string of fixed length
+# 	letters = string.ascii_lowercase
+# 	randomstring = (''.join(random.choice(letters) for _ in range(stringLength)))
+# 	return (randomstring)
 
 
 def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):

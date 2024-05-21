@@ -4016,6 +4016,20 @@ def find_ssm_parameters3(faws_acct, fregion=None):
 	return response2
 
 
+def random_string(stringLength=10):
+	"""
+	Description: Generates a random string, to add to the session object when connecting to an account - to make the session unique
+	@param stringLength: to determine the length of the random number generated
+	@return: returns a random string of characters of length "stringlength"
+	"""
+	import random
+	import string
+	# Generate a random string of fixed length
+	letters = string.ascii_lowercase
+	randomstring = (''.join(random.choice(letters) for _ in range(stringLength)))
+	return (randomstring)
+
+
 def get_region_azs2(ocredentials):
 	"""
 	ocredentials is an object with the following structure:
