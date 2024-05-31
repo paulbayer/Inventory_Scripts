@@ -10,8 +10,7 @@ from time import sleep, time
 from botocore.exceptions import ClientError
 from colorama import Fore, Style, init
 
-import Inventory_Modules
-from Inventory_Modules import random_string
+from Inventory_Modules import random_string, get_ec2_regions3, get_regions3, find_stack_instances3, find_stacksets3, get_child_access3, check_stack_set_status3, delete_stackset3, delete_stack_instances3
 from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 
@@ -120,7 +119,7 @@ def setup_auth_and_regions(fProfile: str) -> (aws_acct_access, list):
 		logging.error(f"Exiting due to error: {my_Error}")
 		sys.exit(8)
 
-	AllRegions = Inventory_Modules.get_ec2_regions3(aws_acct)
+	AllRegions = get_ec2_regions3(aws_acct)
 
 	if pRegion.lower() not in AllRegions:
 		print()
@@ -142,7 +141,7 @@ def setup_auth_and_regions(fProfile: str) -> (aws_acct_access, list):
 	print(f"\t\tIn the {aws_acct.AccountType} account {aws_acct.acct_number}")
 	print(f"\t\tIn this Region: {pRegion}")
 
-	RegionList = Inventory_Modules.get_regions3(aws_acct, pRegionModifyList)
+	RegionList = get_regions3(aws_acct, pRegionModifyList)
 
 	if pRegionModifyList is None:
 		print(f"\t\tFor stack instances across all enabled Regions")
@@ -194,7 +193,7 @@ def _find_stack_set_instances(fStackSetNames: dict, fRegion: str) -> list:
 					# for i in range(len(fStackSetNames['StackSets'])):
 					logging.info(f"{ERASE_LINE}Looking through {c_PlaceCount} of {len(fStackSetNames)} stacksets found with '{pStackfrag}' string in them")
 					# TODO: Creating the list to delete this way prohibits this script from including stacksets that are already empty. This should be fixed.
-					StackInstances = Inventory_Modules.find_stack_instances3(aws_acct, c_region, c_stacksetname)
+					StackInstances = find_stack_instances3(aws_acct, c_region, c_stacksetname)
 					logging.warning(f"Found {len(StackInstances)} Stack Instances within the StackSet {c_stacksetname}, without filtering on the specific accounts we were looking for")
 					if len(StackInstances) == 0 and pAccountModifyList is None and pRegionModifyList is None:
 						# logging.warning(f"While we didn't find any stack instances within {fStackSetNames['StackSets'][i]['StackSetName']}, we assume you want to delete it, even when it's empty")
@@ -411,7 +410,7 @@ def get_stack_set_deployment_target_info(faws_acct: aws_acct_access, fRegion: st
 	"""
 	return_result = {'Success': False, 'ErrorMessage': None, 'Results': None}
 	if fAccountRemovalList is None:
-		deployment_results = Inventory_Modules.find_stack_instances3(faws_acct, fRegion, fStackSetName)
+		deployment_results = find_stack_instances3(faws_acct, fRegion, fStackSetName)
 		identified_ous = list(set([x['OrganizationalUnitId'] for x in deployment_results]))
 		DeploymentTargets = {
 			# 'Accounts'             : [
@@ -448,7 +447,7 @@ def collect_cfnstacksets(faws_acct: aws_acct_access, fRegion: str) -> dict:
 	"""
 	# TODO: Wrap in try... except to capture errors here, and when we do - stop using this as a dict!!.
 	# Get the StackSet names from the Management Account
-	StackSetNames = Inventory_Modules.find_stacksets3(faws_acct, fRegion, pStackfrag, pExact, fGetHealth=True)
+	StackSetNames = find_stacksets3(faws_acct, fRegion, pStackfrag, pExact, fGetHealth=True)
 	if not StackSetNames['Success']:
 		error_message = "Something went wrong with the AWS connection. Please check the parameters supplied and try again."
 		sys.exit(error_message)
@@ -514,7 +513,7 @@ def check_accounts(faws_acct: aws_acct_access, AccountList: list):
 	# TODO: Wrap in Try...Except
 	for accountnum in AccountList:
 		logging.info(f"{ERASE_LINE}Trying to gain access to account number {accountnum}")
-		my_creds = Inventory_Modules.get_child_access3(faws_acct, accountnum)
+		my_creds = get_child_access3(faws_acct, accountnum)
 		if my_creds['AccessError']:
 			InaccessibleAccounts.append({'AccountId' : accountnum,
 			                             'Success'   : my_creds['Success'],
@@ -708,7 +707,7 @@ def _modify_stacksets(StackSet_Dict: dict) -> dict:
 					StackInstancesAreGone['StackSetStatus'] = "Not yet assigned"
 				# else if there WERE child stacks that were deleted
 				else:
-					StackInstancesAreGone = Inventory_Modules.check_stack_set_status3(aws_acct, StackSetName, RemoveStackInstanceResult['OperationId'])
+					StackInstancesAreGone = check_stack_set_status3(aws_acct, StackSetName, RemoveStackInstanceResult['OperationId'])
 					logging.debug(f"The operation id {RemoveStackInstanceResult['OperationId']} is {StackInstancesAreGone['StackSetStatus']}")
 				if not StackInstancesAreGone['Success']:
 					logging.critical(f"There was a problem with removing the stack instances from stackset {StackSetName}."
@@ -720,10 +719,10 @@ def _modify_stacksets(StackSet_Dict: dict) -> dict:
 					      f"{sleep_interval * intervals_waited} seconds waited so far", end='\r')
 					sleep(sleep_interval)
 					intervals_waited += 1
-					StackInstancesAreGone = Inventory_Modules.check_stack_set_status3(aws_acct, StackSetName, RemoveStackInstanceResult['OperationId'])
+					StackInstancesAreGone = check_stack_set_status3(aws_acct, StackSetName, RemoveStackInstanceResult['OperationId'])
 					if not StackInstancesAreGone['Success']:
 						logging.critical(f"There was a problem with removing the stack instances from stackset {StackSetName}.")
-				StackSetResult = Inventory_Modules.delete_stackset3(aws_acct, pRegion, StackSetName)
+				StackSetResult = delete_stackset3(aws_acct, pRegion, StackSetName)
 				if StackSetResult['Success']:
 					print(f"{ERASE_LINE}Removal of stackset {StackSetName} took {sleep_interval * intervals_waited} seconds")
 				else:
@@ -794,7 +793,7 @@ def _delete_stack_instances(faws_acct: aws_acct_access, fRegion: str, fStackSetN
 		return_response = {'Success': False, 'ErrorMessage': "Failed - StackSet is 'Service_Managed' but no deployment target was provided"}
 		return return_response
 	try:
-		delete_stack_instance_response = Inventory_Modules.delete_stack_instances3(faws_acct, fRegion, fRegionList, fStackSetName, fRetain, StackSetOpId,
+		delete_stack_instance_response = delete_stack_instances3(faws_acct, fRegion, fRegionList, fStackSetName, fRetain, StackSetOpId,
 		                                                                           fAccountList, fPermissionModel, fDeploymentTargets)
 		if delete_stack_instance_response['Success']:
 			return_response = {'Success': True, 'OperationId': delete_stack_instance_response['OperationId']}
