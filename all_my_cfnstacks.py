@@ -13,15 +13,15 @@ import logging
 
 init()
 
-__version__ = '2024.04.04'
+__version__ = '2024.05.31'
 
 ###########################
 
 
-def parse_args(args):
+def parse_args(f_arguments):
 	"""
 	Description: Parses the arguments passed into the script
-	@param args: args represents the list of arguments passed in
+	@param f_arguments: args represents the list of arguments passed in
 	@return: returns an object namespace that contains the individualized parameters passed in
 	"""
 	script_path, script_name = split(sys.argv[0])
@@ -60,7 +60,7 @@ def parse_args(args):
 		dest="DeletionRun",
 		action="store_true",
 		help="This will delete the stacks found - without any opportunity to confirm. Be careful!!")
-	return parser.my_parser.parse_args(args)
+	return parser.my_parser.parse_args(f_arguments)
 
 
 def setup_auth_accounts_and_regions(fProfile: str, fRegionList:list=None, fAccountList:list=None, fSkipAccounts:list=None, fStackFrag:list=None, fExact:bool=False, fDeletionRun:bool=False) -> (aws_acct_access, list, list):

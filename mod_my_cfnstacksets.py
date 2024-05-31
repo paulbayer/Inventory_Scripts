@@ -38,18 +38,19 @@ TODO:
 
 init()
 
-__version__ = "2024.02.19"
+__version__ = "2024.05.31"
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 sleep_interval = 5
 # Seems low, but this fits under the API threshold. Make it too high and it will not.
 DefaultMaxWorkerThreads = 5
 
+
 ###################
-def parse_args(args: object):
+def parse_args(f_arguments: object):
 	"""
 	Description: Parses the arguments passed into the script
-	@param args: args represents the list of arguments passed in
+	@param f_arguments: args represents the list of arguments passed in
 	@return: returns an object namespace that contains the individualized parameters passed in
 	"""
 	parser = CommonArguments()
@@ -102,7 +103,7 @@ def parse_args(args: object):
 		help="Remove the stack instances from the stackset, but retain the resources. You must also specify '+delete' to use this parameter",
 		action="store_true",
 		dest="Retain")
-	return (parser.my_parser.parse_args(args))
+	return parser.my_parser.parse_args(f_arguments)
 
 
 def setup_auth_and_regions(fProfile: str) -> (aws_acct_access, list):
@@ -161,7 +162,7 @@ def setup_auth_and_regions(fProfile: str) -> (aws_acct_access, list):
 	print(f"\t\tWe'll also display those accounts in the stacksets that are no longer part of the organization") if pCheckAccount else ""
 	print(f"\t\tWe'll refresh the stackset with fragments {pStackfrag}") if pRefresh else ""
 	print()
-	return (aws_acct, RegionList)
+	return aws_acct, RegionList
 
 
 def _find_stack_set_instances(fStackSetNames: dict, fRegion: str) -> list:
@@ -209,7 +210,7 @@ def _find_stack_set_instances(fStackSetNames: dict, fRegion: str) -> list:
 							'PermissionModel'     : c_stackset_info['PermissionModel'] if 'PermissionModel' in c_stackset_info else 'SELF_MANAGED',
 							'StackSetName'        : c_stacksetname,
 							'LastOperationId'     : None
-						})
+							})
 					for StackInstance in StackInstances:
 						if 'StackId' not in StackInstance.keys():
 							logging.info(f"The stack instance found {StackInstance} doesn't have a stackid associated. Which means it's never been deployed and probably OUTDATED")
@@ -237,7 +238,7 @@ def _find_stack_set_instances(fStackSetNames: dict, fRegion: str) -> list:
 									'PermissionModel'     : c_stackset_info['PermissionModel'] if 'PermissionModel' in c_stackset_info else 'SELF_MANAGED',
 									'StackSetName'        : c_stacksetname,
 									'LastOperationId'     : StackInstance['LastOperationId']
-								})
+									})
 						elif not (StackInstance['Account'] in pAccountModifyList):
 							# If the user only wants to remove the stack instances associated with specific accounts,
 							# then we only want to capture those stack instances where the account number shows up.
@@ -295,21 +296,7 @@ def _find_stack_set_instances(fStackSetNames: dict, fRegion: str) -> list:
 				pass
 	checkqueue.join()
 	pbar.close()
-	return (f_combined_stack_set_instances)
-
-
-# def random_string(stringLength=10):
-# 	"""
-# 	Description: Generates a random string, to add to the session object when connecting to an account - to make the session unique
-# 	@param stringLength: to determine the length of the random number generated
-# 	@return: returns a random string of characters of length "stringlength"
-# 	"""
-# 	import random
-# 	import string
-# 	# Generate a random string of fixed length
-# 	letters = string.ascii_lowercase
-# 	randomstring = (''.join(random.choice(letters) for _ in range(stringLength)))
-# 	return (randomstring)
+	return f_combined_stack_set_instances
 
 
 def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):
@@ -349,7 +336,8 @@ def display_stack_set_health(StackSet_Dict: dict, Account_Dict: dict):
 			'DetailedStatus': detailed_status,
 			'StatusReason'  : status_reason,
 			'LastOperation' : last_operation,
-		})
+			'OrganizationalUnitId': ou
+			})
 		summary[stack_set_name]['Status'] = StackSetNames[stack_set_name]['Status']
 
 	# Print the summary
@@ -432,19 +420,19 @@ def get_stack_set_deployment_target_info(faws_acct: aws_acct_access, fRegion: st
 			# 'AccountsUrl'          : 'string',
 			'OrganizationalUnitIds': identified_ous
 			# 'AccountFilterType'    : 'NONE' | 'INTERSECTION' | 'DIFFERENCE' | 'UNION'
-		}
+			}
 	else:
 		DeploymentTargets = {
 			'Accounts': fAccountRemovalList,
 			# 'AccountsUrl'          : 'string',
 			# 'OrganizationalUnitIds': identified_ous
 			# 'AccountFilterType'    : 'NONE' | 'INTERSECTION' | 'DIFFERENCE' | 'UNION'
-		}
+			}
 	return_result.update({'Success': True, 'ErrorMessage': None, 'Results': DeploymentTargets})
-	return (return_result)
+	return return_result
 
 
-def collect_cfnstacksets(faws_acct: aws_acct_access, fRegion: str) -> (dict):
+def collect_cfnstacksets(faws_acct: aws_acct_access, fRegion: str) -> dict:
 	"""
 	Description: This function collects the information about existing stacksets
 	@param faws_acct: Account Object of type "aws_acct_access"
@@ -472,8 +460,6 @@ def collect_cfnstacksets(faws_acct: aws_acct_access, fRegion: str) -> (dict):
 	print(ERASE_LINE)
 	logging.info(f"Found {len(combined_stack_set_instances)} stack instances, filtered on specific accounts.")
 
-	FoundAccountList = []
-	FoundRegionList = []
 	# Assumes that all stacksets found are "Applicable"
 	ApplicableStackSetsList = sorted(list(set([stackset_name for stackset_name in StackSetNames['StackSets'].keys()])))
 	# The checks for None below are required in case the stackset has no instances.
@@ -516,7 +502,7 @@ def collect_cfnstacksets(faws_acct: aws_acct_access, fRegion: str) -> (dict):
 	                 'ApplicableStackSetInstancesList': ApplicableStackSetInstancesList,
 	                 'FoundAccountList'               : FoundAccountList,
 	                 'FoundRegionList'                : FoundRegionList}
-	return (StackSet_Dict)
+	return StackSet_Dict
 
 
 def check_accounts(faws_acct: aws_acct_access, AccountList: list):
@@ -536,7 +522,7 @@ def check_accounts(faws_acct: aws_acct_access, AccountList: list):
 	Account_Dict.update({'InaccessibleAccounts': InaccessibleAccounts,
 	                     'RemovedAccounts'     : RemovedAccounts,
 	                     'AccountList'         : AccountList})
-	return (Account_Dict)
+	return Account_Dict
 
 
 def check_on_stackset_operations(OpsList: list, f_cfn_client):
@@ -565,7 +551,7 @@ def check_on_stackset_operations(OpsList: list, f_cfn_client):
 			print(f"Waiting {sleep_interval} seconds before checking all stacksets again... ")
 			print()
 			sleep(sleep_interval)
-	return (stackset_results)
+	return stackset_results
 
 
 def _modify_stacksets(StackSet_Dict: dict) -> dict:
@@ -707,7 +693,6 @@ def _modify_stacksets(StackSet_Dict: dict) -> dict:
 			elif not ReallyDelete and not pConfirm:
 				sys.exit(RemoveStackInstanceResult['ErrorMessage'])
 			else:
-				# elif RemoveStackInstanceResult['ErrorMessage'] == 'Failed-Other':
 				print(f"{Fore.RED}Something else failed... Please report the error below{Fore.RESET}")
 				logging.critical(f"{RemoveStackInstanceResult['ErrorMessage']}")
 				sys.exit(RemoveStackInstanceResult['ErrorMessage'])
@@ -732,7 +717,6 @@ def _modify_stacksets(StackSet_Dict: dict) -> dict:
 				intervals_waited = 1
 				while StackInstancesAreGone['StackSetStatus'] in ['RUNNING']:
 					print(f"Waiting for operation {RemoveStackInstanceResult['OperationId']} to finish",
-					      # f"." * intervals_waited,
 					      f"{sleep_interval * intervals_waited} seconds waited so far", end='\r')
 					sleep(sleep_interval)
 					intervals_waited += 1
@@ -746,7 +730,7 @@ def _modify_stacksets(StackSet_Dict: dict) -> dict:
 					print(f"{ERASE_LINE}{Fore.RED}Removal of stackset {StackSetName} {Style.BRIGHT}failed{Style.NORMAL} due to:\n\t{StackSetResult['ErrorMessage']}.{Fore.RESET}")
 			results.update({StackSetName: StackSetResult})
 		results['ChangesMade'] = True
-		return (results)
+		return results
 	# If we're supposed to be adding more instances to the existing stacksets
 	elif pAddNew:
 		print()
@@ -765,26 +749,20 @@ def _modify_stacksets(StackSet_Dict: dict) -> dict:
 			logging.error(f"You specified to '+add', but didn't specify any new accounts or regions to add... exiting... ")
 			sys.exit(95)
 		operation_result['ChangesMade'] = True
-		return (operation_result)
+		return operation_result
 	# If we are just refreshing the specific stacksets (within the "ApplicableStackSetsList")
 	elif pRefresh and len(applicable_stack_set_instances) > 0:
 		operation_result = _refresh_stacksets(StackSet_Dict)
 		operation_result['ChangesMade'] = True
-		return (operation_result)
+		return operation_result
 	# No matching stacksets, or no matching stackset instances
 	else:
 		print(f"{Fore.RED}You asked us to make a change, but there are no matching stacksets or stackset instances to modify...{Fore.RESET}")
-		# logging.warning(f"While deletion was requested within {len(StackSets)} "
-		#                 f"stackset{'' if len(StackSets) == 1 else 's'}, "
-		#                 f"th{'is' if len(StackSets) == 1 else 'ese'} "
-		#                 f"stackset{'' if len(StackSets) == 1 else 's'} "
-		#                 f"do{'es' if len(StackSets) == 1 else ''}n't contain "
-		#                 f"the criteria - {pStackfrag} - you were looking for")
 		operation_result = dict()
 		operation_result['ChangesMade'] = False
 		for stackset_name, stackset_data in StackSets.items():
 			operation_result[stackset_name] = stackset_data['Status']
-		return (operation_result)
+		return operation_result
 
 
 def _delete_stack_instances(faws_acct: aws_acct_access, fRegion: str, fStackSetName: str, fRetain: bool, fAccountList: list = None, fRegionList: list = None, fPermissionModel='SELF_MANAGED', fDeploymentTargets=None) -> dict:
@@ -809,12 +787,12 @@ def _delete_stack_instances(faws_acct: aws_acct_access, fRegion: str, fStackSetN
 		logging.warning(f"RegionList: {fRegionList}")
 		# Note: The "Success" is True below to show that the calling function can move forward, even though the Account / Regions are null
 		return_response = {'Success': True, 'ErrorMessage': "Failed - Account List or Region List was null"}
-		return (return_response)
+		return return_response
 	elif fPermissionModel == 'SERVICE_MANAGED' and fDeploymentTargets is None:
 		logging.error(f"You can't provide a stackset that is self-managed, and not supply the deployment targets it's supposed to delete")
 		# Note: The "Success" is True below to show that the calling function can move forward, even though the Account / Regions are null
 		return_response = {'Success': False, 'ErrorMessage': "Failed - StackSet is 'Service_Managed' but no deployment target was provided"}
-		return (return_response)
+		return return_response
 	try:
 		delete_stack_instance_response = Inventory_Modules.delete_stack_instances3(faws_acct, fRegion, fRegionList, fStackSetName, fRetain, StackSetOpId,
 		                                                                           fAccountList, fPermissionModel, fDeploymentTargets)
@@ -822,17 +800,17 @@ def _delete_stack_instances(faws_acct: aws_acct_access, fRegion: str, fStackSetN
 			return_response = {'Success': True, 'OperationId': delete_stack_instance_response['OperationId']}
 		else:
 			return_response = {'Success': False, 'ErrorMessage': delete_stack_instance_response['ErrorMessage']}
-		return (return_response)
+		return return_response
 	except Exception as my_Error:
 		logging.error(f"Error: {my_Error}")
 		if my_Error.response['Error']['Code'] == 'StackSetNotFoundException':
 			logging.info("Caught exception 'StackSetNotFoundException', ignoring the exception...")
 			return_response = {'Success': False, 'ErrorMessage': "Failed - StackSet not found"}
-			return (return_response)
+			return return_response
 		else:
 			print("Failure to run: ", my_Error)
 			return_response = {'Success': False, 'ErrorMessage': "Failed-Other"}
-			return (return_response)
+			return return_response
 
 
 def _refresh_stacksets(StackSet_Dict: dict) -> dict:
@@ -846,7 +824,6 @@ def _refresh_stacksets(StackSet_Dict: dict) -> dict:
 		# Get current attributes for the stacksets we've found...
 		stacksetAttributes = cfn_client.describe_stack_set(StackSetName=stackset)
 		# Then re-run those same stacksets, supplying the same information back to them -
-		ReallyRefresh = False
 		ReallyRefresh = (input(f"Refresh of {Fore.RED}{stackset}{Fore.RESET} has been requested.\n"
 		                       f"Drift Status of the stackset is: {stacksetAttributes['StackSet']['StackSetDriftDetectionDetails']['DriftStatus']}\n"
 		                       f"Are you still sure? (y/n): ") in ['y', 'Y']) if not pRetain else False
@@ -861,7 +838,7 @@ def _refresh_stacksets(StackSet_Dict: dict) -> dict:
 					                                                'RegionConcurrencyType'  : 'PARALLEL',
 					                                                'FailureToleranceCount'  : 0,
 					                                                'MaxConcurrentPercentage': 100
-				                                                })
+					                                                })
 			else:
 				refresh_stack_set = cfn_client.update_stack_set(StackSetName=stacksetAttributes['StackSet']['StackSetName'],
 				                                                UsePreviousTemplate=True,
@@ -870,13 +847,13 @@ def _refresh_stacksets(StackSet_Dict: dict) -> dict:
 					                                                'RegionConcurrencyType'  : 'PARALLEL',
 					                                                'FailureToleranceCount'  : 0,
 					                                                'MaxConcurrentPercentage': 100
-				                                                },
+					                                                },
 				                                                AdministrationRoleARN=stacksetAttributes['StackSet']['AdministrationRoleARN'],
 				                                                )
 			RefreshOpsList.append({'StackSetName': stackset,
 			                       'OperationId' : refresh_stack_set['OperationId']})
 	OperationResult = check_on_stackset_operations(RefreshOpsList, cfn_client)
-	return (OperationResult)
+	return OperationResult
 
 
 def _add_instances_to_stacksets(StackSet_Dict: dict, accounts_to_add: list, regions_to_add: list = None) -> dict:
@@ -907,7 +884,7 @@ def _add_instances_to_stacksets(StackSet_Dict: dict, accounts_to_add: list, regi
 		else:
 			print(f"{Fore.RED}Skipping {stackset}...{Fore.RESET}")
 	OperationResult = check_on_stackset_operations(AddStacksList, cfn_client)
-	return (OperationResult)
+	return OperationResult
 
 
 ##########################

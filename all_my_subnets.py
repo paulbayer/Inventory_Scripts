@@ -14,7 +14,7 @@ from ArgumentsClass import CommonArguments
 from Inventory_Modules import display_results, get_all_credentials
 
 init()
-__version__ = "2024.02.02"
+__version__ = "2024.05.31"
 
 
 ##################
@@ -116,7 +116,7 @@ def check_accounts_for_subnets(CredentialList, fip=None):
 				logging.warning(f"It's possible that the region {credential['Region']} hasn't been opted-into")
 				pass
 	checkqueue.join()
-	return (AllSubnets)
+	return AllSubnets
 
 
 def present_results(fSubnetsFound: list):
