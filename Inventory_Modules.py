@@ -2279,18 +2279,21 @@ def get_lambda_code_url(fprofile, fregion, fFunctionName):
 	return code_url
 
 
-def find_directories2(ocredentials, fRegion='us-east-1', fSearchStrings=None):
+def find_directories2(ocredentials, fRegion='us-east-1', fSearchStrings=None, fExact: bool = False):
 	"""
-	ocredentials is an aws_acct object
-	fRegion is a string
-	fSearchString is a list of strings
+	Description: This function will search for directories in an account/region
+	@param: ocredentials is an aws_acct object
+	@param: fRegion is a string
+	@param: fSearchString is a list of strings
+	@param: fExact is a boolean to determine whether to search for an exact match or a fragment
+	@return: List of directories found in account/ region
 	"""
 	import logging
 	import boto3
 
 	directories2 = []
 	directories = []
-	# TODO: Add pagination here
+	all_directories = []
 	try:
 		session_ds = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
 		                           aws_secret_access_key=ocredentials['SecretAccessKey'],
@@ -2298,12 +2301,17 @@ def find_directories2(ocredentials, fRegion='us-east-1', fSearchStrings=None):
 		                           aws_session_token=ocredentials['SessionToken'])
 		client_ds = session_ds.client('ds', region_name=fRegion)
 		# TODO: Need paging here
-		directories = client_ds.describe_directories()['DirectoryDescriptions']
-		logging.info(f"Found {len(directories)} directories: {directories}")
+		directories = client_ds.describe_directories()
+		all_directories.extend(directories['DirectoryDescriptions'])
+		while 'NextToken' in directories.keys():
+			directories = client_ds.describe_directories(NextToken=directories['NextToken'])
+			all_directories.extend(directories['DirectoryDescriptions'])
+		logging.info(f"Found {len(all_directories)} directories: {all_directories}")
 	except AttributeError as my_Error:
 		logging.info(f"Error: {my_Error}")
 	if fSearchStrings is None or 'all' in fSearchStrings:
-		for directory in directories:
+		# If we're sending everything back
+		for directory in all_directories:
 			logging.info(f"Found directory {directory['Name']}")
 			response_dict = {'DirectoryName': directory['Name'],
 			                 'DirectoryId'  : directory['DirectoryId'],
@@ -2320,14 +2328,20 @@ def find_directories2(ocredentials, fRegion='us-east-1', fSearchStrings=None):
 			directories2.append(response_dict)
 		return directories2
 	else:
-		for directory in directories:
+		# If we're only sending back that which matches a fragment or EXACT
+		for directory in all_directories:
 			for searchitem in fSearchStrings:
-				if searchitem in directory['Name'] or searchitem in directory['DirectoryId']:
+				Collectitem = False
+				if fExact and (searchitem == directory['Name'] or searchitem == directory['DirectoryId']):
+					Collectitem = True
+				elif not fExact and (searchitem in directory['Name'] or searchitem in directory['DirectoryId']):
+					Collectitem = True
+				if Collectitem:
 					logging.info(f"Found fragment {searchitem} in directory {directory['Name']} in account {ocredentials['AccountId']}")
 					response_dict = {'DirectoryName': directory['Name'],
 					                 'DirectoryId'  : directory['DirectoryId'],
 					                 'Status'       : directory.get('ShareStatus', 'Owned'),
-					                 'Type'         : directory['Type'], }
+					                 'Type'         : directory['Type']}
 					if 'RegionsInfo' in directory:
 						response_dict.update({'HomeRegion': directory['RegionsInfo'].get('PrimaryRegion', None)})
 					else:
