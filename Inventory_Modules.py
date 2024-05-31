@@ -2354,71 +2354,71 @@ def find_directories2(ocredentials, fRegion='us-east-1', fSearchStrings=None, fE
 		return directories2
 
 
-def find_directories3(faws_acct, fRegion='us-east-1', fSearchStrings=None):
-	"""
-	faws_acct is an aws_acct object
-	fRegion is a string
-	fSearchString is a list of strings
-	"""
-	import logging
-
-	directories2 = []
-	# TODO: Add pagination here
-	try:
-		client_ds = faws_acct.session.client('ds', region_name=fRegion)
-		directories = client_ds.describe_directories()['DirectoryDescriptions']
-		logging.info(f"Found {len(directories)} directories")
-	except AttributeError as my_Error:
-		logging.info(f"Error: {my_Error}")
-		return directories2
-	if fSearchStrings is None or 'all' in fSearchStrings:
-		for directory in directories:
-			logging.info(f"Found directory {directory['Name']}")
-			response_dict = {'DirectoryName': directory['Name'],
-			                 'DirectoryId'  : directory['DirectoryId'],
-			                 'Status'       : directory.get('ShareStatus', 'Owned'),
-			                 'Type'         : directory['Type'], }
-			if 'RegionsInfo' in directory:
-				response_dict.update({'HomeRegion': directory['RegionsInfo'].get('PrimaryRegion', None)})
-			else:
-				response_dict.update({'HomeRegion': fRegion})
-			if 'OwnerDirectoryDescription' in directory:
-				response_dict.update({'Owner': directory['OwnerDirectoryDescription'].get('AccountId', None)})
-			else:
-				response_dict.update({'Owner': faws_acct.acct_number})
-			directories2.append(response_dict)
-	else:
-		for directory in directories:
-			for searchitem in fSearchStrings:
-				if searchitem in directory['Name']:
-					logging.info(f"Found directory {directory['Name']}")
-					response_dict = {'DirectoryName': directory['Name'],
-					                 'DirectoryId'  : directory['DirectoryId'],
-					                 'Status'       : directory.get('ShareStatus', 'Owned'),
-					                 'Type'         : directory['Type'], }
-					if 'RegionsInfo' in directory:
-						response_dict.update({'HomeRegion': directory['RegionsInfo'].get('PrimaryRegion', None)})
-					else:
-						response_dict.update({'HomeRegion': fRegion})
-					if 'OwnerDirectoryDescription' in directory:
-						response_dict.update({'Owner': directory['OwnerDirectoryDescription'].get('AccountId', None)})
-					else:
-						response_dict.update({'Owner': faws_acct.acct_number})
-					directories2.append(response_dict)
-	return directories2
-
-
-def find_private_hosted_zones(fProfile, fRegion):
-	"""
-	SOON TO BE DEPRECATED
-
-	This library script returns the hosted zones within an account and a region
-	"""
-	import boto3
-	session_r53 = boto3.Session(profile_name=fProfile, region_name=fRegion)
-	phz_info = session_r53.client('route53')
-	hosted_zones = phz_info.list_hosted_zones()
-	return hosted_zones
+# def find_directories3(faws_acct, fRegion='us-east-1', fSearchStrings=None):
+# 	"""
+# 	faws_acct is an aws_acct object
+# 	fRegion is a string
+# 	fSearchString is a list of strings
+# 	"""
+# 	import logging
+#
+# 	directories2 = []
+# 	# TODO: Add pagination here
+# 	try:
+# 		client_ds = faws_acct.session.client('ds', region_name=fRegion)
+# 		directories = client_ds.describe_directories()['DirectoryDescriptions']
+# 		logging.info(f"Found {len(directories)} directories")
+# 	except AttributeError as my_Error:
+# 		logging.info(f"Error: {my_Error}")
+# 		return directories2
+# 	if fSearchStrings is None or 'all' in fSearchStrings:
+# 		for directory in directories:
+# 			logging.info(f"Found directory {directory['Name']}")
+# 			response_dict = {'DirectoryName': directory['Name'],
+# 			                 'DirectoryId'  : directory['DirectoryId'],
+# 			                 'Status'       : directory.get('ShareStatus', 'Owned'),
+# 			                 'Type'         : directory['Type'], }
+# 			if 'RegionsInfo' in directory:
+# 				response_dict.update({'HomeRegion': directory['RegionsInfo'].get('PrimaryRegion', None)})
+# 			else:
+# 				response_dict.update({'HomeRegion': fRegion})
+# 			if 'OwnerDirectoryDescription' in directory:
+# 				response_dict.update({'Owner': directory['OwnerDirectoryDescription'].get('AccountId', None)})
+# 			else:
+# 				response_dict.update({'Owner': faws_acct.acct_number})
+# 			directories2.append(response_dict)
+# 	else:
+# 		for directory in directories:
+# 			for searchitem in fSearchStrings:
+# 				if searchitem in directory['Name']:
+# 					logging.info(f"Found directory {directory['Name']}")
+# 					response_dict = {'DirectoryName': directory['Name'],
+# 					                 'DirectoryId'  : directory['DirectoryId'],
+# 					                 'Status'       : directory.get('ShareStatus', 'Owned'),
+# 					                 'Type'         : directory['Type'], }
+# 					if 'RegionsInfo' in directory:
+# 						response_dict.update({'HomeRegion': directory['RegionsInfo'].get('PrimaryRegion', None)})
+# 					else:
+# 						response_dict.update({'HomeRegion': fRegion})
+# 					if 'OwnerDirectoryDescription' in directory:
+# 						response_dict.update({'Owner': directory['OwnerDirectoryDescription'].get('AccountId', None)})
+# 					else:
+# 						response_dict.update({'Owner': faws_acct.acct_number})
+# 					directories2.append(response_dict)
+# 	return directories2
+#
+#
+# def find_private_hosted_zones(fProfile, fRegion):
+# 	"""
+# 	SOON TO BE DEPRECATED
+#
+# 	This library script returns the hosted zones within an account and a region
+# 	"""
+# 	import boto3
+# 	session_r53 = boto3.Session(profile_name=fProfile, region_name=fRegion)
+# 	phz_info = session_r53.client('route53')
+# 	hosted_zones = phz_info.list_hosted_zones()
+# 	return hosted_zones
 
 
 def find_private_hosted_zones2(ocredentials, fRegion=None):
