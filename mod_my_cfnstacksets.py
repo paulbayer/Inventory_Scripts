@@ -923,6 +923,8 @@ if __name__ == '__main__':
 	if ChangesRequested:
 		operation_result = _modify_stacksets(StackSet_Info)
 		ChangesMade = operation_result['ChangesMade']
+	else:
+		ChangesMade = False
 	# Handle the checking of accounts to see if there any that don't belong in the Org.
 	Account_Dict = {}
 	if pCheckAccount:
