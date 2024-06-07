@@ -157,11 +157,11 @@ def traverse_ous_and_accounts(ou_id: str, dot):
 	# Retrieve the child OUs under the current OU, and use pagination, since it's possible to have so many OUs that pagination is required.
 	all_child_ous = []
 	child_ous = org_client.list_organizational_units_for_parent(ParentId=ou_id)
-	all_child_ous.extend(child_ous)
+	all_child_ous = child_ous['OrganizationalUnits']
 	while 'NextToken' in child_ous.keys():
 		child_ous = org_client.list_organizational_units_for_parent(ParentId=ou_id, NextToken=child_ous['NextToken'])
-		all_child_ous.extend(child_ous)
-	for child_ou in all_child_ous['OrganizationalUnits']:
+		all_child_ous.extend(child_ous['OrganizationalUnits'])
+	for child_ou in all_child_ous:
 		child_ou_id = child_ou['Id']
 		# Recursively traverse the child OU and add edges to the diagram
 		traverse_ous_and_accounts(child_ou_id, dot)
