@@ -88,7 +88,7 @@ def find_all_instances(fAllCredentials: list, fStatus: str = None) -> list:
 							for z in range(len(Instances['Reservations'][y]['Instances'])):
 								InstanceType = Instances['Reservations'][y]['Instances'][z]['InstanceType']
 								InstanceId = Instances['Reservations'][y]['Instances'][z]['InstanceId']
-								PublicDnsName = Instances['Reservations'][y]['Instances'][z]['PublicDnsName']
+								PublicDnsName = Instances['Reservations'][y]['Instances'][z]['PublicDnsName'] if 'PublicDnsName' in Instances['Reservations'][y]['Instances'][z] else "No Public DNS Name"
 								State = Instances['Reservations'][y]['Instances'][z]['State']['Name']
 								Name = "No Name Tag"
 								try:
