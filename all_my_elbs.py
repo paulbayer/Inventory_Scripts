@@ -77,7 +77,7 @@ def find_all_elbs(fAllCredentials: list, ffragment: list, fstatus: str):
 					for lb in LoadBalancers:
 						All_Load_Balancers.append({
 							# 'ParentProfile': aws_acct.Profile,
-							'MgmtAccount': c_account_credentials,
+							'MgmtAccount': c_account_credentials['MgmtAccount'],
 							'AccountId'  : c_account_credentials['AccountId'],
 							'Region'     : c_account_credentials['Region'],
 							'Name'       : lb['LoadBalancerName'],
