@@ -188,7 +188,7 @@ if __name__ == '__main__':
 		             'Region'           : pRegion,
 		             'stack_ids'        : stack_ids}
 		file_data = json.dumps(BigString, sort_keys=True, indent=4 * ' ')
-		OutputFilename = (f"{pOldStackSetName}-{pNewStackSetName}-{aws_acct.acct_number}-{pRegion}")
+		OutputFilename = f"{pOldStackSetName}-{pNewStackSetName}-{aws_acct.acct_number}-{pRegion}"
 		with open(OutputFilename, 'w') as out:
 			print(file_data, file=out)
 

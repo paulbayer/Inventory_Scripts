@@ -87,7 +87,7 @@ def setup_auth_accounts_and_regions(fProfile: str) -> (aws_acct_access, list, li
 	if pSkipAccounts is not None:
 		print(f"\tWhile skipping these accounts: {Fore.RED}{pSkipAccounts}{Fore.RESET}")
 
-	return (aws_acct, AccountList, RegionList)
+	return aws_acct, AccountList, RegionList
 
 def find_all_cfnstacksets(f_All_Credentials:list, f_Fragments:list, f_Status)->list:
 	"""

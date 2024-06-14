@@ -50,7 +50,7 @@ def parse_args(args):
 		type=int,
 		default=15,
 		help="Days since the drift_status was checked, to be acceptable")
-	return (parser.my_parser.parse_args(args))
+	return parser.my_parser.parse_args(args)
 
 
 def setup_auth(fProfile: str) -> aws_acct_access:
@@ -83,7 +83,7 @@ def setup_auth(fProfile: str) -> aws_acct_access:
 	print(f"\t\tand enable drift detection on those stacksets, if they're not current") if pEnableDriftDetection else ''
 
 	print()
-	return (aws_acct)
+	return aws_acct
 
 
 def find_stack_sets(faws_acct: aws_acct_access, fStackSetFragmentlist: list = None, fExact: bool = False) -> dict:
@@ -94,7 +94,7 @@ def find_stack_sets(faws_acct: aws_acct_access, fStackSetFragmentlist: list = No
 		StackSets = Inventory_Modules.find_stacksets3(faws_acct, faws_acct.Region, fStackSetFragmentlist, fExact, True)
 	except ClientError as my_Error:
 		if "AuthFailure" in str(my_Error):
-			error_message = (f"{aws_acct.acct_number}: Authorization Failure")
+			error_message = f"{aws_acct.acct_number}: Authorization Failure"
 			logging.error(error_message)
 		else:
 			error_message = f"Error: {my_Error}"
@@ -104,7 +104,7 @@ def find_stack_sets(faws_acct: aws_acct_access, fStackSetFragmentlist: list = No
 		error_message = f"Error: {my_Error}"
 		logging.error(error_message)
 		StackSets['ErrorMessage'] = error_message
-	return (StackSets)
+	return StackSets
 
 
 def enable_stack_set_drift_detection(faws_acct: aws_acct_access, fStackSets: dict = None):
@@ -178,7 +178,7 @@ def enable_stack_set_drift_detection(faws_acct: aws_acct_access, fStackSets: dic
 				logging.error(f"It's possible that the region {faws_acct.Region} hasn't been opted-into")
 				pass
 	checkqueue.join()
-	return (fStackSets)
+	return fStackSets
 
 
 def days_between_dates(fdate1: datetime, fdays_since: int):
@@ -187,7 +187,7 @@ def days_between_dates(fdate1: datetime, fdays_since: int):
 	# Ensure that the input parameter is a datetime object
 	if fdate1 is None:
 		response = {'Current': False, 'ErrorMessage': 'Drift Status never checked'}
-		return (response)
+		return response
 	elif not isinstance(fdate1, datetime):
 		raise ValueError("Date passed in should be datetime object")
 

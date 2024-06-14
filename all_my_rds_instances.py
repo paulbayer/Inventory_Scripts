@@ -23,14 +23,14 @@ def parse_args(args):
 	@return: returns an object namespace that contains the individualized parameters passed in
 	"""
 	parser = CommonArguments()
-	parser.my_parser.description = ("We're going to find all rds instances within any of the accounts we have access to, given the profile(s) provided.")
+	parser.my_parser.description = "We're going to find all rds instances within any of the accounts we have access to, given the profile(s) provided."
 	parser.multiprofile()
 	parser.multiregion()
 	parser.timing()
 	parser.save_to_file()
 	parser.verbosity()
 	parser.version(__version__)
-	return (parser.my_parser.parse_args(args))
+	return parser.my_parser.parse_args(args)
 
 
 def check_accounts_for_instances(faws_acct: aws_acct_access, fRegionList: list = None) -> list:
@@ -94,7 +94,7 @@ def check_accounts_for_instances(faws_acct: aws_acct_access, fRegionList: list =
 						'Engine'       : Instances['DBInstances'][y]['Engine']
 					})
 		AllInstances.extend(acct_instances)
-	return (AllInstances)
+	return AllInstances
 
 
 ##################

@@ -26,7 +26,7 @@ def parse_args(args):
 	@return: returns an object namespace that contains the individualized parameters passed in
 	"""
 	parser = CommonArguments()
-	parser.my_parser.description = ("We're going to find all policies (and maybe the actions) within any of the accounts we have access to, given the profile(s) provided.")
+	parser.my_parser.description = "We're going to find all policies (and maybe the actions) within any of the accounts we have access to, given the profile(s) provided."
 	parser.multiprofile()
 	parser.multiregion()
 	parser.extendedargs()
@@ -48,7 +48,7 @@ def parse_args(args):
 		dest="pcmp",
 		action="store_true",
 		help="A flag to specify you're only looking for customer managed policies")
-	return(parser.my_parser.parse_args(args))
+	return parser.my_parser.parse_args(args)
 
 
 def check_accounts_for_policies(CredentialList, fRegionList=None, fActions=None, fFragments=None):
@@ -130,7 +130,7 @@ def check_accounts_for_policies(CredentialList, fRegionList=None, fActions=None,
 		worker.start()
 
 	checkqueue.join()
-	return (AllPolicies)
+	return AllPolicies
 
 
 ##################

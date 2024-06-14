@@ -116,7 +116,7 @@ def summarizeOrgResults(fOrgResults):
 		summary[account]['IssuesFixed'] += record['IssuesFixed']
 		if not record['Ready']:
 			summary[account]['Ready'] = False
-	return (dict(sorted(summary.items())))
+	return dict(sorted(summary.items()))
 
 
 def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
@@ -132,7 +132,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 			fProcessStatus[Step]['IssuesFound'] = 0
 			fProcessStatus[Step]['IssuesFixed'] = 0
 			fProcessStatus[Step]['ProblemsFound'] = []
-		return (fProcessStatus)
+		return fProcessStatus
 
 	NumOfSteps = 11
 
@@ -614,7 +614,7 @@ def DoAccountSteps(fChildAccountId, aws_account, fFixRun, fRegion):
 	ProcessStatus['Ready'] = MemberReady
 	ProcessStatus['IssuesFound'] = TotalIssuesFound
 	ProcessStatus['IssuesFixed'] = TotalIssuesFixed
-	return (ProcessStatus)
+	return ProcessStatus
 
 
 # The parameters passed to this function should be the dictionary of attributes that will be examined within the thread.
@@ -688,7 +688,7 @@ def DoThreadedAccountSteps(fChildAccountList, aws_account, fFixRun, fRegionList=
 					pass
 	print(f"Threads are starting... Results coming in shortly... It takes around 1 second per account per region... ")
 	checkqueue.join()
-	return (AllOrgSteps)
+	return AllOrgSteps
 
 
 def display_results():
@@ -775,7 +775,7 @@ def setup(fProfile, fRegions):
 	if pExplain:
 		explain_script()
 		sys.exit("Exiting after Script Explanation...")
-	return(f_aws_acct, f_RegionList)
+	return f_aws_acct, f_RegionList
 
 
 def CT_CheckAccount(faws_acct):
@@ -813,7 +813,7 @@ def CT_CheckAccount(faws_acct):
 
 	f_SummarizedOrgResults = summarizeOrgResults(f_OrgResults)
 
-	return(f_OrgResults, f_SummarizedOrgResults)
+	return f_OrgResults, f_SummarizedOrgResults
 
 
 ###################

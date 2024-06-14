@@ -43,14 +43,14 @@ def _validate_region(faws_prelim_session, fRegion=None):
 	# Why are you trying to validate a region, and then didn't supply a region?
 	# Or - common case - you supplied 'us-east-1' which we know to be valid, so we can just immediately return Success
 	if fRegion is None or fRegion == 'us-east-1':
-		message = (f"Either no region supplied to check or region is 'us-east-1'. Defaulting to 'us-east-1'")
+		message = f"Either no region supplied to check or region is 'us-east-1'. Defaulting to 'us-east-1'"
 		logging.info(message)
 		fRegion = 'us-east-1'
 		result = {
 			'Success': True,
 			'Message': message,
 			'Region' : fRegion}
-		return (result)
+		return result
 	else:
 		try:
 			# Since we have to run this command to get a listing of the possible regions, we have to use a region we know will work today...
@@ -64,28 +64,28 @@ def _validate_region(faws_prelim_session, fRegion=None):
 				'Success': False,
 				'Message': message,
 				'Region' : fRegion}
-			return (result)
+			return result
 	if matching_regions:
-		message = (f"{fRegion} is a valid region within AWS")
+		message = f"{fRegion} is a valid region within AWS"
 		result = {
 			'Success': True,
 			'Message': message,
 			'Region' : fRegion}
 		if matching_regions[0]['OptInStatus'] == 'not-opted-in':
-			message = (f"{fRegion} is a valid region within AWS, but this account hasn't opted into this region")
+			message = f"{fRegion} is a valid region within AWS, but this account hasn't opted into this region"
 			result = {
 				'Success': False,
 				'Message': message,
 				'Region' : fRegion}
 		logging.info(message)
 	else:
-		message = (f"'{fRegion}' is not valid region within this AWS partition")
+		message = f"'{fRegion}' is not valid region within this AWS partition"
 		logging.info(message)
 		result = {
 			'Success': False,
 			'Message': message,
 			'Region' : fRegion}
-	return (result)
+	return result
 
 
 class aws_acct_access:
@@ -160,7 +160,7 @@ class aws_acct_access:
 					account_access_successful = False
 					account_and_region_access_successful = False
 			except ProfileNotFound as my_Error:
-				ErrorMessage = (f"The profile '{fProfile}' wasn't found. Perhaps there was a typo? Error Message: {my_Error}")
+				ErrorMessage = f"The profile '{fProfile}' wasn't found. Perhaps there was a typo? Error Message: {my_Error}"
 				account_access_successful = False
 				account_and_region_access_successful = False
 
@@ -320,7 +320,7 @@ class aws_acct_access:
 				print(my_Error)
 				pass
 			creds = "Failure"
-		return (creds)
+		return creds
 
 	def find_account_attr(self):
 		import logging
@@ -352,7 +352,7 @@ class aws_acct_access:
 				function_response['AccountType'] = 'Root'
 			else:
 				function_response['AccountType'] = 'Child'
-			return (function_response)
+			return function_response
 		except ClientError as my_Error:
 			if str(my_Error).find("UnrecognizedClientException") > 0:
 				logging.error(f"Security Issue with account {self.acct_number}")
@@ -381,7 +381,7 @@ class aws_acct_access:
 		except:
 			print("Excepted")
 			pass
-		return (function_response)
+		return function_response
 
 	def find_child_accounts(self):
 		"""
@@ -416,7 +416,7 @@ class aws_acct_access:
 					else:
 						theresmore = False
 				sorted_child_accounts = sorted(child_accounts, key=lambda d: d['AccountId'])
-				return (sorted_child_accounts)
+				return sorted_child_accounts
 			except ClientError as my_Error:
 				logging.warning(f"Account {self.acct_num()} doesn't represent an Org Root account")
 				logging.debug(my_Error)
@@ -427,7 +427,7 @@ class aws_acct_access:
 			                       'AccountEmail' : 'Not an Org Management Account',
 			                       # We know the account is ACTIVE because if it was SUSPENDED, we wouldn't have gotten a valid response from the org_root check
 			                       'AccountStatus': 'ACTIVE'})
-			return (child_accounts)
+			return child_accounts
 		elif self.AccountType.lower() == 'unknown':
 			logging.warning(f"Account {self.acct_number} came up as an Unknown Account...")
 			return ()
@@ -436,10 +436,10 @@ class aws_acct_access:
 			return ()
 
 	def __str__(self):
-		return (f"Account #{self.acct_number} is a {self.AccountType} account with {len(self.ChildAccounts) - 1} child accounts")
+		return f"Account #{self.acct_number} is a {self.AccountType} account with {len(self.ChildAccounts) - 1} child accounts"
 
 	def __repr__(self):
-		return (f"Account #{self.acct_number} is a {self.AccountType} account with {len(self.ChildAccounts) - 1} child accounts")
+		return f"Account #{self.acct_number} is a {self.AccountType} account with {len(self.ChildAccounts) - 1} child accounts"
 
 
 class Aws_Acct_Credentials:
@@ -487,12 +487,12 @@ class Aws_Acct_Credentials:
 
 	def __str__(self):
 		if self.Profile is None:
-			return (f"Account #{self.AccountId} was accessed directly with credentials")
+			return f"Account #{self.AccountId} was accessed directly with credentials"
 		else:
-			return (f"Account #{self.AccountId} was accessed using {self.Profile}")
+			return f"Account #{self.AccountId} was accessed using {self.Profile}"
 
 	def __repr__(self):
 		if self.Profile is None:
-			return (f"Account #{self.AccountId} was accessed directly with credentials")
+			return f"Account #{self.AccountId} was accessed directly with credentials"
 		else:
-			return (f"Account #{self.AccountId} was accessed using {self.Profile}")
+			return f"Account #{self.AccountId} was accessed using {self.Profile}"

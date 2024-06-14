@@ -228,7 +228,7 @@ def removerole(ocredentials, frole):
 			if return_response['Success']:
 				continue
 			else:
-				return (return_response)
+				return return_response
 
 		for inline_policy in attached_inline_policies['PolicyNames']:
 			try:
@@ -248,7 +248,7 @@ def removerole(ocredentials, frole):
 			if return_response['Success']:
 				continue
 			else:
-				return (return_response)
+				return return_response
 
 		# Only then we can we delete the role
 		try:
@@ -267,7 +267,7 @@ def removerole(ocredentials, frole):
 			if return_response['Success']:
 				pass
 			else:
-				return (return_response)
+				return return_response
 
 		print(f"{ERASE_LINE}We've successfully removed the role{Fore.GREEN} {frole} {Fore.RESET}"
 			  f"from account{Fore.GREEN} {ocredentials['AccountId']} {Fore.RESET}")
@@ -289,11 +289,11 @@ def roleexists(ocredentials, frole):
 	try:
 		logging.info(f"{ERASE_LINE}Checking Account {ocredentials['AccountId']} for Role {frole}")
 		response = client_iam.get_role(RoleName=frole)
-		return (True)
+		return True
 	except ClientError as my_Error:
 		if (my_Error.response['Error']['Code']) == 'NoSuchEntity':
 			logging.warning("Role %s doesn't exist in account %s", frole, ocredentials['AccountId'])
-	return (False)
+	return False
 
 
 def get_credentials(fProfileList, fSkipAccounts, fRootOnly, fAccounts, fRegionList, fRolesToUse):
@@ -339,7 +339,7 @@ def get_credentials(fProfileList, fSkipAccounts, fRootOnly, fAccounts, fRegionLi
 			except AttributeError as my_Error:
 				logging.error(f"Profile {profile} didn't work... Skipping")
 				continue
-	return (AllCredentials, AccountList)
+	return AllCredentials, AccountList
 
 
 ##########################

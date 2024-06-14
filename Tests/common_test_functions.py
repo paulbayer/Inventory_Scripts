@@ -63,7 +63,7 @@ def _amend_create_boto3_session(test_data, mocker):
 			                       aws_secret_access_key,
 			                       aws_session_token,
 			                       config)
-			return (return_response)
+			return return_response
 
 	mocker.patch('botocore.session.Session.create_client', new=amend_create_client)
 	print()

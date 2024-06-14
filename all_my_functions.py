@@ -152,7 +152,7 @@ def fix_runtime(CredentialList, new_runtime):
 				logging.error(f"It's possible that the region {credential['Region']} hasn't been opted-into")
 				pass
 	checkqueue.join()
-	return (FixedFuncs)
+	return FixedFuncs
 
 
 def check_accounts_for_functions(CredentialList, fFragments=None):
@@ -227,7 +227,7 @@ def check_accounts_for_functions(CredentialList, fFragments=None):
 				logging.error(f"It's possible that the region {credential['Region']} hasn't been opted-into")
 				pass
 	checkqueue.join()
-	return (AllFuncs)
+	return AllFuncs
 
 
 def collect_all_my_functions(AllCredentials, fFragments, fverbose=50):
@@ -241,7 +241,7 @@ def collect_all_my_functions(AllCredentials, fFragments, fverbose=50):
 	sorted_AllFunctions = sorted(AllFunctions, key=lambda k: (k['MgmtAccount'], k['AccountId'], k['Region'], k['FunctionName']))
 	if fverbose < 50:
 		print(f"We found {len(AllFunctions)} functions in {len(AllCredentials)} places")
-	return (sorted_AllFunctions)
+	return sorted_AllFunctions
 
 
 def fix_my_functions(fAllFunctions, fRuntime, fNewRuntime, fForceDelete, fTiming):
@@ -269,7 +269,7 @@ def fix_my_functions(fAllFunctions, fRuntime, fNewRuntime, fForceDelete, fTiming
 			print(ERASE_LINE)
 			print(f"{Fore.GREEN}Fixing {len(return_response)} functions took {time() - begin_fix_time:.3f} seconds{Fore.RESET}")
 
-	return (return_response)
+	return return_response
 
 
 ##################

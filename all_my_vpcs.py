@@ -27,7 +27,7 @@ def parse_args(args):
 	@return: returns an object namespace that contains the individualized parameters passed in
 	"""
 	parser = CommonArguments()
-	parser.my_parser.description = ("We're going to find all vpcs within any of the accounts and regions we have access to, given the profile(s) provided.")
+	parser.my_parser.description = "We're going to find all vpcs within any of the accounts and regions we have access to, given the profile(s) provided."
 	parser.multiprofile()
 	parser.multiregion()
 	parser.extendedargs()
@@ -45,7 +45,7 @@ def parse_args(args):
 		default=False,
 		const=True,
 		help="Flag to determine whether we're looking for default VPCs only.")
-	return (parser.my_parser.parse_args(args))
+	return parser.my_parser.parse_args(args)
 
 
 def find_all_vpcs(fAllCredentials, fDefaultOnly=False):
@@ -141,7 +141,7 @@ def find_all_vpcs(fAllCredentials, fDefaultOnly=False):
 				logging.warning(f"It's possible that the region {credential['Region']} hasn't been opted-into")
 				pass
 	checkqueue.join()
-	return (AllVPCs)
+	return AllVPCs
 
 
 ##########################

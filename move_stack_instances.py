@@ -90,7 +90,7 @@ def parse_args(args):
 		dest="pDriftCheckFlag",
 		action="store_true",
 		help="Whether we should check for drift before moving instances")
-	return (parser.my_parser.parse_args(args))
+	return parser.my_parser.parse_args(args)
 
 
 def check_stack_set_drift_status(faws_acct: aws_acct_access, fStack_set_name: str, fOperation_id=None) -> dict:
@@ -140,7 +140,7 @@ def check_stack_set_drift_status(faws_acct: aws_acct_access, fStack_set_name: st
 			logging.error(f"There's a drift-detection process already running: {myError}")
 			OperationId = myError.response['Error']['Message'][myError.response['Error']['Message'].rfind(":") + 2:]
 			return_response = {'OperationId': OperationId, 'Success': True}
-		return (return_response)
+		return return_response
 	else:
 		# Do the describe_stack_set_operation with the operation_id, and determine how close we are to done...
 		"""
@@ -248,7 +248,7 @@ def check_stack_set_drift_status(faws_acct: aws_acct_access, fStack_set_name: st
 				Finished = True
 			logging.info(f"Sleeping for {sleep_interval} seconds")
 			sleep(sleep_interval)
-		return (return_response)
+		return return_response
 
 
 def check_stack_set_status(faws_acct: aws_acct_access, fStack_set_name: str, fOperationId: str = None) -> dict:
@@ -273,11 +273,11 @@ def check_stack_set_status(faws_acct: aws_acct_access, fStack_set_name: str, fOp
 			return_response['StackSetStatus'] = response['Status']
 			return_response['Success'] = True
 			logging.info(f"Stackset: {fStack_set_name} | Status: {return_response['StackSetStatus']}")
-			return (return_response)
+			return return_response
 		except client_cfn.exceptions.StackSetNotFoundException as myError:
 			logging.error(f"Stack Set {fStack_set_name} Not Found: {myError}")
 			return_response['Success'] = False
-			return (return_response)
+			return return_response
 	try:
 		response = client_cfn.describe_stack_set_operation(StackSetName=fStack_set_name,
 		                                                   OperationId=fOperationId,
@@ -312,7 +312,7 @@ def find_if_stack_set_exists(faws_acct: aws_acct_access, fStack_set_name: str) -
 		logging.info(f"StackSet {fStack_set_name} not found in this account.")
 		logging.debug(f"{myError}")
 		return_response['Success'] = False
-	return (return_response)
+	return return_response
 
 
 def get_template_body_and_parameters(faws_acct: aws_acct_access, fExisting_stack_set_name: str) -> dict:
@@ -399,7 +399,7 @@ def get_template_body_and_parameters(faws_acct: aws_acct_access, fExisting_stack
 		ErrorMessage = f"{fExisting_stack_set_name} doesn't seem to exist. Please check the spelling"
 		print(f"{ErrorMessage}: {myError}")
 		return_response['Success'] = False
-	return (return_response)
+	return return_response
 
 
 def compare_stacksets(faws_acct: aws_acct_access, fExisting_stack_set_name: str, fNew_stack_set_name: str) -> dict:
@@ -450,7 +450,7 @@ def compare_stacksets(faws_acct: aws_acct_access, fExisting_stack_set_name: str,
 	if (return_response['TemplateComparison'] and return_response['CapabilitiesComparison'] and return_response[
 		'ParametersComparison']):
 		return_response['Success'] = True
-	return (return_response)
+	return return_response
 
 
 def get_stack_ids_from_existing_stack_set(faws_acct: aws_acct_access, fExisting_stack_set_name: str,
@@ -495,7 +495,7 @@ def get_stack_ids_from_existing_stack_set(faws_acct: aws_acct_access, fExisting_
 		                                      stacksetinfo['Account'] in fAccountsToMove]
 		logging.debug(f"Account {fAccountsToMove} was specified, so only the {len(return_response['Stack_instances'])} "
 		              f"stack-instance-ids matching th{'ose accounts' if len(fAccountsToMove) == 1 else 'at account'} are being returned")
-	return (return_response)
+	return return_response
 
 
 def write_info_to_file(faws_acct: aws_acct_access, fstack_ids) -> dict:
@@ -523,12 +523,12 @@ def write_info_to_file(faws_acct: aws_acct_access, fstack_ids) -> dict:
 		with open(InfoFilename, 'w') as out:
 			print(file_data, file=out)
 		return_response = {'Success': True}
-		return (return_response)
+		return return_response
 	except Exception as myError:
 		error_message = "There was a problem. Not sure... "
 		logging.error(error_message)
 		return_response = {'Success': False, 'ErrorMessage': myError}
-		return (return_response)
+		return return_response
 
 
 def read_stack_info_from_file() -> dict:
@@ -542,12 +542,12 @@ def read_stack_info_from_file() -> dict:
 		with open(InfoFilename) as input_file:
 			my_input_file = json.load(input_file)
 		return_response = {'Success': True, 'Payload': my_input_file}
-		return (return_response)
+		return return_response
 	except Exception as myError:
 		error_message = "There was a problem. Not sure... "
 		logging.error(error_message)
 		return_response = {'Success': False, 'ErrorMessage': myError}
-		return (return_response)
+		return return_response
 
 
 def create_stack_set_with_body_and_parameters(faws_acct: aws_acct_access, fNew_stack_set_name: str,
@@ -618,7 +618,7 @@ def create_stack_set_with_body_and_parameters(faws_acct: aws_acct_access, fNew_s
 		logging.error(f"Operation Failed: {myError}")
 		return_response['Success'] = False
 		return_response['Error_Message'] = myError.response['Error']['Message']
-	return (return_response)
+	return return_response
 
 
 def disconnect_stack_instances(faws_acct: aws_acct_access, fStack_instances: dict, fOldStackSet: str) -> dict:
@@ -664,7 +664,7 @@ def disconnect_stack_instances(faws_acct: aws_acct_access, fStack_instances: dic
 		return_response = {'Success'     : False,
 		                   'ErrorMessage': f"Stackset {fOldStackSet} has no matching instances",
 		                   'OperationId' : None}
-		return (return_response)
+		return return_response
 	client_cfn = faws_acct.session.client('cloudformation')
 	regions = set()
 	accounts = set()
@@ -708,7 +708,7 @@ def disconnect_stack_instances(faws_acct: aws_acct_access, fStack_instances: dic
 			logging.error(f"Import didn't complete within 600 seconds")
 		logging.error(myError)
 		return_response['Success'] = False
-	return (return_response)
+	return return_response
 
 
 def create_change_set_for_new_stack():
@@ -788,7 +788,7 @@ def populate_new_stack_with_existing_stack_instances(faws_acct: aws_acct_access,
 		logging.error(f"Client Error: {myError}")
 		return_response['Success'] = False
 		return_response['ErrorMessage'] = myError
-	return (return_response)
+	return return_response
 
 
 ##################
@@ -827,7 +827,7 @@ if __name__ == '__main__':
 
 	aws_acct = aws_acct_access(pProfile)
 	datetime_extension = datetime.now().strftime("%Y%m%d-%H%M")
-	InfoFilename = (f"{pOldStackSet}-{pNewStackSet}-{aws_acct.acct_number}-{pRegion}.{datetime_extension}")
+	InfoFilename = f"{pOldStackSet}-{pNewStackSet}-{aws_acct.acct_number}-{pRegion}.{datetime_extension}"
 	Use_recovery_file = False
 
 	if pDriftCheck:

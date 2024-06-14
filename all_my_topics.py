@@ -102,7 +102,7 @@ def find_topics(CredentialList:list, ftopic_frag:str=None, fexact:bool=False)->l
 				logging.warning(f"It's possible that the region {credential['Region']} hasn't been opted-into")
 				pass
 	checkqueue.join()
-	return (AllTopics)
+	return AllTopics
 
 def present_results(f_data_found: list):
 	"""

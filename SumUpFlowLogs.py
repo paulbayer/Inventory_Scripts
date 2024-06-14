@@ -60,7 +60,7 @@ def parse_args(args):
 		type=str,
 		default=None,
 		help="End date for the search. Format: YYYY-MM-DD. Note you need to pad the month and date if single digit.\n Default is YESTERDAY at 23:59:59, in order to give full days.")
-	return (parser.my_parser.parse_args(args))
+	return parser.my_parser.parse_args(args)
 
 
 def setup_auth_accounts_and_regions(fProfile: str) -> (aws_acct_access, list, list):
@@ -95,41 +95,41 @@ def setup_auth_accounts_and_regions(fProfile: str) -> (aws_acct_access, list, li
 	if pSkipAccounts is not None:
 		print(f"\tWhile skipping these accounts: {Fore.RED}{pSkipAccounts}{Fore.RESET}")
 
-	return (aws_acct, AccountList, RegionList)
+	return aws_acct, AccountList, RegionList
 
 
 def check_account_access(faws_acct, faccount_num, fAccessRole=None):
 	if fAccessRole is None:
 		logging.error(f"Role must be provided")
 		return_response = {'Success': False, 'ErrorMessage': "Role wasn't provided"}
-		return (return_response)
+		return return_response
 	sts_client = faws_acct.session.client('sts')
 	try:
 		role_arn = f"arn:aws:iam::{faccount_num}:role/{fAccessRole}"
 		credentials = sts_client.assume_role(RoleArn=role_arn,
 		                                     RoleSessionName='TheOtherGuy')['Credentials']
 		return_response = {'AccountNumber': faccount_num, 'Credentials': credentials, 'Success': True, 'ErrorMessage': ""}
-		return (return_response)
+		return return_response
 	except ClientError as my_Error:
 		print(f"Client Error: {my_Error}")
 		return_response = {'Success': False, 'ErrorMessage': "Client Error"}
-		return (return_response)
+		return return_response
 	except sts_client.exceptions.MalformedPolicyDocumentException as my_Error:
 		print(f"MalformedPolicy: {my_Error}")
 		return_response = {'Success': False, 'ErrorMessage': "Malformed Policy"}
-		return (return_response)
+		return return_response
 	except sts_client.exceptions.PackedPolicyTooLargeException as my_Error:
 		print(f"Policy is too large: {my_Error}")
 		return_response = {'Success': False, 'ErrorMessage': "Policy is too large"}
-		return (return_response)
+		return return_response
 	except sts_client.exceptions.RegionDisabledException as my_Error:
 		print(f"Region is disabled: {my_Error}")
 		return_response = {'Success': False, 'ErrorMessage': "Region Disabled"}
-		return (return_response)
+		return return_response
 	except sts_client.exceptions.ExpiredTokenException as my_Error:
 		print(f"Expired Token: {my_Error}")
 		return_response = {'Success': False, 'ErrorMessage': "Expired Token"}
-		return (return_response)
+		return return_response
 
 
 def get_flow_log_cloudwatch_groups(ocredentials) -> list[dict]:
@@ -329,7 +329,7 @@ def get_cw_query_results(fquery_requests: list) -> list[dict]:
 			logging.info(f"The CloudWatch query for vpc {query['VPCId']} in account {query['AccountId']} in region {query['Region']} returned no results:")
 			new_record.update({'Results': 0, 'Status': response['status'], 'Stats': response['statistics']})
 			all_query_results.append(query.copy())
-	return (all_query_results)
+	return all_query_results
 
 
 #####################

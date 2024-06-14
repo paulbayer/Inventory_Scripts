@@ -39,7 +39,7 @@ def parse_args(args):
 		metavar="IP address",
 		default=None,
 		help="IP address(es) you're looking for within your accounts")
-	return (parser.my_parser.parse_args(args))
+	return parser.my_parser.parse_args(args)
 
 
 def check_accounts_for_enis(fCredentialList, fip=None):
@@ -101,7 +101,7 @@ def check_accounts_for_enis(fCredentialList, fip=None):
 				logging.warning(f"It's possible that the region {credential['Region']} hasn't been opted-into")
 				pass
 	checkqueue.join()
-	return (Results)
+	return Results
 
 def present_results(ENIsFound:list):
 	"""

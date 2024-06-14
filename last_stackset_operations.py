@@ -58,7 +58,7 @@ def parse_args(args: object):
 		default="Active",
 		choices=['active', 'ACTIVE', 'Active', 'deleted', 'DELETED', 'Deleted'],
 		help="String that determines whether we only see 'CREATE_COMPLETE' or 'DELETE_COMPLETE' too. Valid values are 'ACTIVE' or 'DELETED'")
-	return (parser.my_parser.parse_args(args))
+	return parser.my_parser.parse_args(args)
 
 
 def setup_auth_and_regions(fProfile: str, fRegion: str = None, fStackFrag: list = None, fExact: bool = False) -> (aws_acct_access, list):
@@ -101,7 +101,7 @@ def setup_auth_and_regions(fProfile: str, fRegion: str = None, fStackFrag: list 
 		print(f"\t\tFor stacksets that contains these fragments: {fStackfrag}")
 
 	print()
-	return (aws_acct, RegionList)
+	return aws_acct, RegionList
 
 
 def collect_cfnstacksets(faws_acct: aws_acct_access, fRegion: str) -> (dict, dict, dict):
@@ -152,7 +152,7 @@ def collect_cfnstacksets(faws_acct: aws_acct_access, fRegion: str) -> (dict, dic
 	                 'StackSetsList'               : StackSetsList}
 	Account_Dict = {'AccountList': AccountList}
 	Region_Dict = {'FoundRegionList': FoundRegionList}
-	return (StackSet_Dict, Account_Dict, Region_Dict)
+	return StackSet_Dict, Account_Dict, Region_Dict
 
 
 def find_stack_set_instances(fStackSetNames: list, fRegion: str) -> list:
@@ -197,7 +197,7 @@ def find_stack_set_instances(fStackSetNames: list, fRegion: str) -> list:
 							logging.debug(f"This is ChildRegion: {StackInstance['Region']}")
 							# logging.debug("This is StackId: %s", str(StackInstance['StackId']))
 
-							if (StackInstance['Region'] in RegionList):
+							if StackInstance['Region'] in RegionList:
 								f_combined_stack_set_instances.append({
 									'ParentAccountNumber' : aws_acct.acct_number,
 									'ChildAccount'        : StackInstance['Account'],
@@ -266,7 +266,7 @@ def find_stack_set_instances(fStackSetNames: list, fRegion: str) -> list:
 				pass
 	checkqueue.join()
 	pbar.close()
-	return (f_combined_stack_set_instances)
+	return f_combined_stack_set_instances
 
 
 def find_last_operations(faws_acct: aws_acct_access, fStackSetNames: list):
@@ -282,7 +282,7 @@ def find_last_operations(faws_acct: aws_acct_access, fStackSetNames: list):
 		                       'LatestStatus': StackSetOps[0]['Status'],
 		                       'LatestDate'  : StackSetOps[0]['EndTimestamp'],
 		                       'Details'     : StackSetOps[0]['StatusDetails']['FailedStackInstancesCount']})
-	return (AllStackSetOps)
+	return AllStackSetOps
 
 
 ##################

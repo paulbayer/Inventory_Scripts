@@ -18,7 +18,7 @@ How to use:
 __version__ = "2024.05.09"
 
 
-class CommonArguments():
+class CommonArguments:
 	"""
 	Class is created on the argparse class, and extends it for my purposes.
 	"""

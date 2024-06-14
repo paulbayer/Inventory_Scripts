@@ -33,7 +33,7 @@ def parse_args(args):
 	parser.timing()
 	parser.verbosity()
 	parser.version(__version__)
-	return(parser.my_parser.parse_args(args))
+	return parser.my_parser.parse_args(args)
 
 
 def check_account_for_cloudtrail(f_AllCredentials):
@@ -90,13 +90,13 @@ def check_account_for_cloudtrail(f_AllCredentials):
 
 	for credential in f_AllCredentials:
 		try:
-			checkqueue.put((credential)) if credential['Success'] else None
+			checkqueue.put(credential) if credential['Success'] else None
 		except ClientError as my_Error:
 			logging.error(f"Error: {my_Error}")
 			pass
 
 	checkqueue.join()
-	return (AllTrails)
+	return AllTrails
 
 
 ##################

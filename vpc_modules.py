@@ -39,13 +39,13 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 				response = fVPC_client.delete_vpc_endpoints(
 						VpcEndpointIds=vpc_endpoints_to_delete
 						)
-				return (0)
+				return 0
 			except ClientError as my_error:
 				print(my_error)
-				return (1)
+				return 1
 		else:
 			logging.warning("No Endpoints found to delete")
-			return (0)
+			return 0
 
 	def find_and_delete_vpc_security_groups(fVPC_client, fVpcId, fRegion):
 
@@ -71,8 +71,8 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 							)
 				except ClientError as my_Error:
 					print(my_Error)
-					return (1)
-		return (0)
+					return 1
+		return 0
 
 	def find_and_delete_vpc_peering_connections(fVPC_client, fVpcId, fRegion):
 
@@ -94,8 +94,8 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 						)
 			except ClientError as my_Error:
 				print(my_Error)
-				return (1)
-		return (0)
+				return 1
+		return 0
 
 	def find_and_delete_vpc_route_tables(fVPC_client, fVpcId, fRegion):
 
@@ -128,7 +128,7 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 					logging.critical("Disassociated Route Table ID: %s", rRouteTableId)
 				except ClientError as my_Error:
 					print(my_Error)
-					return (1)
+					return 1
 
 			# pprint.pprint(vpc_route_tables_to_delete)
 			for RtTbl in vpc_route_tables_to_delete:
@@ -140,8 +140,8 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 					vpc_route_tables_to_delete.remove(RtTbl)
 				except ClientError as my_Error:
 					print(my_Error)
-					return (1)
-		return (0)
+					return 1
+		return 0
 
 	def find_and_delete_vpc_nacls(fVPC_client, fVpcId, fRegion):
 
@@ -167,8 +167,8 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 				# pprint.pprint(response)
 				except ClientError as my_Error:
 					print(my_Error)
-					return (1)
-		return (0)
+					return 1
+		return 0
 
 	def find_and_delete_subnets(fVPC_client, fVpcId, fRegion):
 
@@ -197,8 +197,8 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 			# pprint.pprint(response)
 			except ClientError as my_Error:
 				print(my_Error)
-				return (1)
-		return (0)
+				return 1
+		return 0
 
 	def find_and_delete_NAT_gateways(fVPC_client, fVpcId, fRegion):
 
@@ -229,7 +229,7 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 							)
 				except ClientError as my_Error:
 					print(my_Error)
-					return (1)
+					return 1
 			print("Waiting for the NAT Gateways to be fully deleted")
 			verify_nat_gws_are_gone = nat_gateways
 			while len(verify_nat_gws_are_gone['NatGateways']) > 0:
@@ -249,7 +249,7 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 					logging.info("Still waiting on NAT Gateways to be deleted...")
 			# print(".", end='', flush=True)
 			time.sleep(10)
-		return (0)
+		return 0
 
 	def find_and_delete_gateways(fVPC_client, fVpcId, fRegion):
 
@@ -272,15 +272,15 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 						)
 			except ClientError as my_Error:
 				print(my_Error)
-				return (1)
+				return 1
 			try:
 				deleteresponse = fVPC_client.delete_internet_gateway(
 						InternetGatewayId=rGatewayId
 						)
 			except ClientError as my_Error:
 				print(my_Error)
-				return (1)
-		return (0)
+				return 1
+		return 0
 
 	def find_and_delete_virtual_gateways(fVPC_client, fVpcId, fRegion):
 
@@ -310,7 +310,7 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 						)
 			except ClientError as my_Error:
 				print(my_Error)
-				return (1)
+				return 1
 
 			print("Waiting for the VPN Gateways to be fully detached")
 			verify_vgws_are_gone = vgws
@@ -329,7 +329,7 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 					logging.info("Still waiting on VGWS to be deleted...")
 				# pprint.pprint(verify_nat_gws_are_gone)
 				time.sleep(10)
-		return (0)
+		return 0
 
 	def delete_vpc(fVPC_client, fVpcId, fRegion):
 
@@ -339,10 +339,10 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 			response = fVPC_client.delete_vpc(
 					VpcId=fVpcId
 					)
-			return (0)
+			return 0
 		except ClientError as my_Error:
 			print(my_Error)
-			return (1)
+			return 1
 
 	###### Main ########################################
 	session_vpc = boto3.Session(
@@ -360,14 +360,14 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 		ResultGood = (find_and_delete_vpc_endpoints(client_vpc, fVPCId, fRegion) == 0)
 		if not ResultGood:
 			logging.error("Something failed in the vpc_endpoints deletion script")
-			return (1)  # out of the try
+			return 1  # out of the try
 		# 2. Call VPC.security_groups. Delete the group unless its group_name attribute is "main". The main security group will be deleted via VPC.delete().
 		logging.info("Deleting security groups...")
 		print(".", end='', flush=True)
 		ResultGood = (find_and_delete_vpc_security_groups(client_vpc, fVPCId, fRegion) == 0)
 		if not ResultGood:
 			logging.error("Something failed in the vpc_security_group deletion script")
-			return (1)  # out of the try
+			return 1  # out of the try
 
 		# 3. Call EC2.Client.describe_vpc_peering_connections. Filter on your VPC id as the requester-vpc-info.vpc-id. (My VPC is a requester. There is also accepter-vpc-info.vpc-id among other filters.) Iterate through the entries keyed by VpcPeeringConnections. Get an instance of the peering connection by instantiating a EC2.ServiceResource.VpcPeeringConnection with the VpcPeeringConnectionId. Call VpcPeeringConnection.delete() to remove the peering connection.
 		logging.info("Deleting vpc peering connections...")
@@ -375,7 +375,7 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 		ResultGood = (find_and_delete_vpc_peering_connections(client_vpc, fVPCId, fRegion) == 0)
 		if not ResultGood:
 			logging.error("Something failed in the vpc_peering_connection deletion script")
-			return (1)  # out of the try
+			return 1  # out of the try
 
 		# Need to figure a way to wait on this operation, if there are Gateways to be deleted.
 		logging.info("Deleting NAT Gateways...")
@@ -383,7 +383,7 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 		ResultGood = (find_and_delete_NAT_gateways(client_vpc, fVPCId, fRegion) == 0)
 		if not ResultGood:
 			logging.error("Something failed in the vpc_NAT_gateways deletion script")
-			return (1)  # out of the try
+			return 1  # out of the try
 
 		# 4. Call vpc.route_tables.all() and iterate through the route tables. For each route table, iterate through its routes using the RouteTable.routes attribute. Delete the routes where route['Origin'] is 'CreateRoute'. I deleted using EC2.Client.delete_route using EC2.RouteTable.id and route['DestinationCidrBlock']. After removing the routes, call EC2.RouteTable.delete() to remove the route table itself. I set up exception handlers for each delete. Not every route table can be deleted, but I haven't cracked the code. Maybe next week.
 		logging.info("Deleting vpc route tables...")
@@ -391,7 +391,7 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 		ResultGood = (find_and_delete_vpc_route_tables(client_vpc, fVPCId, fRegion) == 0)
 		if not ResultGood:
 			logging.error("Something failed in the vpc_route_tables deletion script")
-			return (1)  # out of the try
+			return 1  # out of the try
 
 		# 5. Iterate through vpc.network_acls.all(), test12 the NetworkAcl.is_default attribute and call NetworkAcl.delete for non-default acls.
 		logging.info("Deleting vpc network access control lists...")
@@ -399,7 +399,7 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 		ResultGood = (find_and_delete_vpc_nacls(client_vpc, fVPCId, fRegion) == 0)
 		if not ResultGood:
 			logging.error("Something failed in the vpc_nacls deletion script")
-			return (1)  # out of the try
+			return 1  # out of the try
 
 		#
 		# 6. Iterate through vpc.subnets.all().network_interfaces.all(). Call EC2.NetworkInterface.delete() on each.
@@ -408,7 +408,7 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 		ResultGood = (find_and_delete_subnets(client_vpc, fVPCId, fRegion) == 0)
 		if not ResultGood:
 			logging.error("Something failed in the vpc_subnets deletion script")
-			return (1)  # out of the try
+			return 1  # out of the try
 		#
 		# 7. Iterate through vpc.internet_gateways.all(). Call EC2.InternetGateway.delete() on each.
 		logging.info("Deleting Internet Gateways...")
@@ -416,7 +416,7 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 		ResultGood = (find_and_delete_gateways(client_vpc, fVPCId, fRegion) == 0)
 		if not ResultGood:
 			logging.error("Something failed in the vpc_gateways deletion script")
-			return (1)  # out of the try
+			return 1  # out of the try
 
 		# Virtual Gateway
 		logging.info("Deleting Virtual Customer Gateways...")
@@ -424,7 +424,7 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 		ResultGood = (find_and_delete_virtual_gateways(client_vpc, fVPCId, fRegion) == 0)
 		if not ResultGood:
 			logging.error("Something failed in the vpc_virtual_gateways deletion script")
-			return (1)  # out of the try
+			return 1  # out of the try
 
 		#
 		# 8. Call vpc.delete()
@@ -432,10 +432,10 @@ def del_vpc(ocredentials, fVPCId, fRegion):
 		ResultGood = (delete_vpc(client_vpc, fVPCId, fRegion) == 0)
 		if not ResultGood:
 			logging.error("Something failed in the final vpc deletion script")
-			return (1)  # out of the try
+			return 1  # out of the try
 	except ClientError as my_Error:
 		print(my_Error)
 		print(f"{Fore.RED}What to do now?{Fore.RESET}")
-		return (1)
+		return 1
 
-	return (0)
+	return 0

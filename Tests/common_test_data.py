@@ -342,7 +342,7 @@ CredentialResponseData = [
 	 'AccessError'    : False,
 	 'Success'        : True,
 	 'ErrorMessage'   : None,
-	 'ParentProfile'  : 'mock_profile'},
+	 'ParentProfile'  : 'mock_profile_1'},
 	# Child Accounts Credentials
 	{'AccessKeyId'    : 'xxxx444455556666xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
@@ -361,7 +361,7 @@ CredentialResponseData = [
 	 'AccessError'    : False,
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
-	 'ParentProfile'  : 'mock_profile'},
+	 'ParentProfile'  : 'mock_profile_2'},
 	{'AccessKeyId'    : 'xxxx555566667777xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
@@ -379,7 +379,7 @@ CredentialResponseData = [
 	 'AccessError'    : False,
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
-	 'ParentProfile'  : 'mock_profile'},
+	 'ParentProfile'  : 'mock_profile_3'},
 	{'AccessKeyId'    : 'xxxx555566667777xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
@@ -397,7 +397,7 @@ CredentialResponseData = [
 	 'AccessError'    : False,
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
-	 'ParentProfile'  : 'mock_profile'},
+	 'ParentProfile'  : 'mock_profile_4'},
 	{'AccessKeyId'    : 'xxxx666677775555xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
@@ -415,7 +415,7 @@ CredentialResponseData = [
 	 'AccessError'    : False,
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
-	 'ParentProfile'  : 'mock_profile'},
+	 'ParentProfile'  : 'mock_profile_5'},
 	{'AccessKeyId'    : 'xxxx777755556666xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
@@ -433,7 +433,7 @@ CredentialResponseData = [
 	 'AccessError'    : False,
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
-	 'ParentProfile'  : 'mock_profile'},
+	 'ParentProfile'  : 'mock_profile_6'},
 	{'AccessKeyId'    : 'xxxx777755556666xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
@@ -451,7 +451,7 @@ CredentialResponseData = [
 	 'AccessError'    : False,
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
-	 'ParentProfile'  : 'mock_profile'},
+	 'ParentProfile'  : 'mock_profile_7'},
 	{'AccessKeyId'    : 'xxxx666677778888xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
@@ -469,7 +469,7 @@ CredentialResponseData = [
 	 'AccessError'    : False,
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
-	 'ParentProfile'  : 'mock_profile'},
+	 'ParentProfile'  : 'mock_profile_8'},
 	{'AccessKeyId'    : 'xxxx777788886666xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
@@ -487,7 +487,7 @@ CredentialResponseData = [
 	 'AccessError'    : False,
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
-	 'ParentProfile'  : 'mock_profile'},
+	 'ParentProfile'  : 'mock_profile_9'},
 	{'AccessKeyId'    : 'xxxx888866667777xxxxx',
 	 'SecretAccessKey': '*****SecretAccessKeyHere*****',
 	 'SessionToken'   : '*****SessionTokenHere*****',
@@ -505,7 +505,7 @@ CredentialResponseData = [
 	 'AccessError'    : False,
 	 'ErrorMessage'   : None,
 	 'Success'        : True,
-	 'ParentProfile'  : 'mock_profile'}]
+	 'ParentProfile'  : 'mock_profile_10'}]
 
 AssumeRoleResponseData = {'Credentials': {
 	'AccessKeyId'    : 'xxxxAccountNumberxxxxx',
@@ -3542,24 +3542,32 @@ mock_instances_3 = {
 mock_instances_4 = {
 	'Reservations': [
 		{"Instances": [
-			{"InstanceId": "i-0f1e2d3c4c", "InstanceType": "t3.small", "Placement": {"AvailabilityZone": "eu-west-1c"}, "PublicIpAddress": "54.123.45.69", "PrivateIpAddress": "10.0.0.6", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "555566667777"},{"Key": "Name", "Value": "Instance_4a"},{"Key": "Environment", "Value": "Production"}]},
-			{"InstanceId": "i-5f6e7d8e9k", "InstanceType": "m5.2xlarge", "Placement": {"AvailabilityZone": "eu-west-1d"}, "PublicIpAddress": "34.56.78.92", "PrivateIpAddress": "10.0.1.9", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "555566667777"},{"Key": "Name", "Value": "Instance_4b"},{"Key": "Environment", "Value": "Development"}]},
-			{"InstanceId": "i-0a9b8c7d6h", "InstanceType": "t2.large", "Placement": {"AvailabilityZone": "eu-west-1c"}, "PublicIpAddress": "65.43.21.100", "PrivateIpAddress": "10.0.2.5", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "555566667777"},{"Key": "Name", "Value": "Instance_4c"},{"Key": "Project", "Value": "DataAnalytics"}]}]},
+			{"InstanceId": "i-0f1e2d3c4c", "InstanceType": "t3.small", "Placement": {"AvailabilityZone": "eu-west-1c"}, "PublicIpAddress": "54.123.45.69", "PrivateIpAddress": "10.0.0.6", "State": {"Name": "running"},
+			 "Tags"      : [{"Key": "Account", "Value": "555566667777"}, {"Key": "Name", "Value": "Instance_4a"}, {"Key": "Environment", "Value": "Production"}]},
+			{"InstanceId": "i-5f6e7d8e9k", "InstanceType": "m5.2xlarge", "Placement": {"AvailabilityZone": "eu-west-1d"}, "PublicIpAddress": "34.56.78.92", "PrivateIpAddress": "10.0.1.9", "State": {"Name": "stopped"},
+			 "Tags"      : [{"Key": "Account", "Value": "555566667777"}, {"Key": "Name", "Value": "Instance_4b"}, {"Key": "Environment", "Value": "Development"}]},
+			{"InstanceId": "i-0a9b8c7d6h", "InstanceType": "t2.large", "Placement": {"AvailabilityZone": "eu-west-1c"}, "PublicIpAddress": "65.43.21.100", "PrivateIpAddress": "10.0.2.5", "State": {"Name": "running"},
+			 "Tags"      : [{"Key": "Account", "Value": "555566667777"}, {"Key": "Name", "Value": "Instance_4c"}, {"Key": "Project", "Value": "DataAnalytics"}]}]},
 		]
 	}
 mock_instances_5 = {
 	'Reservations': [
 		{"Instances": [
-			{"InstanceId": "i-5f6e7d8e9l", "InstanceType": "c5.4xlarge", "Placement": {"AvailabilityZone": "eu-central-1a"}, "PublicIpAddress": "87.65.43.23", "PrivateIpAddress": "10.0.3.11", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "666677775555"},{"Key": "Name", "Value": "Instance_5a"},{"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "WebApplication"}]},
-			{"InstanceId": "i-0a9b8c7d6i", "InstanceType": "r5.8xlarge", "Placement": {"AvailabilityZone": "eu-central-1b"}, "PublicIpAddress": "12.34.56.80", "PrivateIpAddress": "10.0.4.4", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "666677775555"},{"Key": "Name", "Value": "Instance_5b"}]}]},
+			{"InstanceId": "i-5f6e7d8e9l", "InstanceType": "c5.4xlarge", "Placement": {"AvailabilityZone": "eu-central-1a"}, "PublicIpAddress": "87.65.43.23", "PrivateIpAddress": "10.0.3.11", "State": {"Name": "running"},
+			 "Tags"      : [{"Key": "Account", "Value": "666677775555"}, {"Key": "Name", "Value": "Instance_5a"}, {"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "WebApplication"}]},
+			{"InstanceId": "i-0a9b8c7d6i", "InstanceType": "r5.8xlarge", "Placement": {"AvailabilityZone": "eu-central-1b"}, "PublicIpAddress": "12.34.56.80", "PrivateIpAddress": "10.0.4.4", "State": {"Name": "stopped"},
+			 "Tags"      : [{"Key": "Account", "Value": "666677775555"}, {"Key": "Name", "Value": "Instance_5b"}]}]},
 		]
 	}
 mock_instances_6 = {
 	'Reservations': [
 		{"Instances": [
-			{"InstanceId": "i-5f6e7d8e9m", "InstanceType": "m5.8xlarge", "Placement": {"AvailabilityZone": "eu-north-1c"}, "PublicIpAddress": "98.76.54.34", "PrivateIpAddress": "10.0.5.8", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_6a"},{"Key": "Environment", "Value": "Staging"}]},
-			{"InstanceId": "i-0a9b8c7d6j", "InstanceType": "t3.large", "Placement": {"AvailabilityZone": "eu-north-1c"}, "PublicIpAddress": "10.11.12.15", "PrivateIpAddress": "10.0.6.10", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_6b"},{"Key": "Project", "Value": "DataPipeline"}]},
-			{"InstanceId": "i-5f6e7d8e9n", "InstanceType": "g4dn.4xlarge", "Placement": {"AvailabilityZone": "eu-north-1d"}, "PublicIpAddress": "14.15.16.19", "PrivateIpAddress": "10.0.7.7", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_6c"}]}]},
+			{"InstanceId": "i-5f6e7d8e9m", "InstanceType": "m5.8xlarge", "Placement": {"AvailabilityZone": "eu-north-1c"}, "PublicIpAddress": "98.76.54.34", "PrivateIpAddress": "10.0.5.8", "State": {"Name": "running"},
+			 "Tags"      : [{"Key": "Account", "Value": "777755556666"}, {"Key": "Name", "Value": "Instance_6a"}, {"Key": "Environment", "Value": "Staging"}]},
+			{"InstanceId": "i-0a9b8c7d6j", "InstanceType": "t3.large", "Placement": {"AvailabilityZone": "eu-north-1c"}, "PublicIpAddress": "10.11.12.15", "PrivateIpAddress": "10.0.6.10", "State": {"Name": "running"},
+			 "Tags"      : [{"Key": "Account", "Value": "777755556666"}, {"Key": "Name", "Value": "Instance_6b"}, {"Key": "Project", "Value": "DataPipeline"}]},
+			{"InstanceId": "i-5f6e7d8e9n", "InstanceType": "g4dn.4xlarge", "Placement": {"AvailabilityZone": "eu-north-1d"}, "PublicIpAddress": "14.15.16.19", "PrivateIpAddress": "10.0.7.7", "State": {"Name": "stopped"},
+			 "Tags"      : [{"Key": "Account", "Value": "777755556666"}, {"Key": "Name", "Value": "Instance_6c"}]}]},
 
 		]
 	}
@@ -3567,17 +3575,31 @@ mock_instances_7 = {
 	'Reservations': [
 		{"Instances": [
 			{"InstanceId": "i-0a9b8c7d6k", "InstanceType": "m5a.2xlarge", "Placement": {"AvailabilityZone": "eu-west-2c"}, "PublicIpAddress": "18.19.20.23", "PrivateIpAddress": "10.0.8.5", "State": {"Name": "running"},
-			 "Tags"      : [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_7a"},{"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "MonitoringSystem"}]},
+			 "Tags"      : [{"Key": "Account", "Value": "777755556666"}, {"Key": "Name", "Value": "Instance_7a"}, {"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "MonitoringSystem"}]},
 			{"InstanceId": "i-5f6e7d8e9o", "InstanceType": "c5d.18xlarge", "Placement": {"AvailabilityZone": "eu-west-2a"}, "PublicIpAddress": "22.23.24.27", "PrivateIpAddress": "10.0.9.3", "State": {"Name": "running"},
-			 "Tags"      : [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_7b"},{"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "HighPerformanceComputing"}]}]},
+			 "Tags"      : [{"Key": "Account", "Value": "777755556666"}, {"Key": "Name", "Value": "Instance_7b"}, {"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "HighPerformanceComputing"}]}]},
 
 		]
 	}
 mock_instances_8 = {
 	'Reservations': [
 		{"Instances": [
-			{"InstanceId": "i-0f1e2d3c4d", "InstanceType": "t3.xlarge", "Placement": {"AvailabilityZone": "ap-south-1d"}, "PublicIpAddress": "54.123.45.70", "PrivateIpAddress": "10.0.0.7", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "666677778888"},{"Key": "Name", "Value": "Instance_8a"},{"Key": "Environment", "Value": "Production"}]},
-			{"InstanceId": "i-5f6e7d8e9p", "InstanceType": "m5.4xlarge", "Placement": {"AvailabilityZone": "ap-south-1d"}, "PublicIpAddress": "34.56.78.93", "PrivateIpAddress": "10.0.1.10", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "666677778888"},{"Key": "Name", "Value": "Instance_8b"},{"Key": "Environment", "Value": "Development"}]},
+			{"InstanceId"      : "i-0f1e2d3c4d", "InstanceType": "t3.xlarge",
+			 "Placement"       : {"AvailabilityZone": "ap-south-1d"},
+			 "PublicIpAddress" : "54.123.45.70",
+			 "PrivateIpAddress": "10.0.0.7",
+			 "State"           : {"Name": "running"},
+			 "Tags"            : [{"Key": "Account", "Value": "666677778888"},
+			                      {"Key": "Name", "Value": "Instance_8a"},
+			                      {"Key": "Environment", "Value": "Production"}]},
+			{"InstanceId"      : "i-5f6e7d8e9p", "InstanceType": "m5.4xlarge",
+			 "Placement"       : {"AvailabilityZone": "ap-south-1d"},
+			 "PublicIpAddress" : "34.56.78.93",
+			 "PrivateIpAddress": "10.0.1.10",
+			 "State"           : {"Name": "stopped"},
+			 "Tags"            : [{"Key": "Account", "Value": "666677778888"},
+			                      {"Key": "Name", "Value": "Instance_8b"},
+			                      {"Key": "Environment", "Value": "Development"}]},
 			]}
 		]
 	}
@@ -3585,37 +3607,113 @@ mock_instances_9 = {
 	'Reservations': [
 		{
 			"Instances": [
-				{"InstanceId": "i-0f1e2d3c4b", "InstanceType": "t3.micro", "Placement": {"AvailabilityZone": "il-central-1a"}, "PublicIpAddress": "54.123.45.68", "PrivateIpAddress": "10.0.0.5", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "777788886666"},{"Key": "Name", "Value": "Instance_9a"},{"Key": "Environment", "Value": "Production"}]},
-				{"InstanceId": "i-5f6e7d8e9e", "InstanceType": "m5.xlarge", "Placement": {"AvailabilityZone": "il-central-1a"}, "PublicIpAddress": "34.56.78.91", "PrivateIpAddress": "10.0.1.8", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "777788886666"},{"Key": "Name", "Value": "Instance_9b"},{"Key": "Environment", "Value": "Development"}]},
-				{"InstanceId": "i-0a9b8c7d6f", "InstanceType": "t2.medium", "Placement": {"AvailabilityZone": "il-central-1a"}, "PublicIpAddress": "65.43.21.99", "PrivateIpAddress": "10.0.2.4", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "777788886666"},{"Key": "Name", "Value": "Instance_9c"},{"Key": "Project", "Value": "DataAnalytics"}]}]},
-
+				{"InstanceId"      : "i-0f1e2d3c4b",
+				 "InstanceType"    : "t3.micro",
+				 "Placement"       : {"AvailabilityZone": "il-central-1a"},
+				 "PublicIpAddress" : "54.123.45.68",
+				 "PrivateIpAddress": "10.0.0.5",
+				 "State"           : {"Name": "running"},
+				 "Tags"            : [{"Key": "Account", "Value": "777788886666"},
+				                      {"Key": "Name", "Value": "Instance_9a"},
+				                      {"Key": "Environment", "Value": "Production"}]},
+				{"InstanceId"      : "i-5f6e7d8e9e",
+				 "InstanceType"    : "m5.xlarge",
+				 "Placement"       : {"AvailabilityZone": "il-central-1a"},
+				 "PublicIpAddress" : "34.56.78.91",
+				 "PrivateIpAddress": "10.0.1.8",
+				 "State"           : {"Name": "stopped"},
+				 "Tags"            : [{"Key": "Account", "Value": "777788886666"},
+				                      {"Key": "Name", "Value": "Instance_9b"},
+				                      {"Key": "Environment", "Value": "Development"}]},
+				{"InstanceId"      : "i-0a9b8c7d6f",
+				 "InstanceType"    : "t2.medium",
+				 "Placement"       : {"AvailabilityZone": "il-central-1a"},
+				 "PublicIpAddress" : "65.43.21.99",
+				 "PrivateIpAddress": "10.0.2.4",
+				 "State"           : {"Name": "running"},
+				 "Tags"            : [{"Key": "Account", "Value": "777788886666"},
+				                      {"Key": "Name", "Value": "Instance_9c"},
+				                      {"Key": "Project", "Value": "DataAnalytics"}]}]},
 		]
 	}
 mock_instances_10 = {
 	'Reservations': [
 		{"Instances": [
-			{"InstanceId": "i-5f6e7d8e9f", "InstanceType": "c5.2xlarge", "Placement": {"AvailabilityZone": "af-south-1c"}, "PublicIpAddress": "87.65.43.22", "PrivateIpAddress": "10.0.3.10", "State": {"Name": "running"},
-			 "Tags"      : [{"Key": "Account", "Value": "888866667777"},{"Key": "Name", "Value": "Instance_10a"},{"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "WebApplication"}]},
-			{"InstanceId": "i-0a9b8c7d6g", "InstanceType": "r5.4xlarge", "Placement": {"AvailabilityZone": "af-south-1b"}, "PublicIpAddress": "12.34.56.79", "PrivateIpAddress": "10.0.4.3", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "888866667777"},{"Key": "Name", "Value": "Instance_10b"}]}]},
-
+			{"InstanceId"      : "i-5f6e7d8e9f",
+			 "InstanceType"    : "c5.2xlarge",
+			 "Placement"       : {"AvailabilityZone": "af-south-1c"},
+			 "PublicIpAddress" : "87.65.43.22",
+			 "PrivateIpAddress": "10.0.3.10",
+			 "State"           : {"Name": "running"},
+			 "Tags"            : [{"Key": "Account", "Value": "888866667777"},
+			                      {"Key": "Name", "Value": "Instance_10a"},
+			                      {"Key": "Environment", "Value": "Production"},
+			                      {"Key": "Project", "Value": "WebApplication"}]},
+			{"InstanceId"      : "i-0a9b8c7d6g",
+			 "InstanceType"    : "r5.4xlarge",
+			 "Placement"       : {"AvailabilityZone": "af-south-1b"},
+			 "PublicIpAddress" : "12.34.56.79",
+			 "PrivateIpAddress": "10.0.4.3",
+			 "State"           : {"Name": "stopped"},
+			 "Tags"            : [{"Key": "Account", "Value": "888866667777"},
+			                      {"Key": "Name", "Value": "Instance_10b"}]}]},
 		]
 	}
 mock_instances_11 = {
 	'Reservations': [
 		{"Instances": [
-			{"InstanceId": "i-0a9b8c7d6i", "InstanceType": "m5a.xlarge", "Placement": {"AvailabilityZone": "us-east-2b"}, "PublicIpAddress": "18.19.20.22", "PrivateIpAddress": "10.0.8.4", "State": {"Name": "running"},
-			 "Tags"      : [{"Key": "Account", "Value": "111122223333"},{"Key": "Name", "Value": "Instance_11a"},{"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "MonitoringSystem"}]},
-			{"InstanceId": "i-5f6e7d8e9j", "InstanceType": "c5d.12xlarge", "Placement": {"AvailabilityZone": "us-east-2c"}, "PublicIpAddress": "22.23.24.26", "PrivateIpAddress": "10.0.9.2", "State": {"Name": "running"},
-			 "Tags"      : [{"Key": "Account", "Value": "111122223333"},{"Key": "Name", "Value": "Instance_11b"},{"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "HighPerformanceComputing"}]}]},
-
+			{"InstanceId"      : "i-0a9b8c7d6i",
+			 "InstanceType"    : "m5a.xlarge",
+			 "Placement"       : {"AvailabilityZone": "us-east-2b"},
+			 "PublicIpAddress" : "18.19.20.22",
+			 "PrivateIpAddress": "10.0.8.4",
+			 "State"           : {"Name": "running"},
+			 "Tags"            : [{"Key": "Account", "Value": "111122223333"},
+			                      {"Key": "Name", "Value": "Instance_11a"},
+			                      {"Key": "Environment", "Value": "Production"},
+			                      {"Key": "Project", "Value": "MonitoringSystem"}]},
+			{"InstanceId"      : "i-5f6e7d8e9j",
+			 "InstanceType"    : "c5d.12xlarge",
+			 "Placement"       : {"AvailabilityZone": "us-east-2c"},
+			 "PublicIpAddress" : "22.23.24.26",
+			 "PrivateIpAddress": "10.0.9.2",
+			 "State"           : {"Name": "running"},
+			 "Tags"            : [{"Key": "Account", "Value": "111122223333"},
+			                      {"Key": "Name", "Value": "Instance_11b"},
+			                      {"Key": "Environment", "Value": "Production"},
+			                      {"Key": "Project", "Value": "HighPerformanceComputing"}]}]},
 		]
 	}
 mock_instances_12 = {
 	'Reservations': [
 		{"Instances": [
-			{"InstanceId": "i-5f6e7d8e9g", "InstanceType": "m5.4xlarge", "Placement": {"AvailabilityZone": "us-west-2b"}, "PublicIpAddress": "98.76.54.33", "PrivateIpAddress": "10.0.5.7", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "444455556666"},{"Key": "Name", "Value": "Instance_12q"},{"Key": "Environment", "Value": "Staging"}]},
-			{"InstanceId": "i-0a9b8c7d6h", "InstanceType": "t3.medium", "Placement": {"AvailabilityZone": "us-west-2b"}, "PublicIpAddress": "10.11.12.14", "PrivateIpAddress": "10.0.6.9", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "444455556666"},{"Key": "Name", "Value": "Instance_12b"},{"Key": "Project", "Value": "DataPipeline"}]},
-			{"InstanceId": "i-5f6e7d8e9i", "InstanceType": "g4dn.2xlarge", "Placement": {"AvailabilityZone": "us-west-2c"}, "PublicIpAddress": "14.15.16.18", "PrivateIpAddress": "10.0.7.6", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "444455556666"},{"Key": "Name", "Value": "Instance_12c"}]}]},
+			{"InstanceId"      : "i-5f6e7d8e9g",
+			 "InstanceType"    : "m5.4xlarge",
+			 "Placement"       : {"AvailabilityZone": "us-west-2b"},
+			 "PublicIpAddress" : "98.76.54.33",
+			 "PrivateIpAddress": "10.0.5.7",
+			 "State"           : {"Name": "running"},
+			 "Tags"            : [{"Key": "Account", "Value": "444455556666"},
+			                      {"Key": "Name", "Value": "Instance_12q"},
+			                      {"Key": "Environment", "Value": "Staging"}]},
+			{"InstanceId"      : "i-0a9b8c7d6h",
+			 "InstanceType"    : "t3.medium",
+			 "Placement"       : {"AvailabilityZone": "us-west-2b"},
+			 "PublicIpAddress" : "10.11.12.14",
+			 "PrivateIpAddress": "10.0.6.9",
+			 "State"           : {"Name": "running"},
+			 "Tags"            : [{"Key": "Account", "Value": "444455556666"},
+			                      {"Key": "Name", "Value": "Instance_12b"},
+			                      {"Key": "Project", "Value": "DataPipeline"}]},
+			{"InstanceId"      : "i-5f6e7d8e9i",
+			 "InstanceType"    : "g4dn.2xlarge",
+			 "Placement"       : {"AvailabilityZone": "us-west-2c"},
+			 "PublicIpAddress" : "14.15.16.18",
+			 "PrivateIpAddress": "10.0.7.6",
+			 "State"           : {"Name": "stopped"},
+			 "Tags"            : [{"Key": "Account", "Value": "444455556666"},
+			                      {"Key": "Name", "Value": "Instance_12c"}]
+			 }]},
 		]
 	}
 mock_instances_13 = {
@@ -3627,7 +3725,9 @@ mock_instances_13 = {
 			"PublicIpAddress" : "54.123.45.70",
 			"PrivateIpAddress": "10.0.0.7",
 			"State"           : {"Name": "running"},
-			"Tags"            : [{"Key": "Account", "Value": "555566667777"},{"Key": "Name", "Value": "Instance_13c"},{"Key"  : "Environment","Value": "Production"}]
+			"Tags"            : [{"Key": "Account", "Value": "555566667777"},
+			                     {"Key": "Name", "Value": "Instance_13c"},
+			                     {"Key": "Environment", "Value": "Production"}]
 			}
 		]
 	}
@@ -3642,7 +3742,7 @@ mock_instances_14 = {
 					"PublicIpAddress" : "54.123.45.67",
 					"PrivateIpAddress": "10.0.0.4",
 					"State"           : {"Name": "running"},
-					"Tags"            : [{"Key": "Account", "Value": "555566667777"},{"Key": "Name", "Value": "Instance_14c"},{"Key"  : "Environment","Value": "Production"}]
+					"Tags"            : [{"Key": "Account", "Value": "555566667777"}, {"Key": "Name", "Value": "Instance_14c"}, {"Key": "Environment", "Value": "Production"}]
 					},
 				]
 			}
@@ -3651,27 +3751,67 @@ mock_instances_14 = {
 mock_instances_15 = {
 	'Reservations': [
 		{"Instances": [
-			{"InstanceId": "i-0f1e2d3c4b", "InstanceType": "t3.micro", "Placement": {"AvailabilityZone": "eu-central-1b"}, "PublicIpAddress": "54.123.45.68", "PrivateIpAddress": "10.0.0.5", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "666677775555"},{"Key": "Name", "Value": "Instance_15a"},{"Key": "Environment", "Value": "Production"}]},
-			{"InstanceId": "i-5f6e7d8e9e", "InstanceType": "m5.xlarge", "Placement": {"AvailabilityZone": "eu-central-1c"}, "PublicIpAddress": "34.56.78.91", "PrivateIpAddress": "10.0.1.8", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "666677775555"},{"Key": "Name", "Value": "Instance_15b"},{"Key": "Environment", "Value": "Development"}]},
-			{"InstanceId": "i-0a9b8c7d6f", "InstanceType": "t2.medium", "Placement": {"AvailabilityZone": "eu-central-1b"}, "PublicIpAddress": "65.43.21.99", "PrivateIpAddress": "10.0.2.4", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "666677775555"},{"Key": "Name", "Value": "Instance_15c"},{"Key": "Project", "Value": "DataAnalytics"}]}]},
+			{"InstanceId": "i-0f1e2d3c4b", "InstanceType": "t3.micro", "Placement": {"AvailabilityZone": "eu-central-1b"}, "PublicIpAddress": "54.123.45.68", "PrivateIpAddress": "10.0.0.5", "State": {"Name": "running"},
+			 "Tags"      : [{"Key": "Account", "Value": "666677775555"}, {"Key": "Name", "Value": "Instance_15a"}, {"Key": "Environment", "Value": "Production"}]},
+			{"InstanceId": "i-5f6e7d8e9e", "InstanceType": "m5.xlarge", "Placement": {"AvailabilityZone": "eu-central-1c"}, "PublicIpAddress": "34.56.78.91", "PrivateIpAddress": "10.0.1.8", "State": {"Name": "stopped"},
+			 "Tags"      : [{"Key": "Account", "Value": "666677775555"}, {"Key": "Name", "Value": "Instance_15b"}, {"Key": "Environment", "Value": "Development"}]},
+			{"InstanceId": "i-0a9b8c7d6f", "InstanceType": "t2.medium", "Placement": {"AvailabilityZone": "eu-central-1b"}, "PublicIpAddress": "65.43.21.99", "PrivateIpAddress": "10.0.2.4", "State": {"Name": "running"},
+			 "Tags"      : [{"Key": "Account", "Value": "666677775555"}, {"Key": "Name", "Value": "Instance_15c"}, {"Key": "Project", "Value": "DataAnalytics"}]}]},
 
 		]
 	}
 mock_instances_16 = {
 	'Reservations': [
 		{"Instances": [
-			{"InstanceId": "i-5f6e7d8e9g", "InstanceType": "m5.4xlarge", "Placement": {"AvailabilityZone": "af-south-1b"}, "PublicIpAddress": "98.76.54.33", "PrivateIpAddress": "10.0.5.7", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_16a"},{"Key": "Environment", "Value": "Staging"}]},
-			{"InstanceId": "i-0a9b8c7d6h", "InstanceType": "t3.medium", "Placement": {"AvailabilityZone": "af-south-1b"}, "PublicIpAddress": "10.11.12.14", "PrivateIpAddress": "10.0.6.9", "State": {"Name": "running"}, "Tags": [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_16b"},{"Key": "Project", "Value": "DataPipeline"}]},
-			{"InstanceId": "i-5f6e7d8e9i", "InstanceType": "g4dn.2xlarge", "Placement": {"AvailabilityZone": "af-south-1c"}, "PublicIpAddress": "14.15.16.18", "PrivateIpAddress": "10.0.7.6", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_16c"}]}]},
+			{"InstanceId"      : "i-5f6e7d8e9g",
+			 "InstanceType"    : "m5.4xlarge",
+			 "Placement"       : {"AvailabilityZone": "af-south-1b"},
+			 "PublicIpAddress" : "98.76.54.33",
+			 "PrivateIpAddress": "10.0.5.7",
+			 "State"           : {"Name": "running"},
+			 "Tags"            : [{"Key": "Account", "Value": "777755556666"},
+			                      {"Key": "Name", "Value": "Instance_16a"},
+			                      {"Key": "Environment", "Value": "Staging"}]},
+			{"InstanceId"      : "i-0a9b8c7d6h",
+			 "InstanceType"    : "t3.medium",
+			 "Placement"       : {"AvailabilityZone": "af-south-1b"},
+			 "PublicIpAddress" : "10.11.12.14",
+			 "PrivateIpAddress": "10.0.6.9",
+			 "State"           : {"Name": "running"},
+			 "Tags"            : [{"Key": "Account", "Value": "777755556666"},
+			                      {"Key": "Name", "Value": "Instance_16b"},
+			                      {"Key": "Project", "Value": "DataPipeline"}]},
+			{"InstanceId"      : "i-5f6e7d8e9i",
+			 "InstanceType"    : "g4dn.2xlarge",
+			 "Placement"       : {"AvailabilityZone": "af-south-1c"},
+			 "PublicIpAddress" : "14.15.16.18",
+			 "PrivateIpAddress": "10.0.7.6",
+
+			 "State"           : {"Name": "stopped"},
+			 "Tags"            : [{"Key": "Account", "Value": "777755556666"},
+			                      {"Key": "Name", "Value": "Instance_16c"}]}]},
 
 		]
 	}
 mock_instances_17 = {
 	'Reservations': [
 		{"Instances": [
-			{"InstanceId": "i-5f6e7d8e9f", "InstanceType": "c5.2xlarge", "Placement": {"AvailabilityZone": "me-south-1c"}, "PublicIpAddress": "87.65.43.22", "PrivateIpAddress": "10.0.3.10", "State": {"Name": "running"},
-			 "Tags"      : [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_17c"},{"Key": "Environment", "Value": "Production"}, {"Key": "Project", "Value": "WebApplication"}]},
-			{"InstanceId": "i-0a9b8c7d6g", "InstanceType": "r5.4xlarge", "Placement": {"AvailabilityZone": "me-south-1d"}, "PublicIpAddress": "12.34.56.79", "PrivateIpAddress": "10.0.4.3", "State": {"Name": "stopped"}, "Tags": [{"Key": "Account", "Value": "777755556666"},{"Key": "Name", "Value": "Instance_17c"}]}]},
+			{"InstanceId"      : "i-5f6e7d8e9f", "InstanceType": "c5.2xlarge",
+			 "Placement"       : {"AvailabilityZone": "me-south-1c"},
+			 "PublicIpAddress" : "87.65.43.22",
+			 "PrivateIpAddress": "10.0.3.10",
+			 "State"           : {"Name": "running"},
+			 "Tags"            : [{"Key": "Account", "Value": "777755556666"},
+			                      {"Key": "Name", "Value": "Instance_17c"},
+			                      {"Key": "Environment", "Value": "Production"},
+			                      {"Key": "Project", "Value": "WebApplication"}]},
+			{"InstanceId"      : "i-0a9b8c7d6g", "InstanceType": "r5.4xlarge",
+			 "Placement"       : {"AvailabilityZone": "me-south-1d"},
+			 "PublicIpAddress" : "12.34.56.79",
+			 "PrivateIpAddress": "10.0.4.3",
+			 "State"           : {"Name": "stopped"},
+			 "Tags"            : [{"Key": "Account", "Value": "777755556666"},
+			                      {"Key": "Name", "Value": "Instance_17c"}]}]},
 
 		]
 	}
@@ -3687,60 +3827,42 @@ mock_instances_18 = {
 					"PublicIpAddress" : "34.56.78.90",
 					"PrivateIpAddress": "10.0.1.7",
 					"State"           : {"Name": "stopped"},
-					"Tags"            : [{"Key": "Account", "Value": "666677778888"},{"Key": "Name", "Value": "Instance_18c"},{"Key"  : "Environment","Value": "Development"}]
+					"Tags"            : [{"Key": "Account", "Value": "666677778888"},
+					                     {"Key": "Name", "Value": "Instance_18c"},
+					                     {"Key": "Environment", "Value": "Development"}]
 					},
 				{
 					"InstanceId"      : "i-0a9b8c7d6e",
 					"InstanceType"    : "t2.small",
-					"Placement"       : {
-						"AvailabilityZone": "ap-southeast-1a"
-						},
+					"Placement"       : {"AvailabilityZone": "ap-southeast-1a"},
 					"PublicIpAddress" : "65.43.21.98",
 					"PrivateIpAddress": "10.0.2.3",
-					"State"           : {
-						"Name": "running"
-						},
-					"Tags"            : [{"Key": "Account", "Value": "666677778888"},{"Key": "Name", "Value": "Instance_18bc"},
-						{
-							"Key"  : "Project",
-							"Value": "DataAnalytics"
-							}
-						]
+					"State"           : {"Name": "running"},
+					"Tags"            : [{"Key": "Account", "Value": "666677778888"},
+					                     {"Key": "Name", "Value": "Instance_18bc"},
+					                     {"Key"  : "Project",
+					                      "Value": "DataAnalytics"}]
 					},
 				{
 					"InstanceId"      : "i-5f6e7d8e9a",
 					"InstanceType"    : "c5.xlarge",
-					"Placement"       : {
-						"AvailabilityZone": "eu-west-1b"
-						},
+					"Placement"       : {"AvailabilityZone": "eu-west-1b"},
 					"PublicIpAddress" : "87.65.43.21",
 					"PrivateIpAddress": "10.0.3.9",
-					"State"           : {
-						"Name": "running"
-						},
-					"Tags"            : [{"Key": "Account", "Value": "666677778888"},{"Key": "Name", "Value": "Instance_18a"},
-						{
-							"Key"  : "Environment",
-							"Value": "Production"
-							},
-						{
-							"Key"  : "Project",
-							"Value": "WebApplication"
-							}
-						]
+					"State"           : {"Name": "running"},
+					"Tags"            : [{"Key": "Account", "Value": "666677778888"}, {"Key": "Name", "Value": "Instance_18a"},
+					                     {"Key": "Environment", "Value": "Production"},
+					                     {"Key": "Project", "Value": "WebApplication"}]
 					},
 				{
 					"InstanceId"      : "i-0a9b8c7d6f",
 					"InstanceType"    : "r5.2xlarge",
-					"Placement"       : {
-						"AvailabilityZone": "us-east-2c"
-						},
+					"Placement"       : {"AvailabilityZone": "us-east-2c"},
 					"PublicIpAddress" : "12.34.56.78",
 					"PrivateIpAddress": "10.0.4.2",
-					"State"           : {
-						"Name": "stopped"
-						},
-					"Tags"            : [{"Key": "Account", "Value": "666677778888"},{"Key": "Name", "Value": "Instance_18d"}]
+					"State"           : {"Name": "stopped"},
+					"Tags"            : [{"Key": "Account", "Value": "666677778888"},
+					                     {"Key": "Name", "Value": "Instance_18d"}]
 					}
 				]
 			},
@@ -3754,37 +3876,24 @@ mock_instances_20 = {
 				{
 					"InstanceId"      : "i-5f6e7d8e9q",
 					"InstanceType"    : "c5.8xlarge",
-					"Placement"       : {
-						"AvailabilityZone": "af-south-1e"
-						},
+					"Placement"       : {"AvailabilityZone": "af-south-1e"},
 					"PublicIpAddress" : "87.65.43.24",
 					"PrivateIpAddress": "10.0.3.12",
-					"State"           : {
-						"Name": "running"
-						},
-					"Tags"            : [{"Key": "Account", "Value": "888866667777"},{"Key": "Name", "Value": "Instance_20d"},
-						{
-							"Key"  : "Environment",
-							"Value": "Production"
-							},
-						{
-							"Key"  : "Project",
-							"Value": "WebApplication"
-							}
-						]
+					"State"           : {"Name": "running"},
+					"Tags"            : [{"Key": "Account", "Value": "888866667777"},
+					                     {"Key": "Name", "Value": "Instance_20d"},
+					                     {"Key": "Environment", "Value": "Production"},
+					                     {"Key": "Project", "Value": "WebApplication"}]
 					},
 				{
 					"InstanceId"      : "i-0a9b8c7d6m",
 					"InstanceType"    : "r5.12xlarge",
-					"Placement"       : {
-						"AvailabilityZone": "af-south-2a"
-						},
+					"Placement"       : {"AvailabilityZone": "af-south-2a"},
 					"PublicIpAddress" : "12.34.56.81",
 					"PrivateIpAddress": "10.0.4.5",
-					"State"           : {
-						"Name": "stopped"
-						},
-					"Tags"            : [{"Key": "Account", "Value": "888866667777"},{"Key": "Name", "Value": "Instance_20a"},]
+					"State"           : {"Name": "stopped"},
+					"Tags"            : [{"Key": "Account", "Value": "888866667777"},
+					                     {"Key": "Name", "Value": "Instance_20a"}, ]
 					}
 				]
 			}
@@ -3792,65 +3901,85 @@ mock_instances_20 = {
 	}
 
 All_Instances_Response_Data = [
-	{'AccountNumber': '111122223333',
+	{'mock_profile' : 'mock_profile_1',
+	 'AccountNumber': '111122223333',
 	 'Region'       : 'us-east-1',
 	 'instance_data': mock_instances_1},
-	{'AccountNumber': '444455556666',
+	{'mock_profile' : 'mock_profile_2',
+	 'AccountNumber': '444455556666',
 	 'Region'       : 'us-east-2',
 	 'instance_data': mock_instances_2},
-	{'AccountNumber': '555566667777',
+	{'mock_profile' : 'mock_profile_3',
+	 'AccountNumber': '555566667777',
 	 'Region'       : 'us-west-2',
 	 'instance_data': mock_instances_3},
-	{'AccountNumber': '555566667777',
+	{'mock_profile' : 'mock_profile_4',
+	 'AccountNumber': '555566667777',
 	 'Region'       : 'eu-west-1',
 	 'instance_data': mock_instances_4},
-	{'AccountNumber': '666677775555',
+	{'mock_profile' : 'mock_profile_5',
+	 'AccountNumber': '666677775555',
 	 'Region'       : 'eu-central-1',
 	 'instance_data': mock_instances_5},
-	{'AccountNumber': '777755556666',
+	{'mock_profile' : 'mock_profile_6',
+	 'AccountNumber': '777755556666',
 	 'Region'       : 'eu-north-1',
 	 'instance_data': mock_instances_6},
-	{'AccountNumber': '777755556666',
+	{'mock_profile' : 'mock_profile_7',
+	 'AccountNumber': '777755556666',
 	 'Region'       : 'eu-west-2',
 	 'instance_data': mock_instances_7},
-	{'AccountNumber': '666677778888',
+	{'mock_profile' : 'mock_profile_8',
+	 'AccountNumber': '666677778888',
 	 'Region'       : 'ap-south-1',
 	 'instance_data': mock_instances_8},
-	{'AccountNumber': '777788886666',
+	{'mock_profile' : 'mock_profile_9',
+	 'AccountNumber': '777788886666',
 	 'Region'       : 'il-central-1',
 	 'instance_data': mock_instances_9},
-	{'AccountNumber': '888866667777',
+	{'mock_profile' : 'mock_profile_10',
+	 'AccountNumber': '888866667777',
 	 'Region'       : 'af-south-1',
 	 'instance_data': mock_instances_10},
-	{'AccountNumber': '111122223333',
+	{'mock_profile' : 'mock_profile_11',
+	 'AccountNumber': '111122223333',
 	 'Region'       : 'us-east-2',
 	 'instance_data': mock_instances_11},
-	{'AccountNumber': '444455556666',
+	{'mock_profile' : 'mock_profile_12',
+	 'AccountNumber': '444455556666',
 	 'Region'       : 'us-west-2',
 	 'instance_data': mock_instances_12},
-	{'AccountNumber': '555566667777',
+	{'mock_profile' : 'mock_profile_13',
+	 'AccountNumber': '555566667777',
 	 'Region'       : 'me-south-1',
 	 'instance_data': mock_instances_13},
-	{'AccountNumber': '555566667777',
+	{'mock_profile' : 'mock_profile_14',
+	 'AccountNumber': '555566667777',
 	 'Region'       : 'eu-central-1',
 	 'instance_data': mock_instances_14},
-	{'AccountNumber': '666677775555',
+	{'mock_profile' : 'mock_profile_15',
+	 'AccountNumber': '666677775555',
 	 'Region'       : 'eu-central-1',
 	 'instance_data': mock_instances_15},
-	{'AccountNumber': '777755556666',
+	{'mock_profile' : 'mock_profile_16',
+	 'AccountNumber': '777755556666',
 	 'Region'       : 'af-south-1',
 	 'instance_data': mock_instances_16},
-	{'AccountNumber': '777755556666',
+	{'mock_profile' : 'mock_profile_17',
+	 'AccountNumber': '777755556666',
 	 'Region'       : 'me-south-1',
 	 'instance_data': mock_instances_17},
-	{'AccountNumber': '666677778888',
+	{'mock_profile' : 'mock_profile_18',
+	 'AccountNumber': '666677778888',
 	 'Region'       : 'eu-west-1',
 	 'instance_data': mock_instances_18},
-	{'AccountNumber': '777788886666',
+	{'mock_profile' : 'mock_profile_19',
+	 'AccountNumber': '777788886666',
 	 'Region'       : 'us-east-1',
 	 # mock_instance data will be empty
 	 'instance_data': mock_instances_19},
-	{'AccountNumber': '888866667777',
+	{'mock_profile' : 'mock_profile_20',
+	 'AccountNumber': '888866667777',
 	 'Region'       : 'af-south-1',
 	 'instance_data': mock_instances_20},
 	]

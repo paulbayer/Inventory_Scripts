@@ -126,7 +126,7 @@ def find_all_elbs(fAllCredentials: list, ffragment: list, fstatus: str):
 				logging.warning(f"It's possible that the region {credential['Region']} hasn't been opted-into")
 				pass
 	checkqueue.join()
-	return (All_Load_Balancers)
+	return All_Load_Balancers
 
 
 ##################

@@ -86,7 +86,7 @@ if __name__ == "__main__":
 	print('List of accounts in this organization:')
 	for account in accounts['Accounts']:
 		print(f"Account Name: {account['Name']} Email: {account['Email']}")
-		if (account['Name'].lower().find('logging') >= 0):
+		if account['Name'].lower().find('logging') >= 0:
 			LOGGING_ACCOUNT_NAME = account['Name']
 		if account['Name'].lower().find('shared') >= 0:
 			SHARED_SERVICES_ACCOUNT_NAME = account['Name']
@@ -146,23 +146,23 @@ if __name__ == "__main__":
 	# if product wasnt created by StateMachineLambdaRole - delete it
 	list_of_termination_records = []
 	for provisioned_product in provisioned_products:
-		if ("StateMachineLambdaRole" not in provisioned_product['UserArn']):
+		if "StateMachineLambdaRole" not in provisioned_product['UserArn']:
 			print(f"Terminating provisioned product {provisioned_product['Name']}", end=' ')
 			response = client.terminate_provisioned_product(ProvisionedProductId=provisioned_product['Id'],
 			                                                IgnoreErrors=True, TerminateToken=provisioned_product['Id'])
 			list_of_termination_records.append(response['RecordDetail']['RecordId'])
 			print("[DONE]")
 
-	if (len(list_of_termination_records) > 0):
+	if len(list_of_termination_records) > 0:
 		if DEBUG:
 			print(list_of_termination_records)
 
 		while len(list_of_termination_records) > 0:
 			for termination_record in list(list_of_termination_records):
 				response = client.describe_record(Id=termination_record)
-				if (response['RecordDetail']['Status'] == 'SUCCEEDED'):
+				if response['RecordDetail']['Status'] == 'SUCCEEDED':
 					list_of_termination_records.remove(termination_record)
-				elif (response['RecordDetail']['Status'] == 'FAILED'):
+				elif response['RecordDetail']['Status'] == 'FAILED':
 					list_of_termination_records.remove(termination_record)
 					print("Failed deletion of provisioned product {}        ".format(
 							response['RecordDetail']['ProvisionedProductName']))
@@ -499,7 +499,7 @@ if __name__ == "__main__":
 	accounts = client.list_accounts()
 	account_found = False
 	for account in accounts['Accounts']:
-		if (account['Name'] == provided_account_name):
+		if account['Name'] == provided_account_name:
 			account_found = True
 			if AWS_SESSION_TOKEN_PASSED:
 				sts_client = boto3.client('sts', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY,
@@ -681,7 +681,7 @@ if __name__ == "__main__":
 		accounts = client.list_accounts()
 		account_found = False
 		for account in accounts['Accounts']:
-			if (account['Name'] == provided_account_name):
+			if account['Name'] == provided_account_name:
 				account_found = True
 				if AWS_SESSION_TOKEN_PASSED:
 					sts_client = boto3.client('sts', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY,

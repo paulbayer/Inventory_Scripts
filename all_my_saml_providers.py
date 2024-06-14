@@ -38,7 +38,7 @@ def parse_args(args):
 		default=False,
 		action="store_const",
 		help="This will delete the identity providers found - without any opportunity to confirm. Be careful!!")
-	return (parser.my_parser.parse_args(args))
+	return parser.my_parser.parse_args(args)
 
 
 def all_my_saml_providers(faws_acct: aws_acct_access, fChildAccounts:list, f_access_role=None) -> list:
@@ -91,7 +91,7 @@ def all_my_saml_providers(faws_acct: aws_acct_access, fChildAccounts:list, f_acc
 		except KeyError as my_Error:
 			logging.error(f"Key Error: {my_Error}")
 			continue
-	return (IdpsFound)
+	return IdpsFound
 
 
 def delete_idps(faws_acct: aws_acct_access, idps_found: list):

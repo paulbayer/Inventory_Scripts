@@ -34,7 +34,7 @@ def parse_args(f_arguments):
 	"""
 	script_path, script_name = split(sys.argv[0])
 	parser = CommonArguments()
-	parser.my_parser.description = ("We're going to find all instances within any of the accounts we have access to, given the profile(s) provided.")
+	parser.my_parser.description = "We're going to find all instances within any of the accounts we have access to, given the profile(s) provided."
 	parser.multiprofile()
 	parser.multiregion()
 	parser.extendedargs()
@@ -75,7 +75,6 @@ def find_all_instances(fAllCredentials: list, fStatus: str = None) -> list:
 			while True:
 				# Get the work from the queue and expand the tuple
 				c_account_credentials = self.queue.get()
-				pbar.update()
 				logging.info(f"De-queued info for account number {c_account_credentials['AccountId']}")
 				try:
 					# Now go through those stacksets and determine the instances, made up of accounts and regions
@@ -107,7 +106,8 @@ def find_all_instances(fAllCredentials: list, fStatus: str = None) -> list:
 									                     'InstanceId'   : InstanceId,
 									                     'PublicDNSName': PublicDnsName,
 									                     'ParentProfile': c_account_credentials['ParentProfile'],
-									                     'Name'         : Name, })
+									                     'Name'         : Name,
+									                     })
 								else:
 									continue
 				except KeyError as my_Error:
@@ -128,6 +128,7 @@ def find_all_instances(fAllCredentials: list, fStatus: str = None) -> list:
 						logging.warning(my_Error)
 						continue
 				finally:
+					pbar.update()
 					self.queue.task_done()
 
 	###########
@@ -151,7 +152,7 @@ def find_all_instances(fAllCredentials: list, fStatus: str = None) -> list:
 		logging.info(f"Beginning to queue data - starting with {credential['AccountId']}")
 		try:
 			# I don't know why - but double parens are necessary below. If you remove them, only the first parameter is queued.
-			checkqueue.put((credential))
+			checkqueue.put(credential)
 		except ClientError as my_Error:
 			if "AuthFailure" in str(my_Error):
 				logging.error(f"Authorization Failure accessing account {credential['AccountId']} in {credential['Region']} region")

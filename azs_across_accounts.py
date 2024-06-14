@@ -51,7 +51,7 @@ def azs_across_accounts(fProfiles, fRegionList, fSkipProfiles, fSkipAccounts, fA
 			region_azs = get_region_azs2(item)
 			print(f"{ERASE_LINE}Looking at account {item['AccountNumber']} in region {item['Region']} -- {passnumber}/{len(SuccessfulCredentials)}", end='\r')
 		AllOrgAZs[item['AccountNumber']][item['Region']] = region_azs
-	return (AllOrgAZs)
+	return AllOrgAZs
 
 
 ###########################

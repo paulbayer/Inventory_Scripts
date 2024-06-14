@@ -4041,7 +4041,7 @@ def random_string(stringLength=10):
 	# Generate a random string of fixed length
 	letters = string.ascii_lowercase
 	randomstring = (''.join(random.choice(letters) for _ in range(stringLength)))
-	return (randomstring)
+	return randomstring
 
 
 def get_region_azs2(ocredentials):

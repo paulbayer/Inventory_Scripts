@@ -20,7 +20,7 @@ def parse_args(args):
 	@return: returns an object namespace that contains the individualized parameters passed in
 	"""
 	parser = CommonArguments()
-	parser.my_parser.description = ("We're going to find all roles within any of the accounts we have access to, given the profile(s) provided.")
+	parser.my_parser.description = "We're going to find all roles within any of the accounts we have access to, given the profile(s) provided."
 	parser.multiprofile()
 	parser.multiregion()
 	parser.extendedargs()
@@ -38,7 +38,7 @@ def parse_args(args):
 		const=True,
 		default=False,
 		help="Whether you'd like to delete that specified role.")
-	return(parser.my_parser.parse_args(args))
+	return parser.my_parser.parse_args(args)
 
 def my_delete_role(fRoleList):
 	iam_session = boto3.Session(
@@ -64,10 +64,10 @@ def my_delete_role(fRoleList):
 		response = iam_client.delete_role(
 			RoleName=fRoleList['RoleName']
 		)
-		return (True)
+		return True
 	except ClientError as my_Error:
 		logging.error(f"Error: {my_Error}")
-		return (False)
+		return False
 
 def find_and_collect_roles_across_accounts(fAllCredentials:list, frole_fragments:list) -> list:
 	"""
@@ -134,7 +134,7 @@ def find_and_collect_roles_across_accounts(fAllCredentials:list, frole_fragments
 		found_roles = Roles
 	else:
 		found_roles = [x for x in Roles if find_in([x['RoleName']], pFragments, pExact)]
-	return(found_roles)
+	return found_roles
 
 def delete_roles(roles_to_delete):
 	confirm = False

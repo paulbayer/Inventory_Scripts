@@ -185,7 +185,7 @@ def find_account_stacksets(faws_acct, f_SCProducts, fRegion=None, fstacksetname=
 				pass
 	checkqueue.join()
 	pbar.close()
-	return (SCP2Stacks)
+	return SCP2Stacks
 
 
 ##########################
