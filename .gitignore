@@ -650,3 +650,5 @@ src/.package
 .idea/
 /venv3.7.9/
 .idea/*
+
+my_venv/
