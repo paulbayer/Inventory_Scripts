@@ -1,226 +1,158 @@
 digraph "AWS Organization" {
-	"p-xyzha7l2"	[color=red,
-		fillcolor=azure,
-		label="aws-guardrails-Zgheqc
- p-xyzha7l2 | scp",
-		shape=hexagon,
-		style=filled];
-	"p-cmuby1u5"	[color=red,
-		fillcolor=azure,
-		label="aws-guardrails-VfpSvx
- p-cmuby1u5 | scp",
-		shape=hexagon,
-		style=filled];
-	"p-fjvlpcir"	[color=red,
-		fillcolor=azure,
-		label="aws-guardrails-XgsluQ
- p-fjvlpcir | scp",
-		shape=hexagon,
-		style=filled];
-	"p-ltla7de0"	[color=red,
-		fillcolor=azure,
-		label="aws-guardrails-SToWLY
- p-ltla7de0 | scp",
-		shape=hexagon,
-		style=filled];
-	"p-ivqy6vcw"	[color=red,
-		fillcolor=azure,
-		label="aws-guardrails-yRzDzq
- p-ivqy6vcw | scp",
-		shape=hexagon,
-		style=filled];
-	"p-hzgmnf2y"	[color=red,
-		fillcolor=azure,
-		label="aws-guardrails-jsqSGu
- p-hzgmnf2y | scp",
-		shape=hexagon,
-		style=filled];
-	"p-trpixq4o"	[color=red,
-		fillcolor=azure,
-		label="aws-guardrails-TCMMdu
- p-trpixq4o | scp",
-		shape=hexagon,
-		style=filled];
-	"p-noin07mg"	[color=red,
-		fillcolor=azure,
-		label="BlockNonECRImagesForECS
- p-noin07mg | scp",
-		shape=hexagon,
-		style=filled];
-	"p-rkjuv9rq"	[color=red,
-		fillcolor=azure,
-		label="aws-guardrails-kccGwf
- p-rkjuv9rq | scp",
-		shape=hexagon,
-		style=filled];
-	"p-jcrldavn"	[color=red,
-		fillcolor=azure,
-		label="aws-guardrails-MvrOIp
- p-jcrldavn | scp",
-		shape=hexagon,
-		style=filled];
-	"p-f7n1y62m"	[color=red,
-		fillcolor=azure,
-		label="aws-guardrails-sonftX
- p-f7n1y62m | scp",
-		shape=hexagon,
-		style=filled];
-	"p-8ckbhpth"	[color=red,
-		fillcolor=azure,
-		label="aws-guardrails-lsYyLN
- p-8ckbhpth | scp",
-		shape=hexagon,
-		style=filled];
-	"p-c47s6vr7"	[color=red,
-		fillcolor=azure,
-		label="aws-guardrails-vYyrBq
- p-c47s6vr7 | scp",
-		shape=hexagon,
-		style=filled];
-	"p-gix48ih9"	[color=red,
-		fillcolor=azure,
-		label="aws-guardrails-LgGpMB
- p-gix48ih9 | scp",
-		shape=hexagon,
-		style=filled];
-	"p-bgqbu21d"	[color=red,
-		fillcolor=azure,
-		label="aws-guardrails-pWGfEm
- p-bgqbu21d | scp",
-		shape=hexagon,
-		style=filled];
-	"p-a0gzcftw"	[color=red,
-		fillcolor=azure,
-		label="aws-guardrails-veUdpb
- p-a0gzcftw | scp",
-		shape=hexagon,
-		style=filled];
-	"p-rck6rzeq"	[color=red,
-		fillcolor=azure,
-		label="aws-guardrails-oyrdNC
- p-rck6rzeq | scp",
-		shape=hexagon,
-		style=filled];
-	"ou-s943-y28px0ed"	[fillcolor=burlywood,
-		label="Exceptions | 0
-ou-s943-y28px0ed",
+	"r-rnh5"	[fillcolor=burlywood,
+		label="Root | 15
+r-rnh5",
 		shape=box,
 		style=filled];
-	"ou-s943-y28px0ed" -> "p-gix48ih9"	[minlen=1];
-	"ou-s943-y28px0ed" -> "p-a0gzcftw"	[minlen=1];
-	"ou-s943-r78qzoa9"	[fillcolor=burlywood,
-		label="Sandbox | 0
-ou-s943-r78qzoa9",
-		shape=box,
+	482419203598	[fillcolor=orange,
+		label="CTRIV-DemoAcct1
+482419203598",
+		shape=ellipse,
 		style=filled];
-	"ou-s943-r78qzoa9" -> "p-fjvlpcir"	[minlen=1];
-	"ou-s943-r78qzoa9" -> "p-rkjuv9rq"	[minlen=1];
-	"ou-s943-qflg1f4f"	[fillcolor=burlywood,
-		label="Security | 2
-ou-s943-qflg1f4f",
-		shape=box,
-		style=filled];
-	"ou-s943-qflg1f4f" -> "p-trpixq4o"	[minlen=1];
-	"ou-s943-qflg1f4f" -> "p-jcrldavn"	[minlen=1];
-	911241300374	[fillcolor=orange,
+	"r-rnh5" -> 482419203598	[minlen=1];
+	761439184925	[fillcolor=orange,
 		label="Audit
-911241300374",
+761439184925",
 		shape=ellipse,
 		style=filled];
-	"ou-s943-qflg1f4f" -> 911241300374	[minlen=1];
-	441190213311	[fillcolor=orange,
-		label="Log Archive
-441190213311",
+	"r-rnh5" -> 761439184925	[minlen=2];
+	434291463230	[fillcolor=orange,
+		label="shared-services
+434291463230",
 		shape=ellipse,
 		style=filled];
-	"ou-s943-qflg1f4f" -> 441190213311	[minlen=1];
-	"ou-s943-fkcutdpi"	[fillcolor=burlywood,
-		label="Deployments | 1
-ou-s943-fkcutdpi",
-		shape=box,
-		style=filled];
-	"ou-s943-fkcutdpi" -> "p-hzgmnf2y"	[minlen=1];
-	"ou-s943-fkcutdpi" -> "p-c47s6vr7"	[minlen=1];
-	812476271434	[fillcolor=orange,
-		label="AFT-Management
-812476271434",
+	"r-rnh5" -> 434291463230	[minlen=3];
+	684989712651	[fillcolor=red,
+		label="ChildAccount2
+684989712651
+SUSPENDED",
 		shape=ellipse,
 		style=filled];
-	"ou-s943-fkcutdpi" -> 812476271434	[minlen=1];
-	"ou-s943-pfr0i9ua"	[fillcolor=burlywood,
-		label="Workloads | 0
-ou-s943-pfr0i9ua",
+	"r-rnh5" -> 684989712651	[minlen=1];
+	874283748930	[fillcolor=orange,
+		label="logging
+874283748930",
+		shape=ellipse,
+		style=filled];
+	"r-rnh5" -> 874283748930	[minlen=2];
+	482924426177	[fillcolor=orange,
+		label="security
+482924426177",
+		shape=ellipse,
+		style=filled];
+	"r-rnh5" -> 482924426177	[minlen=3];
+	614022109253	[fillcolor=orange,
+		label="Another Child Account
+614022109253",
+		shape=ellipse,
+		style=filled];
+	"r-rnh5" -> 614022109253	[minlen=1];
+	287201118218	[fillcolor=orange,
+		label="CT-RIV20
+287201118218",
+		shape=ellipse,
+		style=filled];
+	"r-rnh5" -> 287201118218	[minlen=2];
+	528437446527	[fillcolor=orange,
+		label="security
+528437446527",
+		shape=ellipse,
+		style=filled];
+	"r-rnh5" -> 528437446527	[minlen=3];
+	506184996709	[fillcolor=orange,
+		label="Paul Bayer
+506184996709",
+		shape=ellipse,
+		style=filled];
+	"r-rnh5" -> 506184996709	[minlen=1];
+	311204252865	[fillcolor=orange,
+		label="Paul Bayer
+311204252865",
+		shape=ellipse,
+		style=filled];
+	"r-rnh5" -> 311204252865	[minlen=2];
+	377174160383	[fillcolor=orange,
+		label="Paul Bayer
+377174160383",
+		shape=ellipse,
+		style=filled];
+	"r-rnh5" -> 377174160383	[minlen=3];
+	341270331705	[fillcolor=orange,
+		label="RIV-NonCTAcct1
+341270331705",
+		shape=ellipse,
+		style=filled];
+	"r-rnh5" -> 341270331705	[minlen=1];
+	812488242847	[fillcolor=orange,
+		label="Log archive
+812488242847",
+		shape=ellipse,
+		style=filled];
+	"r-rnh5" -> 812488242847	[minlen=2];
+	921458433155	[fillcolor=orange,
+		label="PB-Nasdaq-Dev
+921458433155",
+		shape=ellipse,
+		style=filled];
+	"r-rnh5" -> 921458433155	[minlen=3];
+	"ou-rnh5-0b3e80nr"	[fillcolor=burlywood,
+		label="OU1 | 1
+ou-rnh5-0b3e80nr",
 		shape=box,
 		style=filled];
-	"ou-s943-pfr0i9ua" -> "p-xyzha7l2"	[minlen=1];
-	"ou-s943-pfr0i9ua" -> "p-8ckbhpth"	[minlen=1];
-	"ou-s943-de2p975j"	[fillcolor=burlywood,
-		label="Staging | 0
-ou-s943-de2p975j",
+	"r-rnh5" -> "ou-rnh5-0b3e80nr";
+	"ou-rnh5-gvio5fot"	[fillcolor=burlywood,
+		label="To-Be-Removed | 7
+ou-rnh5-gvio5fot",
 		shape=box,
 		style=filled];
-	"ou-s943-pfr0i9ua" -> "ou-s943-de2p975j"	[minlen=1];
-	"ou-s943-63jipqf4"	[fillcolor=burlywood,
-		label="Sandbox | 0
-ou-s943-63jipqf4",
-		shape=box,
+	"r-rnh5" -> "ou-rnh5-gvio5fot";
+	680047080288	[fillcolor=orange,
+		label="ChildAcct
+680047080288",
+		shape=ellipse,
 		style=filled];
-	"ou-s943-pfr0i9ua" -> "ou-s943-63jipqf4"	[minlen=1];
-	"ou-s943-w217j6nc"	[fillcolor=burlywood,
-		label="Development | 0
-ou-s943-w217j6nc",
-		shape=box,
+	"ou-rnh5-0b3e80nr" -> 680047080288	[minlen=1];
+	721730227322	[fillcolor=orange,
+		label="Test_With_Bhavani
+721730227322",
+		shape=ellipse,
 		style=filled];
-	"ou-s943-pfr0i9ua" -> "ou-s943-w217j6nc"	[minlen=1];
-	"ou-s943-p5nov6o1"	[fillcolor=burlywood,
-		label="Production | 0
-ou-s943-p5nov6o1",
-		shape=box,
+	"ou-rnh5-gvio5fot" -> 721730227322	[minlen=1];
+	194428920161	[fillcolor=orange,
+		label="LZ_Logging
+194428920161",
+		shape=ellipse,
 		style=filled];
-	"ou-s943-pfr0i9ua" -> "ou-s943-p5nov6o1"	[minlen=1];
-	"ou-s943-t7y6lg7w"	[fillcolor=burlywood,
-		label="Policy Staging | 0
-ou-s943-t7y6lg7w",
-		shape=box,
+	"ou-rnh5-gvio5fot" -> 194428920161	[minlen=2];
+	433584161862	[fillcolor=orange,
+		label="
+433584161862",
+		shape=ellipse,
 		style=filled];
-	"ou-s943-t7y6lg7w" -> "p-cmuby1u5"	[minlen=1];
-	"ou-s943-t7y6lg7w" -> "p-ltla7de0"	[minlen=1];
-	"ou-s943-jhzpqz0i"	[fillcolor=burlywood,
-		label="Suspended | 0
-ou-s943-jhzpqz0i",
-		shape=box,
+	"ou-rnh5-gvio5fot" -> 433584161862	[minlen=3];
+	729275190711	[fillcolor=orange,
+		label="LZ_SharedServices
+729275190711",
+		shape=ellipse,
 		style=filled];
-	"ou-s943-jhzpqz0i" -> "p-f7n1y62m"	[minlen=1];
-	"ou-s943-jhzpqz0i" -> "p-rck6rzeq"	[minlen=1];
-	"ou-s943-blf4hdns"	[fillcolor=burlywood,
-		label="Infrastructure | 0
-ou-s943-blf4hdns",
-		shape=box,
+	"ou-rnh5-gvio5fot" -> 729275190711	[minlen=1];
+	854087646131	[fillcolor=orange,
+		label="LZ_Security
+854087646131",
+		shape=ellipse,
 		style=filled];
-	"ou-s943-blf4hdns" -> "p-ivqy6vcw"	[minlen=1];
-	"ou-s943-blf4hdns" -> "p-bgqbu21d"	[minlen=1];
-	"ou-s943-0pnew860"	[fillcolor=burlywood,
-		label="Staging | 0
-ou-s943-0pnew860",
-		shape=box,
+	"ou-rnh5-gvio5fot" -> 854087646131	[minlen=2];
+	118442197125	[fillcolor=orange,
+		label="LZ_Management
+118442197125",
+		shape=ellipse,
 		style=filled];
-	"ou-s943-blf4hdns" -> "ou-s943-0pnew860"	[minlen=1];
-	"ou-s943-upc8zesu"	[fillcolor=burlywood,
-		label="Sandbox | 0
-ou-s943-upc8zesu",
-		shape=box,
+	"ou-rnh5-gvio5fot" -> 118442197125	[minlen=3];
+	557385459976	[fillcolor=orange,
+		label="LZ_Audit
+557385459976",
+		shape=ellipse,
 		style=filled];
-	"ou-s943-blf4hdns" -> "ou-s943-upc8zesu"	[minlen=1];
-	"ou-s943-g2ka30v2"	[fillcolor=burlywood,
-		label="Development | 0
-ou-s943-g2ka30v2",
-		shape=box,
-		style=filled];
-	"ou-s943-blf4hdns" -> "ou-s943-g2ka30v2"	[minlen=1];
-	"ou-s943-9fiedw2a"	[fillcolor=burlywood,
-		label="Production | 0
-ou-s943-9fiedw2a",
-		shape=box,
-		style=filled];
-	"ou-s943-blf4hdns" -> "ou-s943-9fiedw2a"	[minlen=1];
+	"ou-rnh5-gvio5fot" -> 557385459976	[minlen=1];
 }
