@@ -7,14 +7,17 @@ from graphviz import Digraph
 from time import time
 from colorama import init, Fore
 from ArgumentsClass import CommonArguments
+import ipywidgets as widgets
+from ipywidgets import interactive, interactive_output
+from IPython.display import display
 
-__version__ = '2024.05.04'
+__version__ = '2024.06.18'
 init()
 
 account_fillcolor = 'orange'
 suspended_account_fillcolor = 'red'
 account_shape = 'ellipse'
-policy_fillcolor = 'azure'
+policy_fillcolor = 'azure'  # Pretty color - nothing to do with the Azure Cloud...
 policy_linecolor = 'red'
 policy_shape = 'hexagon'
 ou_fillcolor = 'burlywood'
