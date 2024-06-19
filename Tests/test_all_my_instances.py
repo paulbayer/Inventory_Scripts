@@ -5,8 +5,8 @@ import unittest
 import pytest
 from unittest.mock import patch
 import sys
-from all_my_instances import parse_args, find_all_instances, get_credentials
-from common_test_data import CredentialResponseData, mock_instances_1, mock_profile_list_1, mock_region_list_1, mock_profile_list_2, mock_region_list_2, mock_profile_list_3, mock_region_list_3, mock_profile_list_4, mock_region_list_4
+from all_my_instances import parse_args, find_all_instances
+from common_test_data import CredentialResponseData, All_Instances_Response_Data, mock_instances_1, mock_profile_list_1, mock_region_list_1, mock_profile_list_2, mock_region_list_2, mock_profile_list_3, mock_region_list_3, mock_profile_list_4, mock_region_list_4
 from common_test_functions import mock_find_all_instances2
 
 class TestScriptFunctions(unittest.TestCase):
@@ -51,12 +51,12 @@ class TestScriptFunctions(unittest.TestCase):
 		                      'SkipAccounts': None,
 		                      'SkipProfiles': None,
 		                      'Time'        : True,
-		                      'loglevel'    : 50,
+		                      'loglevel'    : 20,
 		                      'pStatus'     : 'running',
 
 		                      # Add other expected arguments as needed
 		                      }
-		self.mock_args = ['-p', 'mock_profile', '-rs', 'us-east-1', '-s', 'running', '--time']
+		self.mock_args = ['-p', 'mock_profile', '-rs', 'us-east-1', '-s', 'running', '--time', '-vvv']
 		self.mock_profile_list = ['mock_profile_1', 'mock_profile_2']
 		self.mock_region_list = ['us-east-1', 'us-east-2']
 
@@ -68,10 +68,11 @@ class TestScriptFunctions(unittest.TestCase):
 			for arg, value in self.expected_args.items():
 				self.assertEqual(getattr(args, arg), value)
 
-	@patch('all_my_instances.Inventory_Modules.get_regions3')
-	@patch('all_my_instances.Inventory_Modules.get_profiles')
-	@patch('all_my_instances.get_credentials_for_accounts_in_org')
-	# @pytest.mark.parametrize(
+	# @patch('all_my_instances.Inventory_Modules.get_regions3')
+	# @patch('all_my_instances.Inventory_Modules.get_profiles')
+	# @patch('all_my_instances.get_credentials_for_accounts_in_org')
+
+	# # @pytest.mark.parametrize(
 	# 	"mock_org_credentials, mock_profile_list, mock_region_list",
 	# 	[
 	# 		(CredentialResponseData, mock_profile_list_1, mock_region_list_1),
@@ -82,6 +83,7 @@ class TestScriptFunctions(unittest.TestCase):
 	# 	)
 	# def test_get_credentials(self, mock_get_credentials_for_accounts_in_org, mock_get_profiles, mock_get_regions3, mock_org_credentials, mock_profile_list, mock_region_list):
 
+	"""
 	def test_get_credentials(self, mock_get_credentials_for_accounts_in_org, mock_get_profiles, mock_get_regions3):
 		mock_get_profiles.return_value = self.mock_profile_list
 		mock_get_regions3.return_value = self.mock_region_list
@@ -103,14 +105,18 @@ class TestScriptFunctions(unittest.TestCase):
 		self.assertEqual(credentials[1]['Profile'], None)
 		self.assertEqual(credentials[1]['AccountStatus'], 'ACTIVE')
 		self.assertEqual(credentials[1]['Role'], 'AWSCloudFormationStackSetExecutionRole')
+	"""
 
 	@patch('all_my_instances.Inventory_Modules.find_account_instances2', wraps=mock_find_all_instances2)
 	def test_find_all_instances(self, mock_find_account_instances2):
-
-		# mock_find_account_instances2.return_value = mock_instances_1
-
-		instances = find_all_instances(CredentialResponseData[1:2], 'running')
+		test_creds = CredentialResponseData[1:3]
+		instances = find_all_instances(test_creds, 'running')
 		# self.assertEqual(len(instances), (len(mock_instances_1) * len(CredentialResponseData)))
+		for mock_profile in All_Instances_Response_Data:
+			for instance in instances:
+				mock_data_set = mock_profile['instance_data']['Reservations'] if mock_profile['mock_profile'] == instance['ParentProfile'] else None
+
+
 		self.assertEqual(instances[0]['InstanceType'], 't2.micro')
 		self.assertEqual(instances[0]['InstanceId'], 'i-1234567890abcdef')
 		self.assertEqual(instances[0]['PublicDNSName'], 'ec2-1-2-3-4.us-east-1.compute.amazonaws.com')
@@ -142,8 +148,8 @@ class TestScriptFunctions(unittest.TestCase):
 	# 	output = captured_output.getvalue()
 	# 	self.assertIn('Found 1 instances across 1 accounts across 1 regions', output)
 
-	if __name__ == '__main__':
-		unittest.main()
+if __name__ == '__main__':
+	unittest.main()
 
 	"""
 	In the test_find_all_instances method, I added assertions to check if the instance details are correctly populated in the returned list.

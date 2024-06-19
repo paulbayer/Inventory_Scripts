@@ -17,10 +17,11 @@ init()
 
 __version__ = '2024.05.07'
 
-def parse_args(args):
+
+def parse_args(f_args):
 	"""
 	Description: Parses the arguments passed into the script
-	@param args: args represents the list of arguments passed in
+	@param f_args: args represents the list of arguments passed in
 	@return: returns an object namespace that contains the individualized parameters passed in
 	"""
 	parser = CommonArguments()
@@ -39,7 +40,7 @@ def parse_args(args):
 		metavar="IP address",
 		default=None,
 		help="IP address(es) you're looking for within your accounts")
-	return parser.my_parser.parse_args(args)
+	return parser.my_parser.parse_args(f_args)
 
 
 def check_accounts_for_enis(fCredentialList, fip=None):
@@ -102,6 +103,7 @@ def check_accounts_for_enis(fCredentialList, fip=None):
 				pass
 	checkqueue.join()
 	return Results
+
 
 def present_results(ENIsFound:list):
 	"""

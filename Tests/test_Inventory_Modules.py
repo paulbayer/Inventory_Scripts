@@ -52,4 +52,4 @@ def test_get_all_credentials(parameters, test_value_dict, mocker):
 		assert cred['Success']
 	print("Result:", result)
 
-	return(result)
+	return result
