@@ -9,6 +9,7 @@ from all_my_instances import parse_args, find_all_instances
 from common_test_data import CredentialResponseData, All_Instances_Response_Data, mock_instances_1, mock_profile_list_1, mock_region_list_1, mock_profile_list_2, mock_region_list_2, mock_profile_list_3, mock_region_list_3, mock_profile_list_4, mock_region_list_4
 from common_test_functions import mock_find_all_instances2
 
+
 class TestScriptFunctions(unittest.TestCase):
 	def setUp(self):
 		# This is the parameters provided. Note that this
@@ -116,7 +117,6 @@ class TestScriptFunctions(unittest.TestCase):
 			for instance in instances:
 				mock_data_set = mock_profile['instance_data']['Reservations'] if mock_profile['mock_profile'] == instance['ParentProfile'] else None
 
-
 		self.assertEqual(instances[0]['InstanceType'], 't2.micro')
 		self.assertEqual(instances[0]['InstanceId'], 'i-1234567890abcdef')
 		self.assertEqual(instances[0]['PublicDNSName'], 'ec2-1-2-3-4.us-east-1.compute.amazonaws.com')
@@ -147,6 +147,7 @@ class TestScriptFunctions(unittest.TestCase):
 	# 	# Check the captured output
 	# 	output = captured_output.getvalue()
 	# 	self.assertIn('Found 1 instances across 1 accounts across 1 regions', output)
+
 
 if __name__ == '__main__':
 	unittest.main()
