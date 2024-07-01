@@ -49,10 +49,15 @@ def parse_args(f_arguments):
 		dest="pReferences",
 		action="store_true",
 		help="flag to further get references to the security groups found")
+	local.add_argument(
+		"--rules",
+		dest="pRules",
+		action="store_true",
+		help="flag to further break out the rules within the security groups found")
 	return parser.my_parser.parse_args(f_arguments)
 
 
-def check_accounts_for_security_groups(fCredentialList, fFragment: list = None, fExact: bool = False, fDefault: bool = False, fReferences: bool = False):
+def check_accounts_for_security_groups(fCredentialList, fFragment: list = None, fExact: bool = False, fDefault: bool = False, fReferences: bool = False, fRules: bool = False):
 	"""
 	Note that this function takes a list of Credentials and checks for Default Security Groups in every account and region it has creds for
 	:param fCredentialList: This is a list of dictionaries containing the credentials for each account
@@ -60,6 +65,7 @@ def check_accounts_for_security_groups(fCredentialList, fFragment: list = None, 
 	:param fExact: This is an optional parameter that specifies whether the string specified in fFragment must be present exactly
 	:param fDefault: This is an optional parameter that specifies whether to only consider default security groups or not
 	:param fReferences: This is an optional parameter that specifies whether to find references to security groups or not
+	:param fRules: This is an optional parameter that specifies whether to break out the rules within the security groups or not
 	:return: Returns a list of dictionaries containing the security groups and their associated resources
 	"""
 
@@ -83,6 +89,33 @@ def check_accounts_for_security_groups(fCredentialList, fFragment: list = None, 
 						for security_group in SecurityGroups:
 							if fReferences:
 								ResourcesReferencingSG = find_references_to_security_groups2(c_account_credentials, security_group)
+							if fRules:
+								for inbound_permission in security_group['IpPermissions']:
+									inbound_permission['Protocol'] = 'AllTraffic' if inbound_permission['IpProtocol'] == '-1' else inbound_permission['IpProtocol']
+									if AnySource in inbound_permission['IpRanges']:
+										inbound_permission['From'] = 'Any'
+									elif inbound_permission['IpRanges']:
+										inbound_permission['From'] = inbound_permission['IpRanges']
+									elif inbound_permission['UserIdGroupPairs']:
+										inbound_permission['From'] = inbound_permission['UserIdGroupPairs']
+										if inbound_permission['From'][0]['GroupId'] == security_group['GroupId']:
+											inbound_permission['From'] = 'Myself'
+									elif inbound_permission['PrefixListIds']:
+										inbound_permission['From'] = inbound_permission['PrefixListIds']
+									else:
+										inbound_permission['From'] = None
+								for outbound_permission in security_group['IpPermissionsEgress']:
+									outbound_permission['Protocol'] = 'AllTraffic' if outbound_permission['IpProtocol'] == '-1' else outbound_permission['IpProtocol']
+									if AnyDest in outbound_permission['IpRanges']:
+										outbound_permission['To'] = 'Any'
+									elif outbound_permission['IpRanges']:
+										outbound_permission['To'] = outbound_permission['IpRanges']
+									elif outbound_permission['UserIdGroupPairs']:
+										outbound_permission['To'] = outbound_permission['UserIdGroupPairs']
+									elif outbound_permission['PrefixListIds']:
+										outbound_permission['To'] = outbound_permission['PrefixListIds']
+									else:
+										outbound_permission['To'] = None
 							AllSecurityGroups.append({'MgmtAccount'        : c_account_credentials['MgmtAccount'],
 							                          'AccountId'          : c_account_credentials['AccountId'],
 							                          'Region'             : c_account_credentials['Region'],
@@ -94,9 +127,11 @@ def check_accounts_for_security_groups(fCredentialList, fFragment: list = None, 
 							                          'Description'        : security_group['Description'],
 							                          'Default'            : security_group['Default'],
 							                          'IpPermissions'      : security_group['IpPermissions'],
+							                          'IpPermissionsEgress': security_group['IpPermissionsEgress'],
 							                          'Tags'               : security_group['Tags'] if 'Tags' in security_group.keys() else None,
 							                          'ReferencedResources': ResourcesReferencingSG if fReferences else None,
-							                          'NumOfReferences'    : len(ResourcesReferencingSG) if fReferences else 'N/A', })
+							                          'NumOfReferences'    : len(ResourcesReferencingSG) if fReferences else 'N/A',
+							                          'NumOfRules'         : (len(security_group['IpPermissions']) + len(security_group['IpPermissionsEgress'])) if fRules else 'N/A'})
 					else:
 						continue
 				except KeyError as my_Error:
@@ -121,6 +156,8 @@ def check_accounts_for_security_groups(fCredentialList, fFragment: list = None, 
 					self.queue.task_done()
 
 	###########
+	AnyDest = {'CidrIp': '0.0.0.0/0'}
+	AnySource = {'CidrIp': '0.0.0.0/0'}
 
 	checkqueue = Queue()
 
@@ -163,6 +200,13 @@ def check_accounts_for_security_groups(fCredentialList, fFragment: list = None, 
 #   Determine if there's a way to update those resources to use the new security group
 #   Present what we've found, and ask the user if they want to update those resources to use the new security group created
 
+# def find_rules_within_security_group():
+
+# def find_enis_associated_to_security_group(f_account:str, f_sec_grps:list):
+# 	for sec_grp in f_sec_grps:
+# 		# Find all enis associated with each security group
+#
+
 
 ##################
 # Main
@@ -180,6 +224,7 @@ if __name__ == '__main__':
 	pExact = args.Exact
 	pDefault = args.pDefault
 	pReferences = args.pReferences
+	pRules = args.pRules
 	pFilename = args.Filename
 	pTiming = args.Time
 	verbose = args.loglevel
@@ -204,21 +249,40 @@ if __name__ == '__main__':
 		'GroupId'    : {'DisplayOrder': 5, 'Heading': 'Group ID'},
 		'VpcId'      : {'DisplayOrder': 6, 'Heading': 'VPC ID'},
 		'Default'    : {'DisplayOrder': 7, 'Heading': 'Default', 'Condition': [True]},
-		'Description': {'DisplayOrder': 9, 'Heading': 'Description'}}
+		'Description': {'DisplayOrder': 10, 'Heading': 'Description'}}
 	display_dict.update({'NumOfReferences'    : {'DisplayOrder': 8, 'Heading': '# Refs'},
-	                     'ReferencedResources': {'DisplayOrder': 10, 'Heading': 'References',
+	                     'ReferencedResources': {'DisplayOrder': 11, 'Heading': 'References',
 	                                             'SubDisplay'  : {'ResourceType': {'DisplayOrder': 1, 'Heading': 'Resource Type'},
-	                                                              'Id'        : {'DisplayOrder': 2, 'Heading': 'ID'},
+	                                                              'Id'          : {'DisplayOrder': 2, 'Heading': 'ID'},
 	                                                              'Status'      : {'DisplayOrder': 3, 'Heading': 'Status'},
 	                                                              'Description' : {'DisplayOrder': 4, 'Heading': 'Description'}}}}) if pReferences else None
+	# https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2/client/describe_security_groups.html
+	display_dict.update({'NumOfRules'         : {'DisplayOrder': 9, 'Heading': '# Rules'},
+	                     'IpPermissions'      : {'DisplayOrder': 12, 'Heading': 'Inbound Rules',
+	                                             'SubDisplay'  : {'Protocol': {'DisplayOrder': 1, 'Heading': 'In Protocol'},
+	                                                              'FromPort': {'DisplayOrder': 2, 'Heading': 'Port From', 'Delimiter': False},
+	                                                              'ToPort'  : {'DisplayOrder': 3, 'Heading': 'Port To', 'Delimiter': False},
+	                                                              'From'    : {'DisplayOrder': 4, 'Heading': 'From', 'Condition': ['10.1.1.0/24']},
+	                                                              # 'UserIdGroupPairs': {'DisplayOrder': 5, 'Heading': 'Group Pairs'},
+	                                                              # 'Description'     : {'DisplayOrder': 6, 'Heading': 'Description'}
+	                                                              }},
+	                     'IpPermissionsEgress': {'DisplayOrder': 13, 'Heading': 'Outbound Rules',
+	                                             'SubDisplay'  : {'Protocol': {'DisplayOrder': 1, 'Heading': 'Out Protocol'},
+	                                                              'FromPort': {'DisplayOrder': 2, 'Heading': 'Port From', 'Delimiter': False},
+	                                                              'ToPort'  : {'DisplayOrder': 3, 'Heading': 'Port To', 'Delimiter': False},
+	                                                              'To'      : {'DisplayOrder': 4, 'Heading': 'To'},
+	                                                              # 'UserIdGroupPairs': {'DisplayOrder': 5, 'Heading': 'Group Pairs'},
+	                                                              # 'Description'     : {'DisplayOrder': 6, 'Heading': 'Description'}
+	                                                              }}}) if pRules else None
 
 	# Get credentials for all relevant children accounts
+
 	CredentialList = get_all_credentials(pProfiles, pTiming, pSkipProfiles, pSkipAccounts, pRootOnly, pAccounts, pRegionList)
 	AccountList = list(set([x['AccountId'] for x in CredentialList if x['Success']]))
 	RegionList = list(set([x['Region'] for x in CredentialList if x['Success']]))
 	# Find Security Groups across all children accounts
 	# This same function also does the references check, if you want it to...
-	AllSecurityGroups = check_accounts_for_security_groups(CredentialList, pFragment, pExact, pDefault, pReferences)
+	AllSecurityGroups = check_accounts_for_security_groups(CredentialList, pFragment, pExact, pDefault, pReferences, pRules)
 	sorted_AllSecurityGroups = sorted(AllSecurityGroups, key=lambda k: (k['MgmtAccount'], k['AccountId'], k['Region'], k['GroupName']))
 
 	# Display results

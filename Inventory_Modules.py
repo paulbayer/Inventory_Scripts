@@ -959,14 +959,18 @@ def disable_org_service2(ocredentials, serviceName=None):
 	return returnResponse
 
 
-def find_security_groups2(ocredentials, f_fragments=None, f_exact=False, defaultOnly=False):
+def find_security_groups2(ocredentials, f_fragments: list = None, f_exact: bool = False, defaultOnly: bool = False) -> list:
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the account number
-		@rtype: object
+		- ['Region'] holds the region
+	@param:  f_fragments - a list of fragments to search for
+	@param:  f_exact - a boolean to indicate whether to use exact matching or not
+	@param:  defaultOnly - a boolean to indicate whether to return only default security groups or not
+	@return: list
 	"""
 	import boto3
 	import logging
@@ -1060,6 +1064,10 @@ def find_references_to_security_groups2(ocredentials, f_security_group: dict):
 		)
 	for security_group in response_inbound['SecurityGroups']:
 		security_group['ResourceType'] = 'InboundRule'
+		# for rule in security_group['IpPermissions']:
+		# 	rule['Protocol'] = 'AllTraffic' if rule['IpProtocol'] == '-1' else rule['IpProtocol']
+		# for permission in security_group['IpPermissions']:
+		# 	security_group['IpPermissions'].append(permission)
 		security_group['Id'] = security_group['GroupId']
 		SecurityGroupReferences.append(security_group)
 	while 'NextToken' in response_inbound.keys():
@@ -1073,6 +1081,8 @@ def find_references_to_security_groups2(ocredentials, f_security_group: dict):
 			)
 		for security_group in response_inbound['SecurityGroups']:
 			security_group['ResourceType'] = 'InboundRule'
+			# for rule in security_group['IpPermissions']:
+			# 	rule['Protocol'] = 'AllTraffic' if rule['IpProtocol'] == '-1' else rule['IpProtocol']
 			security_group['Id'] = security_group['GroupId']
 			SecurityGroupReferences.append(security_group)
 
@@ -1086,6 +1096,8 @@ def find_references_to_security_groups2(ocredentials, f_security_group: dict):
 		)
 	for security_group in response_outbound['SecurityGroups']:
 		security_group['ResourceType'] = 'OutboundRule'
+		# for rule in security_group['IpPermissions']:
+		# 	rule['Protocol'] = 'AllTraffic' if rule['IpProtocol'] == '-1' else rule['IpProtocol']
 		security_group['Id'] = security_group['GroupId']
 		SecurityGroupReferences.append(security_group)
 	while 'NextToken' in response_outbound.keys():
@@ -1099,6 +1111,8 @@ def find_references_to_security_groups2(ocredentials, f_security_group: dict):
 			)
 		for security_group in response_outbound['SecurityGroups']:
 			security_group['ResourceType'] = 'OutboundRule'
+			# for rule in security_group['IpPermissions']:
+			# 	rule['Protocol'] = 'AllTraffic' if rule['IpProtocol'] == '-1' else rule['IpProtocol']
 			security_group['Id'] = security_group['GroupId']
 			SecurityGroupReferences.append(security_group)
 
@@ -4204,6 +4218,9 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 		# This writes out the headings
 		print("\t", end='') if subdisplay else None
 		for field, value in sorted_display_dict.items():
+			# If this is a sub-display field, there's no need to write out the heading above
+			if 'SubDisplay' in value.keys():
+				continue
 			header_format = needed_space[field]
 			print(f"{value['Heading']:{header_format}s} ", end='')
 		# Newline at the end of the headings
@@ -4211,6 +4228,9 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 		# This writes out the dashes (separators)
 		print("\t", end='') if subdisplay else None
 		for field, value in sorted_display_dict.items():
+			# If this is a sub-display field, there's no need to write out the heading above
+			if 'SubDisplay' in value.keys():
+				continue
 			repeatvalue = needed_space[field]
 			print(f"{'-' * repeatvalue} ", end='')
 		# Newline after the dashes
@@ -4245,14 +4265,28 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 						display_text = 'False'
 					print(f"{Fore.RED if highlight else ''}{display_text:{data_format}s}{Fore.RESET if highlight else ''} ", end='')
 				elif isinstance(result[field], int):
-					print(f"{Fore.RED if highlight else ''}{result[field]:<{data_format},}{Fore.RESET if highlight else ''} ", end='')
+					print(f"{Fore.RED if highlight else ''}{result[field]:<{data_format}{',' if 'Delimiter' in value.keys() and value['Delimiter'] else ''}}{Fore.RESET if highlight else ''} ", end='')
 				elif isinstance(result[field], float):
 					print(f"{Fore.RED if highlight else ''}{result[field]:{data_format}f}{Fore.RESET if highlight else ''} ", end='')
 				elif isinstance(result[field], datetime):
 					print(f"{Fore.RED if highlight else ''}{result[field].strftime('%x %X')}{Fore.RESET if highlight else ''} ", end='')
-				elif isinstance(result[field], list):
+				elif isinstance(result[field], list) and SubDisplay:
 					# print("\n<tab>", end='')
 					display_results(result[field], value['SubDisplay'], None, subdisplay=SubDisplay)
+				elif isinstance(result[field], list):
+					for item in result[field]:
+						if isinstance(item, dict):
+							logging.debug(f"Item is a dictionary - {item}")
+							if 'CidrIp' in item.keys() and 'Description' in item.keys():
+								print(f"{Fore.RED if highlight else ''}{item['CidrIp']} ({item['Description']}){Fore.RESET if highlight else ''}, ", end='')
+							elif 'CidrIp' in item.keys():
+								print(f"{Fore.RED if highlight else ''}{item['CidrIp']}{Fore.RESET if highlight else ''}, ", end='')
+							elif 'GroupId' in item.keys() and 'Description' in item.keys():
+								print(f"{Fore.RED if highlight else ''}{item['GroupId']} ({item['Description']}){Fore.RESET if highlight else ''}, ", end='')
+							elif 'GroupId' in item.keys():
+								print(f"{Fore.RED if highlight else ''}{item['GroupId']}{Fore.RESET if highlight else ''}, ", end='')
+						else:
+							print(f"{Fore.RED if highlight else ''}{item}{Fore.RESET if highlight else ''}, ", end='')
 			print()  # This is the end of line character needed at the end of every line
 		print()  # This is the new line needed at the end of the script.
 		# TODO: We need to add some analytics here... Trying to come up with what would make sense across all displays.
@@ -4657,7 +4691,6 @@ def get_org_accounts_from_profiles(fProfileList):
 	The linear function called "get_profiles" is much faster if you just want the list of profiles that match.
 	"""
 	import logging
-	from time import sleep
 	from queue import Queue
 	from threading import Thread
 	from tqdm.auto import tqdm
