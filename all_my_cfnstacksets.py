@@ -13,7 +13,7 @@ from account_class import aws_acct_access
 
 init()
 
-__version__ = '2024.03.22'
+__version__ = '2024.06.20'
 begin_time = time()
 ERASE_LINE = '\x1b[2K'
 
@@ -58,6 +58,7 @@ def setup_auth_accounts_and_regions(fProfile: str) -> (aws_acct_access, list, li
 	@param fProfile: A string representing the profile provided by the user. If nothing, then use the default profile or credentials
 	@return:
 		- an object of the type "aws_acct_access"
+		- a list of accounts  the user has access to, based on the provided profile
 		- a list of regions valid for this particular profile/ account.
 	"""
 	try:
@@ -88,6 +89,7 @@ def setup_auth_accounts_and_regions(fProfile: str) -> (aws_acct_access, list, li
 		print(f"\tWhile skipping these accounts: {Fore.RED}{pSkipAccounts}{Fore.RESET}")
 
 	return aws_acct, AccountList, RegionList
+
 
 def find_all_cfnstacksets(f_All_Credentials:list, f_Fragments:list, f_Status)->list:
 	"""

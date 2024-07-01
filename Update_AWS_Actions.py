@@ -130,9 +130,9 @@ def save_file(file_to_save_to: str = None, input_data: list = None):
 		file_to_save_to = random_string(15) + ".txt"
 	else:
 		logging.info(f"Saving data to {file_to_save_to}")
-		with open(file_to_save_to, 'w', encoding="utf-8") as f:
-			for item in input_data:
-				f.write(f"{item['Service']}:{item['Operation']}\n")
+	with open(file_to_save_to, 'w', encoding="utf-8") as f:
+		for item in input_data:
+			f.write(f"{item['Service']}:{item['Operation']}\n")
 	return file_to_save_to
 
 ##################
@@ -159,6 +159,7 @@ if __name__ == "__main__":
 		print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")
 	print(ERASE_LINE)
 	print(f"Found {len(all_actions)} actions across {len(list_of_services)} services")
-	save_file(file_to_save, all_actions)
+	filename = save_file(file_to_save, all_actions)
+	print(f"Saved to {filename}")
 	print("Thank you for using this script")
 	print()

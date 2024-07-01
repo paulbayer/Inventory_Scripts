@@ -12,7 +12,7 @@ Eventually I have to add some visuals, and better output.
 """
 
 init()
-__version__ = "2024.05.18"
+__version__ = "2024.06.20"
 
 parser = CommonArguments()
 parser.verbosity()  # Allows for the verbosity to be handled.
@@ -78,11 +78,11 @@ StackInstancesToCheckOn = []
 RegionHistogram = {}
 AccountHistogram = {}
 for stackset_name, stackset_data in StackSets.items():
-	# print(f"stackset_name: {stackset_name} | stackset_data: {stackset_data}")
+	logging.debug(f"stackset_name: {stackset_name} | stackset_data: {stackset_data}")
 	for status, instances in stackset_data.items():
-		# print(f"status: {status} | instances: {instances}")
+		logging.debug(f"status: {status} | instances: {instances}")
 		for i in range(len(instances)):
-			# print(f"AccountId: {StackSets[stackset_name][status][i]['AccountId']}")
+			logging.debug(f"AccountId: {StackSets[stackset_name][status][i]['AccountId']}")
 			if StackSets[stackset_name][status][i]['AccountId'] not in AccountHistogram.keys():
 				AccountHistogram[StackSets[stackset_name][status][i]['AccountId']] = {}
 			for region in StackSets[stackset_name][status][i]['Regions']:

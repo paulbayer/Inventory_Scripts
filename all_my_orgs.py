@@ -50,10 +50,10 @@ def parse_args(f_arguments):
 	return parser.my_parser.parse_args(f_arguments)
 
 
-def all_my_orgs(fProfiles: list, fSkipProfiles: list, fAccountList: list, fTiming: bool, fRootOnly: bool, fSaveFilename: str, fShortform: bool, fverbose):
-	ProfileList = get_profiles(fSkipProfiles=fSkipProfiles, fprofiles=fProfiles)
+def all_my_orgs(f_Profiles: list, f_SkipProfiles: list, f_AccountList: list, f_Timing: bool, f_RootOnly: bool, f_SaveFilename: str, f_Shortform: bool, f_verbose):
+	ProfileList = get_profiles(fSkipProfiles=f_SkipProfiles, fprofiles=f_Profiles)
 	# print("Capturing info for supplied profiles")
-	logging.info(f"These profiles were requested {fProfiles}.")
+	logging.info(f"These profiles were requested {f_Profiles}.")
 	logging.warning(f"These profiles are being checked {ProfileList}.")
 	print(f"Please bear with us as we run through {len(ProfileList)} profiles")
 	AllProfileAccounts = get_org_accounts_from_profiles(ProfileList)
@@ -62,7 +62,7 @@ def all_my_orgs(fProfiles: list, fSkipProfiles: list, fAccountList: list, fTimin
 	OrgsFound = []
 
 	# Print out the results
-	if fTiming:
+	if f_Timing:
 		print()
 		print(f"It's taken {Fore.GREEN}{time() - begin_time:.2f}{Fore.RESET} seconds to find profile accounts...")
 		print()
@@ -85,7 +85,7 @@ def all_my_orgs(fProfiles: list, fSkipProfiles: list, fAccountList: list, fTimin
 			item['AccountStatus'] = item['aws_acct'].AccountStatus
 			# item['AccountEmail'] = item['aws_acct'].
 			try:
-				if fRootOnly and not item['RootAcct']:
+				if f_RootOnly and not item['RootAcct']:
 					# If we're only looking for root accounts, and this isn't one, don't print anything and continue on.
 					continue
 				else:
@@ -107,7 +107,7 @@ def all_my_orgs(fProfiles: list, fSkipProfiles: list, fAccountList: list, fTimin
 	print(ERASE_LINE)
 	print("-------------------")
 
-	if fShortform:
+	if f_Shortform:
 		# The user specified "short-form" which means they don't want any information on child accounts.
 		return_response = {'OrgsFound'         : OrgsFound,
 		                   'FailedProfiles'    : FailedProfiles,
@@ -140,7 +140,7 @@ def all_my_orgs(fProfiles: list, fSkipProfiles: list, fAccountList: list, fTimin
 				continue
 
 		# Display results on screen
-		if fSaveFilename is None:
+		if f_SaveFilename is None:
 			fmt = '%-23s %-15s'
 			print()
 			print(fmt % ("Organization's Profile", "Root Account"))
@@ -152,7 +152,7 @@ def all_my_orgs(fProfiles: list, fSkipProfiles: list, fAccountList: list, fTimin
 					for child_acct in item['aws_acct'].ChildAccounts:
 						print(f"\t{Fore.RED if not child_acct['AccountStatus'] == 'ACTIVE' else ''}{child_acct['AccountId']:{len('Child Account Number')}s} {child_acct['AccountStatus']:{len('Child Account Status')}s} {child_acct['AccountEmail']}{Fore.RESET}")
 
-		elif fSaveFilename is not None:
+		elif f_SaveFilename is not None:
 			# The user specified a file name, which means they want a (pipe-delimited) CSV file with the relevant output.
 			display_dict = {'MgmtAccount'  : {'DisplayOrder': 1, 'Heading': 'Parent Acct'},
 			                'AccountId'    : {'DisplayOrder': 2, 'Heading': 'Account Number'},
@@ -162,7 +162,7 @@ def all_my_orgs(fProfiles: list, fSkipProfiles: list, fAccountList: list, fTimin
 				sorted_Results = sorted(AllProfileAccounts, key=lambda d: (d['MgmtAccount'], d['AccountId']))
 			else:
 				sorted_Results = sorted(AccountList, key=lambda d: (d['MgmtAccount'], d['AccountId']))
-			display_results(sorted_Results, display_dict, "None", fSaveFilename)
+			display_results(sorted_Results, display_dict, "None", f_SaveFilename)
 
 		StandAloneAccounts = [x['AccountId'] for x in AccountList if x['MgmtAccount'] == x['AccountId'] and x['AccountEmail'] == 'Not an Org Management Account']
 		FailedProfiles = [i['profile'] for i in AllProfileAccounts if not i['Success']]
@@ -178,7 +178,7 @@ def all_my_orgs(fProfiles: list, fSkipProfiles: list, fAccountList: list, fTimin
 		print(f"Number of Standalone Accounts: {len(StandAloneAccounts)}")
 		print(f"Number of suspended or closed accounts: {len(ClosedAccounts)}")
 		print(f"Number of profiles that failed: {len(FailedProfiles)}")
-		if fverbose < 50:
+		if f_verbose < 50:
 			print("----------------------")
 			print(f"The following accounts are the Org Accounts: {OrgsFound}")
 			print(f"The following accounts are Standalone: {StandAloneAccounts}") if len(StandAloneAccounts) > 0 else None
@@ -192,10 +192,10 @@ def all_my_orgs(fProfiles: list, fSkipProfiles: list, fAccountList: list, fTimin
 		                   'FailedProfiles'    : FailedProfiles,
 		                   'AccountList'       : AccountList}
 
-	if fAccountList is not None:
+	if f_AccountList is not None:
 		print(f"Found the requested account number{'' if len(AccountList) == 1 else 's'}:")
 		for acct in AccountList:
-			if acct['AccountId'] in fAccountList:
+			if acct['AccountId'] in f_AccountList:
 				print(f"Profile: {acct['Profile']} | Org: {acct['MgmtAccount']} | Account: {acct['AccountId']} | Status: {acct['AccountStatus']} | Email: {acct['AccountEmail']}")
 
 	return return_response

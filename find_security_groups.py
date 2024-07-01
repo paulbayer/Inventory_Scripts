@@ -13,7 +13,7 @@ from time import time
 import logging
 
 init()
-__version__ = '2024.05.18'
+__version__ = '2024.06.30'
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 
