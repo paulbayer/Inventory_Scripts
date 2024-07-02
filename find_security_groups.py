@@ -50,6 +50,11 @@ def parse_args(f_arguments):
 		action="store_true",
 		help="flag to further get references to the security groups found")
 	local.add_argument(
+		"--noempty",
+		dest="pNoEmpty",
+		action="store_true",
+		help="flag to remove empty Security Groups (no references) before display")
+	local.add_argument(
 		"--rules",
 		dest="pRules",
 		action="store_true",
@@ -206,6 +211,30 @@ def check_accounts_for_security_groups(fCredentialList, fFragment: list = None, 
 # 	for sec_grp in f_sec_grps:
 # 		# Find all enis associated with each security group
 #
+def save_data_to_file(f_AllSecurityGroups:list, f_Filename:str, f_NoEmpty:bool) -> str:
+	"""
+	Description: Saves the data to a file
+	@param f_AllSecurityGroups: The security groups and associated data that were found
+	@param f_Filename: The file to save the data to
+	@return: The filename that was saved
+	"""
+	# Save the data to a file
+	Heading = f"AccountId | Region | SG Group Name | SG Group ID | VPC ID | Default(T/F) | Description | ResourceType | Resource ID | Resource Status | Attachment ID | Instance Name | IP Address | Description \n"
+	with open(f_Filename, 'w') as f:
+		f.write(Heading)
+		for sg in f_AllSecurityGroups:
+			sg_line = f"{sg['AccountId']} | {sg['Region']} | {sg['GroupName']} | {sg['GroupId']} | {sg['VpcId']} | {sg['Default']} | {sg['Description']}"
+			if sg['NumOfReferences'] == 0 and f_NoEmpty:
+				continue
+			elif sg['NumOfReferences'] == 0:
+				sg_line += f"{' | None' * 7}\n"
+				f.write(sg_line)
+			elif sg['NumOfReferences'] > 0:
+				for reference in sg['ReferencedResources']:
+					reference_line = f" | {reference['ResourceType']} | {reference['Id']} | {reference['Status']} | {reference['AttachmentId']} | {reference['InstanceNameTag']} | {reference['IpAddress']} | {reference['Description']}\n"
+					f.write(sg_line + reference_line)
+	logging.info(f"Data saved to {f_Filename}")
+	return f_Filename
 
 
 ##################
@@ -225,6 +254,7 @@ if __name__ == '__main__':
 	pDefault = args.pDefault
 	pReferences = args.pReferences
 	pRules = args.pRules
+	pNoEmpty = args.pNoEmpty
 	pFilename = args.Filename
 	pTiming = args.Time
 	verbose = args.loglevel
@@ -252,10 +282,13 @@ if __name__ == '__main__':
 		'Description': {'DisplayOrder': 10, 'Heading': 'Description'}}
 	display_dict.update({'NumOfReferences'    : {'DisplayOrder': 8, 'Heading': '# Refs'},
 	                     'ReferencedResources': {'DisplayOrder': 11, 'Heading': 'References',
-	                                             'SubDisplay'  : {'ResourceType': {'DisplayOrder': 1, 'Heading': 'Resource Type'},
-	                                                              'Id'          : {'DisplayOrder': 2, 'Heading': 'ID'},
-	                                                              'Status'      : {'DisplayOrder': 3, 'Heading': 'Status'},
-	                                                              'Description' : {'DisplayOrder': 4, 'Heading': 'Description'}}}}) if pReferences else None
+	                                             'SubDisplay'  : {'ResourceType'   : {'DisplayOrder': 1, 'Heading': 'Resource Type'},
+	                                                              'Id'             : {'DisplayOrder': 2, 'Heading': 'ID'},
+	                                                              'Status'         : {'DisplayOrder': 3, 'Heading': 'Status'},
+	                                                              'AttachmentId'   : {'DisplayOrder': 4, 'Heading': 'Instance Id'},
+	                                                              'InstanceNameTag': {'DisplayOrder': 5, 'Heading': 'Name'},
+	                                                              'IpAddress'      : {'DisplayOrder': 6, 'Heading': 'Private IP'},
+	                                                              'Description'    : {'DisplayOrder': 7, 'Heading': 'Description'}}}}) if pReferences else None
 	# https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2/client/describe_security_groups.html
 	display_dict.update({'NumOfRules'         : {'DisplayOrder': 9, 'Heading': '# Rules'},
 	                     'IpPermissions'      : {'DisplayOrder': 12, 'Heading': 'Inbound Rules',
@@ -286,8 +319,11 @@ if __name__ == '__main__':
 	sorted_AllSecurityGroups = sorted(AllSecurityGroups, key=lambda k: (k['MgmtAccount'], k['AccountId'], k['Region'], k['GroupName']))
 
 	# Display results
-	display_results(sorted_AllSecurityGroups, display_dict, None, pFilename)
+	display_results(sorted_AllSecurityGroups, display_dict, None)
 
+	if pFilename:
+		saved_filename = save_data_to_file(sorted_AllSecurityGroups, pFilename, pNoEmpty)
+		print(f"Data has been saved to {saved_filename}")
 	if pTiming:
 		print(ERASE_LINE)
 		print(f"{Fore.GREEN}This script took {time() - begin_time:.2f} seconds{Fore.RESET}")

@@ -1038,6 +1038,14 @@ def find_references_to_security_groups2(ocredentials, f_security_group: dict):
 	for network_interface in response['NetworkInterfaces']:
 		network_interface['ResourceType'] = network_interface['InterfaceType']
 		network_interface['Id'] = network_interface['NetworkInterfaceId']
+		network_interface['AttachmentId'] = network_interface['Attachment']['InstanceId'] if 'InstanceId' in network_interface['Attachment'].keys() else None
+		if 'InstanceId' in network_interface['Attachment'].keys():
+			InstanceTags = client_vpc.describe_instances(InstanceIds=[network_interface['Attachment']['InstanceId']])['Reservations'][0]['Instances'][0]['Tags']
+			InstanceNameTags = [x['Value'] for x in InstanceTags if x['Key'] == 'Name']
+			network_interface['InstanceNameTag'] = InstanceNameTags[0]
+		else:
+			network_interface['InstanceNameTag'] = None
+		network_interface['IpAddress'] = network_interface['PrivateIpAddress']
 		SecurityGroupReferences.append(network_interface)
 	while 'NextToken' in response.keys():
 		response = client_vpc.describe_network_interfaces(
@@ -1051,6 +1059,15 @@ def find_references_to_security_groups2(ocredentials, f_security_group: dict):
 		for network_interface in response['NetworkInterfaces']:
 			network_interface['ResourceType'] = network_interface['InterfaceType']
 			network_interface['Id'] = network_interface['NetworkInterfaceId']
+			network_interface['AttachmentId'] = network_interface['Attachment']['InstanceId'] if 'InstanceId' in network_interface['Attachment'].keys() else None
+			if 'InstanceId' in network_interface['Attachment'].keys():
+				InstanceTags = client_vpc.describe_instances(InstanceIds=[network_interface['Attachment']['InstanceId']])['Reservations'][0]['Instances'][0]['Tags']
+				InstanceNameTags = [x['Value'] for x in InstanceTags if x['Key'] == 'Name']
+				network_interface['InstanceNameTag'] = InstanceNameTags[0]
+			else:
+				network_interface['InstanceNameTag'] = None
+			network_interface['IpAddress'] = network_interface['PrivateIpAddress']
+
 			SecurityGroupReferences.append(network_interface)
 	logging.info(f"We found {len(SecurityGroupReferences)} references to security groups in account {ocredentials['AccountNumber']} in Region {ocredentials['Region']}")
 	# This second lookup section handles the other Security Groups case.
@@ -4271,9 +4288,10 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 				elif isinstance(result[field], datetime):
 					print(f"{Fore.RED if highlight else ''}{result[field].strftime('%x %X')}{Fore.RESET if highlight else ''} ", end='')
 				elif isinstance(result[field], list) and SubDisplay:
-					# print("\n<tab>", end='')
+					# Re-use this same function - but with the sub-data used for display, while passing in that this is a "sub-display" to indent the new records.
 					display_results(result[field], value['SubDisplay'], None, subdisplay=SubDisplay)
 				elif isinstance(result[field], list):
+					# This is a cheat, since I'm using this function for a specific use for the "find_security_groups.py" script
 					for item in result[field]:
 						if isinstance(item, dict):
 							logging.debug(f"Item is a dictionary - {item}")
@@ -4285,6 +4303,10 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 								print(f"{Fore.RED if highlight else ''}{item['GroupId']} ({item['Description']}){Fore.RESET if highlight else ''}, ", end='')
 							elif 'GroupId' in item.keys():
 								print(f"{Fore.RED if highlight else ''}{item['GroupId']}{Fore.RESET if highlight else ''}, ", end='')
+							elif 'PrefixListId' in item.keys() and 'Description' in item.keys():
+								print(f"{Fore.RED if highlight else ''}{item['PrefixListId']} ({item['Description']}){Fore.RESET if highlight else ''}, ", end='')
+							elif 'PrefixListId' in item.keys():
+								print(f"{Fore.RED if highlight else ''}{item['PrefixListId']}{Fore.RESET if highlight else ''}, ", end='')
 						else:
 							print(f"{Fore.RED if highlight else ''}{item}{Fore.RESET if highlight else ''}, ", end='')
 			print()  # This is the end of line character needed at the end of every line
