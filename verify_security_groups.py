@@ -225,8 +225,6 @@ def get_security_group_id_from_name(security_group_name: str, security_group_res
 		str: Security Group ID
 	"""
 	try:
-		# security_group_response = boto3.client("ec2").describe_security_groups()
-		# security_group_response2 = dict_lower(security_group_response.copy())
 		# The problem here is that the result of the search can bring back multiple matching security group ids for the same named security group ("default")
 		matching_security_group_ids = jmespath.search(f"SecurityGroups[?GroupName==`{security_group_name}`].GroupId", security_group_response)
 		if len(matching_security_group_ids) == 1:
@@ -952,35 +950,39 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 			Heading = ''
 			my_filename = f'{file_to_save.split(".")[0]}-{datetime.now().strftime("%y-%m-%d--%H-%M-%S")}.csv'
 			logging.info(f"Writing your data to: {my_filename}")
-			with open(my_filename, 'w') as savefile:
-				for field, value in sorted_display_dict.items():
-					Heading += f"{value['Heading']}|"
-				Heading += '\n'
-				savefile.write(Heading)
-				for result in results_list:
-					row = ''
+			try:
+				with open(my_filename, 'w') as savefile:
 					for field, value in sorted_display_dict.items():
-						data_format = 0
-						if field not in result.keys():
-							result[field] = defaultAction
-						if result[field] is None:
-							row += "|"
-						elif isinstance(result[field], str):
-							row += f"{result[field]:{data_format}s}|"
-						elif isinstance(result[field], bool):
-							if result[field]:
-								row += f"True|"
-							else:
-								row += f"False|"
-						elif isinstance(result[field], int):
-							row += f"{result[field]:<{data_format},}|"
-						elif isinstance(result[field], float):
-							row += f"{result[field]:{data_format}f}|"
-						elif isinstance(result[field], datetime):
-							row += f"{result[field].strftime('%c')}|"
-					row += '\n'
-					savefile.write(row)
-			print(f"Data written to {my_filename}")
+						Heading += f"{value['Heading']}|"
+					Heading += '\n'
+					savefile.write(Heading)
+					logging.debug(f"Writing {len(results_list)} rows of the result to the savefile")
+					for result in results_list:
+						row = ''
+						for field, value in sorted_display_dict.items():
+							data_format = 0
+							if field not in result.keys():
+								result[field] = defaultAction
+							if result[field] is None:
+								row += "|"
+							elif isinstance(result[field], str):
+								row += f"{result[field]:{data_format}s}|"
+							elif isinstance(result[field], bool):
+								if result[field]:
+									row += f"True|"
+								else:
+									row += f"False|"
+							elif isinstance(result[field], int):
+								row += f"{result[field]:<{data_format},}|"
+							elif isinstance(result[field], float):
+								row += f"{result[field]:{data_format}f}|"
+							elif isinstance(result[field], datetime):
+								row += f"{result[field].strftime('%c')}|"
+						row += '\n'
+						savefile.write(row)
+				print(f"Data written to {my_filename}")
+			except Exception as e:
+				logging.error(f"Error writing to file: {e}")
 
 	def handle_dict():
 		# If no results were passed, print nothing and just return
