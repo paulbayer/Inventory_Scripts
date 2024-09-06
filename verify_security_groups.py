@@ -157,6 +157,7 @@ def get_arns_for_current_account(csv_data: List[Dict[str, Any]], account_id: str
 		# Test 2: Check to see if the Security Group is valid
 		# Test 3: Check to see if the Security Group name is unique (multiple sgs named "default" is possible given multiple VPCs)
 		# If Test 1 and Test 2 pass - add to matching entries (after stripping all whitespace, tabs, etc.)
+		logging.info(f"Entry: {entry}")
 		try:
 			target_account_id = entry["arn"].strip().split(":")[4]
 			target_region = entry["arn"].strip().split(":")[3]
