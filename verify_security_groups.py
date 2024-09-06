@@ -91,8 +91,8 @@ def main(CSV_FILE):
 					compliant_results += 1
 		display_results(results, display_dict, None, FILENAME_TO_SAVE_TO)
 		print(f"Finished validation with {successful_results} successful checks and {compliant_results} compliant resources out of a total of {len(matching_entries)} requested resources.")
-	except:
-		logging.error("ERROR: Unable to validate security groups.")
+	except Exception as e:
+		logging.error(f"ERROR: Unable to validate security groups. Error Message: {e}")
 
 	if FIND_EVERYTHING in ['True', True]:
 		all_arns = find_all_arns(matching_entries, account_id, region)
