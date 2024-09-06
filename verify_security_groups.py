@@ -966,7 +966,8 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 							if result[field] is None:
 								row += "|"
 							elif isinstance(result[field], str):
-								row += f"{result[field]:{data_format}s}|"
+								# row += f"{result[field]:{data_format}s}|"
+								row += f"{result[field]:s}|"
 							elif isinstance(result[field], bool):
 								if result[field]:
 									row += f"True|"
