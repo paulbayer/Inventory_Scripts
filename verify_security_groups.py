@@ -152,6 +152,7 @@ def get_arns_for_current_account(csv_data: List[Dict[str, Any]], account_id: str
 		List[Dict[str, Any]]: A list of dictionaries representing the matching CSV entries.
 	"""
 	matching_entries = []
+	all_security_groups = get_security_groups()
 	for entry in csv_data:
 		# Test 1: Check to see if Account ID and Region match
 		# Test 2: Check to see if the Security Group is valid
@@ -161,14 +162,14 @@ def get_arns_for_current_account(csv_data: List[Dict[str, Any]], account_id: str
 		try:
 			target_account_id = entry["arn"].strip().split(":")[4]
 			target_region = entry["arn"].strip().split(":")[3]
-			security_group_name = entry["security_group"].strip()
-			security_group_id = get_security_group_id_from_name(security_group_name)
+			security_group_name = str(entry["security_group"].strip()).lower()
+			security_group_id = get_security_group_id_from_name(security_group_name, all_security_groups)
 
 			if (target_account_id == account_id and target_region == region) and security_group_id != '':
 				clean_entry = {
 					"arn"                : entry["arn"].strip(),
 					"security_group_name": security_group_name,
-					"security_group"     : get_security_group_id_from_name(security_group_name),
+					"security_group"     : security_group_id,
 					}
 				matching_entries.append(clean_entry)
 
@@ -198,17 +199,34 @@ def check_security_group_validity(security_group_name: str) -> bool:
 		return False
 
 
-def get_security_group_id_from_name(security_group_name: str) -> str:
+def get_security_groups() -> List[str]:
+	"""
+	Get the Security Group ID from the Security Group Name. Returns a list of matching security group IDs.
+
+	Args:
+	Returns:
+		List[str]: A list of matching security group IDs.
+	"""
+	try:
+		security_group_response = boto3.client("ec2").describe_security_groups()
+		security_group_response2 = dict_lower(security_group_response.copy())
+		return security_group_response2
+	except Exception as e:
+		logging.error(f"Had a problem retrieving security groups: {e}")
+
+def get_security_group_id_from_name(security_group_name: str, security_group_response:dict) -> str:
 	"""
 	Get the Security Group ID from the Security Group Name. Returns sg-id or empty string
 
 	Args:
 		security_group_name (Dict[str, Any]): The security group name dictionary.
+		security_group_response (Dict[str, Any]): The security group response dictionary (lowercased).
 	Returns:
 		str: Security Group ID
 	"""
 	try:
-		security_group_response = boto3.client("ec2").describe_security_groups()
+		# security_group_response = boto3.client("ec2").describe_security_groups()
+		# security_group_response2 = dict_lower(security_group_response.copy())
 		# The problem here is that the result of the search can bring back multiple matching security group ids for the same named security group ("default")
 		matching_security_group_ids = jmespath.search(f"SecurityGroups[?GroupName==`{security_group_name}`].GroupId", security_group_response)
 		if len(matching_security_group_ids) == 1:
@@ -222,6 +240,48 @@ def get_security_group_id_from_name(security_group_name: str) -> str:
 			return ''
 	except Exception as e:
 		logging.error(f"Security Group doesn't exist: {e}")
+
+
+def dict_lower(dict_object:dict) -> dict:
+	"""
+	Convert all keys and values in a dictionary to lowercase.
+
+	Args:
+		dict_object (dict): The dictionary to convert.
+	Returns:
+		dict: The dictionary with all keys and values converted to lowercase.
+	"""
+	def handle_int(item:int)->int:
+		return item
+
+	def handle_string(item:str)->str:
+		return item.lower()
+
+	def handle_list(item:list)->list:
+		for i in item:
+			if type(i) == int:
+				item[item.index(i)] = handle_int(i)
+			elif type(i) == str:
+				item[item.index(i)] = handle_string(i)
+			elif type(i) == dict:
+				item[item.index(i)] = dict_lower(i)
+		return item
+
+	for k,v in dict_object.items():
+		logging.info(f"Pre change - Key: {k}, Value: {v}")
+		value_type = type(dict_object[k])
+		if type(dict_object[k]) == int:
+			dict_object[k] = handle_int(dict_object[k])
+		elif type(dict_object[k]) == str:
+			dict_object[k] = handle_string(dict_object[k])
+		elif type(dict_object[k]) == dict:
+			logging.info(f"Recursive dict - {dict_object[k]}")
+			dict_object[k] = dict_lower(dict_object[k].copy())
+		elif type(dict_object[k]) == list:
+			logging.info(f"List - {dict_object[k]}")
+			dict_object[k] = handle_list(dict_object[k])
+		logging.info(f"Post change {value_type} - Value: {dict_object[k]}")
+	return dict_object
 
 
 def get_resource_type_from_arn(arn) -> str:
