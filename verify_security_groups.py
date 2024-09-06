@@ -132,7 +132,7 @@ def csv_import(csv_file_path: str) -> List[Dict[str, Any]]:
 	"""
 	try:
 		with open(csv_file_path, "r") as csv_file:
-			reader = csv.DictReader(csv_file)
+			reader = csv.DictReader(csv_file, delimiter=',')
 			data = list(reader)
 		return data
 	except Exception as e:
