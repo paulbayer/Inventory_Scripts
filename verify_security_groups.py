@@ -362,7 +362,7 @@ def validate_security_groups_to_elasticloadbalancing(matching_entry: Dict[str, A
 		elbv2_security_groups = jmespath.search("LoadBalancers[].SecurityGroups", elbv2_response)[0]
 
 		# Primary Case: Security Group not in security rules and there could be 0+ security groups.
-		if elbv2_security_groups == []:
+		if not elbv2_security_groups:
 			error_message = f'No security groups applied to resource: {matching_entry["arn"]}'
 			logging.error(error_message)
 			return_response.update({"ErrorMessage"          : error_message,
@@ -400,6 +400,13 @@ def validate_security_groups_to_elasticloadbalancing(matching_entry: Dict[str, A
 
 	except botocore.exceptions.ClientError as e:
 		error_message = (f"Error validating security group {matching_entry['security_group']} to ELBv2 {matching_entry['arn']}:"
+		                 f"Error: {e}")
+		logging.error(error_message)
+		return_response.update({"ErrorMessage": error_message,
+		                        "Success"     : False,
+		                        "Compliant"   : False})
+	except Exception as e:
+		error_message = (f"Error: Load balancer: {matching_entry['arn']} doesn't seem to have any security groups attached"
 		                 f"Error: {e}")
 		logging.error(error_message)
 		return_response.update({"ErrorMessage": error_message,
