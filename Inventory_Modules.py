@@ -1,6 +1,6 @@
 import logging
 
-__version__ = "2024.02.27"
+__version__ = "2024.09.09"
 
 """
 ** Why are some functions "function" vs. "function2" vs. "function3"?**
@@ -1546,7 +1546,7 @@ def delete_gd_invites2(ocredentials, fRegion, fAccountId):
 			print(my_Error)
 
 
-def find_account_instances2(ocredentials, fRegion='us-east-1'):
+def find_account_instances2(ocredentials=None):
 	"""
 	ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
@@ -1558,31 +1558,105 @@ def find_account_instances2(ocredentials, fRegion='us-east-1'):
 	import boto3
 	import logging
 
-	if 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
+	if ocredentials is None:
+		session_ec2 = boto3.Session()
+		ocredentials = dict()
+		ocredentials['AccountNumber'] = session_ec2.client('sts').get_caller_identity()['Account']
+		ocredentials['Region'] = session_ec2.region_name
+	elif 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
 		ProfileAccountNumber = find_account_number(ocredentials['Profile'])
 		logging.info(
 			f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
 		if ProfileAccountNumber == ocredentials['AccountNumber']:
 			session_ec2 = boto3.Session(profile_name=ocredentials['Profile'],
-			                            region_name=fRegion)
+			                            region_name=ocredentials['Region'])
 		else:
 			session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
 			                            aws_secret_access_key=ocredentials['SecretAccessKey'],
 			                            aws_session_token=ocredentials['SessionToken'],
-			                            region_name=fRegion)
+			                            region_name=ocredentials['Region'])
 	else:
 		session_ec2 = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
 		                            aws_secret_access_key=ocredentials['SecretAccessKey'],
 		                            aws_session_token=ocredentials['SessionToken'],
-		                            region_name=fRegion)
+		                            region_name=ocredentials['Region'])
 	instance_info = session_ec2.client('ec2')
-	logging.info(f"Looking for instances in account # {ocredentials['AccountNumber']} in region {fRegion}")
+	logging.info(f"Looking for instances in account # {ocredentials['AccountNumber']} in region {ocredentials['Region']}")
 	instances = instance_info.describe_instances()
 	AllInstances = instances
 	while 'NextToken' in instances.keys():
 		instances = instance_info.describe_instances(NextToken=instances['NextToken'])
 		AllInstances['Reservations'].extend(instances['Reservations'])
 	return AllInstances
+
+
+def find_account_ecs_clusters_services_and_tasks2(ocredentials=None) -> list[dict[str, any]]:
+	"""
+	ocredentials is an object with the following structure:
+		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
+		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
+		- ['SessionToken'] holds the AWS_SESSION_TOKEN
+		- ['AccountNumber'] holds the account number
+		- ['Profile'] can hold the profile, instead of the session credentials
+		- ['Region'] holds the region
+	"""
+	import boto3
+	import logging
+
+	if ocredentials is None:
+		session_ecs = boto3.Session()
+		ocredentials = dict()
+		ocredentials['AccountNumber'] = session_ecs.client('sts').get_caller_identity()['Account']
+		ocredentials['Region'] = session_ecs.region_name
+	elif 'Profile' in ocredentials.keys() and ocredentials['Profile'] is not None:
+		ProfileAccountNumber = find_account_number(ocredentials['Profile'])
+		logging.info(
+			f"Profile: {ocredentials['Profile']} | Profile Account Number: {ProfileAccountNumber} | Account Number passed in: {ocredentials['AccountNumber']}")
+		if ProfileAccountNumber == ocredentials['AccountNumber']:
+			session_ecs = boto3.Session(profile_name=ocredentials['Profile'],
+			                            region_name=ocredentials['Region'])
+		else:
+			session_ecs = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+			                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+			                            aws_session_token=ocredentials['SessionToken'],
+			                            region_name=ocredentials['Region'])
+	else:
+		session_ecs = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
+		                            aws_secret_access_key=ocredentials['SecretAccessKey'],
+		                            aws_session_token=ocredentials['SessionToken'],
+		                            region_name=ocredentials['Region'])
+
+	try:
+		cluster_info = session_ecs.client('ecs')
+		logging.info(f"Looking for clusters in account # {ocredentials['AccountNumber']} in region {ocredentials['Region']}")
+		AllClusters = {'clusterArns':[]}
+		AllServices = {'serviceArns':[]}
+		AllTasks = {'taskArns':[]}
+		clusters = cluster_info.list_clusters()
+		AllClusters['clusterArns'].extend(clusters['clusterArns'])
+		while 'nextToken' in clusters.keys():
+			clusters = cluster_info.list_clusters(nextToken=clusters['nextToken'])
+			AllClusters['clusterArns'].extend(clusters['clusterArns'])
+		for cluster in AllClusters['clusterArns']:
+			clustername = cluster.split('/')[1]
+			services = cluster_info.list_services(cluster=clustername)
+			AllServices['serviceArns'].extend(services['serviceArns'])
+			while 'nextToken' in services.keys():
+				services = cluster_info.list_services(cluster=clustername, nextToken=services['nextToken'])
+				AllServices['serviceArns'].extend(services['serviceArns'])
+		for cluster in AllClusters['clusterArns']:
+			clustername = cluster.split('/')[1]
+			tasks = cluster_info.list_tasks(cluster=clustername)
+			AllTasks['taskArns'].extend(tasks['taskArns'])
+			while 'nextToken' in tasks.keys():
+				tasks = cluster_info.list_tasks(cluster=clustername, nextToken=tasks['nextToken'])
+				AllTasks['taskArns'].extend(tasks['taskArns'])
+		AllECSClustersServicesAndTasks = [{'ServiceArn': arn} for arn in AllServices['serviceArns']]
+		AllECSClustersServicesAndTasks.extend([{'ClusterArn': arn} for arn in AllClusters['clusterArns']])
+		AllECSClustersServicesAndTasks.extend([{'TaskArn': arn} for arn in AllTasks['taskArns']])
+	except Exception as my_Error:
+		logging.error(f"Error getting ECS info: {my_Error}")
+	return AllECSClustersServicesAndTasks
 
 
 def find_cw_groups_retention2(ocredentials, fRegion: str = 'us-east-1'):
@@ -2323,7 +2397,6 @@ def find_directories2(ocredentials, fRegion='us-east-1', fSearchStrings=None, fE
 	import boto3
 
 	directories2 = []
-	directories = []
 	all_directories = []
 	try:
 		session_ds = boto3.Session(aws_access_key_id=ocredentials['AccessKeyId'],
@@ -3094,7 +3167,7 @@ def find_saml_components_in_acct2(ocredentials):
 	return saml_providers
 
 
-def find_stacksets2(ocredentials: dict, fRegion: str = 'us-east-1', fStackFragments: list = None, fStatus: str = None):
+def find_stacksets2(ocredentials: dict, fStackFragments: list = None, fStatus: str = None):
 	"""
 	credentials is a dictionary containing the credentials for a given account
 	fRegion is a string
@@ -4103,7 +4176,6 @@ def get_region_azs2(ocredentials):
             'State'         : az['State'],
             'ParentZoneName': az['ParentZoneName'] if 'ParentZoneName' in az.keys() else az['ZoneName'],
             'ParentZoneId'  : az['ParentZoneId'] if 'ParentZoneId' in az.keys() else az['ZoneId'],
-
 		}
 	]
 	"""
@@ -4444,7 +4516,7 @@ def display_results(results_list, fdisplay_dict: dict, defaultAction=None, file_
 		#   Possibly we can have a setting where this data is written to a csv locally. We could create separate analytics once the data was saved.
 		if file_to_save is not None:
 			Heading = ''
-			my_filename = f'{file_to_save}-{datetime.now().strftime("%y-%m-%d--%H-%M-%S")}'
+			my_filename = f'{file_to_save.split(".")[0]}-{datetime.now().strftime("%y-%m-%d--%H-%M-%S")}.csv'
 			logging.info(f"Writing your data to: {my_filename}")
 			with open(my_filename, 'w') as savefile:
 				for field, value in sorted_display_dict.items():
@@ -4483,13 +4555,13 @@ def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProf
 		* GetCallerIdentity (to get the info from the profile(s) that's been provided - to determine if it's an Org account, the child accounts, etc.)
 		* DescribeOrganization (Describes the Org for the profile that's been provided - so it understands whether it's an Org or a standalone account)
 		* ListAccounts (to get information for the child/ member accounts within the Org)
-		* xxxxx (One by one, it goes into each account to get STS credentials for each account, wihtin each region that's been provided)
+		* xxxxx (One by one, it goes into each account to get STS credentials for each account, within each region that's been provided)
 		* Once it has all STS credentials, it arranges everything into a single list (of dicts) and returns the result.
 
 	Note that this function returns the credentials of all the accounts in all the profiles passed to it
 
 	Note that this function creates a new credential for every region, even though today - that's not necessary.
-	However, some day accounts will be pegged to specific regions, and it will be necessary then.
+	However, some day accounts might be pegged to specific regions, and it will be necessary then.
 	Description:
 	@param fProfiles: list of profiles to look through (generally profiles of Organizations)
 	@param fTiming: whether to display timings for functions
@@ -4503,12 +4575,12 @@ def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProf
 	"""
 	import logging
 	from account_class import aws_acct_access
-	from time import time
+	# from time import time
 	from colorama import init, Fore
 
 	init()
-	ERASE_LINE = '\x1b[2K'
-	begin_time = time()
+	# ERASE_LINE = '\x1b[2K'
+	# begin_time = time()
 	print(f"{Fore.GREEN}Timing is enabled{Fore.RESET}") if fTiming else None
 
 	AllCredentials = []

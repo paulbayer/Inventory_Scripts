@@ -406,7 +406,7 @@ def validate_security_groups_to_elasticloadbalancing(matching_entry: Dict[str, A
 		                        "Success"     : False,
 		                        "Compliant"   : False})
 	except Exception as e:
-		error_message = (f"Error: Load balancer: {matching_entry['arn']} doesn't seem to have any security groups attached"
+		error_message = (f"Problem finding security groups attached to {matching_entry['arn']}"
 		                 f"Error: {e}")
 		logging.error(error_message)
 		return_response.update({"ErrorMessage": error_message,
