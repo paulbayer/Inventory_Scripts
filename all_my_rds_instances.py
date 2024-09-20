@@ -44,7 +44,7 @@ def check_accounts_for_instances(faws_acct: aws_acct_access, fRegionList: list =
 	AllInstances = []
 	Instances = dict()
 	if fRegionList is None:
-		fRegionList = ['us-east-1']
+		fRegionList = [faws_acct.Region]
 	for account in ChildAccounts:
 		acct_instances = []
 		logging.info(f"Connecting to account {account['AccountId']}")
