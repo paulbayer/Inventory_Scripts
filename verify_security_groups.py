@@ -9,7 +9,7 @@ import boto3, botocore
 from Inventory_Modules import find_account_instances2, find_account_ecs_clusters_services_and_tasks2, find_account_rds_instances2, find_load_balancers2, find_lambda_functions2
 from typing import Any, Dict, List
 
-__version__ = '2024.09.16'
+__version__ = '2024.09.23'
 # import time
 
 # Global Variables
