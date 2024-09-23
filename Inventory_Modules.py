@@ -2316,18 +2316,24 @@ def find_profile_functions(fProfile, fRegion):
 
 def find_lambda_functions2(ocredentials=None, fRegion=None, fSearchStrings=None, fTagValueToFilter: str = None):
 	"""
-	ocredentials is an object with the following structure:
+	Description: Finds all Lambda functions in the account
+	@ocredentials is an object with the following structure:
 		- ['AccessKeyId'] holds the AWS_ACCESS_KEY
 		- ['SecretAccessKey'] holds the AWS_SECRET_ACCESS_KEY
 		- ['SessionToken'] holds the AWS_SESSION_TOKEN
 		- ['AccountNumber'] holds the AccountId
 		- ['Region'] holds the region for the credentials (optional)
-	fRegion is a string
-	fSearchString is a list of strings
-	fTagKeys is a list of strings, to filter on only finding specific Lambda functions
+	@fRegion is a string
+	@fSearchString is a list of strings
+	@fTagValueToFilter is a list of strings, to filter on only finding specific Lambda functions
 	"""
 	import boto3
 	import logging
+
+	def returnMatches(a, b):
+		logging.info("a: " + str(a))
+		logging.info("b: " + str(b))
+		return list(set(a) & set(b))
 
 	if fSearchStrings is None:
 		fSearchStrings = ['all']
@@ -2340,7 +2346,6 @@ def find_lambda_functions2(ocredentials=None, fRegion=None, fSearchStrings=None,
 		                               region_name=ocredentials.get('Region', fRegion))
 
 	client_lambda = session_lambda.client('lambda')
-	# TODO: Consider using try..except here to handle errors in the API call
 	try:
 		functions = client_lambda.list_functions()
 		functions2 = functions['Functions']
@@ -2357,9 +2362,15 @@ def find_lambda_functions2(ocredentials=None, fRegion=None, fSearchStrings=None,
 				                     'Role'          : function['Role'],
 				                     'Runtime'       : function['Runtime'],
 				                     'SecurityGroups': function['VpcConfig']['SecurityGroupIds'] if 'VpcConfig' in function.keys() and 'SecurityGroupIds' in function['VpcConfig'].keys() else None})
-			# if fTagValueToFilter is not None:
-			# 	functions2 = [function for function in functions2 if 'Tags' in function.keys() and any(tag_key in function['Tags'].keys() for tag_key in fTagKeys)]
-			# TODO: Can we add a verification
+			if fTagValueToFilter is not None:
+				AllFilteredFunctions = []
+				for lambda_item in AllFunctions:
+					lambda_function = client_lambda.get_function(FunctionName=lambda_item['FunctionArn'])
+					AllFilteredFunctions.append({'Function': lambda_function['Configuration'], 'Tags': lambda_function['Tags'] if 'Tags' in lambda_function.keys() and any(fTagValueToFilter in lambda_function['Tags'].values()) else []})
+					# for i in t:
+					# 	ts.extend([v for k, v in i['Tags'].items() if v == tag_value])
+
+				AllFunctions = AllFilteredFunctions.copy()
 			return AllFunctions
 		else:
 			for function in functions2:
@@ -2371,6 +2382,12 @@ def find_lambda_functions2(ocredentials=None, fRegion=None, fSearchStrings=None,
 						                     'Role'          : function['Role'],
 						                     'Runtime'       : function['Runtime'],
 						                     'SecurityGroups': function['VpcConfig']['SecurityGroupIds'] if 'VpcConfig' in function.keys() and 'SecurityGroupIds' in function['VpcConfig'].keys() else None})
+			if fTagValueToFilter is not None:
+				AllFilteredFunctions = []
+				for lambda_item in AllFunctions:
+					lambda_function = client_lambda.get_function(FunctionName=lambda_item['FunctionArn'])
+					AllFilteredFunctions.append({'Function': lambda_function['Configuration'], 'Tags': lambda_function['Tags'] if 'Tags' in lambda_function.keys() else []})
+				AllFunctions = AllFilteredFunctions.copy()
 			return AllFunctions
 	except Exception as my_Error:
 		error_message = f"Error: {my_Error}"

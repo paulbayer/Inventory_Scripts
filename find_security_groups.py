@@ -227,7 +227,7 @@ def save_data_to_file(f_AllSecurityGroups:list, f_Filename:str, f_NoEmpty:bool) 
 			if sg['NumOfReferences'] == 0 and f_NoEmpty:
 				continue
 			elif sg['NumOfReferences'] == 0:
-				sg_line += f"{' | None' * 7}\n"
+				sg_line.join(f"{' | None' * 7}\n")
 				f.write(sg_line)
 			elif sg['NumOfReferences'] > 0:
 				for reference in sg['ReferencedResources']:
