@@ -14,7 +14,7 @@ import logging
 
 init()
 
-__version__ = '2023.11.06'
+__version__ = '2024.09.23'
 
 def parse_args(args):
 	"""
