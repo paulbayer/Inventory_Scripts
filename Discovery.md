@@ -1,7 +1,5 @@
 # Using these Inventory Scripts as Discovery
 
-Lately, I've been asked to come up with a way of combining many of these scripts together to come up with a way to perform a reasonable Discovery on an Org - and find issues that need to be remediated, as well as assess the level of maturity of a Landing Zone. What follows here is the list of scripts (with expected parameters) and what I'd expect you'll find given the output.
-
 The following script runs for all accounts within either your specified profile, or (if no profile is used) your default credentials (could be environment variables). This will assess whether ALL of your accounts are suitable to be migrated to Control Tower or not, and if not - what the issues preventing their adoption would be. The "-r global" specifies that ALL regions (even those you have not opted into) should be looked at. The script will (because of the "-v") inform you of the failure to connect to an account in the excluded region, but won't fail because of it. This script executes 10 commands for every account in every region, so it will take a **long** time to run.
 
 ```sh
@@ -15,7 +13,7 @@ all_my_orgs.py -v
 ```
 
 This next script will find the status of all of your accounts and regions and whether you have CloudTrail enabled in each.
-I'm working on enhancing the script to also summarize whether there are multiple CloudTrails for a given account / region, so you can be notified to TURN THAT OFF - and save a bunch of money. You only get 1 CloudTrail per account / region for free, and the second one costs more than you think.
+
 ```sh
 check_all_cloudtrail.py -v -r global --timing --filename cloudtrail_check.out [-p <profile of Org Account>]
 ```
@@ -63,10 +61,11 @@ The following scripts will just show very useful Inventory information that will
 all_my_vpcs.py -v
 all_my_phzs.py -v
 ```
-
 Whenever we do Discovery, we always want to find possible money-savings areas for the customer as well. The script below will find any Log Groups and their retention settings. This gives the customer the opportunity (perhaps) to update those retention settings (from their default of "NEVER") to something that will purge data after a specific time. The bottom of the script gives an *idea* of how much you're spending on Log Groups anyway, so you have an idea if taking action is worthwhile. 
 
-> **Note:** ALZ used Service Catalog to create and manage accounts. It's important that these Service Catalog products are properly terminated when ALZ  is decommissioned, so this tool will report on the accounts in the Org reconciled with the Service Catalog Products that were created and point out if there are products for already closed accounts, or whether there are more than one product for a given account (or no products for a given account). This is - again - useful in cleaning up what sometimes happens over time with any tool - organic mess...   
+ALZ used Service Catalog to create and manage accounts. It's important that these Service Catalog products are properly terminated when ALZ  is decommissioned, so this tool will report on the accounts in the Org reconciled with the Service Catalog Products that were created and point out if there are products for already closed accounts, or whether there are more than one product for a given account (or no products for a given account).
+
+> **Note:** Control Tower use Service Catalog as well. Please ensure you do not terminate Control Tower provisioned products.
 
 ```sh
 SC_Products_to_CFN_Stacks.py -v --timing
