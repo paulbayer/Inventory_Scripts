@@ -10,7 +10,7 @@ from time import time
 from colorama import init, Fore, Style
 
 init()
-__version__ = "2024.05.08"
+__version__ = "2025.04.08"
 ERASE_LINE = '\x1b[2K'
 begin_time = time()
 
@@ -146,11 +146,11 @@ def all_my_orgs(f_Profiles: list, f_SkipProfiles: list, f_AccountList: list, f_T
 		if f_SaveFilename is None:
 			fmt = '%-23s %-15s'
 			print()
-			print(fmt % ("Organization's Profile","Root Account"))
-			print(fmt % ("----------------------","------------"))
+			print(fmt % ("Organization's Profile", "Root Account"))
+			print(fmt % ("----------------------", "------------"))
 			for item in AllProfileAccounts:
 				if item['Success'] and item['RootAcct']:
-					print(f"{item['profile']:{ProfileNameLength+2}s}", end='') if item['profile'] else print(f"{'No Profile available':{ProfileNameLength+2}s}", end='')
+					print(f"{item['profile']:{ProfileNameLength + 2}s}", end='') if item['profile'] else print(f"{'No Profile available':{ProfileNameLength + 2}s}", end='')
 					print(f"{Style.BRIGHT}{item['MgmtAccount']:15s}{Style.RESET_ALL}")
 					print(f"\t{'Child Account Number':{len('Child Account Number')}s} {'Child Account Status':{len('Child Account Status')}s} {'Child Email Address'}")
 					for child_acct in item['aws_acct'].ChildAccounts:
