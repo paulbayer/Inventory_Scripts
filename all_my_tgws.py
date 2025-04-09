@@ -15,7 +15,7 @@ from Inventory_Modules import get_all_credentials, find_tgws2, find_account_vpcs
 from ArgumentsClass import CommonArguments
 
 init()
-__version__ = "2025.03.24"
+__version__ = "2025.04.08"
 
 
 ##################
@@ -756,7 +756,7 @@ if __name__ == '__main__':
 		RouteTablesFound = find_tgw_route_tables(AllCredentials)
 
 	# Combine all lists of resource types into a single list
-	AllResources = combine_all_resources(AccountsWithVPCs, DeDupedTGWs, DeDupedAttachments, RouteTablesFound)
+	AllResources = combine_all_resources(VPCsFound, DeDupedTGWs, DeDupedAttachments, RouteTablesFound)
 	ResourcedRegions = get_regions(AllResources)
 	display_results(AllResources, display_dict, None, pFilename)
 
