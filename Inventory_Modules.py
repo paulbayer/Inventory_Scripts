@@ -4932,7 +4932,7 @@ def get_all_credentials(fProfiles: list = None, fTiming: bool = False, fSkipProf
 		print("Getting Accounts to check: ", end='')
 		aws_acct = aws_acct_access()
 		# This doesn't mean the profile "default", this is just what the label for the Org Name will be, since there's no other text
-		profile = '-default-'
+		profile = 'None'
 		RegionList = get_regions3(aws_acct, fRegionList)
 		logging.info(f"No profile string passed in. Using string '-default-'")
 		# This should populate the list "AllCreds" with the credentials for the relevant accounts.
