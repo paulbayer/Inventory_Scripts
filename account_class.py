@@ -36,7 +36,7 @@ from json.decoder import JSONDecodeError
 import boto3
 from botocore.exceptions import ClientError, ConnectionError, CredentialRetrievalError, EndpointConnectionError, NoCredentialsError, ProfileNotFound, UnknownRegionError
 
-__version__ = "2024.03.22"  # (again)
+__version__ = "2025.04.11"  # (again)
 
 
 def _validate_region(faws_prelim_session, fRegion=None):
