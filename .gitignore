@@ -354,3 +354,6 @@ src/.package
 my_venv/
 /stackoverflow_test/
 .gitallowed
+aws_organization
+*.txt
+*.csv
