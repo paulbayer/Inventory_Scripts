@@ -1,4 +1,5 @@
-from botocore import session, client
+from botocore import client
+from botocore import session
 # import pytest
 
 ERASE_LINE = '\x1b[2K'
