@@ -16,7 +16,7 @@ from ArgumentsClass import CommonArguments
 from account_class import aws_acct_access
 
 init()
-__version__ = "2025.04.14"
+__version__ = "2025.04.15"
 
 """
 This script attempts to move stack-instances from one stack-set to another without any impact to the ultimate resources.
@@ -48,7 +48,7 @@ Here's what's needed:
 ##################
 # Functions
 ##################
-def parse_args(args):
+def parse_args(f_args):
 	script_path, script_name = split(sys.argv[0])
 	parser = CommonArguments()
 	parser.singleregion()
@@ -59,12 +59,24 @@ def parse_args(args):
 	parser.version(__version__)
 	local = parser.my_parser.add_argument_group(script_name, 'Parameters specific to this script')
 	local.add_argument(
-		"--old",
+		"--deployment_admin", "--da",
+		dest="pDeploymentAdminAccount",
+		default=None,
+		metavar="The profile of the deployment admin account",
+		help="This is the account authentication info for the account which is the deployment admin.")
+	local.add_argument(
+		"--delegated_admin",
+		dest="pDelegatedAdmin",
+		action="store_true",
+		help="Provide this flag when you're using a delegated admin account. (rare!).")
+	local.add_argument(
+		"--source", "--old",
 		dest="pOldStackSet",
+		required=True,
 		metavar="The name of the old stackset",
 		help="This is the name of the old stackset, which manages the existing stack instances in the legacy accounts.")
 	local.add_argument(
-		"--new",
+		"--target", "--new",
 		dest="pNewStackSet",
 		metavar="The name of the new stackset",
 		help="This is the name of the new stackset, which will manage the existing stack instances going forward.")
@@ -81,20 +93,42 @@ def parse_args(args):
 		action="store_true",
 		help="Whether to simply create an empty (but copied) new stackset from the 'old' stackset")
 	local.add_argument(
-		"--recovery",
-		dest="pRecoveryFlag",
-		action="store_true",
-		help="Whether we should use the recovery file.")
-	local.add_argument(
 		"--drift-check",
 		dest="pDriftCheckFlag",
 		action="store_true",
 		help="Whether we should check for drift before moving instances")
-	return parser.my_parser.parse_args(args)
+	local.add_argument(
+		"--filename",
+		dest="pInfoFilename",
+		default=None,
+		metavar="filename",
+		help="The filename being referenced to use for recovery")
+	arg_group = parser.my_parser.add_mutually_exclusive_group(required=False)
+	arg_group.add_argument(
+		"--recovery",
+		dest="pRecoveryFlag",
+		action="store_true",
+		help="Whether we should use the recovery file.")
+	arg_group.add_argument(
+		"--disassociate",
+		dest="pDisassociate",
+		action='store_true',
+		help="This tells the script that we're ONLY disassociating the stacksets.")
+	return parser.my_parser.parse_args(f_args)
 
 
-def check_stack_set_drift_status(faws_acct: aws_acct_access, fStack_set_name: str, fOperation_id=None) -> dict:
+def check_stack_set_drift_status(faws_acct: aws_acct_access,
+                                 fStack_set_name: str,
+                                 fOperation_id: str = None,
+                                 fDelegated_admin: bool = False) -> dict:
 	"""
+	Checks the state of the drift, and continues to check
+	@param faws_acct:
+	@param fStack_set_name:
+	@param fOperation_id:
+	@param fDelegated_admin:
+	@return: stackset drift status
+
 	response = client.detect_stack_set_drift(
 	StackSetName='string',
 	OperationPreferences={
@@ -114,6 +148,10 @@ def check_stack_set_drift_status(faws_acct: aws_acct_access, fStack_set_name: st
 
 	import logging
 
+	if not fDelegated_admin:
+		delegated_admin = 'SELF'
+	else:
+		delegated_admin = 'DELEGATED_ADMIN'
 	client_cfn = faws_acct.session.client('cloudformation')
 	return_response = dict()
 	Sync_Has_Started = False
@@ -127,6 +165,7 @@ def check_stack_set_drift_status(faws_acct: aws_acct_access, fStack_set_name: st
 				                                             'FailureTolerancePercentage': 10,
 				                                             'MaxConcurrentPercentage'   : 100
 				                                             },
+			                                             CallAs=delegated_admin
 			                                             )
 			fOperation_id = response['OperationId']
 			return_response = {'OperationId': fOperation_id, 'Success': True}
@@ -144,6 +183,13 @@ def check_stack_set_drift_status(faws_acct: aws_acct_access, fStack_set_name: st
 	else:
 		# Do the describe_stack_set_operation with the operation_id, and determine how close we are to done...
 		"""
+		The request looks like this:
+			response = client.describe_stack_set_operation(
+			    StackSetName='string',
+			    OperationId='string',
+			    CallAs='SELF'|'DELEGATED_ADMIN'
+				)
+	
 		The response we're going to get from this "describe" operation looks like this:
 		{
 		"StackSetOperation": {
@@ -174,43 +220,35 @@ def check_stack_set_drift_status(faws_acct: aws_acct_access, fStack_set_name: st
 			}
 		}
 		"""
-		Finished = False
-		while Finished is False:
+		Finished_stack_set_drift_detection = False
+		while Finished_stack_set_drift_detection is False:
 			try:
 				response = client_cfn.describe_stack_set_operation(
 					StackSetName=fStack_set_name,
 					OperationId=fOperation_id,
+					CallAs=delegated_admin
 					)
 				Start_Time = response['StackSetOperation']['CreationTimestamp']
 				Operation_Status = response['StackSetOperation']['Status']
 				if 'StackSetDriftDetectionDetails' in response['StackSetOperation'].keys():
-					Drift_Detection_Status = response['StackSetOperation']['StackSetDriftDetectionDetails'][
-						'DriftDetectionStatus']
-					if 'LastDriftCheckTimestamp' in response['StackSetOperation'][
-						'StackSetDriftDetectionDetails'].keys():
+					Drift_Detection_Status = response['StackSetOperation']['StackSetDriftDetectionDetails']['DriftDetectionStatus']
+					if 'LastDriftCheckTimestamp' in response['StackSetOperation']['StackSetDriftDetectionDetails'].keys():
 						Sync_Has_Started = True
 					else:
 						Sync_Has_Started = False
 				if Operation_Status == 'RUNNING' and Sync_Has_Started:
 					# TODO: Give a decent status, Wait a little longer, and try again
-					Last_Instances_Finished = response['StackSetOperation']['StackSetDriftDetectionDetails'][
-						'LastDriftCheckTimestamp']
-					Check_Failed = response['StackSetOperation']['StackSetDriftDetectionDetails'][
-						'FailedStackInstancesCount']
-					Total_Stack_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails'][
-						'TotalStackInstancesCount']
-					Drifted_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails'][
-						'DriftedStackInstancesCount']
-					In_Sync_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails'][
-						'InSyncStackInstancesCount']
-					Currently_Checking = response['StackSetOperation']['StackSetDriftDetectionDetails'][
-						'InProgressStackInstancesCount']
+					Last_Instances_Finished = response['StackSetOperation']['StackSetDriftDetectionDetails']['LastDriftCheckTimestamp']
+					Check_Failed = response['StackSetOperation']['StackSetDriftDetectionDetails']['FailedStackInstancesCount']
+					Total_Stack_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['TotalStackInstancesCount']
+					Drifted_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['DriftedStackInstancesCount']
+					In_Sync_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['InSyncStackInstancesCount']
+					Currently_Checking = response['StackSetOperation']['StackSetDriftDetectionDetails']['InProgressStackInstancesCount']
 					Time_Taken = Last_Instances_Finished - Start_Time
 					Checked_Instances = In_Sync_Instances + Drifted_Instances + Check_Failed
 					Time_Left = (Time_Taken / Checked_Instances) * Currently_Checking
 					print(f"{ERASE_LINE} It's taken {Time_Taken} to detect on {Checked_Instances} "
-					      f"instances, which means we probably have {Time_Left} left to go for {Currently_Checking} more stack instances",
-					      end='\r')
+					      f"instances, which means we probably have {Time_Left} left to go for {Currently_Checking} more stack instances", end='\r')
 					logging.info(f"{response}")
 					return_response = {'OperationStatus'      : Operation_Status,
 					                   'StartTime'            : Start_Time,
@@ -220,38 +258,48 @@ def check_stack_set_drift_status(faws_acct: aws_acct_access, fStack_set_name: st
 					                   'StackInstancesChecked': Total_Stack_Instances,
 					                   'Success'              : False,
 					                   }
-					Finished = False
+					Finished_stack_set_drift_detection = False
 				elif Operation_Status == 'RUNNING' and not Sync_Has_Started:
 					# TODO: Give a decent status, Wait a little longer, and try again
 					time_waited += sleep_interval
 					print(
 						f"{ERASE_LINE} We're still waiting for the Sync to start... Sleeping for {time_waited} seconds",
 						end='\r')
-					Finished = False
+					Finished_stack_set_drift_detection = False
 				elif Operation_Status == 'SUCCEEDED':
 					End_Time = response['StackSetOperation']['EndTimestamp']
-					Total_Stack_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails'][
-						'TotalStackInstancesCount']
+					Total_Stack_Instances = response['StackSetOperation']['StackSetDriftDetectionDetails']['TotalStackInstancesCount']
 					return_response.update({'OperationStatus'      : Operation_Status,
 					                        'StartTime'            : Start_Time,
 					                        'EndTime'              : End_Time,
 					                        'StackInstancesChecked': Total_Stack_Instances,
 					                        'Success'              : True})
-					Finished = True
+					Finished_stack_set_drift_detection = True
 			except client_cfn.exceptions.StackSetNotFoundException as myError:
 				logging.error(f"There's been an error: {myError}")
 				return_response = {'ErrorMessage': myError, 'Success': False}
-				Finished = True
+				Finished_stack_set_drift_detection = True
 			except client_cfn.exceptions.OperationNotFoundException as myError:
 				logging.error(f"There's been an error: {myError}")
 				return_response = {'ErrorMessage': myError, 'Success': False}
-				Finished = True
+				Finished_stack_set_drift_detection = True
 			logging.info(f"Sleeping for {sleep_interval} seconds")
 			sleep(sleep_interval)
 		return return_response
 
 
-def check_stack_set_status(faws_acct: aws_acct_access, fStack_set_name: str, fOperationId: str = None) -> dict:
+def check_stack_set_status(faws_acct_target: aws_acct_access,
+                           fStack_set_name: str,
+                           fOperationId: str = None,
+                           fDelegated_admin:str=None) -> dict:
+	"""
+	Checks the state of the stackset, and continues to check
+	@param faws_acct_target:
+	@param fStack_set_name:
+	@param fOperationId:
+	@param fDelegated_admin:
+	@return:
+	"""
 	"""
 	response = client.describe_stack_set_operation(
 		StackSetName='string',
@@ -261,15 +309,18 @@ def check_stack_set_status(faws_acct: aws_acct_access, fStack_set_name: str, fOp
 	"""
 	import logging
 
-	client_cfn = faws_acct.session.client('cloudformation')
+	if not fDelegated_admin:
+		delegated_admin = 'SELF'
+	else:
+		delegated_admin = 'DELEGATED_ADMIN'
+	client_cfn = faws_acct_target.session.client('cloudformation')
 	return_response = dict()
 	# If the calling process couldn't supply the OpId, then we have to find it, based on the name of the stackset
 	if fOperationId is None:
 		# If there is no OperationId, they've called us after creating the stack-set itself,
 		# so we need to check the status of the stack-set creation, and not the operations that happen to the stackset
 		try:
-			response = client_cfn.describe_stack_set(StackSetName=fStack_set_name,
-			                                         CallAs='SELF')['StackSet']
+			response = client_cfn.describe_stack_set(StackSetName=fStack_set_name, CallAs=delegated_admin)['StackSet']
 			return_response['StackSetStatus'] = response['Status']
 			return_response['Success'] = True
 			logging.info(f"Stackset: {fStack_set_name} | Status: {return_response['StackSetStatus']}")
@@ -281,7 +332,7 @@ def check_stack_set_status(faws_acct: aws_acct_access, fStack_set_name: str, fOp
 	try:
 		response = client_cfn.describe_stack_set_operation(StackSetName=fStack_set_name,
 		                                                   OperationId=fOperationId,
-		                                                   CallAs='SELF')['StackSetOperation']
+		                                                   CallAs=delegated_admin)['StackSetOperation']
 		return_response['StackSetStatus'] = response['Status']
 		return_response['Success'] = True
 	except client_cfn.exceptions.StackSetNotFoundException as myError:
@@ -293,32 +344,53 @@ def check_stack_set_status(faws_acct: aws_acct_access, fStack_set_name: str, fOp
 	return return_response
 
 
-def find_if_stack_set_exists(faws_acct: aws_acct_access, fStack_set_name: str) -> dict:
+def find_if_stack_set_exists(faws_acct: aws_acct_access,
+                             fStack_set_name: str,
+                             fDelegated_admin: bool = False) -> dict:
 	"""
+	Checks to see if the stackset exists in the account
+	@param faws_acct:
+	@param fStack_set_name:
+	@param fDelegated_admin:
+	@return:
+
+	This is checking to see if a stackset exists within an account. It may be the source, or the target
 	response = client.describe_stack_set(
 		StackSetName='string',
 		CallAs='SELF'|'DELEGATED_ADMIN'
 	)
 	"""
-	import logging
 
+	if not fDelegated_admin:
+		delegated_admin = 'SELF'
+	else:
+		delegated_admin = 'DELEGATED_ADMIN'
 	logging.info(f"Verifying whether the stackset {fStack_set_name} in account {faws_acct.acct_number} exists")
 	client_cfn = faws_acct.session.client('cloudformation')
 	return_response = dict()
 	try:
-		response = client_cfn.describe_stack_set(StackSetName=fStack_set_name, CallAs='SELF')['StackSet']
+		response = client_cfn.describe_stack_set(StackSetName=fStack_set_name, CallAs=delegated_admin)['StackSet']
 		return_response = {'Payload': response, 'Success': True}
 	except client_cfn.exceptions.StackSetNotFoundException as myError:
-		logging.info(f"StackSet {fStack_set_name} not found in this account.")
-		logging.debug(f"{myError}")
+		logging.error(f"StackSet {fStack_set_name} not found in this account.\n"
+		             f"Error: {myError}")
 		return_response['Success'] = False
+		return_response['ErrorMessage'] = myError
+	except ClientError as myError:
+		logging.error(f"Client Error: {myError}")
+		return_response['Success'] = False
+		return_response['ErrorMessage'] = myError
 	return return_response
 
 
-def get_template_body_and_parameters(faws_acct: aws_acct_access, fExisting_stack_set_name: str) -> dict:
+def get_template_body_and_parameters(faws_acct_source: aws_acct_access,
+                                     fExisting_stack_set_name: str,
+                                     fDelegated_admin: bool = False) -> dict:
 	"""
-	@param faws_acct: object
+	Getting the details on the source stackset
+	@param faws_acct_source: object
 	@param fExisting_stack_set_name: The existing stackset name
+	@param fDelegated_admin: Whether this is a delegated admin or not
 	@return: return_response:
 		'stack_set_info' = stack_set_info
 		'Success' = True | False
@@ -388,11 +460,15 @@ def get_template_body_and_parameters(faws_acct: aws_acct_access, fExisting_stack
 	"""
 	import logging
 
-	logging.info(f"Connecting to account {faws_acct.acct_number} to get info about stackset {fExisting_stack_set_name}")
-	client_cfn = faws_acct.session.client('cloudformation')
+	if not fDelegated_admin:
+		delegated_admin = 'SELF'
+	else:
+		delegated_admin = 'DELEGATED_ADMIN'
+	logging.info(f"Connecting to account {faws_acct_source.acct_number} to get info about stackset {fExisting_stack_set_name}")
+	client_cfn = faws_acct_source.session.client('cloudformation')
 	return_response = {'Success': False}
 	try:
-		stack_set_info = client_cfn.describe_stack_set(StackSetName=fExisting_stack_set_name)['StackSet']
+		stack_set_info = client_cfn.describe_stack_set(StackSetName=fExisting_stack_set_name, CallAs=delegated_admin)['StackSet']
 		return_response['stack_set_info'] = stack_set_info
 		return_response['Success'] = True
 	except client_cfn.exceptions.StackSetNotFoundException as myError:
@@ -402,11 +478,25 @@ def get_template_body_and_parameters(faws_acct: aws_acct_access, fExisting_stack
 	return return_response
 
 
-def compare_stacksets(faws_acct: aws_acct_access, fExisting_stack_set_name: str, fNew_stack_set_name: str) -> dict:
+def compare_stacksets(faws_acct_source: aws_acct_access,
+                      faws_acct_target: aws_acct_access,
+                      fExisting_stack_set_name: str,
+                      fNew_stack_set_name: str,
+                      fDelegated_admin: bool = False) -> dict:
 	"""
 	The idea here is to compare the templates and parameters of the stacksets, to ensure that the import will succeed.
+	@param faws_acct_source: The account (assuming Payer account) where the stacksets are coming from
+	@param faws_acct_target: The account (assuming Deployment account) where the stacksets are targeted
+	@param fExisting_stack_set_name: The source stackset name
+	@param fNew_stack_set_name: The target stackset name
+	@param fDelegated_admin:
+	@return:
 	"""
 
+	if not fDelegated_admin:
+		delegated_admin = 'SELF'
+	else:
+		delegated_admin = 'DELEGATED_ADMIN'
 	return_response = {'Success'                : False,
 	                   'TemplateComparison'     : False,
 	                   'CapabilitiesComparison' : False,
@@ -414,24 +504,20 @@ def compare_stacksets(faws_acct: aws_acct_access, fExisting_stack_set_name: str,
 	                   'TagsComparison'         : False,
 	                   'DescriptionComparison'  : False,
 	                   'ExecutionRoleComparison': False}
-	Stack_Set_Info_old = get_template_body_and_parameters(faws_acct, fExisting_stack_set_name)
-	Stack_Set_Info_new = get_template_body_and_parameters(faws_acct, fNew_stack_set_name)
+	Stack_Set_Info_old = get_template_body_and_parameters(faws_acct_source, fExisting_stack_set_name, fDelegated_admin)
+	Stack_Set_Info_new = get_template_body_and_parameters(faws_acct_target, fNew_stack_set_name, fDelegated_admin)
 	# Time to compare - only the Template Body, Parameters, and Capabilities are critical to making sure the stackset works.
 	return_response['TemplateComparison'] = (
-			Stack_Set_Info_old['stack_set_info']['TemplateBody'] == Stack_Set_Info_new['stack_set_info'][
-		'TemplateBody'])
+			Stack_Set_Info_old['stack_set_info']['TemplateBody'] == Stack_Set_Info_new['stack_set_info']['TemplateBody'])
 	return_response['CapabilitiesComparison'] = (
-			Stack_Set_Info_old['stack_set_info']['Capabilities'] == Stack_Set_Info_new['stack_set_info'][
-		'Capabilities'])
+			Stack_Set_Info_old['stack_set_info']['Capabilities'] == Stack_Set_Info_new['stack_set_info']['Capabilities'])
 	return_response['ParametersComparison'] = (
-			Stack_Set_Info_old['stack_set_info']['Parameters'] == Stack_Set_Info_new['stack_set_info'][
-		'Parameters'])
+			Stack_Set_Info_old['stack_set_info']['Parameters'] == Stack_Set_Info_new['stack_set_info']['Parameters'])
 	return_response['TagsComparison'] = (
 			Stack_Set_Info_old['stack_set_info']['Tags'] == Stack_Set_Info_new['stack_set_info']['Tags'])
 	try:
 		return_response['DescriptionComparison'] = (
-				Stack_Set_Info_old['stack_set_info']['Description'] == Stack_Set_Info_new['stack_set_info'][
-			'Description'])
+				Stack_Set_Info_old['stack_set_info']['Description'] == Stack_Set_Info_new['stack_set_info']['Description'])
 	except KeyError as myError:
 		# This checks for the presence of the Description key before using it as a key for checking, to resolve an error when it's not there.
 		if 'Description' in Stack_Set_Info_new['stack_set_info'].keys() and Stack_Set_Info_new['stack_set_info'][
@@ -444,8 +530,7 @@ def compare_stacksets(faws_acct: aws_acct_access, fExisting_stack_set_name: str,
 			logging.error(f"Description key isn't available... continuing anyway...")
 			return_response['DescriptionComparison'] = True
 	return_response['ExecutionRoleComparison'] = (
-			Stack_Set_Info_old['stack_set_info']['ExecutionRoleName'] == Stack_Set_Info_new['stack_set_info'][
-		'ExecutionRoleName'])
+			Stack_Set_Info_old['stack_set_info']['ExecutionRoleName'] == Stack_Set_Info_new['stack_set_info']['ExecutionRoleName'])
 
 	if (return_response['TemplateComparison'] and return_response['CapabilitiesComparison'] and return_response[
 		'ParametersComparison']):
@@ -453,38 +538,50 @@ def compare_stacksets(faws_acct: aws_acct_access, fExisting_stack_set_name: str,
 	return return_response
 
 
-def get_stack_ids_from_existing_stack_set(faws_acct: aws_acct_access, fExisting_stack_set_name: str,
-                                          fAccountsToMove: list = None) -> dict:
+def get_stack_ids_from_existing_stack_set(faws_acct: aws_acct_access,
+                                          fExisting_stack_set_name: str,
+                                          fAccountsToMove: list = None,
+                                          fDelegated_admin: bool = False) -> dict:
 	"""
-	response = client.list_stack_instances(
-		StackSetName='string',
-		NextToken='string',
-		MaxResults=123,
-		Filters=[
-			{
-				'Name': 'DETAILED_STATUS',
-				'Values': 'string'
-			},
-		],
-		StackInstanceAccount='string',
-		StackInstanceRegion='string',
-		CallAs='SELF'|'DELEGATED_ADMIN'
-	)
+	Gets the stack instance ids from the existing stack set
+	@param faws_acct:
+	@param fExisting_stack_set_name:
+	@param fAccountsToMove:
+	@param fDelegated_admin:
+	@return:
+		response = client.list_stack_instances(
+			StackSetName='string',
+			NextToken='string',
+			MaxResults=123,
+			Filters=[
+				{
+					'Name': 'DETAILED_STATUS',
+					'Values': 'string'
+				},
+			],
+			StackInstanceAccount='string',
+			StackInstanceRegion='string',
+			CallAs='SELF'|'DELEGATED_ADMIN'
+		)
 	"""
 	import logging
 
+	if not fDelegated_admin:
+		delegated_admin = 'SELF'
+	else:
+		delegated_admin = 'DELEGATED_ADMIN'
 	client_cfn = faws_acct.session.client('cloudformation')
 	return_response = dict()
 	try:
-		response = client_cfn.list_stack_instances(StackSetName=fExisting_stack_set_name, CallAs='SELF')
+		response = client_cfn.list_stack_instances(StackSetName=fExisting_stack_set_name, CallAs=delegated_admin)
 		return_response['Stack_instances'] = response['Summaries']
 		while 'NextToken' in response.keys():
-			response = client_cfn.list_stack_instances(StackSetName=fExisting_stack_set_name, CallAs='SELF',
+			response = client_cfn.list_stack_instances(StackSetName=fExisting_stack_set_name, CallAs=delegated_admin,
 			                                           NextToken=response['NextToken'])
 			return_response['Stack_instances'].extend(response['Summaries'])
 		return_response['Success'] = True
 	except client_cfn.exceptions.StackSetNotFoundException as myError:
-		print(myError)
+		logging.error(f"Error: {myError}")
 		return_response['Success'] = False
 	if fAccountsToMove is None:
 		logging.debug(f"No Account was specified, so all stack-instance-ids are being returned")
@@ -498,24 +595,36 @@ def get_stack_ids_from_existing_stack_set(faws_acct: aws_acct_access, fExisting_
 	return return_response
 
 
-def write_info_to_file(faws_acct: aws_acct_access, fstack_ids) -> dict:
+def write_info_to_file(faws_acct: aws_acct_access,
+                       fstack_ids: dict,
+                       fDelegated_admin: bool = False) -> dict:
 	"""
-	Docs go here
+	Writes stackset info to a file, to enable a recovery if something goes wrong.
+	@param faws_acct:
+	@param fstack_ids:
+	@param fDelegated_admin:
+	@return: Return Response with success or failure and error message
 	"""
 	import logging
 	import simplejson as json
 
+	if not fDelegated_admin:
+		delegated_admin = 'SELF'
+	else:
+		delegated_admin = 'DELEGATED_ADMIN'
 	# Create a dictionary that will represent everything we're trying to do
 	try:
 		StackSetsInfo = {
-			'ProfileUsed'      : pProfile,
-			'ManagementAccount': faws_acct.MgmtAccount,
-			'Region'           : pRegion,
-			'AccountNumber'    : faws_acct.acct_number,
-			'AccountsToMove'   : pAccountsToMove,
-			'OldStackSetName'  : pOldStackSet,
-			'NewStackSetName'  : pNewStackSet,
-			'stack_ids'        : fstack_ids
+			'ProfileUsed'               : pProfile,
+			'Deployment_Account_Profile': pDeploymentAdmin,
+			'ManagementAccount'         : faws_acct.MgmtAccount,
+			'Region'                    : pRegion,
+			'AccountNumber'             : faws_acct.acct_number,
+			'AccountsToMove'            : pAccountsToMove,
+			'OldStackSetName'           : pOldStackSet,
+			'NewStackSetName'           : pNewStackSet,
+			'Delegated_Admin'           : delegated_admin,
+			'stack_ids'                 : fstack_ids,
 			}
 		logging.info(f"Writing data to the file {InfoFilename}")
 		logging.debug(f"Here's the data we're writing: {StackSetsInfo}")
@@ -550,9 +659,18 @@ def read_stack_info_from_file() -> dict:
 		return return_response
 
 
-def create_stack_set_with_body_and_parameters(faws_acct: aws_acct_access, fNew_stack_set_name: str,
-                                              fStack_set_info: dict) -> dict:
+def create_stack_set_with_body_and_parameters(faws_acct_target: aws_acct_access,
+                                              fNew_stack_set_name: str,
+                                              fStack_set_info: dict,
+                                              fDelegated_admin: bool = False) -> dict:
 	"""
+	Create the new stack set in tehe target account if it doesn't already exist
+	@param faws_acct_target:
+	@param fNew_stack_set_name:
+	@param fStack_set_info:
+	@param fDelegated_admin:
+	@return:
+
 	response = client.create_stack_set(
 		StackSetName='string',
 		Description='string',
@@ -589,10 +707,13 @@ def create_stack_set_with_body_and_parameters(faws_acct: aws_acct_access, fNew_s
 	"""
 	import logging
 
-	logging.info(
-		f"Creating a new stackset name {fNew_stack_set_name} in account {faws_acct.acct_number} with a template body, parameters, capabilities and tagging from this:")
+	if not fDelegated_admin:
+		delegated_admin = 'SELF'
+	else:
+		delegated_admin = 'DELEGATED_ADMIN'
+	logging.info(f"Creating a new stackset name {fNew_stack_set_name} in account {faws_acct_target.acct_number} with a template body, parameters, capabilities and tagging from this:")
 	logging.info(f"{fStack_set_info}")
-	client_cfn = faws_acct.session.client('cloudformation')
+	client_cfn = faws_acct_target.session.client('cloudformation')
 	return_response = dict()
 	# TODO: We should consider changing the template body to a template url to accommodate really big templates,
 	#  That would mean we need to have an S3 bucket to put the template, which we don't necessarily have at this point, so it's a bigger deal than you might immediately think.
@@ -602,13 +723,14 @@ def create_stack_set_with_body_and_parameters(faws_acct: aws_acct_access, fNew_s
 	#  We need to catch the scenario, when the old stackset was "Service-Managed" and decide whether we create the new one that way (which may be difficult, with automatic deployments, etc),
 	#  Or tell the user that we cannot create a new service-managed stackset, and do they want to create it as a self-managed instead?
 	try:
+		logging.info(f"Creating stack set {fNew_stack_set_name} in account {faws_acct_target.acct_number}")
 		response = client_cfn.create_stack_set(StackSetName=fNew_stack_set_name,
 		                                       TemplateBody=fStack_set_info['TemplateBody'],
-		                                       Description=fStack_set_info[
-			                                       'Description'] if 'Description' in fStack_set_info.keys() else Default_Description_Text,
+		                                       Description=fStack_set_info['Description'] if 'Description' in fStack_set_info.keys() else Default_Description_Text,
 		                                       Parameters=fStack_set_info['Parameters'],
 		                                       Capabilities=fStack_set_info['Capabilities'],
-		                                       Tags=fStack_set_info['Tags'])
+		                                       Tags=fStack_set_info['Tags'],
+		                                       CallAs=delegated_admin)
 		return_response['StackSetId'] = response['StackSetId']
 		return_response['Success'] = True
 	# There is currently no waiter to use for this operation...
@@ -621,8 +743,18 @@ def create_stack_set_with_body_and_parameters(faws_acct: aws_acct_access, fNew_s
 	return return_response
 
 
-def disconnect_stack_instances(faws_acct: aws_acct_access, fStack_instances: dict, fOldStackSet: str) -> dict:
+def disconnect_stack_instances(faws_acct: aws_acct_access,
+                               fStack_instances: dict,
+                               fOldStackSet: str,
+                               fDelegated_admin: bool = False) -> dict:
 	"""
+	Disconnects / Disassociates the source stack instances from the stack set
+	@param faws_acct:
+	@param fStack_instances:
+	@param fOldStackSet:
+	@param fDelegated_admin:
+	@return:
+
 	response = client.delete_stack_instances(
 		StackSetName='string',
 		Accounts=[
@@ -658,6 +790,10 @@ def disconnect_stack_instances(faws_acct: aws_acct_access, fStack_instances: dic
 	"""
 	import logging
 
+	if not fDelegated_admin:
+		delegated_admin = 'SELF'
+	else:
+		delegated_admin = 'DELEGATED_ADMIN'
 	logging.info(f"Disassociating stacks from {fOldStackSet}")
 	return_response = dict()
 	if len(fStack_instances['Stack_instances']) == 0:
@@ -681,7 +817,7 @@ def disconnect_stack_instances(faws_acct: aws_acct_access, fStack_instances: dic
 				'FailureTolerancePercentage': 10,
 				'MaxConcurrentPercentage'   : 100},
 			RetainStacks=True,
-			CallAs='SELF')
+			CallAs=delegated_admin)
 		return_response['OperationId'] = response['OperationId']
 		return_response['Success'] = True
 	except client_cfn.exceptions.StackSetNotFoundException as myError:
@@ -717,9 +853,18 @@ def create_change_set_for_new_stack():
 	"""
 
 
-def populate_new_stack_with_existing_stack_instances(faws_acct: aws_acct_access, fStack_instance_info: list,
-                                                     fNew_stack_name: str) -> dict:
+def populate_new_stack_with_existing_stack_instances(faws_acct_target: aws_acct_access,
+                                                     fStack_instance_info: list,
+                                                     fNew_stack_name: str,
+                                                     fDelegated_admin:bool = False) -> dict:
 	"""
+	Import the stack instances into the new stackset
+	@param faws_acct_target:
+	@param fStack_instance_info:
+	@param fNew_stack_name:
+	@param fDelegated_admin:
+	@return:
+
 	response = client.import_stacks_to_stack_set(
 		StackSetName='string',
 		StackIds=[
@@ -744,11 +889,14 @@ def populate_new_stack_with_existing_stack_instances(faws_acct: aws_acct_access,
 	"""
 	import logging
 
+	if not fDelegated_admin:
+		delegated_admin = 'SELF'
+	else:
+		delegated_admin = 'DELEGATED_ADMIN'
 	stack_instance_ids = [stack_instance['StackId'] for stack_instance in fStack_instance_info
 	                      if stack_instance['Status'] in ['CURRENT', 'OUTDATED', 'CREATE_COMPLETE', 'UPDATE_COMPLETE']]
-	logging.info(
-		f"Populating new stackset {fNew_stack_name} in account {faws_acct.acct_number} with stack_ids: {stack_instance_ids}")
-	client_cfn = faws_acct.session.client('cloudformation')
+	logging.info(f"Populating target stackset {fNew_stack_name} in target account {faws_acct_target.acct_number} with stack_ids: {stack_instance_ids}")
+	client_cfn = faws_acct_target.session.client('cloudformation')
 	return_response = dict()
 	try:
 		response = client_cfn.import_stacks_to_stack_set(StackSetName=fNew_stack_name,
@@ -757,15 +905,18 @@ def populate_new_stack_with_existing_stack_instances(faws_acct: aws_acct_access,
 			                                                 'RegionConcurrencyType'     : 'PARALLEL',
 			                                                 'FailureTolerancePercentage': 0,
 			                                                 'MaxConcurrentPercentage'   : 100},
-		                                                 CallAs='SELF')
+		                                                 CallAs=delegated_admin)
 		return_response['OperationId'] = response['OperationId']
 		return_response['Success'] = True
+	# TODO: Missing a check to see if the account being migrated over has since been closed.
+	#   This will cause a failure on the stackset import, as well as this script.
+	#   Update the recovery file to remove that reference, and re-run with the same parameters.
 	except client_cfn.exceptions.LimitExceededException as myError:
 		logging.error(f"Limit Exceeded: {myError}")
 		return_response['Success'] = False
 		return_response['ErrorMessage'] = myError
 	except client_cfn.exceptions.StackSetNotFoundException as myError:
-		logging.error(f"Stack Set Not Found: {myError}")
+		logging.error(f"Stack Set Not Found: {myError} in account {faws_acct_target.acct_number}")
 		return_response['Success'] = False
 		return_response['ErrorMessage'] = myError
 	except client_cfn.exceptions.InvalidOperationException as myError:
@@ -807,6 +958,10 @@ if __name__ == '__main__':
 	pOldStackSet = args.pOldStackSet
 	pNewStackSet = args.pNewStackSet
 	pAccountsToMove = args.pAccountsToMove
+	pDeploymentAdmin = args.pDeploymentAdminAccount
+	pDelegatedAdmin = args.pDelegatedAdmin
+	pDisassociate = args.pDisassociate
+	pInfoFilename = args.pInfoFilename
 	pEmpty = args.pEmpty
 	# Logging Settings
 	# Set Log Level
@@ -825,18 +980,33 @@ if __name__ == '__main__':
 	StackInstancesImportedAtOnce = 10
 	stack_ids = dict()
 
-	aws_acct = aws_acct_access(pProfile)
-	datetime_extension = datetime.now().strftime("%Y%m%d-%H%M")
-	InfoFilename = f"{pOldStackSet}-{pNewStackSet}-{aws_acct.acct_number}-{pRegion}.{datetime_extension}"
-	Use_recovery_file = False
+	aws_acct_source = aws_acct_access(pProfile)
+	aws_acct_target = aws_acct_access(pDeploymentAdmin) if pDeploymentAdmin is not None else None
 
+	datetime_extension = datetime.now().strftime("%Y%m%d-%H%M")
+	if pInfoFilename is None:
+		InfoFilename = f"{pOldStackSet}-{pNewStackSet}-{aws_acct_source.acct_number}-{pRegion}.{datetime_extension}"
+	else:
+		InfoFilename = pInfoFilename
+	Use_recovery_file = False
+	Finished = False
+	# The following is just letting the user know what we're going to do in this script.
+	# Since this script is by nature intrusive, we want the user to confirm everything before they continue.
+	if pAccountsToMove is None:
+		logging.info(f"Successfully connected to source account {aws_acct_source.acct_number} to move all stack instances "
+		             f"from {pOldStackSet} to {pNewStackSet} in account {aws_acct_target.acct_number}")
+	else:
+		logging.info(f"Connecting to account {aws_acct_source.acct_number} to move instances for accounts {pAccountsToMove}"
+		             f" from {pOldStackSet} to {pNewStackSet} in account {aws_acct_target.acct_number}")
+
+	# Do drift check on the old stackset
 	if pDriftCheck:
-		drift_check_response = check_stack_set_drift_status(aws_acct, pOldStackSet)
+		drift_check_response = check_stack_set_drift_status(aws_acct_source, pOldStackSet)
 		print(drift_check_response)
 		print(f"Kicked off Drift Sync... now we'll wait {sleep_interval} seconds before checking on the process...")
 		sleep(sleep_interval)
 		if drift_check_response['Success']:
-			drift_check_response2 = check_stack_set_drift_status(aws_acct, pOldStackSet,
+			drift_check_response2 = check_stack_set_drift_status(aws_acct_source, pOldStackSet,
 			                                                     drift_check_response['OperationId'])
 			Total_Stacksets = drift_check_response2['StackInstancesChecked']
 			Drifted_Stacksets = drift_check_response2[
@@ -853,110 +1023,152 @@ if __name__ == '__main__':
 			print()
 		sys.exit("Exiting...")
 
+	# Only disassociating the old stacksets, and writing to the recovery file
+	if pDisassociate:
+		logging.info(f"Asked to only disassociate the stackset {pOldStackSet} from the account {aws_acct_source.acct_number}")
+		stack_ids = get_stack_ids_from_existing_stack_set(aws_acct_source, pOldStackSet, pAccountsToMove)
+		disassociate_response = disconnect_stack_instances(aws_acct_source, stack_ids, pOldStackSet)
+		logging.info(f"Dissociate response: {disassociate_response}")
+		write_info_to_file(aws_acct_source, stack_ids, pDeploymentAdmin)
+		sys.exit("Exiting after completing only the disassociation...")
+
+	# Setting up the use-case of the second half
 	if exists(InfoFilename) and pRecoveryFlag:
-		print(
-			f"You requested to use the recovery file {InfoFilename}, so we'll use that to pick up from where we left off")
+		print(f"You requested to use the recovery file {InfoFilename}, so we'll use that to pick up from where we left off")
 		Use_recovery_file = True
+	# They specified recovery, but couldn't find the file they specified
 	elif pRecoveryFlag:
-		print(
-			f"You requested to use the Recovery file, but we couldn't find one named {InfoFilename}, so we're exiting\n"
-			f"Please supply the proper StackSet, Region and Profile parameters so we can find the recovery file.",
-			file=sys.stderr)
+		print(f"You requested to use the Recovery file, but we couldn't find one named {InfoFilename}, so we're exiting\n"
+		      f"Please supply the proper StackSet, Region and Profile parameters so we can find the recovery file.",
+		      file=sys.stderr)
 		sys.exit(5)
+	# They *didn't* specify recovery, but they did specify a specific filename to use - Why?
 	elif exists(InfoFilename):
 		print(f"There exists a recovery file for the parameters you've supplied, named {InfoFilename}\n")
 		Use_recovery_file = (input(f"Do you want to use this file? (y/n): ") in ['y', 'Y'])
 		if not Use_recovery_file:
-			print(
-				f"If you don't want to use that file, please change the filename, and re-run this script, to avoid over-writing it.",
-				file=sys.stderr)
+			print(f"If you don't want to use that file, please change the filename, and re-run this script, to avoid over-writing it.", file=sys.stderr)
 			sys.exit(6)
 
-	if Use_recovery_file:
-		fileinput = read_stack_info_from_file()
-		AccountNumber = fileinput['Payload']['AccountNumber']
-		if not AccountNumber == aws_acct.acct_number:
-			print(
-				f"You're running this script referencing a different account than the one used last when the recovery file {InfoFilename} was created.\n"
-				f"Please make sure you finish that last task before starting a new one.\n", file=sys.stderr)
-			sys.exit(4)
-		pAccountsToMove = fileinput['Payload']['AccountsToMove']
-		pOldStackSet = fileinput['Payload']['OldStackSetName']
-		pNewStackSet = fileinput['Payload']['NewStackSetName']
-		pRegion = fileinput['Payload']['Region']
-		stack_ids = fileinput['Payload']['stack_ids']
+	# So they want to run recovery only...
+	# if Use_recovery_file:
+	# 	# Based on either the arguments passed, or the fact that we found a recovery file available...
+	# 	# we know this is the second half of the move effort
+	# 	# We can assume the "OldStackSet" doesn't exist - or shouldn't be important.
+	# 	OldStackSetExists = False
+	# 	fileinput = read_stack_info_from_file()
+	# 	AccountNumber = fileinput['Payload']['AccountNumber']
+	# 	pDeploymentAdmin = fileinput['Payload']['Deployment_Account_Profile']
+	# 	if not AccountNumber == aws_acct_source.acct_number:
+	# 		print(f"You're running this script referencing a different account than the one used last when the recovery file {InfoFilename} was created.")
+	# 	elif AccountNumber == aws_acct_target.MgmtAccount:
+	# 		print(f"Using account {aws_acct_target.acct_number} to re-create the stacksets in the new Deployment Admin account and re-associate stack-set instances to those stacksets")
+	# 	else:
+	# 		print(f"You're running this script referencing a different account than the one used last when the recovery file {InfoFilename} was created."
+	# 		      f"Please make sure you finish that last task before starting a new one.\n")
+	# 		sys.exit(4)
+	# 	pAccountsToMove = fileinput['Payload']['AccountsToMove']
+	# 	pOldStackSet = fileinput['Payload']['OldStackSetName']
+	# 	pNewStackSet = fileinput['Payload']['NewStackSetName'] if fileinput['Payload']['NewStackSetName'] is not None else pNewStackSet
+	# 	pRegion = fileinput['Payload']['Region']
+	# 	stack_ids = fileinput['Payload']['stack_ids']
+	# 	# Begin to recover the lost stack_ids
+	# 	# For every 10 stack-ids:
+	# 	# **** 3. Import those stack-ids into the new stack-set, 10 at a time ****
+	# 	x = 0
+	# 	limit = StackInstancesImportedAtOnce
+	# 	intervals_waited = 1
+	# 	while x < len(stack_ids['Stack_instances']):
+	# 		stack_ids_subset = [stack_ids['Stack_instances'][x + i] for i in range(limit) if x + i < len(stack_ids['Stack_instances'])]
+	# 		x += limit
+	# 		print(f"{ERASE_LINE}Importing {len(stack_ids_subset)} of {len(stack_ids['Stack_instances'])} stacks into the new stackset now...", end='\r')
+	# 		ReconnectStackInstances = populate_new_stack_with_existing_stack_instances(aws_acct_target, stack_ids_subset, pNewStackSet)
+	# 		if not ReconnectStackInstances['Success']:
+	# 			print(f"Re-attaching the stack-instance to the new stackset seems to have failed."
+	# 			      f"The error received was: {ReconnectStackInstances['ErrorMessage']}")
+	# 			print(
+	# 				f"You'll have to resolve the issue that caused this problem, and then re-run this script using the recovery file.")
+	# 			Failure_GoToEnd = True
+	# 			sys.exit(9)
+	# 		StackReadyToImport = check_stack_set_status(aws_acct_target, pNewStackSet, ReconnectStackInstances['OperationId'])
+	# 		if not StackReadyToImport['Success']:
+	# 			Failure_GoToEnd = True
+	# 			sys.exit(f"There was a problem with importing the stack"
+	# 			         f" instances into stackset {pNewStackSet}. Exiting...")
+	# 		while StackReadyToImport['StackSetStatus'] in ['RUNNING', 'QUEUED']:
+	# 			print(f"{ERASE_LINE}Waiting for {len(stack_ids_subset)} more instances of StackSet {pNewStackSet} to finish importing -",
+	# 			      f"{sleep_interval * intervals_waited} seconds waited so far", end='\r')
+	# 			sleep(sleep_interval)
+	# 			intervals_waited += 1
+	# 			StackReadyToImport = check_stack_set_status(aws_acct_target, pNewStackSet, ReconnectStackInstances['OperationId'])
+	# 			if not StackReadyToImport['Success']:
+	# 				Failure_GoToEnd = True
+	# 				sys.exit(f"There was a problem with importing the stack instances into stackset {pNewStackSet}. Exiting...")
+	# 		logging.info(f"{ERASE_LINE}That import took {intervals_waited * sleep_interval} seconds to complete")
+	# 	Finished = True
 
-	# The following is just letting the user know what we're going to do in this script.
-	# Since this script is by nature intrusive, we want the user to confirm everything before they continue.
-	if pAccountsToMove is None:
-		logging.info(f"Successfully connected to account {aws_acct.acct_number} to move stack instances "
-		             f"from {pOldStackSet} to {pNewStackSet}")
-	else:
-		logging.info(f"Connecting to account {aws_acct.acct_number} to move instances for accounts {pAccountsToMove}"
-		             f" from {pOldStackSet} to {pNewStackSet}")
-	# Check to see if the new StackSet already exists, or we need to create it.
-	if find_if_stack_set_exists(aws_acct, pNewStackSet)['Success']:
-		print(
-			f"{Fore.GREEN}The 'New' Stackset {pNewStackSet} exists within the account {aws_acct.acct_number}{Fore.RESET}")
-		NewStackSetExists = True
-	else:
-		print(
-			f"{Fore.RED}The 'New' Stackset {pNewStackSet} does not exist within the account {aws_acct.acct_number}{Fore.RESET}")
-		NewStackSetExists = False
 	# Check to see if the old StackSet exists, as they may have typed something wrong - or the recovery file was never deleted.
-	if find_if_stack_set_exists(aws_acct, pOldStackSet)['Success']:
-		print(
-			f"{Fore.GREEN}The 'Old' Stackset {pOldStackSet} exists within the account {aws_acct.acct_number}{Fore.RESET}")
+	if find_if_stack_set_exists(aws_acct_source, pOldStackSet, pDelegatedAdmin)['Success']:
+		print(f"{Fore.GREEN}The source Stackset '{pOldStackSet}' exists within the account {aws_acct_source.acct_number}{Fore.RESET}")
 		OldStackSetExists = True
 	else:
-		print(
-			f"{Fore.RED}The 'Old' Stackset {pOldStackSet} does not exist within the account {aws_acct.acct_number}{Fore.RESET}")
+		print(f"{Fore.RED}The source Stackset '{pOldStackSet}' wasn't found within the account {aws_acct_source.acct_number}{Fore.RESET}")
 		OldStackSetExists = False
+		sys.exit("There's nothing to move... ")
 
-	CompareTemplates = {'Success': False}
-	if OldStackSetExists and NewStackSetExists:
-		CompareTemplates = compare_stacksets(aws_acct, pOldStackSet, pNewStackSet)
-	if OldStackSetExists and not NewStackSetExists:
-		print()
-		print(f"It looks like the new stack-set doesn't yet have a template assigned to it.\n"
-		      f"We can simply copy over the template from the source stackset and copy to the new stackset.\n"
-		      f"Please answer Y to the prompt below, if you're ok with that.")
-		print()
-	elif not CompareTemplates['Success']:
-		print()
-		print(
-			f"{Fore.RED}Ok - there's a problem here. The templates or parameters or capabilities in the two stacksets you provided don't match{Fore.RESET}\n"
-			f"It might be a very bad idea to try to import these stacksets, if the templates or other critical components don't match.\n"
-			f"I'd suggest strongly that you answer 'N' to the next prompt... ")
-		print()
-	elif (CompareTemplates['Success'] and
-	      not (CompareTemplates['TagsComparison']
-	           and CompareTemplates['DescriptionComparison']
-	           and CompareTemplates['ExecutionRoleComparison'])):
-		print()
-		print(
-			f"{Fore.CYAN}Ok - there {Style.BRIGHT}might{Style.NORMAL} be a problem here. While the templates, parameters and capabilities in the two stacksets you provided match\n"
-			f"Either the Description, the Tags, or the ExecutionRole is different between the two stacksets.\n"
-			f"I'd suggest that you answer 'N' to the next prompt, and then investigate the differences\n"
-			f"No changes were made yet - so you can always run this script again.{Fore.RESET}")
-		print()
+	# Check to see if the new StackSet already exists, or we need to create it.
+	if pNewStackSet is None:
+		logging.info(f"Since no new stack set name was provided, assuming you're creating a new one...")
+		NewStackSetExists = False
+	elif find_if_stack_set_exists(aws_acct_target, pNewStackSet, pDelegatedAdmin)['Success']:
+		print(f"{Fore.GREEN}The 'New' Stackset {pNewStackSet} exists within the account {aws_acct_target.acct_number}{Fore.RESET}")
+		NewStackSetExists = True
+	else:
+		print(f"{Fore.RED}The 'New' Stackset {pNewStackSet} does not exist within the account {aws_acct_target.acct_number}{Fore.RESET}")
+		NewStackSetExists = False
+
+	if not Finished:
+		CompareTemplates = {'Success': False}
+		# CompareTemplates['Success'] = True
+		if OldStackSetExists and NewStackSetExists:
+			CompareTemplates = compare_stacksets(aws_acct_source, aws_acct_target, pOldStackSet, pNewStackSet, pDelegatedAdmin)
+		elif OldStackSetExists and not NewStackSetExists:
+			print()
+			print(f"It looks like the new stack-set doesn't yet have a template assigned to it.\n"
+			      f"We can simply copy over the template from the source stackset and copy to the new stackset.\n"
+			      f"Please answer Y to the prompt below, if you're ok with that.")
+			print()
+		elif not CompareTemplates['Success']:
+			print()
+			print(f"{Fore.RED}Ok - there's a problem here. The templates or parameters or capabilities in the two stacksets you provided don't match{Fore.RESET}\n"
+			      f"It might be a very bad idea to try to import these stacksets, if the templates or other critical components don't match.\n"
+			      f"I'd suggest strongly that you answer 'N' to the next prompt... ")
+			print()
+		elif (CompareTemplates['Success'] and
+		      not (CompareTemplates['TagsComparison']
+		           and CompareTemplates['DescriptionComparison']
+		           and CompareTemplates['ExecutionRoleComparison'])):
+			print()
+			print(
+				f"{Fore.CYAN}Ok - there {Style.BRIGHT}might{Style.NORMAL} be a problem here. While the templates, parameters and capabilities in the two stacksets you provided match\n"
+				f"Either the Description, the Tags, or the ExecutionRole is different between the two stacksets.\n"
+				f"I'd suggest that you answer 'N' to the next prompt, and then investigate the differences\n"
+				f"No changes were made yet - so you can always run this script again.{Fore.RESET}")
+			print()
 
 	# Ignore whether or not the recovery file exists, since if it does - it's just updating the variables needed for this run.
 	# We shouldn't be doing much of anything differently, based on whether the recovery file exists.
 	if OldStackSetExists and pEmpty:
-		print(
-			f"You've asked to create an empty stackset called {pNewStackSet} from the existing stackset {pOldStackSet}")
-		print(
-			f"You specified accounts to move, but we're not doing that, since you asked for this stackset to be created empty.") if pAccountsToMove is not None else ""
-		""" Create new stackset from old stackset """
-		Stack_Set_Info = get_template_body_and_parameters(aws_acct, pOldStackSet)
+		print(f"You've asked to create an empty stackset called {pNewStackSet} from the existing stackset {pOldStackSet}")
+		print(f"You specified accounts to move, but we're not doing that, since you asked for this stackset to be created empty.") if pAccountsToMove is not None else ""
+		# Create new stackset from old stackset
+		Stack_Set_Info = get_template_body_and_parameters(aws_acct_source, pOldStackSet, pDelegatedAdmin)
 		# Creates the new stack
-		NewStackSetId = create_stack_set_with_body_and_parameters(aws_acct, pNewStackSet,
-		                                                          Stack_Set_Info['stack_set_info'])
+		NewStackSetId = create_stack_set_with_body_and_parameters(aws_acct_target, pNewStackSet, Stack_Set_Info['stack_set_info'], pDelegatedAdmin)
 		logging.warning(f"Waiting for new stackset {pNewStackSet} to be created")
 		sleep(sleep_interval)
 		# Checks on the new stack creation
-		NewStackSetStatus = check_stack_set_status(aws_acct, pNewStackSet)
+		NewStackSetStatus = check_stack_set_status(aws_acct_target, pNewStackSet)
 		intervals_waited = 1
 		# If the creation effort (async) and the creation checking both succeeded...
 		if NewStackSetStatus['Success'] and NewStackSetId['Success']:
@@ -965,24 +1177,21 @@ if __name__ == '__main__':
 				print(f"Waiting for StackSet {pNewStackSet} to be ready." * intervals_waited, end='\r')
 				sleep(sleep_interval)
 				intervals_waited += 1
-				NewStackSetStatus = check_stack_set_status(aws_acct, pNewStackSet)
+				NewStackSetStatus = check_stack_set_status(aws_acct_source, pNewStackSet)
 			print(f"{ERASE_LINE}Stackset {pNewStackSet} has been successfully created")
 			# TODO: Use the NewStackSetId Operation Id, to check if the empty new stackset has successfully been created
 			pass
 		# If only the creation effort (async) succeeded, but checking on that operation showed a failure...
 		elif NewStackSetStatus['Success']:
-			print(
-				f"{Fore.RED}{pNewStackSet} appears to already exist. New stack set failed to be created. Exiting...{Fore.RESET}")
+			logging.error(f"{Fore.RED}{pNewStackSet} appears to already exist. New stack set failed to be created. Exiting...{Fore.RESET}")
 			Failure_GoToEnd = True
 			sys.exit(98)
 		# Any other failure scenario
 		else:
-			print(f"{pNewStackSet} failed to be created. Exiting...")
+			logging.error(f"{pNewStackSet} failed to be created. Exiting...")
 			Failure_GoToEnd = True
 			sys.exit(99)
-
 	elif OldStackSetExists and not pEmpty:
-		print()
 		if not pForce:  # Checking to see if they've specified no confirmations
 			User_Confirmation = (input(f"Do you want to proceed with the migration? (y/n): ") in ['y', 'Y'])
 		else:
@@ -993,6 +1202,9 @@ if __name__ == '__main__':
 			sys.exit(10)
 		# We would only get to this point if (for some reason) the script dies before a new stackset could be made.
 		# In that case, we may not have even written a recovery file yet.
+		# if pDisassociate:
+		# 	Stack_Set_Info = get_template_body_and_parameters(aws_acct_source, pOldStackSet)
+		# 	pass
 		if not NewStackSetExists:  # We need to create the new stacksets
 			"""
 			1. Determine the template body of the existing stackset.
@@ -1007,19 +1219,19 @@ if __name__ == '__main__':
 			if pAccountsToMove is not None:
 				print(f"But only for account {pAccountsToMove}")
 			print()
-			Stack_Set_Info = get_template_body_and_parameters(aws_acct, pOldStackSet)
-			NewStackSetId = create_stack_set_with_body_and_parameters(aws_acct, pNewStackSet,
-			                                                          Stack_Set_Info['stack_set_info'])
+			Stack_Set_Info = get_template_body_and_parameters(aws_acct_source, pOldStackSet)
+			# TODO: What about the situation when 'NewStackSet' isn't provided?
+			NewStackSetId = create_stack_set_with_body_and_parameters(aws_acct_target, pNewStackSet, Stack_Set_Info['stack_set_info'])
 			logging.warning(f"Waiting for new stackset {pNewStackSet} to be created")
 			sleep(sleep_interval)
-			NewStackSetStatus = check_stack_set_status(aws_acct, pNewStackSet)
+			NewStackSetStatus = check_stack_set_status(aws_acct_target, pNewStackSet)
 			intervals_waited = 1
 			if NewStackSetStatus['Success']:
 				while NewStackSetStatus['Success'] and not NewStackSetStatus['StackSetStatus'] in ['ACTIVE']:
 					print(f"Waiting for StackSet {pNewStackSet} to be ready", f"." * intervals_waited, end='\r')
 					sleep(sleep_interval)
 					intervals_waited += 1
-					NewStackSetStatus = check_stack_set_status(aws_acct, pNewStackSet)
+					NewStackSetStatus = check_stack_set_status(aws_acct_source, pNewStackSet)
 				print(f"{ERASE_LINE}Stackset {pNewStackSet} has been successfully created")
 				# TODO: Use the NewStackSetId Operation Id, to check if the empty new stackset has successfully been created
 				pass
@@ -1032,28 +1244,23 @@ if __name__ == '__main__':
 			# First time this script has run...
 			print("New Stack Set already exists...")
 
-		""" ######## This code is common across both use-cases ################## """
+		# This code is common across both use-cases ##################
+		# 1. Get the stack-ids from the old stack-set - write them to a file (in case we need to recover the process)
 		logging.debug(f"Getting Stack Ids from existing stack set {pOldStackSet}")
-		# **** 1. Get the stack-ids from the old stack-set ****
-		if Use_recovery_file:
-			pass
-		else:
-			"""
-			1. Get the stack-ids from the old stack-set - write them to a file (in case we need to recover the process)
-			"""
-			stack_ids = get_stack_ids_from_existing_stack_set(aws_acct, pOldStackSet, pAccountsToMove)
+		stack_ids = get_stack_ids_from_existing_stack_set(aws_acct_source, pOldStackSet, pAccountsToMove)
 		logging.debug(f"Found {len(stack_ids)} stack ids from stackset {pOldStackSet}")
 		# Write the stack_ids info to a file, so we don't lose this info if the script fails
-		fileresult = write_info_to_file(aws_acct, stack_ids)
+		fileresult = write_info_to_file(aws_acct_source, stack_ids, pDelegatedAdmin)
 		if not fileresult['Success']:
 			print(f"Something went wrong.\n"
 			      f"Error Message: {fileresult['ErrorMessage']}")
 			Failure_GoToEnd = True
 			sys.exit(9)
+
 		# For every 10 stack-ids, use the OpId below to verify that the Operation has finished:
 		# **** 2. Remove the stack-instances from the old stack-set ****
 		logging.debug(f"Removing stack instances from stackset {pOldStackSet}")
-		DisconnectStackInstances = disconnect_stack_instances(aws_acct, stack_ids, pOldStackSet)
+		DisconnectStackInstances = disconnect_stack_instances(aws_acct_source, stack_ids, pOldStackSet)
 		if not DisconnectStackInstances['Success']:
 			if DisconnectStackInstances['ErrorMessage'].find('has no matching instances') > 0 and Use_recovery_file:
 				pass  # This could be because the Old Stackset already had the instances disconnected when the script failed
@@ -1063,7 +1270,7 @@ if __name__ == '__main__':
 				sys.exit(7)
 		logging.debug(f"Removed stack instances from {pOldStackSet}")
 		if DisconnectStackInstances['OperationId'] is not None:
-			StackInstancesAreGone = check_stack_set_status(aws_acct, pOldStackSet,
+			StackInstancesAreGone = check_stack_set_status(aws_acct_source, pOldStackSet,
 			                                               DisconnectStackInstances['OperationId'])
 			if not StackInstancesAreGone['Success']:
 				Failure_GoToEnd = True
@@ -1078,12 +1285,13 @@ if __name__ == '__main__':
 				      f"{sleep_interval * intervals_waited} seconds waited so far", end='\r')
 				sleep(sleep_interval)
 				intervals_waited += 1
-				StackInstancesAreGone = check_stack_set_status(aws_acct, pOldStackSet,
+				StackInstancesAreGone = check_stack_set_status(aws_acct_source, pOldStackSet,
 				                                               DisconnectStackInstances['OperationId'])
 			if not StackInstancesAreGone['Success']:
 				print(f"There was a problem with removing the stack instances from stackset {pOldStackSet}. Exiting...")
 				Failure_GoToEnd = True
 				sys.exit(8)
+
 		# For every 10 stack-ids:
 		# **** 3. Import those stack-ids into the new stack-set, 10 at a time ****
 		x = 0
@@ -1093,11 +1301,8 @@ if __name__ == '__main__':
 			stack_ids_subset = [stack_ids['Stack_instances'][x + i] for i in range(limit) if
 			                    x + i < len(stack_ids['Stack_instances'])]
 			x += limit
-			print(
-				f"{ERASE_LINE}Importing {len(stack_ids_subset)} of {len(stack_ids['Stack_instances'])} stacks into the new stackset now...",
-				end='\r')
-			ReconnectStackInstances = populate_new_stack_with_existing_stack_instances(aws_acct, stack_ids_subset,
-			                                                                           pNewStackSet)
+			print(f"{ERASE_LINE}Importing {len(stack_ids_subset)} of {len(stack_ids['Stack_instances'])} stacks into the new stackset now...", end='\r')
+			ReconnectStackInstances = populate_new_stack_with_existing_stack_instances(aws_acct_target, stack_ids_subset, pNewStackSet)
 			if not ReconnectStackInstances['Success']:
 				print(f"Re-attaching the stack-instance to the new stackset seems to have failed."
 				      f"The error received was: {ReconnectStackInstances['ErrorMessage']}")
@@ -1105,7 +1310,7 @@ if __name__ == '__main__':
 					f"You'll have to resolve the issue that caused this problem, and then re-run this script using the recovery file.")
 				Failure_GoToEnd = True
 				sys.exit(9)
-			StackReadyToImport = check_stack_set_status(aws_acct, pNewStackSet, ReconnectStackInstances['OperationId'])
+			StackReadyToImport = check_stack_set_status(aws_acct_target, pNewStackSet, ReconnectStackInstances['OperationId'])
 			if not StackReadyToImport['Success']:
 				Failure_GoToEnd = True
 				sys.exit(f"There was a problem with importing the stack"
@@ -1116,7 +1321,7 @@ if __name__ == '__main__':
 					f"{sleep_interval * intervals_waited} seconds waited so far", end='\r')
 				sleep(sleep_interval)
 				intervals_waited += 1
-				StackReadyToImport = check_stack_set_status(aws_acct, pNewStackSet,
+				StackReadyToImport = check_stack_set_status(aws_acct_target, pNewStackSet,
 				                                            ReconnectStackInstances['OperationId'])
 				if not StackReadyToImport['Success']:
 					Failure_GoToEnd = True
@@ -1125,17 +1330,17 @@ if __name__ == '__main__':
 			logging.info(f"{ERASE_LINE}That import took {intervals_waited * sleep_interval} seconds to complete")
 
 	else:  # Old Stackset doesn't exist - so there was a typo somewhere. Tell the user and exit
-		print(f"It appears that the legacy stackset you provided {pOldStackSet} doesn't exist.\n"
+		print(f"It appears that the source stackset you provided '{pOldStackSet}' doesn't exist.\n"
 		      f"Please check the spelling, or the account, and try again.\n\n"
 		      f"{Fore.LIGHTBLUE_EX}Perhaps the recovery file was never deleted?{Fore.RESET}")
 
 	# Delete the recovery file, if it exists
 	# TODO: Insert a check to make sure the recovery file isn't deleted, if we failed something above...
-	if exists(InfoFilename):
-		try:
-			FileDeleted = remove(InfoFilename)
-		except OSError as myError:
-			print(myError)
+	# if exists(InfoFilename):
+	# 	try:
+	# 		FileDeleted = remove(InfoFilename)
+	# 	except OSError as myError:
+	# 		logging.error(f'Error: {myError}')
 
 	if pTiming:
 		print(ERASE_LINE)
