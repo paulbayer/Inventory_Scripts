@@ -291,7 +291,7 @@ def check_stack_set_drift_status(faws_acct: aws_acct_access,
 def check_stack_set_status(faws_acct_target: aws_acct_access,
                            fStack_set_name: str,
                            fOperationId: str = None,
-                           fDelegated_admin:str=None) -> dict:
+                           fDelegated_admin: str = None) -> dict:
 	"""
 	Checks the state of the stackset, and continues to check
 	@param faws_acct_target:
@@ -299,15 +299,13 @@ def check_stack_set_status(faws_acct_target: aws_acct_access,
 	@param fOperationId:
 	@param fDelegated_admin:
 	@return:
-	"""
-	"""
+
 	response = client.describe_stack_set_operation(
 		StackSetName='string',
 		OperationId='string',
 		CallAs='SELF'|'DELEGATED_ADMIN'
 	)
 	"""
-	import logging
 
 	if not fDelegated_admin:
 		delegated_admin = 'SELF'
@@ -493,10 +491,8 @@ def compare_stacksets(faws_acct_source: aws_acct_access,
 	@return:
 	"""
 
-	if not fDelegated_admin:
-		delegated_admin = 'SELF'
-	else:
-		delegated_admin = 'DELEGATED_ADMIN'
+	# We don't set the delegated_admin here, since we don't use the "SELF" vs. "DELEGATED_ADMIN" in this script,
+	# but instead pass that to another script, which is looking for the TRUE/FALSE directly.
 	return_response = {'Success'                : False,
 	                   'TemplateComparison'     : False,
 	                   'CapabilitiesComparison' : False,
@@ -640,15 +636,17 @@ def write_info_to_file(faws_acct: aws_acct_access,
 		return return_response
 
 
-def read_stack_info_from_file() -> dict:
+def read_stack_info_from_file(fInfoFilename: str) -> dict:
 	"""
-	Docs go here
+	Reads stackset info from a file, to enable a recovery if something goes wrong.
+	@param fInfoFilename: the name of the file to read from
+	@return: Return Response with success or failure and error message
 	"""
-	import logging
+
 	import simplejson as json
 
 	try:
-		with open(InfoFilename, 'r', encoding="utf-8") as input_file:
+		with open(fInfoFilename, 'r', encoding="utf-8") as input_file:
 			my_input_file = json.load(input_file)
 		return_response = {'Success': True, 'Payload': my_input_file}
 		return return_response
@@ -664,7 +662,7 @@ def create_stack_set_with_body_and_parameters(faws_acct_target: aws_acct_access,
                                               fStack_set_info: dict,
                                               fDelegated_admin: bool = False) -> dict:
 	"""
-	Create the new stack set in tehe target account if it doesn't already exist
+	Create the new stack set in the target account if it doesn't already exist
 	@param faws_acct_target:
 	@param fNew_stack_set_name:
 	@param fStack_set_info:
@@ -856,7 +854,7 @@ def create_change_set_for_new_stack():
 def populate_new_stack_with_existing_stack_instances(faws_acct_target: aws_acct_access,
                                                      fStack_instance_info: list,
                                                      fNew_stack_name: str,
-                                                     fDelegated_admin:bool = False) -> dict:
+                                                     fDelegated_admin: bool = False) -> dict:
 	"""
 	Import the stack instances into the new stackset
 	@param faws_acct_target:
@@ -954,7 +952,6 @@ if __name__ == '__main__':
 	verbose = args.loglevel
 	pRecoveryFlag = args.pRecoveryFlag
 	pDriftCheck = args.pDriftCheckFlag
-	# version = args.Version
 	pOldStackSet = args.pOldStackSet
 	pNewStackSet = args.pNewStackSet
 	pAccountsToMove = args.pAccountsToMove
@@ -1129,7 +1126,6 @@ if __name__ == '__main__':
 
 	if not Finished:
 		CompareTemplates = {'Success': False}
-		# CompareTemplates['Success'] = True
 		if OldStackSetExists and NewStackSetExists:
 			CompareTemplates = compare_stacksets(aws_acct_source, aws_acct_target, pOldStackSet, pNewStackSet, pDelegatedAdmin)
 		elif OldStackSetExists and not NewStackSetExists:
