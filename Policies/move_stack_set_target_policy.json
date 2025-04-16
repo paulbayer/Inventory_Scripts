@@ -1,0 +1,21 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "cloudformation:ImportStacksToStackSet",
+                "organizations:DescribeOrganization",
+                "cloudformation:DescribeStackSet",
+                "cloudformation:ListStackSets",
+                "cloudformation:ListStackSetOperations",
+                "ec2:DescribeRegions",
+                "cloudformation:ListStackInstances",
+                "cloudformation:DescribeStackSetOperation",
+                "sts:GetCallerIdentity"
+            ],
+            "Resource": "*"
+        }
+    ]
+}

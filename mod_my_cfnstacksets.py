@@ -907,7 +907,7 @@ if __name__ == '__main__':
 	pRefresh = args.Refresh
 	pConfirm = args.Confirm
 	ChangesRequested = pdelete or pAddNew or pRefresh
-	# pSaveFilename = args.Filename
+
 	logging.basicConfig(level=verbose, format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
 	logging.getLogger("boto3").setLevel(logging.CRITICAL)
 	logging.getLogger("botocore").setLevel(logging.CRITICAL)

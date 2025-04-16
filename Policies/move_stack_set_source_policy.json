@@ -1,0 +1,22 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "cloudformation:DeleteStackInstances",
+                "cloudformation:ListStacks",
+                "organizations:ListAccounts",
+                "cloudformation:DescribeStackSet",
+                "organizations:DescribeOrganization",
+                "ec2:DescribeRegions",
+                "cloudformation:ListStackInstances",
+                "cloudformation:DescribeStackSetOperation",
+                "sts:GetCallerIdentity",
+                "cloudformation:DescribeStacks"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
